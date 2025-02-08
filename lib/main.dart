@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/presentation/landing_page.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:myotherapp/presentation/home/bloc/bottom_nav_bloc.dart';
+import 'package:myotherapp/presentation/home/screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -32,6 +34,10 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
         ),
-        home: LandingPage());
+        home: BlocProvider<BottomNavigatorBloc>(
+          create: (_) => BottomNavigatorBloc(index: 0) ,
+          child: LandingPage(),),
+          
+          );
   }
 }
