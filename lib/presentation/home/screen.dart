@@ -37,36 +37,30 @@ class LandingPage extends StatelessWidget {
             currentIndex: state.index,
             unselectedItemColor: Colors.grey[500],
             selectedItemColor:
-                Color(0xFFFFF176), // Soft yellow for selected item
-            selectedFontSize: 12,
-            unselectedFontSize: 12,
-            showUnselectedLabels: true,
+                Color(0xFFF9FFA1), // Soft yellow for selected item
             onTap: (index) => onItemTapped(context, index),
-            items: const <BottomNavigationBarItem>[
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.event),
-                label: 'Events',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.school),
-                label: 'Courses',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.groups),
-                label: 'Clubs',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person),
-                label: 'Profile',
-              ),
-            ],
+            items: getBottomNavBarItems(), // Use the method to get items
           ),
         );
       },
     );
   }
+}
+
+List<BottomNavigationBarItem> getBottomNavBarItems() {
+  return [
+    getBottomNavBarItem(icon: Icons.home, label: 'Home'),
+    getBottomNavBarItem(icon: Icons.event, label: 'Events'),
+    getBottomNavBarItem(icon: Icons.school, label: 'Courses'),
+    getBottomNavBarItem(icon: Icons.groups, label: 'Clubs'),
+    getBottomNavBarItem(icon: Icons.person, label: 'Profile'),
+  ];
+}
+
+BottomNavigationBarItem getBottomNavBarItem(
+    {required IconData icon, required String label}) {
+  return BottomNavigationBarItem(
+    icon: Icon(icon),
+    label: label,
+  );
 }
