@@ -29,20 +29,26 @@ class LandingPage extends StatelessWidget {
     return BlocBuilder<BottomNavigatorBloc, BottomNavigatorState>(
       builder: (context, state) {
         return Scaffold(
-          body: _pages[state.index], 
+          backgroundColor: Colors.white,
+          body: _pages[state.index],
           bottomNavigationBar: BottomNavigationBar(
-            backgroundColor: Colors.black,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Color(0xFF1F1F1F), // Dark background
             currentIndex: state.index,
-            unselectedItemColor: Colors.black38,
-            selectedItemColor: Colors.amber[800],
-            onTap: (index) => onItemTapped(context, index), 
+            unselectedItemColor: Colors.grey[500],
+            selectedItemColor:
+                Color(0xFFFFF176), // Soft yellow for selected item
+            selectedFontSize: 12,
+            unselectedFontSize: 12,
+            showUnselectedLabels: true,
+            onTap: (index) => onItemTapped(context, index),
             items: const <BottomNavigationBarItem>[
               BottomNavigationBarItem(
                 icon: Icon(Icons.home),
                 label: 'Home',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.business),
+                icon: Icon(Icons.event),
                 label: 'Events',
               ),
               BottomNavigationBarItem(
@@ -50,11 +56,11 @@ class LandingPage extends StatelessWidget {
                 label: 'Courses',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.groups),  // Changed the icon for Clubs
+                icon: Icon(Icons.groups),
                 label: 'Clubs',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.person_2_rounded),
+                icon: Icon(Icons.person),
                 label: 'Profile',
               ),
             ],
