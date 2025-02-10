@@ -24,8 +24,6 @@ class LandingPage extends StatelessWidget {
     context.read<BottomNavigatorBloc>().add(UpdateIndexEvent(index: index));
   }
 
- 
-
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<BottomNavigatorBloc, BottomNavigatorState>(
@@ -38,12 +36,8 @@ class LandingPage extends StatelessWidget {
             backgroundColor: Color(0xFF1F1F1F), // Dark background
             currentIndex: state.index,
             unselectedItemColor: Colors.grey[500],
-<<<<<<< HEAD
             selectedItemColor:
-                Color(0xFFF9FFA1), // Soft yellow for selected item
-=======
-            selectedItemColor: Color(0xFFFFF176), // Soft yellow for selected item
->>>>>>> b92c26e (fix(tabBar): updated tabBar UI)
+                Color(0xFFFFF176), // Soft yellow for selected item
             onTap: (index) => onItemTapped(context, index),
             items: getBottomNavBarItems(), // Use the method to get items
           ),
@@ -52,7 +46,6 @@ class LandingPage extends StatelessWidget {
     );
   }
 }
-<<<<<<< HEAD
 
 List<BottomNavigationBarItem> getBottomNavBarItems() {
   return [
@@ -66,25 +59,8 @@ List<BottomNavigationBarItem> getBottomNavBarItems() {
 
 BottomNavigationBarItem getBottomNavBarItem(
     {required IconData icon, required String label}) {
-=======
- List<BottomNavigationBarItem> getBottomNavBarItems() {
-    return [
-      getBottomNavBarItem(icon: Icons.home, label: 'Home'),
-      getBottomNavBarItem(icon: Icons.event, label: 'Events'),
-      getBottomNavBarItem(icon: Icons.school, label: 'Courses'),
-      getBottomNavBarItem(icon: Icons.groups, label: 'Clubs'),
-      getBottomNavBarItem(icon: Icons.person, label: 'Profile'),
-    ];
-  }
-  
-BottomNavigationBarItem getBottomNavBarItem({required IconData icon, required String label}) {
->>>>>>> b92c26e (fix(tabBar): updated tabBar UI)
   return BottomNavigationBarItem(
     icon: Icon(icon),
     label: label,
   );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> b92c26e (fix(tabBar): updated tabBar UI)
