@@ -20,7 +20,11 @@ class _HomePageState extends State<HomePage>
 
   final _tabs = [
     'FOR YOU',
+<<<<<<< HEAD
     'FOLLOWING',
+=======
+    'FOLLOWING',    
+>>>>>>> b92c26e (fix(tabBar): updated tabBar UI)
   ];
 
   late TabController _tabController;
@@ -38,12 +42,18 @@ class _HomePageState extends State<HomePage>
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
+<<<<<<< HEAD
         toolbarHeight: kToolbarHeight + 30, // Adds extra space to the bottom
         flexibleSpace: Padding(
           padding: const EdgeInsets.symmetric(
               vertical: 20), // Adjust the bottom padding here
           child: Container(),
         ),
+=======
+        shadowColor: Colors.black26,
+        toolbarHeight: kToolbarHeight + 50, // Adds extra space to the bottom
+       
+>>>>>>> b92c26e (fix(tabBar): updated tabBar UI)
         // Search Bar
         title: GestureDetector(
           onTap: () {
@@ -117,7 +127,10 @@ class _HomePageState extends State<HomePage>
     );
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> b92c26e (fix(tabBar): updated tabBar UI)
 class CustomTab extends StatelessWidget {
   const CustomTab({
     required this.tabTitle,
@@ -130,6 +143,7 @@ class CustomTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
     return Tab(
       height: 60,
       child: Padding(
@@ -146,6 +160,28 @@ class CustomTab extends StatelessWidget {
             border: Border.all(color: const Color(0xFF1E1E1E)), // Dark border
           ),
           child: Center(child: Text(tabTitle)),
+=======
+    return Padding(
+      padding: const EdgeInsets.only(top: 10 ,bottom: 25),
+      child: SizedBox(
+        height: 60, // Increase the height of the Tab container
+        child: Tab(
+          child: FractionallySizedBox(
+            widthFactor: 1,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: isSelected
+                    ? Colors.yellow.shade200
+                    : Colors.white, // Change color based on selected
+                border: Border.all(
+                  color: Colors.black,
+                ),
+              ),
+              child: Center(child: Text(tabTitle)),
+            ),
+          ),
+>>>>>>> b92c26e (fix(tabBar): updated tabBar UI)
         ),
       ),
     );
