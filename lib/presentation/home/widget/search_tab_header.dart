@@ -1,0 +1,185 @@
+import 'package:flutter/material.dart';
+import 'package:myotherapp/presentation/home/widget/custom_search_delegate.dart';
+
+class SearchTabHeader extends StatefulWidget {
+  /// Titles that appear in the TabBar.
+  final List<String> tabTitles;
+
+  /// Pages (scrollable) associated with each tab.
+  final List<Widget> tabPages;
+
+  /// Optional hint text for the search bar.
+  final String searchHintText;
+
+  /// Optional custom `SearchDelegate`.
+  final SearchDelegate? searchDelegate;
+
+  const SearchTabHeader({
+    Key? key,
+    required this.tabTitles,
+    required this.tabPages,
+    this.searchHintText = 'Search for Events, Interests, Locations...',
+    this.searchDelegate,
+  }) : super(key: key);
+
+  @override
+  State<SearchTabHeader> createState() => _SearchTabHeaderState();
+}
+
+class _SearchTabHeaderState extends State<SearchTabHeader>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.tabTitles.isEmpty || widget.tabPages.isEmpty) {
+      throw FlutterError(
+        'tabTitles and tabPages must not be empty and must have the same length.',
+      );
+    }
+
+    if (widget.tabTitles.length != widget.tabPages.length) {
+      throw FlutterError(
+        'The length of tabTitles and tabPages must match.',
+      );
+    }
+
+    _tabController = TabController(
+      vsync: this,
+      length: widget.tabTitles.length,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      // Instead of using a regular appBar, we will build it with Slivers
+      body: NestedScrollView(
+        // The SliverAppBar + TabBar will be the "headerSliverBuilder" part.
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return [
+            SliverAppBar(
+              // Makes the app bar float up/down as you scroll
+              floating: true,
+              // Snaps the app bar into view when you scroll up
+              snap: true,
+              // If pinned = true, the AppBar remains visible at the top;
+              // if pinned = false, it fully hides.
+              pinned: false,
+              backgroundColor: Colors.white,
+              elevation: 1,
+
+              // The height when fully expanded (can adjust as desired)
+              expandedHeight: 150.0,
+
+              // The "title" area: put the search bar here.
+              // Alternatively, you could use flexibleSpace and
+              // FlexibleSpaceBar for more complex behavior.
+              title: GestureDetector(
+                onTap: () {
+                  showSearch(
+                    context: context,
+                    delegate: widget.searchDelegate ?? CustomSearchDelegate(),
+                  );
+                },
+                child: Container(
+                  height: 56,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFDFDFC), // Slightly off-white
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF1E1E1E)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search, color: Color(0xFF979797)),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.searchHintText,
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Put the TabBar in the bottom of the SliverAppBar
+              bottom: TabBar(
+                controller: _tabController,
+                // Remove splash/ink effects if desired:
+                splashFactory: NoSplash.splashFactory,
+                indicator: const BoxDecoration(color: Colors.transparent),
+                labelColor: Colors.black,
+                unselectedLabelColor: Colors.grey,
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+                onTap: (index) {
+                  setState(() {
+                    _tabController.index = index;
+                  });
+                },
+                tabs: widget.tabTitles.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final title = entry.value;
+                  return CustomTab(
+                    tabTitle: title,
+                    isSelected: _tabController.index == index,
+                  );
+                }).toList(),
+              ),
+            ),
+          ];
+        },
+
+        // The TabBarView is the "body" in the NestedScrollView,
+        // which will scroll under the SliverAppBar
+        body: TabBarView(
+          controller: _tabController,
+          children: widget.tabPages,
+        ),
+      ),
+    );
+  }
+}
+
+class CustomTab extends StatelessWidget {
+  final String tabTitle;
+  final bool isSelected;
+
+  const CustomTab({
+    required this.tabTitle,
+    required this.isSelected,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      // Adjust these paddings to taste
+      padding: const EdgeInsets.only(top: 10, bottom: 10),
+      child: SizedBox(
+        height: 60,
+        child: Tab(
+          child: FractionallySizedBox(
+            widthFactor: 1,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: isSelected ? Colors.yellow.shade200 : Colors.white,
+                border: Border.all(color: Colors.black),
+              ),
+              child: Center(child: Text(tabTitle)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
