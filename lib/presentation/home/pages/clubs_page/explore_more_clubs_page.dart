@@ -9,6 +9,7 @@ class ExploreMoreClubsPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: GestureDetector(
           onTap: () {
             // Handle search tap
