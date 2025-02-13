@@ -16,10 +16,11 @@ class ClubListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(6),
+        color: const Color(0xFFFDFDFC), // Slightly off-white
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF1E1E1E)),
       ),
       child: ListTile(
         leading: CircleAvatar(
