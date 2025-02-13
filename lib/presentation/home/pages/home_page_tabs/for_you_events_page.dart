@@ -15,7 +15,7 @@ class ForYouEventsPage extends StatelessWidget {
           EventCard(
             title: 'Blender free 2 day',
             organizer: 'IEDC CET',
-            tags: ['workshop', 'online', 'paid', '2 hours'],
+            tags: ['Workshop', 'Online', 'Paid', '2 Hours'],
             onTap: () {},
             imageUrl:
                 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZXf3nbnry-f9qbUwAUfTt-pQssbF3JVjFjg&s',
@@ -39,7 +39,7 @@ class ForYouEventsPage extends StatelessWidget {
           EventCard(
             title: 'Blender free 2 day',
             organizer: 'IEDC CET',
-            tags: ['workshop', 'online', 'paid', '2 hours'],
+            tags: ['Workshop', 'Online', 'Paid', '2 Hours'],
             onTap: () {},
             imageUrl:
                 'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
@@ -50,7 +50,7 @@ class ForYouEventsPage extends StatelessWidget {
           EventCard(
             title: 'Blender free 2 day',
             organizer: 'IEDC CET',
-            tags: ['workshop', 'online', 'paid', '2 hours'],
+            tags: ['Workshop', 'Online', 'Paid', '2 Hours'],
             onTap: () {},
             imageUrl:
                 'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
@@ -58,7 +58,7 @@ class ForYouEventsPage extends StatelessWidget {
           EventCard(
             title: 'Blender free 2 day',
             organizer: 'IEDC CET',
-            tags: ['workshop', 'online', 'paid', '2 hours'],
+            tags: ['Workshop', 'Online', 'Paid', '2 Hours'],
             onTap: () {},
             imageUrl:
                 'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',

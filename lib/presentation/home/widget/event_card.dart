@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:myotherapp/core/resources/asset_resources.dart';
+import 'package:myotherapp/core/resources/color_resources.dart';
+import 'package:myotherapp/presentation/home/widget/svg_icon.dart';
 
 class EventCard extends StatelessWidget {
   final String title;
@@ -8,127 +11,123 @@ class EventCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const EventCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.organizer,
     required this.imageUrl,
     required this.tags,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
     return Padding(
       padding: const EdgeInsets.only(left: 10.0, right: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Title and Organizer
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Image.network(
-                  'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 52,
-                      height: 52,
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.image_not_supported),
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: Colors.black,
-                        ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Image.network(
+                'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 52,
+                    height: 52,
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.image_not_supported),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        color: Colors.black,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        organizer,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      organizer,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.black,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                // Share Icon
-                IconButton(
-                  onPressed: () {
-                    // Share event logic here
-                  },
-                  icon: const Icon(
-                    Icons.open_in_new,
-                    color: Colors.black,
-                    size: 30,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              IconButton(
+                onPressed: () {},
+                icon: SvgIcon(svgIconPath: AssetResources.share),
+              ),
+            ],
           ),
-
-          // Event Image with 1:1 Aspect Ratio
-          AspectRatio(
-            aspectRatio: 1.0, // 1:1 ratio
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                imageUrl,
+          SizedBox(
+            height: 10,
+          ),
+          Container(
+            height: size.height * .5,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10.0),
+              image: DecorationImage(
+                image: NetworkImage(
+                  imageUrl,
+                ),
                 fit: BoxFit.cover,
               ),
             ),
           ),
-
-          // Tags Row
-          Padding(
-            padding: const EdgeInsets.only(top: 12.0, bottom: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: tags
-                  .map(
-                    (tag) => Row(
-                      children: [
-                        const Icon(Icons.circle, size: 6, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(
-                          tag,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF1E1E1E),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                  .toList(),
-            ),
+          SizedBox(
+            height: 10,
           ),
-
-          // Call-to-Action Button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: tags.asMap().entries.map((entry) {
+              int index = entry.key;
+              String tag = entry.value;
+              return Row(
+                children: [
+                  if (index != 0) ...[
+                    const SvgIcon(svgIconPath: AssetResources.star),
+                    const SizedBox(width: 4),
+                  ],
+                  Text(
+                    tag,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF1E1E1E),
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+          SizedBox(
+            height: 20,
+          ),
           Center(
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: onTap,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
+                  backgroundColor: ColorResources.buttonColor,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -138,11 +137,14 @@ class EventCard extends StatelessWidget {
                   'TAKE A CLOSER LOOK OF THE EVENT',
                   style: TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w600,
                       fontSize: 18),
                 ),
               ),
             ),
+          ),
+          SizedBox(
+            height: 10,
           ),
         ],
       ),

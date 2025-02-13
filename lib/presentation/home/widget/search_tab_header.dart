@@ -15,12 +15,12 @@ class SearchTabHeader extends StatefulWidget {
   final SearchDelegate? searchDelegate;
 
   const SearchTabHeader({
-    Key? key,
+    super.key,
     required this.tabTitles,
     required this.tabPages,
     this.searchHintText = 'Search for Events, Interests, Locations...',
     this.searchDelegate,
-  }) : super(key: key);
+  });
 
   @override
   State<SearchTabHeader> createState() => _SearchTabHeaderState();
@@ -29,6 +29,7 @@ class SearchTabHeader extends StatefulWidget {
 class _SearchTabHeaderState extends State<SearchTabHeader>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  int currentIndex = 0;
 
   @override
   void initState() {
@@ -49,6 +50,17 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
       vsync: this,
       length: widget.tabTitles.length,
     );
+    _tabController.addListener(() {
+      if (_tabController.index != _tabController.previousIndex) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -76,42 +88,49 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
               // The "title" area: put the search bar here.
               // Alternatively, you could use flexibleSpace and
               // FlexibleSpaceBar for more complex behavior.
-              title: GestureDetector(
-                onTap: () {
-                  showSearch(
-                    context: context,
-                    delegate: widget.searchDelegate ?? CustomSearchDelegate(),
-                  );
-                },
-                child: Container(
-                  height: 56,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+              title: Column(
+                children: [
+                  SizedBox(
+                    height: 10,
                   ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFDFDFC), // Slightly off-white
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF1E1E1E)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search, color: Color(0xFF979797)),
-                      const SizedBox(width: 8),
-                      Text(
-                        widget.searchHintText,
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 14),
+                  GestureDetector(
+                    onTap: () {
+                      showSearch(
+                        context: context,
+                        delegate:
+                            widget.searchDelegate ?? CustomSearchDelegate(),
+                      );
+                    },
+                    child: Container(
+                      height: 46,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
                       ),
-                    ],
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFDFDFC), // Slightly off-white
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF1E1E1E)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.search, color: Color(0xFF979797)),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.searchHintText,
+                            style: const TextStyle(
+                                color: Colors.grey, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
 
               // Put the TabBar in the bottom of the SliverAppBar
               bottom: TabBar(
                 controller: _tabController,
-                // Remove splash/ink effects if desired:
                 splashFactory: NoSplash.splashFactory,
                 indicator: const BoxDecoration(color: Colors.transparent),
                 labelColor: Colors.black,
@@ -137,9 +156,6 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
             ),
           ];
         },
-
-        // The TabBarView is the "body" in the NestedScrollView,
-        // which will scroll under the SliverAppBar
         body: TabBarView(
           controller: _tabController,
           children: widget.tabPages,
@@ -156,8 +172,8 @@ class CustomTab extends StatelessWidget {
   const CustomTab({
     required this.tabTitle,
     required this.isSelected,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
