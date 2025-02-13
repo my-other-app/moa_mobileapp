@@ -1,0 +1,133 @@
+import 'package:flutter/material.dart';
+
+class ExploreMoreClubCard extends StatelessWidget {
+  const ExploreMoreClubCard({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // Sample tags with background colors
+    final List<Map<String, dynamic>> tags = [
+      {'label': 'Programming', 'color': Colors.lightBlue.shade100},
+      {'label': 'App Development', 'color': Colors.yellow.shade200},
+      {'label': 'UI/UX', 'color': Colors.red.shade100},
+      {'label': 'Web Designing', 'color': Colors.green.shade100},
+      {'label': 'AI/ML', 'color': Colors.amber.shade100},
+      {'label': 'DSA', 'color': Colors.pink.shade100},
+      {'label': 'Competitive Coding', 'color': Colors.purple.shade100},
+    ];
+
+    return Card(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Colors.grey.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Row with Logo, Title, and Follower Count
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Logo
+                Image.network(
+                  'https://avatars.githubusercontent.com/u/98015594?s=280&v=4', // Replace with TinkerHub logo
+                  width: 40,
+                  height: 40,
+                  fit: BoxFit.cover,
+                ),
+                const SizedBox(width: 12),
+                // Club name and followers
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Tinkerhub CET',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '123 Followers',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Tags
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: tags.map((tagItem) {
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: tagItem['color'] as Color,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    tagItem['label'],
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+
+            // Buttons
+            Row(
+              children: [
+                // Left button
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      // TODO: Implement "Join the Team" logic
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black87,
+                      side: BorderSide(color: Colors.black87),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    child: const Text('JOIN THE TEAM'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Right button
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // TODO: Implement "Follow" logic
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black87,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    child: const Text(
+                      'FOLLOW',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

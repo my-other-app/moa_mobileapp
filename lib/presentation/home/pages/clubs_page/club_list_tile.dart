@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../widget/clubs_option_screen.dart';
+
 class ClubListTile extends StatelessWidget {
   final String clubName;
   final String imageUrl;
-  final void Function(String value) onMenuSelected;
 
   const ClubListTile({
     Key? key,
     required this.clubName,
     required this.imageUrl,
-    required this.onMenuSelected,
   }) : super(key: key);
 
   @override
@@ -23,25 +23,25 @@ class ClubListTile extends StatelessWidget {
         border: Border.all(color: const Color(0xFF1E1E1E)),
       ),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundImage: NetworkImage(imageUrl),
-        ),
-        title: Text(clubName),
-        trailing: PopupMenuButton<String>(
-          onSelected: onMenuSelected,
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'option1',
-              child: Text('Option 1'),
-            ),
-            const PopupMenuItem(
-              value: 'option2',
-              child: Text('Option 2'),
-            ),
-          ],
-          child: const Icon(Icons.more_vert),
-        ),
-      ),
+          leading: CircleAvatar(
+            backgroundImage: NetworkImage(imageUrl),
+          ),
+          title: Text(clubName),
+          trailing: IconButton(
+              onPressed: () => showModalBottomSheet(
+                    context: context,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    builder: (_) {
+                      return ClubsOptionScreen(
+                        clubName: clubName,
+                        imageUrl: imageUrl,
+                      );
+                    },
+                  ),
+              icon: Icon(Icons.menu))),
     );
   }
 }

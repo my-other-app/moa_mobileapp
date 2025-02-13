@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myotherapp/presentation/home/widget/explore_more_club_card.dart';
 import '../../widget/event_card.dart';
 
 class PastEventsPage extends StatelessWidget {
@@ -38,6 +39,10 @@ class PastEventsPage extends StatelessWidget {
             imageUrl:
                 'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
           ),
+          SizedBox(
+            height: 10,
+          ),
+          ExploreMoreClubCard()
         ],
       ),
     );

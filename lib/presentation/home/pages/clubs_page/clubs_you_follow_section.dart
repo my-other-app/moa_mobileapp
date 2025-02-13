@@ -27,10 +27,6 @@ class ClubsYouFollowSection extends StatelessWidget {
             return ClubListTile(
               clubName: club['name']!,
               imageUrl: club['imageUrl']!,
-              onMenuSelected: (value) {
-                // Handle the menu action
-                debugPrint('Selected action: $value for club: ${club['name']}');
-              },
             );
           },
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myotherapp/presentation/home/pages/clubs_page/explore_more_clubs_page.dart';
 
 import 'clubs_page/clubs_you_follow_section.dart';
 import 'clubs_page/pinned_clubs_section.dart';
@@ -157,7 +158,15 @@ class ClubsPage extends StatelessWidget {
                       ),
                 ),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ExploreMoreClubsPage(), // the screen to display
+                      ),
+                    );
+                  },
                   child: const Text(
                     'Explore More Clubs',
                     style: TextStyle(
