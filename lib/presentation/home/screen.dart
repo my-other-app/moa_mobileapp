@@ -30,7 +30,7 @@ class LandingPage extends StatelessWidget {
       builder: (context, state) {
         return Scaffold(
           backgroundColor: Colors.white,
-          body: _pages[state.index],
+          body: SafeArea(child: _pages[state.index]),
           bottomNavigationBar: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
             backgroundColor: Color(0xFF1F1F1F), // Dark background
