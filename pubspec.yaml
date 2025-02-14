@@ -97,6 +97,9 @@ flutter:
           weight: 800
         - asset: assets/fonts/DMSans-VariableFont_opsz,wght.ttf
           weight: 900
+    - family: BebasNeue
+      fonts:
+        - asset: assets/fonts/BebasNeue-Regular.ttf
 
   #   - family: Trajan Pro
   #     fonts:

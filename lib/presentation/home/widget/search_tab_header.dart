@@ -1,5 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:myotherapp/core/app_colors.dart';
 import 'package:myotherapp/presentation/home/widget/custom_search_delegate.dart';
+
+class CustomTab extends StatelessWidget {
+  final String tabTitle;
+  final bool isSelected;
+
+  const CustomTab({
+    required this.tabTitle,
+    required this.isSelected,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: isSelected ? Colors.yellow.shade200 : Colors.white,
+        border: Border.all(color: AppColors.border),
+      ),
+      padding: EdgeInsets.all(13),
+      alignment: Alignment.center,
+      child: Text(tabTitle),
+    );
+  }
+}
 
 class SearchTabHeader extends StatefulWidget {
   /// Titles that appear in the TabBar.
@@ -32,38 +58,6 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
   int currentIndex = 0;
 
   @override
-  void initState() {
-    super.initState();
-    if (widget.tabTitles.isEmpty || widget.tabPages.isEmpty) {
-      throw FlutterError(
-        'tabTitles and tabPages must not be empty and must have the same length.',
-      );
-    }
-
-    if (widget.tabTitles.length != widget.tabPages.length) {
-      throw FlutterError(
-        'The length of tabTitles and tabPages must match.',
-      );
-    }
-
-    _tabController = TabController(
-      vsync: this,
-      length: widget.tabTitles.length,
-    );
-    _tabController.addListener(() {
-      if (_tabController.index != _tabController.previousIndex) {
-        setState(() {});
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       // Instead of using a regular appBar, we will build it with Slivers
@@ -88,44 +82,35 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
               // The "title" area: put the search bar here.
               // Alternatively, you could use flexibleSpace and
               // FlexibleSpaceBar for more complex behavior.
-              title: Column(
-                children: [
-                  SizedBox(
-                    height: 10,
+              title: GestureDetector(
+                onTap: () {
+                  showSearch(
+                    context: context,
+                    delegate: widget.searchDelegate ?? CustomSearchDelegate(),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
                   ),
-                  GestureDetector(
-                    onTap: () {
-                      showSearch(
-                        context: context,
-                        delegate:
-                            widget.searchDelegate ?? CustomSearchDelegate(),
-                      );
-                    },
-                    child: Container(
-                      height: 46,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFDFDFC), // Slightly off-white
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF1E1E1E)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.search, color: Color(0xFF979797)),
-                          const SizedBox(width: 8),
-                          Text(
-                            widget.searchHintText,
-                            style: const TextStyle(
-                                color: Colors.grey, fontSize: 14),
-                          ),
-                        ],
-                      ),
-                    ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFDFDFC), // Slightly off-white
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF1E1E1E)),
                   ),
-                ],
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search, color: Color(0xFF979797)),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.searchHintText,
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
               ),
 
               // Put the TabBar in the bottom of the SliverAppBar
@@ -134,11 +119,13 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
                 splashFactory: NoSplash.splashFactory,
                 indicator: const BoxDecoration(color: Colors.transparent),
                 labelColor: Colors.black,
-                unselectedLabelColor: Colors.grey,
-                labelStyle: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                labelStyle: TextStyle(
+                  fontFamily: 'BebasNeue',
+                  fontSize: 24,
                 ),
+                labelPadding: EdgeInsets.only(left: 5, right: 5, bottom: 24),
+                padding: EdgeInsets.only(left: 12, right: 12, top: 0),
+                unselectedLabelColor: Colors.grey,
                 onTap: (index) {
                   setState(() {
                     _tabController.index = index;
@@ -163,39 +150,36 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
       ),
     );
   }
-}
-
-class CustomTab extends StatelessWidget {
-  final String tabTitle;
-  final bool isSelected;
-
-  const CustomTab({
-    required this.tabTitle,
-    required this.isSelected,
-    super.key,
-  });
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      // Adjust these paddings to taste
-      padding: const EdgeInsets.only(top: 10, bottom: 10),
-      child: SizedBox(
-        height: 60,
-        child: Tab(
-          child: FractionallySizedBox(
-            widthFactor: 1,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: isSelected ? Colors.yellow.shade200 : Colors.white,
-                border: Border.all(color: Colors.black),
-              ),
-              child: Center(child: Text(tabTitle)),
-            ),
-          ),
-        ),
-      ),
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.tabTitles.isEmpty || widget.tabPages.isEmpty) {
+      throw FlutterError(
+        'tabTitles and tabPages must not be empty and must have the same length.',
+      );
+    }
+
+    if (widget.tabTitles.length != widget.tabPages.length) {
+      throw FlutterError(
+        'The length of tabTitles and tabPages must match.',
+      );
+    }
+
+    _tabController = TabController(
+      vsync: this,
+      length: widget.tabTitles.length,
     );
+    _tabController.addListener(() {
+      if (_tabController.index != _tabController.previousIndex) {
+        setState(() {});
+      }
+    });
   }
 }
