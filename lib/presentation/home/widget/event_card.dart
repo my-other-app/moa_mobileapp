@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/core/resources/color_resources.dart';
+import 'package:myotherapp/presentation/home/pages/individual_event_page.dart';
 import 'package:myotherapp/presentation/home/widget/svg_icon.dart';
 
 class EventCard extends StatelessWidget {
@@ -125,7 +126,13 @@ class EventCard extends StatelessWidget {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: onTap,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => IndividualEventPage()),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: ColorResources.buttonColor,
                   shape: RoundedRectangleBorder(
