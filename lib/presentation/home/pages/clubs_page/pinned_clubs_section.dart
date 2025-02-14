@@ -18,9 +18,10 @@ class PinnedClubsSection extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               'PINNED',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontSize: 24, fontFamily: 'BebasNeue'),
             ),
           ),
         ),
