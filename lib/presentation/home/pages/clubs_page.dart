@@ -153,9 +153,10 @@ class ClubsPage extends StatelessWidget {
               children: [
                 Text(
                   'CLUBS YOU FOLLOW',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontSize: 24, fontFamily: 'BebasNeue'),
                 ),
                 GestureDetector(
                   onTap: () {
@@ -170,8 +171,11 @@ class ClubsPage extends StatelessWidget {
                   child: const Text(
                     'Explore More Clubs',
                     style: TextStyle(
+                      decoration: TextDecoration.underline,
+                      decorationColor: Colors.redAccent,
                       color: Colors.redAccent,
                       fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
                 ),

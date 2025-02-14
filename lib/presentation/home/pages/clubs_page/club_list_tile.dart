@@ -26,7 +26,10 @@ class ClubListTile extends StatelessWidget {
           leading: CircleAvatar(
             backgroundImage: NetworkImage(imageUrl),
           ),
-          title: Text(clubName),
+          title: Text(
+            clubName,
+            style: TextStyle(fontSize: 16),
+          ),
           trailing: IconButton(
               onPressed: () => showModalBottomSheet(
                     context: context,
@@ -41,7 +44,7 @@ class ClubListTile extends StatelessWidget {
                       );
                     },
                   ),
-              icon: Icon(Icons.menu))),
+              icon: Icon(Icons.more_vert))),
     );
   }
 }

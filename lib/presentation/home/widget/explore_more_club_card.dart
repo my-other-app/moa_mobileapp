@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/app_colors.dart';
 
 class ExploreMoreClubCard extends StatelessWidget {
   const ExploreMoreClubCard({Key? key}) : super(key: key);
@@ -16,11 +17,11 @@ class ExploreMoreClubCard extends StatelessWidget {
       {'label': 'Competitive Coding', 'color': Colors.purple.shade100},
     ];
 
-    return Card(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
+    return Container(
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: Colors.grey.shade300),
+        color: Colors.white,
+        border: Border.all(color: AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
