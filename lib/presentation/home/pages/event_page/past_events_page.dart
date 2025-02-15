@@ -7,10 +7,10 @@ class PastEventsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ColoredBox(
       color: Colors.white,
       child: ListView(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(16),
         children: <Widget>[
           EventCard(
             title: 'Blender free 2 day',

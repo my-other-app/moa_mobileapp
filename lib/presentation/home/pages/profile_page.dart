@@ -27,6 +27,7 @@ class ProfilePage extends StatelessWidget {
     ];
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
         child: SafeArea(
@@ -50,24 +51,18 @@ class ProfilePage extends StatelessWidget {
                     children: const [
                       Text(
                         'EDWIN EMMANUEL ROY',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(fontSize: 36, fontFamily: 'BebasNeue'),
                       ),
                       SizedBox(height: 4),
                       Text(
                         'COLLEGE OF ENGINEERING TRIVANDRUM',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 16, fontFamily: 'BebasNeue'),
                       ),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
               // 2) Tags
               Wrap(
@@ -85,7 +80,7 @@ class ProfilePage extends StatelessWidget {
                     ),
                     child: Text(
                       tag['label'] as String,
-                      style: const TextStyle(fontSize: 14),
+                      style: const TextStyle(fontSize: 12),
                     ),
                   );
                 }).toList(),
