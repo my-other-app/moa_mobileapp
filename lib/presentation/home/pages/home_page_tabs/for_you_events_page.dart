@@ -19,12 +19,19 @@ class ForYouEventsPage extends StatelessWidget {
             onTap: () {},
             imageUrl:
                 "https://static.vecteezy.com/system/resources/previews/022/590/539/original/summer-party-poster-design-music-party-flyer-artwork-template-vector.jpg",
-
           ),
-          SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Divider(
+              thickness: 1,
+              color: Colors.black,
+              indent: 50,
+              endIndent: 50,
+            ),
+          ),
           NoteCard(
             logoUrl:
-                'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
+                'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
             headerTitle: 'Tinkerhub HQ',
             headerSubtitle: '2 days ago',
             cardTitle: 'Another TinkerHub Card',
@@ -32,7 +39,15 @@ class ForYouEventsPage extends StatelessWidget {
                 'A longer description shows how the card automatically grows '
                 'as the content increases.',
           ),
-          SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Divider(
+              thickness: 1,
+              color: Colors.black,
+              indent: 50,
+              endIndent: 50,
+            ),
+          ),
           EventCard(
             title: 'Blender free 2 day',
             organizer: 'IEDC CET',
@@ -41,7 +56,15 @@ class ForYouEventsPage extends StatelessWidget {
             imageUrl:
                 'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
           ),
-          SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Divider(
+              thickness: 1,
+              color: Colors.black,
+              indent: 50,
+              endIndent: 50,
+            ),
+          ),
           EventCard(
             title: 'Blender free 2 day',
             organizer: 'IEDC CET',
@@ -50,7 +73,15 @@ class ForYouEventsPage extends StatelessWidget {
             imageUrl:
                 'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
           ),
-          SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Divider(
+              thickness: 1,
+              color: Colors.black,
+              indent: 50,
+              endIndent: 50,
+            ),
+          ),
           EventCard(
             title: 'Blender free 2 day',
             organizer: 'IEDC CET',
