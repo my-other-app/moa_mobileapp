@@ -21,9 +21,7 @@ class ForYouEventsPage extends StatelessWidget {
                 "https://static.vecteezy.com/system/resources/previews/022/590/539/original/summer-party-poster-design-music-party-flyer-artwork-template-vector.jpg",
 
           ),
-          SizedBox(
-            height: 10,
-          ),
+          SizedBox(height: 20),
           NoteCard(
             logoUrl:
                 'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
@@ -34,9 +32,7 @@ class ForYouEventsPage extends StatelessWidget {
                 'A longer description shows how the card automatically grows '
                 'as the content increases.',
           ),
-          SizedBox(
-            height: 10,
-          ),
+          SizedBox(height: 20),
           EventCard(
             title: 'Blender free 2 day',
             organizer: 'IEDC CET',
@@ -45,9 +41,7 @@ class ForYouEventsPage extends StatelessWidget {
             imageUrl:
                 'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
           ),
-          SizedBox(
-            height: 10,
-          ),
+          SizedBox(height: 20),
           EventCard(
             title: 'Blender free 2 day',
             organizer: 'IEDC CET',
@@ -56,6 +50,7 @@ class ForYouEventsPage extends StatelessWidget {
             imageUrl:
                 'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
           ),
+          SizedBox(height: 20),
           EventCard(
             title: 'Blender free 2 day',
             organizer: 'IEDC CET',

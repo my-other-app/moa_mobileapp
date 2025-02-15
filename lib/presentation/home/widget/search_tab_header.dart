@@ -18,7 +18,7 @@ class CustomTab extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         color: isSelected ? Colors.yellow.shade200 : Colors.white,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.border, width: 0.5),
       ),
       padding: EdgeInsets.all(13),
       alignment: Alignment.center,
@@ -74,7 +74,9 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
               // if pinned = false, it fully hides.
               pinned: false,
               backgroundColor: Colors.white,
-              elevation: 1,
+              surfaceTintColor: Colors.white,
+              elevation: 4,
+              shadowColor: Colors.grey.withOpacity(0.5),
 
               // The height when fully expanded (can adjust as desired)
               expandedHeight: 150.0,
@@ -97,7 +99,8 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
                   decoration: BoxDecoration(
                     color: const Color(0xFFFDFDFC), // Slightly off-white
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF1E1E1E)),
+                    border:
+                        Border.all(color: const Color(0xFF1E1E1E), width: 0.5),
                   ),
                   child: Row(
                     children: [
@@ -126,6 +129,8 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
                 labelPadding: EdgeInsets.only(left: 5, right: 5, bottom: 24),
                 padding: EdgeInsets.only(left: 12, right: 12, top: 0),
                 unselectedLabelColor: Colors.grey,
+                indicatorColor: Colors.transparent,
+                dividerColor: Colors.transparent,
                 onTap: (index) {
                   setState(() {
                     _tabController.index = index;
