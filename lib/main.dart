@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:myotherapp/core/app_theme.dart';
 import 'package:myotherapp/presentation/home/bloc/bottom_nav_bloc.dart';
 import 'package:myotherapp/presentation/home/screen.dart';
 
@@ -20,11 +21,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'My Other App',
-      theme: ThemeData(
-        fontFamily: "DMSans",
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.white),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.themeData(),
       home: BlocProvider<BottomNavigatorBloc>(
         create: (_) => BottomNavigatorBloc(index: 0),
         child: LandingPage(),
