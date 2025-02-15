@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/resources/asset_resources.dart';
+import 'svg_icon.dart';
+
 class NoteCard extends StatelessWidget {
   final String logoUrl; // URL to the logo image
   final String headerTitle; // e.g., "Tinkerhub CET"
@@ -81,11 +84,7 @@ class NoteCard extends StatelessWidget {
                 ),
                 // Open link icon
                 IconButton(
-                  icon: const Icon(
-                    Icons.open_in_new,
-                    color: Colors.black,
-                    size: 30,
-                  ),
+                  icon: SvgIcon(svgIconPath: AssetResources.share),
                   onPressed: onLinkTap,
                 ),
               ],

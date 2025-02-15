@@ -19,6 +19,7 @@ class ForYouEventsPage extends StatelessWidget {
             onTap: () {},
             imageUrl:
                 "https://static.vecteezy.com/system/resources/previews/022/590/539/original/summer-party-poster-design-music-party-flyer-artwork-template-vector.jpg",
+
           ),
           SizedBox(
             height: 10,
