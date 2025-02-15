@@ -36,16 +36,19 @@ class ExploreMoreClubsPage extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(8),
-        children: const [
-          ExploreMoreClubCard(),
-          const Divider(height: 0),
-          ExploreMoreClubCard(),
-          const Divider(height: 0),
-          ExploreMoreClubCard(),
-          const Divider(height: 0),
-        ],
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: ListView(
+          padding: const EdgeInsets.all(8),
+          children: [
+            ExploreMoreClubCard(),
+            const Divider(height: 20),
+            ExploreMoreClubCard(),
+            const Divider(height: 20),
+            ExploreMoreClubCard(),
+            const Divider(height: 20),
+          ],
+        ),
       ),
     );
   }

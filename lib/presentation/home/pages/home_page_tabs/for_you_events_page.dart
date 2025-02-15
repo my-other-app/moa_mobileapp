@@ -18,7 +18,7 @@ class ForYouEventsPage extends StatelessWidget {
             tags: ['Workshop', 'Online', 'Paid', '2 Hours'],
             onTap: () {},
             imageUrl:
-                'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZXf3nbnry-f9qbUwAUfTt-pQssbF3JVjFjg&s',
+                'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpZUOgLnH_wGkFZoKfK7qY7DVdisgM5v7cJg&s',
           ),
           SizedBox(
             height: 10,

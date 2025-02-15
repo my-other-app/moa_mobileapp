@@ -46,7 +46,7 @@ class EventCard extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,7 +110,7 @@ class EventCard extends StatelessWidget {
                   Text(
                     tag,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.w400,
                       color: Color(0xFF1E1E1E),
                     ),
@@ -144,8 +144,8 @@ class EventCard extends StatelessWidget {
                   'TAKE A CLOSER LOOK OF THE EVENT',
                   style: TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18),
+                      fontSize: 24,
+                      fontFamily: 'BebasNeue'),
                 ),
               ),
             ),

@@ -144,7 +144,10 @@ class ClubsPage extends StatelessWidget {
           PinnedClubsSection(
             pinnedClubs: pinnedClubs,
           ),
-
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: const Divider(height: 0, thickness: 2),
+          ),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
