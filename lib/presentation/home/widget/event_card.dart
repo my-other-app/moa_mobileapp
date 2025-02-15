@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/core/resources/color_resources.dart';
-import 'package:myotherapp/presentation/home/pages/individual_event_page.dart';
 import 'package:myotherapp/presentation/home/widget/svg_icon.dart';
 
 class EventCard extends StatelessWidget {
@@ -23,16 +21,20 @@ class EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    return Padding(
-      padding: const EdgeInsets.only(left: 10.0, right: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Image.network(
+    final textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      spacing: 16,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          spacing: 8,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            ColoredBox(
+              color: Colors.red,
+              child: Image.network(
                 'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
                 width: 48,
                 height: 48,
@@ -46,115 +48,76 @@ class EventCard extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      organizer,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: () {},
-                icon: SvgIcon(svgIconPath: AssetResources.share),
-              ),
-            ],
-          ),
-          SizedBox(
-            height: 10,
-          ),
-          Container(
-            height: size.height * .5,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10.0),
-              image: DecorationImage(
-                image: NetworkImage(
-                  imageUrl,
-                ),
-                fit: BoxFit.cover,
-              ),
             ),
-          ),
-          SizedBox(
-            height: 10,
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: tags.asMap().entries.map((entry) {
-              int index = entry.key;
-              String tag = entry.value;
-              return Row(
+            Expanded(
+              child: Column(
+                spacing: 4,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (index != 0) ...[
-                    const SvgIcon(svgIconPath: AssetResources.star),
-                    const SizedBox(width: 4),
-                  ],
                   Text(
-                    tag,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    title,
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    organizer,
+                    style: textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.w400,
-                      color: Color(0xFF1E1E1E),
+                      color: Colors.black,
                     ),
                   ),
                 ],
-              );
-            }).toList(),
-          ),
-          SizedBox(
-            height: 20,
-          ),
-          Center(
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => IndividualEventPage()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: ColorResources.buttonColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: const Text(
-                  'TAKE A CLOSER LOOK OF THE EVENT',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18),
-                ),
               ),
             ),
+            GestureDetector(
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0).copyWith(right: 0),
+                child: SvgIcon(svgIconPath: AssetResources.share),
+              ),
+            ),
+          ],
+        ),
+
+        /// Event Image
+        Container(
+          height: size.height * .5,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10.0),
+            image: DecorationImage(
+              image: NetworkImage(imageUrl),
+              fit: BoxFit.cover,
+            ),
           ),
-          SizedBox(
-            height: 10,
-          ),
-        ],
-      ),
+        ),
+
+        /// Tags
+        Row(
+          spacing: 16,
+          children: tags.asMap().entries.map((entry) {
+            int index = entry.key;
+            String tag = entry.value;
+            return Row(
+              children: [
+                if (index != 0) ...[
+                  const SvgIcon(svgIconPath: AssetResources.star),
+                  const SizedBox(width: 16),
+                ],
+                Text(
+                  tag,
+                  style: textTheme.bodySmall,
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+        FilledButton(
+          onPressed: onTap,
+          child: Text('TAKE A CLOSER LOOK OF THE EVENT'),
+        )
+      ],
     );
   }
 }

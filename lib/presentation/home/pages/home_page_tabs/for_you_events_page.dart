@@ -7,10 +7,10 @@ class ForYouEventsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ColoredBox(
       color: Colors.white,
       child: ListView(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(16),
         children: <Widget>[
           EventCard(
             title: 'Blender free 2 day',
@@ -18,7 +18,7 @@ class ForYouEventsPage extends StatelessWidget {
             tags: ['Workshop', 'Online', 'Paid', '2 Hours'],
             onTap: () {},
             imageUrl:
-                'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZXf3nbnry-f9qbUwAUfTt-pQssbF3JVjFjg&s',
+                "https://static.vecteezy.com/system/resources/previews/022/590/539/original/summer-party-poster-design-music-party-flyer-artwork-template-vector.jpg",
           ),
           SizedBox(
             height: 10,
