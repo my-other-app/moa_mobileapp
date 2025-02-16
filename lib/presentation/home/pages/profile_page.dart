@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:myotherapp/common/views/custom_option_tile.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({Key? key}) : super(key: key);
+  const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -28,64 +29,73 @@ class ProfilePage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-        child: SafeArea(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
           child: Column(
+            spacing: 40,
             children: [
               // 1) Avatar, Name, College
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 16,
                 children: [
                   // Use a custom image or Emoji. For demonstration:
                   CircleAvatar(
-                      radius: 40,
-                      backgroundColor: Colors.purple.shade100,
-                      child: Image.network(
-                        'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
-                        fit: BoxFit.cover,
-                      )),
-                  const SizedBox(width: 16),
+                    radius: 30,
+                    backgroundColor: Colors.purple.shade500,
+                    child: Image.network(
+                      'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                   // Name & College
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'EDWIN EMMANUEL ROY',
-                        style: TextStyle(fontSize: 36, fontFamily: 'BebasNeue'),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'COLLEGE OF ENGINEERING TRIVANDRUM',
-                        style: TextStyle(fontSize: 16, fontFamily: 'BebasNeue'),
-                      ),
-                    ],
+                  Expanded(
+                    child: Column(
+                      spacing: 24,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'EDWIN EMMANUEL ROY',
+                              style: TextStyle(
+                                  fontSize: 36, fontFamily: 'BebasNeue'),
+                            ),
+                            Text(
+                              'COLLEGE OF ENGINEERING TRIVANDRUM',
+                              style: TextStyle(
+                                  fontSize: 16, fontFamily: 'BebasNeue'),
+                            ),
+                          ],
+                        ),
+                        // 2) Tags
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: tags.map((tag) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 4,
+                                horizontal: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: tag['color'] as Color,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                tag['label'] as String,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-
-              // 2) Tags
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: tags.map((tag) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 6,
-                      horizontal: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: tag['color'] as Color,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      tag['label'] as String,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
 
               // 3) Menu Items
               // We'll build a Column of ListTiles, each separated by Divider
@@ -95,14 +105,11 @@ class ProfilePage extends StatelessWidget {
                   // Return a "row" for each
                   return Column(
                     children: [
-                      ListTile(
-                        leading: CircleAvatar(
-                          radius: 24,
-                          backgroundColor: Colors.grey.shade200,
-                          child: Icon(
-                            item['icon'] as IconData,
-                            color: Colors.black87,
-                          ),
+                      CustomOptionTile(
+                        verticalSpacing: 16,
+                        icon: Icon(
+                          item['icon'] as IconData,
+                          color: Colors.black87,
                         ),
                         title: Text(
                           item['label'] as String,
@@ -114,7 +121,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                       // Divider after each item (skip last if you wish)
                       if (index < menuItems.length - 1)
-                        const Divider(height: 0, thickness: 1),
+                        const Divider(height: 0),
                     ],
                   );
                 }),

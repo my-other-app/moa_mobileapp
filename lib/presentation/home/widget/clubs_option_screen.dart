@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myotherapp/common/views/custom_option_tile.dart';
 
 class ClubsOptionScreen extends StatelessWidget {
   final String clubName;
@@ -33,7 +34,7 @@ class ClubsOptionScreen extends StatelessWidget {
           ),
           Column(
             children: [
-              _ClubOption(
+              CustomOptionTile(
                 icon: const Icon(Icons.close, color: Colors.redAccent),
                 title: const Text('Unfollow'),
                 onTap: () {
@@ -41,7 +42,7 @@ class ClubsOptionScreen extends StatelessWidget {
                 },
               ),
               const Divider(height: 0),
-              _ClubOption(
+              CustomOptionTile(
                 icon: const Icon(Icons.notifications_off),
                 title: const Text('Hide Events'),
                 onTap: () {
@@ -49,7 +50,7 @@ class ClubsOptionScreen extends StatelessWidget {
                 },
               ),
               const Divider(height: 0),
-              _ClubOption(
+              CustomOptionTile(
                 icon: const Icon(Icons.push_pin),
                 title: const Text('Pin It'),
                 onTap: () {
@@ -59,40 +60,6 @@ class ClubsOptionScreen extends StatelessWidget {
             ],
           )
         ],
-      ),
-    );
-  }
-}
-
-class _ClubOption extends StatelessWidget {
-  final Widget icon;
-  final Widget title;
-  final VoidCallback onTap;
-
-  const _ClubOption({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        color: Colors.white,
-        padding: EdgeInsets.symmetric(vertical: 24),
-        child: Row(
-          spacing: 16,
-          children: [
-            CircleAvatar(
-              backgroundColor: Color(0xffF3F3F3),
-              radius: 24,
-              child: icon,
-            ),
-            title,
-          ],
-        ),
       ),
     );
   }
