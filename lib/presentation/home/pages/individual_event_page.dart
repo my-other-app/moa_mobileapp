@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/app_colors.dart';
 import '../../../core/resources/asset_resources.dart';
 import '../widget/svg_icon.dart';
 
@@ -41,7 +42,7 @@ class IndividualEventPage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Title & Organizer
             Row(
@@ -216,14 +217,14 @@ class IndividualEventPage extends StatelessWidget {
             // Register now button
             SizedBox(
               width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
+              child: FilledButton(
                 onPressed: () {
                   // TODO: Navigate to registration page or open link
                 },
                 child: const Text('REGISTER NOW'),
               ),
             ),
+            const SizedBox(height: 25),
           ],
         ),
       ),
@@ -236,32 +237,32 @@ Widget _infoCard(BuildContext context,
     {required IconData icon, required String title, required String value}) {
   return Container(
     width: MediaQuery.of(context).size.width * 0.4, // Adjust for layout
-    padding: const EdgeInsets.all(12.0),
+    padding: const EdgeInsets.all(8.0),
     decoration: BoxDecoration(
-      color: Colors.grey.shade200,
-      borderRadius: BorderRadius.circular(8.0),
+      borderRadius: BorderRadius.circular(8),
+      color: Colors.white,
+      border: Border.all(color: AppColors.border, width: 0.5),
     ),
-    child: Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, color: Theme.of(context).primaryColor),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  )),
-              Text(value,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey,
-                  )),
-            ],
-          ),
+        SizedBox(
+          height: 10,
         ),
+        Text(title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            )),
+        SizedBox(
+          height: 10,
+        ),
+        Text(value,
+            style: const TextStyle(
+              fontSize: 24,
+              fontFamily: 'BebasNeue',
+            )),
       ],
     ),
   );
