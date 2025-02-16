@@ -119,7 +119,7 @@ class ClubsPage extends StatelessWidget {
               vertical: 12,
             ),
             decoration: BoxDecoration(
-              color: const Color(0xFFFDFDFC), // Slightly off-white
+              color: Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: const Color(0xFF1E1E1E)),
             ),
@@ -137,16 +137,14 @@ class ClubsPage extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      // Use a Column so the pinned clubs stay at the top.
       body: Column(
         children: [
-          // Pinned Clubs (fixed at top)
           PinnedClubsSection(
             pinnedClubs: pinnedClubs,
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: const Divider(height: 0, thickness: 2),
+            child: const Divider(height: 0, thickness: 1),
           ),
           const SizedBox(height: 16),
           Padding(
@@ -166,8 +164,7 @@ class ClubsPage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            ExploreMoreClubsPage(), // the screen to display
+                        builder: (context) => ExploreMoreClubsPage(),
                       ),
                     );
                   },
@@ -185,9 +182,7 @@ class ClubsPage extends StatelessWidget {
               ],
             ),
           ),
-
-          const SizedBox(height: 8),
-          // Now only the "Clubs You Follow" section scrolls vertically
+          const SizedBox(height: 16),
           Expanded(
             child: SingleChildScrollView(
               child: ClubsYouFollowSection(

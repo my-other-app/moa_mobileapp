@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
+import 'package:myotherapp/presentation/home/pages/individual_event_page.dart';
 import 'package:myotherapp/presentation/home/widget/svg_icon.dart';
 
 class EventCard extends StatelessWidget {
@@ -114,7 +115,12 @@ class EventCard extends StatelessWidget {
           }).toList(),
         ),
         FilledButton(
-          onPressed: onTap,
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => IndividualEventPage()),
+            );
+          },
           child: Text('TAKE A CLOSER LOOK OF THE EVENT'),
         )
       ],

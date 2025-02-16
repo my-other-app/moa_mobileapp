@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/resources/asset_resources.dart';
+import '../widget/svg_icon.dart';
+
 class IndividualEventPage extends StatelessWidget {
   const IndividualEventPage({Key? key}) : super(key: key);
 
@@ -9,10 +12,13 @@ class IndividualEventPage extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: const Text('HACKATHON'),
+        title: const Text(
+          'HACKATHON',
+          style: TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.share),
+            icon: SvgIcon(svgIconPath: AssetResources.share),
             onPressed: () {
               // TODO: Implement share functionality
             },
@@ -56,13 +62,15 @@ class IndividualEventPage extends StatelessWidget {
                     Text(
                       'Oasis Hackathon',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
                       'Tinkerhub',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
