@@ -37,7 +37,7 @@ class LandingPage extends StatelessWidget {
             currentIndex: state.index,
             unselectedItemColor: Colors.grey[500],
             selectedItemColor:
-                Color(0xFFFFF176), // Soft yellow for selected item
+                Colors.yellow.shade200, // Soft yellow for selected item
             onTap: (index) => onItemTapped(context, index),
             items: getBottomNavBarItems(), // Use the method to get items
           ),

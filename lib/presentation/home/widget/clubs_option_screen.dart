@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:myotherapp/common/views/custom_option_tile.dart';
+import 'package:myotherapp/core/resources/asset_resources.dart';
 
 class ClubsOptionScreen extends StatelessWidget {
   final String clubName;
@@ -35,7 +37,9 @@ class ClubsOptionScreen extends StatelessWidget {
           Column(
             children: [
               CustomOptionTile(
-                icon: const Icon(Icons.close, color: Colors.redAccent),
+                icon: SvgPicture.asset(
+                  AssetResources.unfollow,
+                ),
                 title: const Text('Unfollow'),
                 onTap: () {
                   Navigator.pop(context);
@@ -43,7 +47,9 @@ class ClubsOptionScreen extends StatelessWidget {
               ),
               const Divider(height: 0),
               CustomOptionTile(
-                icon: const Icon(Icons.notifications_off),
+                icon: SvgPicture.asset(
+                  AssetResources.hideevents,
+                ),
                 title: const Text('Hide Events'),
                 onTap: () {
                   Navigator.pop(context);
@@ -51,7 +57,9 @@ class ClubsOptionScreen extends StatelessWidget {
               ),
               const Divider(height: 0),
               CustomOptionTile(
-                icon: const Icon(Icons.push_pin),
+                icon: SvgPicture.asset(
+                  AssetResources.pinit,
+                ),
                 title: const Text('Pin It'),
                 onTap: () {
                   Navigator.pop(context);

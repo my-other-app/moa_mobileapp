@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:myotherapp/common/views/custom_option_tile.dart';
+
+import '../../../core/resources/asset_resources.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -19,12 +22,12 @@ class ProfilePage extends StatelessWidget {
 
     // Example menu items: label + icon
     final menuItems = [
-      {'label': 'Edit Profile', 'icon': Icons.edit},
-      {'label': 'My Certificates', 'icon': Icons.folder_open},
-      {'label': 'My Badges', 'icon': Icons.workspace_premium},
-      {'label': 'Notifications', 'icon': Icons.notifications_none},
-      {'label': 'Settings', 'icon': Icons.settings},
-      {'label': 'Log Out', 'icon': Icons.logout},
+      {'label': 'Edit Profile', 'icon': AssetResources.editprofile},
+      {'label': 'My Certificates', 'icon': AssetResources.mycertificates},
+      {'label': 'My Badges', 'icon': AssetResources.mybadges},
+      {'label': 'Notifications', 'icon': AssetResources.notifications},
+      {'label': 'Settings', 'icon': AssetResources.settings},
+      {'label': 'Log Out', 'icon': AssetResources.logout},
     ];
 
     return Scaffold(
@@ -40,7 +43,6 @@ class ProfilePage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: 16,
                 children: [
-                  // Use a custom image or Emoji. For demonstration:
                   CircleAvatar(
                     radius: 30,
                     backgroundColor: Colors.purple.shade500,
@@ -49,7 +51,6 @@ class ProfilePage extends StatelessWidget {
                       fit: BoxFit.cover,
                     ),
                   ),
-                  // Name & College
                   Expanded(
                     child: Column(
                       spacing: 24,
@@ -97,19 +98,15 @@ class ProfilePage extends StatelessWidget {
                 ],
               ),
 
-              // 3) Menu Items
-              // We'll build a Column of ListTiles, each separated by Divider
               Column(
                 children: List.generate(menuItems.length, (index) {
                   final item = menuItems[index];
-                  // Return a "row" for each
                   return Column(
                     children: [
                       CustomOptionTile(
                         verticalSpacing: 16,
-                        icon: Icon(
-                          item['icon'] as IconData,
-                          color: Colors.black87,
+                        icon: SvgPicture.asset(
+                          item['icon']!,
                         ),
                         title: Text(
                           item['label'] as String,
@@ -119,7 +116,6 @@ class ProfilePage extends StatelessWidget {
                           // TODO: Navigate or handle each item’s action
                         },
                       ),
-                      // Divider after each item (skip last if you wish)
                       if (index < menuItems.length - 1)
                         const Divider(height: 0),
                     ],
