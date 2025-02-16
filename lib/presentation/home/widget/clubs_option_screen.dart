@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
+
+import '../../../core/resources/asset_resources.dart';
+import 'svg_icon.dart';
 
 class ClubsOptionScreen extends StatelessWidget {
   final String clubName;
@@ -29,8 +33,8 @@ class ClubsOptionScreen extends StatelessWidget {
                 Text(
                   clubName,
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
@@ -38,8 +42,17 @@ class ClubsOptionScreen extends StatelessWidget {
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.close, color: Colors.redAccent),
-            title: const Text('Unfollow'),
+            leading: CircleAvatar(
+              radius: 40,
+              backgroundColor: Color(0xFFF3F3F3),
+              child: SvgIcon(
+                svgIconPath: AssetResources.unfollow,
+              ),
+            ),
+            title: const Text('Unfollow',
+                style: TextStyle(
+                  fontSize: 16,
+                )),
             onTap: () {
               // Handle action
               Navigator.pop(context);
@@ -47,16 +60,34 @@ class ClubsOptionScreen extends StatelessWidget {
           ),
           const Divider(height: 0),
           ListTile(
-            leading: const Icon(Icons.notifications_off),
-            title: const Text('Hide Events'),
+            leading: CircleAvatar(
+              radius: 40,
+              backgroundColor: Color(0xFFF3F3F3),
+              child: SvgPicture.asset(
+                AssetResources.hideevents,
+              ),
+            ),
+            title: const Text('Hide Events',
+                style: TextStyle(
+                  fontSize: 16,
+                )),
             onTap: () {
               Navigator.pop(context);
             },
           ),
           const Divider(height: 0),
           ListTile(
-            leading: const Icon(Icons.push_pin),
-            title: const Text('Pin It'),
+            leading: CircleAvatar(
+              radius: 40,
+              backgroundColor: Color(0xFFF3F3F3),
+              child: SvgIcon(
+                svgIconPath: AssetResources.pinit,
+              ),
+            ),
+            title: const Text('Pin It',
+                style: TextStyle(
+                  fontSize: 16,
+                )),
             onTap: () {
               Navigator.pop(context);
             },
