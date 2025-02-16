@@ -8,60 +8,91 @@ class ClubsOptionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.5,
-      padding: const EdgeInsets.symmetric(vertical: 16),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 12,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundImage: NetworkImage(imageUrl),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  clubName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 8,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundImage: NetworkImage(imageUrl),
+              ),
+              Text(
+                clubName,
+                style:
+                    const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.close, color: Colors.redAccent),
-            title: const Text('Unfollow'),
-            onTap: () {
-              // Handle action
-              Navigator.pop(context);
-            },
-          ),
-          const Divider(height: 0),
-          ListTile(
-            leading: const Icon(Icons.notifications_off),
-            title: const Text('Hide Events'),
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
-          const Divider(height: 0),
-          ListTile(
-            leading: const Icon(Icons.push_pin),
-            title: const Text('Pin It'),
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
+          Column(
+            children: [
+              _ClubOption(
+                icon: const Icon(Icons.close, color: Colors.redAccent),
+                title: const Text('Unfollow'),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+              const Divider(height: 0),
+              _ClubOption(
+                icon: const Icon(Icons.notifications_off),
+                title: const Text('Hide Events'),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+              const Divider(height: 0),
+              _ClubOption(
+                icon: const Icon(Icons.push_pin),
+                title: const Text('Pin It'),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          )
         ],
+      ),
+    );
+  }
+}
+
+class _ClubOption extends StatelessWidget {
+  final Widget icon;
+  final Widget title;
+  final VoidCallback onTap;
+
+  const _ClubOption({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        color: Colors.white,
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Row(
+          spacing: 16,
+          children: [
+            CircleAvatar(
+              backgroundColor: Color(0xffF3F3F3),
+              radius: 24,
+              child: icon,
+            ),
+            title,
+          ],
+        ),
       ),
     );
   }

@@ -5,8 +5,6 @@ import 'clubs_page/clubs_you_follow_section.dart';
 import 'clubs_page/pinned_clubs_section.dart';
 
 class ClubsPage extends StatelessWidget {
-  const ClubsPage({Key? key}) : super(key: key);
-
   // Example data for pinned clubs
   final List<Map<String, String>> pinnedClubs = const [
     {
@@ -102,6 +100,8 @@ class ClubsPage extends StatelessWidget {
       'imageUrl': 'https://via.placeholder.com/60?text=TinkerHub',
     },
   ];
+
+  const ClubsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
