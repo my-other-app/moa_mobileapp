@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 
 class CustomOptionTile extends StatelessWidget {
-  final Widget icon;
+  final String icon;
   final Widget title;
   final VoidCallback onTap;
   final double verticalSpacing;
@@ -27,7 +28,9 @@ class CustomOptionTile extends StatelessWidget {
             CircleAvatar(
               backgroundColor: Color(0xffF3F3F3),
               radius: 24,
-              child: icon,
+              child: SvgPicture.asset(
+                icon,
+              ),
             ),
             title,
           ],

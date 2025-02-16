@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:myotherapp/common/views/custom_option_tile.dart';
 
 import '../../../core/resources/asset_resources.dart';
@@ -105,9 +104,7 @@ class ProfilePage extends StatelessWidget {
                     children: [
                       CustomOptionTile(
                         verticalSpacing: 16,
-                        icon: SvgPicture.asset(
-                          item['icon']!,
-                        ),
+                        icon: item['icon']!,
                         title: Text(
                           item['label'] as String,
                           style: const TextStyle(fontSize: 16),
