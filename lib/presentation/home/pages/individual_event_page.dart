@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+// Replace these with your actual imports
 import '../../../core/app_colors.dart';
 import '../../../core/resources/asset_resources.dart';
 import '../widget/svg_icon.dart';
@@ -11,6 +12,8 @@ class IndividualEventPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
+      // AppBar
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: const Text(
@@ -26,30 +29,33 @@ class IndividualEventPage extends StatelessWidget {
           ),
         ],
       ),
+
+      // Body: Make it scrollable
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0).copyWith(
+          bottom:
+              100, // Important: extra bottom padding to avoid being hidden by the bottom sheet
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Event poster
             AspectRatio(
               aspectRatio: 1.0,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8.0),
                 child: Image.network(
-                  'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZXf3nbnry-f9qbUwAUfTt-pQssbF3JVjFjg&s',
+                  'https://static.vecteezy.com/system/resources/previews/022/590/539/original/summer-party-poster-design-music-party-flyer-artwork-template-vector.jpg',
                   fit: BoxFit.cover,
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
 
             // Title & Organizer
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                // If you have the TinkerHub logo locally,
-                // replace this with your own AssetImage or Icon.
                 const CircleAvatar(
                   radius: 20,
                   backgroundImage: NetworkImage(
@@ -79,7 +85,7 @@ class IndividualEventPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Info Grid: Date, Registration Fee, Time, etc.
+            // Info Grid
             Wrap(
               spacing: 16,
               runSpacing: 16,
@@ -106,7 +112,7 @@ class IndividualEventPage extends StatelessWidget {
                   context,
                   icon: Icons.hourglass_bottom,
                   title: 'Duration',
-                  value: '2 Days (Accomodation..)',
+                  value: '2 Days (Accommodation..)',
                 ),
                 _infoCard(
                   context,
@@ -122,7 +128,6 @@ class IndividualEventPage extends StatelessWidget {
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
 
             // Main description
@@ -146,7 +151,6 @@ class IndividualEventPage extends StatelessWidget {
               'Exciting prizes for top teams',
               'Network with like-minded innovators',
             ]),
-
             const SizedBox(height: 16),
 
             // Details
@@ -161,7 +165,6 @@ class IndividualEventPage extends StatelessWidget {
               'Venue: Tinkerspace Kochi',
               'Who Can Join?: Students, Professionals, and Innovators of all skill levels',
             ]),
-
             const SizedBox(height: 16),
 
             // Perks
@@ -175,7 +178,6 @@ class IndividualEventPage extends StatelessWidget {
               'Certificates for All',
               'Hands-on Learning and Fun!',
             ]),
-
             const SizedBox(height: 16),
 
             // Need Help
@@ -197,8 +199,18 @@ class IndividualEventPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+          ],
+        ),
+      ),
 
-            // Registration closing info
+      // BottomSheet: pinned at the bottom
+      bottomSheet: Container(
+        color: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min, // Only occupy space for the content
+          children: [
+            // Registration closes text
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -224,7 +236,6 @@ class IndividualEventPage extends StatelessWidget {
                 child: const Text('REGISTER NOW'),
               ),
             ),
-            const SizedBox(height: 25),
           ],
         ),
       ),
@@ -247,22 +258,25 @@ Widget _infoCard(BuildContext context,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, color: Theme.of(context).primaryColor),
-        SizedBox(
-          height: 10,
+        const SizedBox(height: 10),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-        Text(title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            )),
-        SizedBox(
-          height: 10,
+        const SizedBox(height: 10),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 24,
+            fontFamily: 'BebasNeue',
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-        Text(value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontFamily: 'BebasNeue',
-            )),
+        const SizedBox(height: 20),
       ],
     ),
   );
@@ -277,15 +291,16 @@ class BulletList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: items
-          .map((item) => Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('• ', style: TextStyle(fontSize: 16)),
-                  Expanded(
-                    child: Text(item, style: const TextStyle(fontSize: 14)),
-                  ),
-                ],
-              ))
+          .map(
+            (item) => Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('• ', style: TextStyle(fontSize: 16)),
+                Expanded(
+                    child: Text(item, style: const TextStyle(fontSize: 14))),
+              ],
+            ),
+          )
           .toList(),
     );
   }
