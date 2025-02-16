@@ -9,14 +9,17 @@ class ClubsOptionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: MediaQuery.of(context).size.height * 0.5,
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Same content as before
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
                   radius: 24,
@@ -34,8 +37,6 @@ class ClubsOptionScreen extends StatelessWidget {
             ),
           ),
           const Divider(),
-          // ... the rest of your ListTiles
-          // Example actions
           ListTile(
             leading: const Icon(Icons.close, color: Colors.redAccent),
             title: const Text('Unfollow'),

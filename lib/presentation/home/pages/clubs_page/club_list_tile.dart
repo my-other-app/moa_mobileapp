@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../widget/clubs_option_screen.dart';
 
 class ClubListTile extends StatelessWidget {
@@ -32,10 +31,11 @@ class ClubListTile extends StatelessWidget {
           ),
           trailing: IconButton(
               onPressed: () => showModalBottomSheet(
+                    backgroundColor: Colors.white,
                     context: context,
                     shape: const RoundedRectangleBorder(
                       borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(16)),
+                          BorderRadius.vertical(top: Radius.circular(28)),
                     ),
                     builder: (_) {
                       return ClubsOptionScreen(

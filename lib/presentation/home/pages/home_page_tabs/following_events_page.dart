@@ -8,10 +8,10 @@ class FollowingEventsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ColoredBox(
       color: Colors.white,
       child: ListView(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(16),
         children: <Widget>[
           NoteCard(
             logoUrl:
@@ -23,8 +23,14 @@ class FollowingEventsPage extends StatelessWidget {
                 'A longer description shows how the card automatically grows '
                 'as the content increases.',
           ),
-          SizedBox(
-            height: 10,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Divider(
+              thickness: 1,
+              color: Colors.black,
+              indent: 50,
+              endIndent: 50,
+            ),
           ),
           EventCard(
             title: 'Blender free 2 day',
@@ -34,8 +40,14 @@ class FollowingEventsPage extends StatelessWidget {
             imageUrl:
                 'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
           ),
-          SizedBox(
-            height: 10,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Divider(
+              thickness: 1,
+              color: Colors.black,
+              indent: 50,
+              endIndent: 50,
+            ),
           ),
           EventCard(
             title: 'Blender free 2 day',
@@ -44,6 +56,15 @@ class FollowingEventsPage extends StatelessWidget {
             onTap: () {},
             imageUrl:
                 'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Divider(
+              thickness: 1,
+              color: Colors.black,
+              indent: 50,
+              endIndent: 50,
+            ),
           ),
           EventCard(
             title: 'Blender free 2 day',
