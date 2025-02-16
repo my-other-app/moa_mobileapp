@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
-
-import '../../../core/resources/asset_resources.dart';
-import 'svg_icon.dart';
+import 'package:myotherapp/common/views/custom_option_tile.dart';
 
 class ClubsOptionScreen extends StatelessWidget {
   final String clubName;
@@ -12,86 +9,56 @@ class ClubsOptionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.5,
-      padding: const EdgeInsets.symmetric(vertical: 16),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 12,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundImage: NetworkImage(imageUrl),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  clubName,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(),
-          ListTile(
-            leading: CircleAvatar(
-              radius: 40,
-              backgroundColor: Color(0xFFF3F3F3),
-              child: SvgIcon(
-                svgIconPath: AssetResources.unfollow,
+          Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 8,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundImage: NetworkImage(imageUrl),
               ),
-            ),
-            title: const Text('Unfollow',
-                style: TextStyle(
-                  fontSize: 16,
-                )),
-            onTap: () {
-              // Handle action
-              Navigator.pop(context);
-            },
-          ),
-          const Divider(height: 0),
-          ListTile(
-            leading: CircleAvatar(
-              radius: 40,
-              backgroundColor: Color(0xFFF3F3F3),
-              child: SvgPicture.asset(
-                AssetResources.hideevents,
+              Text(
+                clubName,
+                style:
+                    const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-            ),
-            title: const Text('Hide Events',
-                style: TextStyle(
-                  fontSize: 16,
-                )),
-            onTap: () {
-              Navigator.pop(context);
-            },
+            ],
           ),
-          const Divider(height: 0),
-          ListTile(
-            leading: CircleAvatar(
-              radius: 40,
-              backgroundColor: Color(0xFFF3F3F3),
-              child: SvgIcon(
-                svgIconPath: AssetResources.pinit,
+          Column(
+            children: [
+              CustomOptionTile(
+                icon: const Icon(Icons.close, color: Colors.redAccent),
+                title: const Text('Unfollow'),
+                onTap: () {
+                  Navigator.pop(context);
+                },
               ),
-            ),
-            title: const Text('Pin It',
-                style: TextStyle(
-                  fontSize: 16,
-                )),
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
+              const Divider(height: 0),
+              CustomOptionTile(
+                icon: const Icon(Icons.notifications_off),
+                title: const Text('Hide Events'),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+              const Divider(height: 0),
+              CustomOptionTile(
+                icon: const Icon(Icons.push_pin),
+                title: const Text('Pin It'),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          )
         ],
       ),
     );
