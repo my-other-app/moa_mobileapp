@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/common/views/custom_option_tile.dart';
+import 'package:myotherapp/presentation/home/pages/settings_page.dart';
 
 import '../../../core/resources/asset_resources.dart';
 
@@ -110,7 +111,11 @@ class ProfilePage extends StatelessWidget {
                           style: const TextStyle(fontSize: 16),
                         ),
                         onTap: () {
-                          // TODO: Navigate or handle each item’s action
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => SettingsPage()),
+                          );
                         },
                       ),
                       if (index < menuItems.length - 1)
