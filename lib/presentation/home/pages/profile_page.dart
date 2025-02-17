@@ -1,8 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/common/views/custom_option_tile.dart';
+import 'package:myotherapp/presentation/home/pages/my_badges_page.dart';
+import 'package:myotherapp/presentation/home/pages/reg_successfull_page.dart';
 import 'package:myotherapp/presentation/home/pages/settings_page.dart';
 
 import '../../../core/resources/asset_resources.dart';
+
+// Example placeholder pages you might have or create:
+class EditProfilePage extends StatelessWidget {
+  const EditProfilePage({Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Edit Profile')),
+        body: const Center(child: Text('Edit Profile Page')),
+      );
+}
+
+class MyCertificatesPage extends StatelessWidget {
+  const MyCertificatesPage({Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('My Certificates')),
+        body: const Center(child: Text('Certificates Page')),
+      );
+}
+
+class NotificationsPage extends StatelessWidget {
+  const NotificationsPage({Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Notifications')),
+        body: const Center(child: Text('Notifications Page')),
+      );
+}
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -20,14 +50,68 @@ class ProfilePage extends StatelessWidget {
       {'label': 'Competitive Coding', 'color': Colors.purple.shade100},
     ];
 
-    // Example menu items: label + icon
+    // For each menu item, define a label, icon, and onTap function
     final menuItems = [
-      {'label': 'Edit Profile', 'icon': AssetResources.editprofile},
-      {'label': 'My Certificates', 'icon': AssetResources.mycertificates},
-      {'label': 'My Badges', 'icon': AssetResources.mybadges},
-      {'label': 'Notifications', 'icon': AssetResources.notifications},
-      {'label': 'Settings', 'icon': AssetResources.settings},
-      {'label': 'Log Out', 'icon': AssetResources.logout},
+      {
+        'label': 'Edit Profile',
+        'icon': AssetResources.editprofile,
+        'onTap': (BuildContext context) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => RegSuccessfullPage()),
+          );
+        },
+      },
+      {
+        'label': 'My Certificates',
+        'icon': AssetResources.mycertificates,
+        'onTap': (BuildContext context) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MyCertificatesPage()),
+          );
+        },
+      },
+      {
+        'label': 'My Badges',
+        'icon': AssetResources.mybadges,
+        'onTap': (BuildContext context) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MyBadgesPage()),
+          );
+        },
+      },
+      {
+        'label': 'Notifications',
+        'icon': AssetResources.notifications,
+        'onTap': (BuildContext context) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NotificationsPage()),
+          );
+        },
+      },
+      {
+        'label': 'Settings',
+        'icon': AssetResources.settings,
+        'onTap': (BuildContext context) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => SettingsPage()),
+          );
+        },
+      },
+      {
+        'label': 'Log Out',
+        'icon': AssetResources.logout,
+        'onTap': (BuildContext context) {
+          // Perform logout logic here, or navigate to a login page, etc.
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Logged out')),
+          );
+        },
+      },
     ];
 
     return Scaffold(
@@ -36,12 +120,12 @@ class ProfilePage extends StatelessWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
-            spacing: 40,
+            spacing: 40, // If you're using a package like spaced_column
             children: [
               // 1) Avatar, Name, College
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 16,
+                spacing: 16, // If you're using spaced_row or similar
                 children: [
                   CircleAvatar(
                     radius: 30,
@@ -53,21 +137,25 @@ class ProfilePage extends StatelessWidget {
                   ),
                   Expanded(
                     child: Column(
-                      spacing: 24,
+                      spacing: 24, // If using spaced_column
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
+                          children: const [
                             Text(
                               'EDWIN EMMANUEL ROY',
                               style: TextStyle(
-                                  fontSize: 36, fontFamily: 'BebasNeue'),
+                                fontSize: 36,
+                                fontFamily: 'BebasNeue',
+                              ),
                             ),
                             Text(
                               'COLLEGE OF ENGINEERING TRIVANDRUM',
                               style: TextStyle(
-                                  fontSize: 16, fontFamily: 'BebasNeue'),
+                                fontSize: 16,
+                                fontFamily: 'BebasNeue',
+                              ),
                             ),
                           ],
                         ),
@@ -98,6 +186,7 @@ class ProfilePage extends StatelessWidget {
                 ],
               ),
 
+              // 2) The menu list
               Column(
                 children: List.generate(menuItems.length, (index) {
                   final item = menuItems[index];
@@ -105,17 +194,16 @@ class ProfilePage extends StatelessWidget {
                     children: [
                       CustomOptionTile(
                         verticalSpacing: 16,
-                        icon: item['icon']!,
+                        icon: item['icon'].toString(),
                         title: Text(
                           item['label'] as String,
                           style: const TextStyle(fontSize: 16),
                         ),
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => SettingsPage()),
-                          );
+                          // Call the function we stored in 'onTap'
+                          final onTapFunc =
+                              item['onTap'] as void Function(BuildContext);
+                          onTapFunc(context);
                         },
                       ),
                       if (index < menuItems.length - 1)
