@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/app_colors.dart';
+import '../../../core/themes/app_colors.dart';
 
 class ExploreMoreClubCard extends StatelessWidget {
   const ExploreMoreClubCard({Key? key}) : super(key: key);

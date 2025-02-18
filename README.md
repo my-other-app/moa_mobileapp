@@ -1,4 +1,4 @@
-
 # My Other App
 
-Its a community management app developed in fluttter
+Its a community management app developed in Flutter.
+
