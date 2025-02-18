@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/common/views/custom_option_tile.dart';
+import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
 import 'package:myotherapp/presentation/home/pages/my_badges_page.dart';
 import 'package:myotherapp/presentation/home/pages/reg_successfull_page.dart';
 import 'package:myotherapp/presentation/home/pages/settings_page.dart';
@@ -88,7 +89,7 @@ class ProfilePage extends StatelessWidget {
         'onTap': (BuildContext context) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const NotificationsPage()),
+            MaterialPageRoute(builder: (_) => ClubIndividualPage()),
           );
         },
       },
