@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/core/resources/color_resources.dart';
+import 'package:myotherapp/core/themes/color_resources.dart';
 
 class AppTheme {
   static final _textTheme = TextTheme(
