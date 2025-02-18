@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 // Replace these with your actual imports
-import '../../../core/app_colors.dart';
+import '../../../core/themes/app_colors.dart';
 import '../../../core/resources/asset_resources.dart';
 import '../widget/svg_icon.dart';
 

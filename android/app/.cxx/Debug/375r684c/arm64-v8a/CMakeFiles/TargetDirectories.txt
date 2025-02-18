@@ -1,0 +1,2 @@
+/home/ba3/personal/myotherapp/android/app/.cxx/Debug/375r684c/arm64-v8a/CMakeFiles/edit_cache.dir
+/home/ba3/personal/myotherapp/android/app/.cxx/Debug/375r684c/arm64-v8a/CMakeFiles/rebuild_cache.dir

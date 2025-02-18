@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/core/app_colors.dart';
+import 'package:myotherapp/core/themes/app_colors.dart';
 import 'package:myotherapp/presentation/home/widget/custom_search_delegate.dart';
 
 class CustomTab extends StatelessWidget {
