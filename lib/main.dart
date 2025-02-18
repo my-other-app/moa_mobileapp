@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:myotherapp/core/app_theme.dart';
+import 'package:myotherapp/core/themes/app_theme.dart';
 import 'package:myotherapp/presentation/home/bloc/bottom_nav_bloc.dart';
 import 'package:myotherapp/presentation/home/screen.dart';
 

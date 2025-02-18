@@ -33,11 +33,11 @@ class LandingPage extends StatelessWidget {
           body: SafeArea(child: _pages[state.index]),
           bottomNavigationBar: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
-            backgroundColor: Color(0xFF1F1F1F), // Dark background
+            backgroundColor: Color(0xFF2C333D), // Dark background
             currentIndex: state.index,
             unselectedItemColor: Colors.grey[500],
             selectedItemColor:
-                Color(0xFFFFF176), // Soft yellow for selected item
+                Color(0xFFF9FFA1), // Soft yellow for selected item
             onTap: (index) => onItemTapped(context, index),
             items: getBottomNavBarItems(), // Use the method to get items
           ),
