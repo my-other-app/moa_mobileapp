@@ -1,20 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/common/views/custom_option_tile.dart';
+import 'package:myotherapp/presentation/home/pages/certificate_page.dart';
 import 'package:myotherapp/presentation/home/pages/edit_profile_page.dart';
 import 'package:myotherapp/presentation/home/pages/my_badges_page.dart';
 import 'package:myotherapp/presentation/home/pages/notifications_page.dart';
 import 'package:myotherapp/presentation/home/pages/settings_page.dart';
 
 import '../../../core/resources/asset_resources.dart';
-
-class MyCertificatesPage extends StatelessWidget {
-  const MyCertificatesPage({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('My Certificates')),
-        body: const Center(child: Text('Certificates Page')),
-      );
-}
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -50,7 +42,7 @@ class ProfilePage extends StatelessWidget {
         'onTap': (BuildContext context) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const MyCertificatesPage()),
+            MaterialPageRoute(builder: (_) => CertificatePage()),
           );
         },
       },
