@@ -9,7 +9,7 @@ import '../../../core/resources/asset_resources.dart';
 
 // Example placeholder pages you might have or create:
 class EditProfilePage extends StatelessWidget {
-  const EditProfilePage({Key? key}) : super(key: key);
+  const EditProfilePage({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Edit Profile')),
@@ -18,7 +18,7 @@ class EditProfilePage extends StatelessWidget {
 }
 
 class MyCertificatesPage extends StatelessWidget {
-  const MyCertificatesPage({Key? key}) : super(key: key);
+  const MyCertificatesPage({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('My Certificates')),
@@ -27,7 +27,7 @@ class MyCertificatesPage extends StatelessWidget {
 }
 
 class NotificationsPage extends StatelessWidget {
-  const NotificationsPage({Key? key}) : super(key: key);
+  const NotificationsPage({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Notifications')),
@@ -195,7 +195,7 @@ class ProfilePage extends StatelessWidget {
                     children: [
                       CustomOptionTile(
                         verticalSpacing: 16,
-                        icon: item['icon'].toString(),
+                        leadingImageName: item['icon'].toString(),
                         title: Text(
                           item['label'] as String,
                           style: const TextStyle(fontSize: 16),

@@ -36,7 +36,7 @@ class ClubsOptionScreen extends StatelessWidget {
           Column(
             children: [
               CustomOptionTile(
-                icon: AssetResources.unfollow,
+                leadingImageName: AssetResources.unfollow,
                 title: const Text('Unfollow'),
                 onTap: () {
                   Navigator.pop(context);
@@ -44,7 +44,7 @@ class ClubsOptionScreen extends StatelessWidget {
               ),
               const Divider(height: 0),
               CustomOptionTile(
-                icon: AssetResources.hideevents,
+                leadingImageName: AssetResources.hideevents,
                 title: const Text('Hide Events'),
                 onTap: () {
                   Navigator.pop(context);
@@ -52,7 +52,7 @@ class ClubsOptionScreen extends StatelessWidget {
               ),
               const Divider(height: 0),
               CustomOptionTile(
-                icon: AssetResources.pinit,
+                leadingImageName: AssetResources.pinit,
                 title: const Text('Pin It'),
                 onTap: () {
                   Navigator.pop(context);

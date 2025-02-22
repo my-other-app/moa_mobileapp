@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myotherapp/core/themes/app_colors.dart';
 import 'package:myotherapp/core/themes/color_resources.dart';
 
 class AppTheme {
@@ -27,5 +28,29 @@ class AppTheme {
         ),
         dividerTheme:
             DividerThemeData(color: Color(0xff979797), thickness: 0.5),
+        switchTheme: SwitchThemeData(
+          trackColor: WidgetStateProperty.resolveWith<Color>(
+            (Set<WidgetState> states) {
+              if (states.contains(WidgetState.selected)) {
+                return AppColors.paleYellow;
+              }
+              return Colors.transparent;
+            },
+          ),
+          thumbColor: WidgetStateProperty.resolveWith<Color>(
+            (Set<WidgetState> states) {
+              if (states.contains(WidgetState.selected)) {
+                return Colors.grey.shade800;
+              }
+              return Colors.grey;
+            },
+          ),
+          trackOutlineWidth: WidgetStateProperty.resolveWith<double>(
+            (Set<WidgetState> states) => 1,
+          ),
+          trackOutlineColor: WidgetStateProperty.resolveWith<Color>(
+            (Set<WidgetState> states) => Colors.grey.shade800,
+          ),
+        ),
       );
 }
