@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myotherapp/presentation/home/pages/event_form_page.dart';
 
 // Replace these with your actual imports
 import '../../../core/themes/app_colors.dart';
@@ -270,6 +271,10 @@ class IndividualEventPage extends StatelessWidget {
               child: FilledButton(
                 onPressed: () {
                   // TODO: Navigate to registration page or open link
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => EventFormPage()),
+                  );
                 },
                 child: const Text('REGISTER NOW'),
               ),

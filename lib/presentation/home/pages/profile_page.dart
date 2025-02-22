@@ -1,21 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/common/views/custom_option_tile.dart';
+import 'package:myotherapp/presentation/home/pages/edit_profile_page.dart';
 import 'package:myotherapp/presentation/home/pages/my_badges_page.dart';
 import 'package:myotherapp/presentation/home/pages/notifications_page.dart';
-import 'package:myotherapp/presentation/home/pages/reg_successfull_page.dart';
 import 'package:myotherapp/presentation/home/pages/settings_page.dart';
 
 import '../../../core/resources/asset_resources.dart';
-
-// Example placeholder pages you might have or create:
-class EditProfilePage extends StatelessWidget {
-  const EditProfilePage({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Edit Profile')),
-        body: const Center(child: Text('Edit Profile Page')),
-      );
-}
 
 class MyCertificatesPage extends StatelessWidget {
   const MyCertificatesPage({super.key});
@@ -50,7 +40,7 @@ class ProfilePage extends StatelessWidget {
         'onTap': (BuildContext context) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => RegSuccessfullPage()),
+            MaterialPageRoute(builder: (_) => EditProfilePage()),
           );
         },
       },

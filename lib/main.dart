@@ -26,7 +26,6 @@ class _MyAppState extends State<MyApp> {
       home: BlocProvider<BottomNavigatorBloc>(
         create: (_) => BottomNavigatorBloc(index: 0),
         child: LandingPage(),
-        //child: NotificationsNewPage(),
       ),
     );
   }
