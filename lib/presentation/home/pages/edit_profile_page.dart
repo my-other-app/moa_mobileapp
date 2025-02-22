@@ -139,8 +139,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           ),
                           isExpanded: true,
                           buttonStyleData: ButtonStyleData(
-                            height: 44,
-                            padding: EdgeInsets.zero,
+                            height: 56,
+                            padding: EdgeInsets.only(right: 8),
                           ),
                           iconStyleData: IconStyleData(
                             icon: Icon(Icons.keyboard_arrow_down,
@@ -178,10 +178,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             fontWeight: FontWeight.w400,
                           ),
                           decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.search,
-                                size: 18, color: Color(0xFF2C333D)),
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 16),
+                            hintText: 'Select your college',
+                            prefixIcon: Padding(
+                              padding: EdgeInsets.only(left: 16, right: 8),
+                              child: Icon(Icons.search, size: 18, color: Color(0xFF2C333D)),
+                            ),
+                            prefixIconConstraints: BoxConstraints(minWidth: 40, minHeight: 40),
+                            hintStyle: TextStyle(
+                              color: Color(0xFFB4B4B4),
+                              fontSize: 16,
+                              fontFamily: 'DM Sans',
+                              fontWeight: FontWeight.w500,
+                            ),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide(
