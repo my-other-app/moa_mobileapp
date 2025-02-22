@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/themes/app_colors.dart';
 
 class ExploreMoreClubCard extends StatelessWidget {
-  const ExploreMoreClubCard({Key? key}) : super(key: key);
+  const ExploreMoreClubCard({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,117 +18,104 @@ class ExploreMoreClubCard extends StatelessWidget {
       {'label': 'Competitive Coding', 'color': Colors.purple.shade100},
     ];
 
+    final textTheme = Theme.of(context).textTheme;
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         color: Colors.white,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.border, width: 0.5),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Row with Logo, Title, and Follower Count
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Logo
-                Image.network(
-                  'https://avatars.githubusercontent.com/u/98015594?s=280&v=4', // Replace with TinkerHub logo
-                  width: 40,
-                  height: 40,
-                  fit: BoxFit.cover,
-                ),
-                const SizedBox(width: 12),
-                // Club name and followers
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Tinkerhub CET',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Row with Logo, Title, and Follower Count
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Logo
+              Image.network(
+                'https://avatars.githubusercontent.com/u/98015594?s=280&v=4', // Replace with TinkerHub logo
+                width: 40,
+                height: 40,
+                fit: BoxFit.cover,
+              ),
+              const SizedBox(width: 12),
+              // Club name and followers
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Tinkerhub CET',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
-                    SizedBox(height: 4),
-                    Text(
-                      '123 Followers',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    '123 Followers',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
                     ),
-                  ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Tags
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: tags.map((tag) {
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 4,
+                  horizontal: 8,
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                decoration: BoxDecoration(
+                  color: tag['color'] as Color,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(tag['label'] as String,
+                    style: textTheme.bodySmall
+                        ?.copyWith(fontWeight: FontWeight.w300)),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
 
-            // Tags
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: tags.map((tagItem) {
-                return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: tagItem['color'] as Color,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    tagItem['label'],
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-
-            // Buttons
-            Row(
-              children: [
-                // Left button
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      // TODO: Implement "Join the Team" logic
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black87,
-                      side: BorderSide(color: Colors.black87),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    child: const Text('JOIN THE TEAM'),
+          // Buttons
+          Row(
+            children: [
+              // Left button
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    // TODO: Implement "Join the Team" logic
+                  },
+                  child: const Text('JOIN THE TEAM'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Right button
+              Expanded(
+                child: FilledButton(
+                  onPressed: () {
+                    // TODO: Implement "Follow" logic
+                  },
+                  child: const Text(
+                    'FOLLOW',
                   ),
                 ),
-                const SizedBox(width: 12),
-                // Right button
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // TODO: Implement "Follow" logic
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black87,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    child: const Text(
-                      'FOLLOW',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

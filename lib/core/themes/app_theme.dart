@@ -26,6 +26,19 @@ class AppTheme {
             ),
           ),
         ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: ColorResources.buttonColor,
+            side: BorderSide(color: ColorResources.buttonColor),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.all(16),
+            textStyle: _textTheme.headlineSmall?.copyWith(
+              color: ColorResources.buttonColor,
+            ),
+          ),
+        ),
         dividerTheme:
             DividerThemeData(color: Color(0xff979797), thickness: 0.5),
         switchTheme: SwitchThemeData(
