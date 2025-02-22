@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/themes/app_colors.dart';
 
 class ExploreMoreClubCard extends StatelessWidget {
-  const ExploreMoreClubCard({Key? key}) : super(key: key);
+  const ExploreMoreClubCard({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,11 +18,13 @@ class ExploreMoreClubCard extends StatelessWidget {
       {'label': 'Competitive Coding', 'color': Colors.purple.shade100},
     ];
 
+    final textTheme = Theme.of(context).textTheme;
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         color: Colors.white,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.border, width: 0.5),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),

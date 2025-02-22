@@ -6,49 +6,48 @@ class ExploreMoreClubsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         automaticallyImplyLeading: false,
-        title: GestureDetector(
-          onTap: () {
-            // Handle search tap
-          },
-          child: Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFDFDFC), // Slightly off-white
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF1E1E1E)),
+        shadowColor: Colors.grey,
+        surfaceTintColor: Colors.white,
+        title: Padding(
+          padding: EdgeInsetsDirectional.only(bottom: 8),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Search for clubs or interests',
+              hintStyle: textTheme.bodyMedium?.copyWith(color: Colors.grey),
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF979797)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide:
+                    const BorderSide(color: Color(0xFF1E1E1E), width: 0.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide:
+                    const BorderSide(color: Color(0xFF1E1E1E), width: 0.5),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
-            child: Row(
-              children: const [
-                Icon(Icons.search, color: Color(0xFF979797)),
-                SizedBox(width: 8),
-                Text(
-                  "Search for clubs or interests",
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-              ],
-            ),
+            onChanged: (value) {
+              // Handle search text changes
+            },
           ),
         ),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: ListView(
-          padding: const EdgeInsets.all(8),
-          children: [
-            ExploreMoreClubCard(),
-            const Divider(height: 20),
-            ExploreMoreClubCard(),
-            const Divider(height: 20),
-            ExploreMoreClubCard(),
-            const Divider(height: 20),
-          ],
-        ),
+      body: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        separatorBuilder: (_, __) => SizedBox(height: 16),
+        itemCount: 3,
+        itemBuilder: (context, index) {
+          return ExploreMoreClubCard();
+        },
       ),
     );
   }

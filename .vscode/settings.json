@@ -9,6 +9,5 @@
     "**/.fvm": true
   }
 }
-
 //for XCODE:go to Build phases, and inside Run script add the following line
 //export FLUTTER_ROOT="$PROJECT_DIR/../.fvm/flutter_sdk"
