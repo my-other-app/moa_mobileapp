@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/presentation/home/pages/clubs_page/explore_more_clubs_page.dart';
-import 'package:myotherapp/presentation/home/widget/search_appbar_widget';
 import 'package:myotherapp/presentation/home/widget/search_college_widget';
 
 import 'clubs_page/clubs_you_follow_section.dart';

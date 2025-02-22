@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/common/views/custom_option_tile.dart';
-import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
 import 'package:myotherapp/presentation/home/pages/my_badges_page.dart';
 import 'package:myotherapp/presentation/home/pages/notifications_page.dart';
 import 'package:myotherapp/presentation/home/pages/reg_successfull_page.dart';

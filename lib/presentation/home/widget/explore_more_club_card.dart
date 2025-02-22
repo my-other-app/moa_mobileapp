@@ -18,8 +18,6 @@ class ExploreMoreClubCard extends StatelessWidget {
       {'label': 'Competitive Coding', 'color': Colors.purple.shade100},
     ];
 
-    final textTheme = Theme.of(context).textTheme;
-
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
