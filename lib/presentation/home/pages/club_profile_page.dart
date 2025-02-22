@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/themes/app_colors.dart';
+
 class ClubProfilePage extends StatefulWidget {
   const ClubProfilePage({Key? key}) : super(key: key);
 
@@ -126,31 +128,24 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
             const SizedBox(height: 30),
             _buildDescriptionSection(context),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
               children: [
-                _buildInfoCard(
+                _infoCard(
+                  context,
                   icon: Icons.school,
-                  label: 'College',
-                  value: 'COLLEGE OF ENGINEERING\nTRIVANDRUM',
+                  title: 'College',
+                  value: 'COLLEGE OF ENGINEERING TRIVANDRUM',
                 ),
-                _buildInfoCard(
+                _infoCard(
+                  context,
                   icon: Icons.location_on,
-                  label: 'Location',
+                  title: 'Location',
                   value: 'SREEKARYAM, TRIVANDRUM',
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildActionButton('PAST EVENTS', () {
-                  // Navigate to past events
-                }),
-                _buildActionButton('UPCOMING EVENTS', () {
-                  // Navigate to upcoming events
-                }),
+                _eventRedirectCard(context, value: "PAST EVENTS"),
+                _eventRedirectCard(context, value: "UPCOMING EVENTS")
               ],
             ),
             const SizedBox(height: 16),
@@ -223,7 +218,7 @@ students with skills for the future. Through hands-on workshops,
 hackathons, boot camps, and peer-to-peer learning, we aim to 
 bridge the gap between academics and real-world applications...""";
 
-    final lines = _expanded ? null : 3; // limit lines if not expanded
+    final lines = _expanded ? null : 7; // limit lines if not expanded
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,50 +244,6 @@ bridge the gap between academics and real-world applications...""";
           ),
         )
       ],
-    );
-  }
-
-  // Helper: build the "College" and "Location" cards
-  Widget _buildInfoCard({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Container(
-      width: 140,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: Colors.black54),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper: "Past Events" / "Upcoming Events" buttons
-  Widget _buildActionButton(String text, VoidCallback onTap) {
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 14),
-      ),
     );
   }
 
@@ -328,16 +279,14 @@ bridge the gap between academics and real-world applications...""";
         ),
         const SizedBox(height: 8),
         // 4.2 RATED
-        Text(
-          '4.2 RATED',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-        const SizedBox(height: 4),
+        Text('4.2 RATED',
+            style: TextStyle(
+              fontSize: 48,
+              fontFamily: 'BebasNeue',
+            )),
         const Text(
           'Rated by 145 Participants',
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: Color(0xFF979797), fontSize: 14),
         ),
       ],
     );
@@ -354,4 +303,67 @@ bridge the gap between academics and real-world applications...""";
       ),
     );
   }
+}
+
+// Helper Widget for info items
+Widget _infoCard(BuildContext context,
+    {required IconData icon, required String title, required String value}) {
+  return Container(
+    width: MediaQuery.of(context).size.width * 0.4, // Adjust for layout
+    padding: const EdgeInsets.all(8.0),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(8),
+      color: Colors.white,
+      border: Border.all(color: AppColors.border, width: 0.5),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          backgroundColor: Color(0xffF3F3F3),
+          radius: 24,
+          child: Icon(icon, color: Theme.of(context).primaryColor),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 24,
+            fontFamily: 'BebasNeue',
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
+    ),
+  );
+}
+
+Widget _eventRedirectCard(BuildContext context, {required String value}) {
+  return Container(
+      width: MediaQuery.of(context).size.width * 0.4, // Adjust for layout
+      padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: Colors.white,
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Center(
+        child: Text(
+          value,
+          style: const TextStyle(
+            fontSize: 24,
+            fontFamily: 'BebasNeue',
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ));
 }

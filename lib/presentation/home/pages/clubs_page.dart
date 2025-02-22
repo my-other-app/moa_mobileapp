@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/presentation/home/pages/clubs_page/explore_more_clubs_page.dart';
+import 'package:myotherapp/presentation/home/widget/search_appbar_widget';
+import 'package:myotherapp/presentation/home/widget/search_college_widget';
 
 import 'clubs_page/clubs_you_follow_section.dart';
 import 'clubs_page/pinned_clubs_section.dart';
@@ -101,44 +103,24 @@ class ClubsPage extends StatelessWidget {
     },
   ];
 
-  const ClubsPage({super.key});
+  ClubsPage({super.key});
+  final List<String> colleges = [
+    "yourcollege 1",
+    "yourcollege 2",
+    "yourcollege 3",
+    "yourcollege 4",
+    "yourcollege 5"
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: GestureDetector(
-          onTap: () {
-            // Handle search tap
-          },
-          child: Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF1E1E1E)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.search, color: Color(0xFF979797)),
-                const SizedBox(width: 8),
-                const Text(
-                  "Search for clubs or interests",
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-        ),
-        centerTitle: true,
-      ),
       body: Column(
         children: [
+          SearchAndCollegeList(
+            colleges: colleges,
+          ),
           PinnedClubsSection(
             pinnedClubs: pinnedClubs,
           ),

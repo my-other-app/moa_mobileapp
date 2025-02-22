@@ -56,7 +56,7 @@ class ExploreMoreClubCard extends StatelessWidget {
                       '123 Followers',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey,
+                        color: Colors.black,
                       ),
                     ),
                   ],
@@ -75,7 +75,7 @@ class ExploreMoreClubCard extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: tagItem['color'] as Color,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     tagItem['label'],
@@ -84,23 +84,21 @@ class ExploreMoreClubCard extends StatelessWidget {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
             // Buttons
             Row(
               children: [
                 // Left button
                 Expanded(
-                  child: OutlinedButton(
+                  child: FilledButton(
                     onPressed: () {
                       // TODO: Implement "Join the Team" logic
                     },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black87,
-                      side: BorderSide(color: Colors.black87),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Color(0xFFFFFFFF),
+                      foregroundColor: Color(0xFF2C333D),
+                      side: BorderSide(color: Color(0xFF2C333D)),
                     ),
                     child: const Text('JOIN THE TEAM'),
                   ),
@@ -108,16 +106,10 @@ class ExploreMoreClubCard extends StatelessWidget {
                 const SizedBox(width: 12),
                 // Right button
                 Expanded(
-                  child: ElevatedButton(
+                  child: FilledButton(
                     onPressed: () {
                       // TODO: Implement "Follow" logic
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black87,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
                     child: const Text(
                       'FOLLOW',
                       style: TextStyle(color: Colors.white),

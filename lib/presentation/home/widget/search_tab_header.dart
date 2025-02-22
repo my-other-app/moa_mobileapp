@@ -76,7 +76,7 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
               backgroundColor: Colors.white,
               surfaceTintColor: Colors.white,
               elevation: 1,
-              shadowColor: Colors.grey,
+              shadowColor: Colors.white,
               forceElevated: true,
               // The height when fully expanded (can adjust as desired)
               expandedHeight: 150.0,

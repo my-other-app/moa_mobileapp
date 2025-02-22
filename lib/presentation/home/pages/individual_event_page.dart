@@ -86,48 +86,82 @@ class IndividualEventPage extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Info Grid
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _infoCard(
-                  context,
-                  icon: Icons.calendar_month,
-                  title: 'Date of Event',
-                  value: '25th Jan 2024',
+                Expanded(
+                  child: _infoCard(
+                    context,
+                    icon: Icons.calendar_month,
+                    title: 'Date of Event',
+                    value: '25th Jan 2024',
+                  ),
                 ),
-                _infoCard(
-                  context,
-                  icon: Icons.payment,
-                  title: 'Registration Fee',
-                  value: '₹ 499',
+                SizedBox(
+                  width: 12,
                 ),
-                _infoCard(
-                  context,
-                  icon: Icons.access_time,
-                  title: 'Time of Event',
-                  value: '10:00 AM',
-                ),
-                _infoCard(
-                  context,
-                  icon: Icons.hourglass_bottom,
-                  title: 'Duration',
-                  value: '2 Days (Accommodation..)',
-                ),
-                _infoCard(
-                  context,
-                  icon: Icons.location_on,
-                  title: 'Location',
-                  value: 'TinkerSpace Kochi',
-                ),
-                _infoCard(
-                  context,
-                  icon: Icons.card_giftcard,
-                  title: 'Prize Worth',
-                  value: '₹ 50,000',
+                Expanded(
+                  child: _infoCard(
+                    context,
+                    icon: Icons.payment,
+                    title: 'Registration Fee',
+                    value: '₹ 499',
+                  ),
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: _infoCard(
+                    context,
+                    icon: Icons.access_time,
+                    title: 'Time of Event',
+                    value: '10:00 AM',
+                  ),
+                ),
+                SizedBox(
+                  width: 12,
+                ),
+                Expanded(
+                  child: _infoCard(
+                    context,
+                    icon: Icons.hourglass_bottom,
+                    title: 'Duration',
+                    value: '2 Days (Accommodation..)',
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: _infoCard(
+                    context,
+                    icon: Icons.location_on,
+                    title: 'Location',
+                    value: 'TinkerSpace Kochi',
+                  ),
+                ),
+                SizedBox(
+                  width: 12,
+                ),
+                Expanded(
+                  child: _infoCard(
+                    context,
+                    icon: Icons.card_giftcard,
+                    title: 'Prize Worth',
+                    value: '₹ 50,000',
+                  ),
+                ),
+              ],
+            ),
+
             const SizedBox(height: 16),
 
             // Main description
@@ -198,7 +232,7 @@ class IndividualEventPage extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 50),
           ],
         ),
       ),
@@ -213,15 +247,19 @@ class IndividualEventPage extends StatelessWidget {
             // Registration closes text
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              height: 25,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.orangeAccent.shade100,
+                color: Color(0xFFFFDEDD),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(
                 'Registration closes in 07hrs 32 mins 23secs',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                    fontWeight: FontWeight.normal,
+                    fontSize: 12,
+                    color: Color(0xFFCD0000)),
               ),
             ),
             const SizedBox(height: 16),
@@ -236,6 +274,9 @@ class IndividualEventPage extends StatelessWidget {
                 child: const Text('REGISTER NOW'),
               ),
             ),
+            SizedBox(
+              height: 10,
+            )
           ],
         ),
       ),

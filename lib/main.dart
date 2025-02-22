@@ -20,6 +20,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      color: Colors.white,
       title: 'My Other App',
       theme: AppTheme.themeData(),
       home: BlocProvider<BottomNavigatorBloc>(
