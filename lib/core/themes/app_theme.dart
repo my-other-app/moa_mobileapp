@@ -7,6 +7,8 @@ class AppTheme {
     headlineSmall: TextStyle(fontFamily: "BebasNeue", fontSize: 24),
     bodyLarge: TextStyle(fontFamily: "DMSans", fontSize: 16),
     bodyMedium: TextStyle(fontFamily: "DMSans", fontSize: 14),
+    bodySmall:
+        TextStyle(fontFamily: "DMSans", fontSize: 12, letterSpacing: 0.1),
   );
 
   static ThemeData themeData() => ThemeData(
