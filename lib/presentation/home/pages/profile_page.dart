@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:myotherapp/common/views/custom_option_tile.dart';
 import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
 import 'package:myotherapp/presentation/home/pages/my_badges_page.dart';
+import 'package:myotherapp/presentation/home/pages/notifications_page.dart';
 import 'package:myotherapp/presentation/home/pages/reg_successfull_page.dart';
 import 'package:myotherapp/presentation/home/pages/settings_page.dart';
 
@@ -23,15 +24,6 @@ class MyCertificatesPage extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('My Certificates')),
         body: const Center(child: Text('Certificates Page')),
-      );
-}
-
-class NotificationsPage extends StatelessWidget {
-  const NotificationsPage({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Notifications')),
-        body: const Center(child: Text('Notifications Page')),
       );
 }
 
@@ -89,7 +81,7 @@ class ProfilePage extends StatelessWidget {
         'onTap': (BuildContext context) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => ClubIndividualPage()),
+            MaterialPageRoute(builder: (_) => NotificationsNewPage()),
           );
         },
       },
