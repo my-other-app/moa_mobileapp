@@ -7,9 +7,9 @@ class AllCertificatePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.white,
-      child: ListView(
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: ListView(
         padding: const EdgeInsets.all(16),
         children: <Widget>[
           CertificateListCard(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:myotherapp/presentation/home/pages/interests_page.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -281,6 +282,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       InkWell(
                         onTap: () {
                           // Navigate to Edit Interests page
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => InterestsPage()),
+                          );
                         },
                         child: Container(
                           padding: EdgeInsets.symmetric(vertical: 16),
