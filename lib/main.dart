@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/themes/app_theme.dart';
 import 'package:myotherapp/presentation/home/bloc/bottom_nav_bloc.dart';
-import 'package:myotherapp/presentation/home/pages/notifications_page.dart';
-import 'package:myotherapp/presentation/home/pages/profile_page.dart';
 import 'package:myotherapp/presentation/home/screen.dart';
 
 void main() {
