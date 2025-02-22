@@ -128,34 +128,61 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
             const SizedBox(height: 30),
             _buildDescriptionSection(context),
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
+            Row(
               children: [
-                _infoCard(
-                  context,
-                  icon: Icons.school,
-                  title: 'College',
-                  value: 'COLLEGE OF ENGINEERING TRIVANDRUM',
+                Expanded(
+                  child: _infoCard(
+                    context,
+                    icon: Icons.school,
+                    title: 'College',
+                    value: 'COLLEGE OF ENGINEERING TRIVANDRUM',
+                  ),
                 ),
-                _infoCard(
-                  context,
-                  icon: Icons.location_on,
-                  title: 'Location',
-                  value: 'SREEKARYAM, TRIVANDRUM',
+                SizedBox(
+                  width: 12,
                 ),
-                _eventRedirectCard(context, value: "PAST EVENTS"),
-                _eventRedirectCard(context, value: "UPCOMING EVENTS")
+                Expanded(
+                  child: _infoCard(
+                    context,
+                    icon: Icons.location_on,
+                    title: 'Location',
+                    value: 'SREEKARYAM, TRIVANDRUM',
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 12,
+            ),
+            Row(
+              children: [
+                Expanded(
+                    child: _eventRedirectCard(context, value: "PAST EVENTS")),
+                SizedBox(
+                  width: 12,
+                ),
+                Expanded(
+                    child:
+                        _eventRedirectCard(context, value: "UPCOMING EVENTS"))
               ],
             ),
             const SizedBox(height: 16),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildSocialIcon(Icons.camera_alt, 'Instagram'),
-                _buildSocialIcon(Icons.linked_camera, 'LinkedIn'),
-                _buildSocialIcon(Icons.video_library, 'YouTube'),
-                _buildSocialIcon(Icons.web, 'Website'),
+                Expanded(
+                    child: _buildSocialCard('assets/images/Instagram.png')),
+                SizedBox(
+                  width: 16,
+                ),
+                Expanded(child: _buildSocialCard('assets/images/LinkedIn.png')),
+                SizedBox(
+                  width: 16,
+                ),
+                Expanded(child: _buildSocialCard('assets/images/YouTube.png')),
+                SizedBox(
+                  width: 16,
+                ),
+                Expanded(child: _buildSocialCard('assets/images/Website.png')),
               ],
             ),
             const SizedBox(height: 24),
@@ -247,21 +274,6 @@ bridge the gap between academics and real-world applications...""";
     );
   }
 
-  // Helper: build each social icon widget
-  Widget _buildSocialIcon(IconData icon, String label) {
-    return InkWell(
-      onTap: () {
-        // Link to the relevant social page
-      },
-      child: Column(
-        children: [
-          Icon(icon, size: 32),
-          // Or place an Image.asset for a custom social icon
-        ],
-      ),
-    );
-  }
-
   // Helper: rating section
   Widget _buildRatingSection(BuildContext context) {
     return Column(
@@ -318,6 +330,7 @@ Widget _infoCard(BuildContext context,
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         CircleAvatar(
           backgroundColor: Color(0xffF3F3F3),
@@ -341,7 +354,6 @@ Widget _infoCard(BuildContext context,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        const SizedBox(height: 10),
       ],
     ),
   );
@@ -366,4 +378,21 @@ Widget _eventRedirectCard(BuildContext context, {required String value}) {
           ),
         ),
       ));
+}
+
+Widget _buildSocialCard(String assetPath) {
+  return Container(
+    padding: EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: Colors.grey.shade400, width: 1),
+    ),
+    child: Center(
+      child: Image(
+        image: AssetImage(assetPath),
+        fit: BoxFit.contain,
+      ),
+    ),
+  );
 }
