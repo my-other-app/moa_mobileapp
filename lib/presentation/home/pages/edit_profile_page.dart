@@ -12,8 +12,9 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
+  // ignore: unused_field
   String? _name;
-  String? _selectedCollege;
+  // ignore: unused_field
   String? _whatsappNumber;
 
   final List<String> colleges = [
@@ -181,16 +182,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             hintText: 'Select your college',
                             prefixIcon: Padding(
                               padding: EdgeInsets.only(left: 16, right: 8),
-                              child: Icon(Icons.search, size: 18, color: Color(0xFF2C333D)),
+                              child: Icon(Icons.search,
+                                  size: 18, color: Color(0xFF2C333D)),
                             ),
-                            prefixIconConstraints: BoxConstraints(minWidth: 40, minHeight: 40),
+                            prefixIconConstraints:
+                                BoxConstraints(minWidth: 40, minHeight: 40),
                             hintStyle: TextStyle(
                               color: Color(0xFFB4B4B4),
                               fontSize: 16,
                               fontFamily: 'DM Sans',
                               fontWeight: FontWeight.w500,
                             ),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide(
@@ -222,9 +226,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             );
                           }).toList(),
                           onChanged: (String? newValue) {
-                            setState(() {
-                              _selectedCollege = newValue;
-                            });
+                            setState(() {});
                           },
                           validator: (value) {
                             if (value == null || value.isEmpty) {

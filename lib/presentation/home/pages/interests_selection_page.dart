@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/core/themes/color_resources.dart';
 
 class InterestsSelectionPage extends StatefulWidget {
   const InterestsSelectionPage({super.key});
