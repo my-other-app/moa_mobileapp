@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:myotherapp/presentation/home/screen.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 
 class OnboardingDetailsPage extends StatefulWidget {
   const OnboardingDetailsPage({super.key});
@@ -10,9 +11,19 @@ class OnboardingDetailsPage extends StatefulWidget {
 }
 
 class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _whatsappController = TextEditingController();
   String? _selectedCollege;
+  bool _autovalidateMode = false;
+
+  final List<String> colleges = [
+    'College 1',
+    'College 2',
+    'College 3',
+    'College 4',
+    'College 5',
+  ];
 
   @override
   void dispose() {
@@ -21,41 +32,63 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
     super.dispose();
   }
 
+  void _validateAndContinue() {
+    setState(() {
+      _autovalidateMode = true;
+    });
+
+    if (_formKey.currentState?.validate() ?? false) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => LandingPage()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFFFFFFA0),
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          SingleChildScrollView(
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    _buildDragIndicator(),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Slide in your deets!',
-                      style: TextStyle(
-                        color: Color(0xFF1E1E1E),
-                        fontSize: 24,
-                        fontFamily: 'Bebas Neue',
-                        fontWeight: FontWeight.w400,
-                      ),
+          Positioned.fill(
+            child: SingleChildScrollView(
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Form(
+                    key: _formKey,
+                    autovalidateMode: _autovalidateMode
+                        ? AutovalidateMode.always
+                        : AutovalidateMode.disabled,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+                        _buildDragIndicator(),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Slide in your deets!',
+                          style: TextStyle(
+                            color: Color(0xFF1E1E1E),
+                            fontSize: 24,
+                            fontFamily: 'Bebas Neue',
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _buildNameField(),
+                        const SizedBox(height: 36),
+                        _buildCollegeField(),
+                        const SizedBox(height: 36),
+                        _buildWhatsappField(),
+                        const SizedBox(height: 48),
+                        _buildContinueButton(),
+                        const SizedBox(height: 100),
+                      ],
                     ),
-                    const SizedBox(height: 24),
-                    _buildNameField(),
-                    const SizedBox(height: 36),
-                    _buildCollegeField(),
-                    const SizedBox(height: 36),
-                    _buildWhatsappField(),
-                    const SizedBox(height: 48),
-                    _buildContinueButton(),
-                    const SizedBox(height: 100),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -75,17 +108,44 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
   }
 
   Widget _buildDragIndicator() {
-    return Center(
-      child: Container(
-        width: 139,
-        height: 5,
-        decoration: ShapeDecoration(
-          color: Colors.black,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(100),
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 4,
+            decoration: ShapeDecoration(
+              color: Color(0xFF17A58F),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
           ),
         ),
-      ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            height: 4,
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            height: 4,
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -103,29 +163,42 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           ),
         ),
         const SizedBox(height: 4),
-        TextFormField(
-          controller: _nameController,
-          style: TextStyle(
-            color: Color(0xFF1E1E1E),
-            fontSize: 16,
-            fontFamily: 'DM Sans',
-            fontWeight: FontWeight.w500,
+        Container(
+          height: 44,
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(width: 0.5, color: Color(0xFF2C333D)),
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-          decoration: InputDecoration(
-            hintText: 'Enter your name',
-            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5),
+          child: TextFormField(
+            controller: _nameController,
+            style: TextStyle(
+              color: Color(0xFF1E1E1E),
+              fontSize: 16,
+              fontFamily: 'DM Sans',
+              fontWeight: FontWeight.w500,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5),
+            decoration: InputDecoration(
+              hintText: 'Enter your name',
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorStyle: TextStyle(
+                color: Color(0xFFCC0000),
+                fontSize: 12,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w400,
+              ),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Color(0xFF2C333D), width: 1),
-            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your name';
+              }
+              return null;
+            },
           ),
         ),
         const SizedBox(height: 4),
@@ -165,24 +238,65 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
-          child: Row(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Icon(Icons.search, color: Color(0xFF2C333D), size: 24),
-              ),
-              Expanded(
-                child: Text(
-                  'Search Your College',
-                  style: TextStyle(
-                    color: Color(0xFFB4B4B4),
-                    fontSize: 16,
-                    fontFamily: 'DM Sans',
-                    fontWeight: FontWeight.w500,
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton2<String>(
+              isExpanded: true,
+              hint: Row(
+                children: [
+                  Icon(Icons.search, size: 18, color: Color(0xFF2C333D)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Search Your College',
+                    style: TextStyle(
+                      color: Color(0xFFB4B4B4),
+                      fontSize: 16,
+                      fontFamily: 'DM Sans',
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
+                ],
+              ),
+              items: colleges
+                  .map((item) => DropdownMenuItem(
+                        value: item,
+                        child: Text(
+                          item,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontFamily: 'DM Sans',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ))
+                  .toList(),
+              value: _selectedCollege,
+              onChanged: (value) {
+                setState(() {
+                  _selectedCollege = value;
+                });
+              },
+              buttonStyleData: ButtonStyleData(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                height: 44,
+              ),
+              dropdownStyleData: DropdownStyleData(
+                maxHeight: 300,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white,
+                ),
+                offset: const Offset(0, -4),
+                scrollbarTheme: ScrollbarThemeData(
+                  radius: const Radius.circular(40),
+                  thickness: MaterialStateProperty.all(6),
+                  thumbVisibility: MaterialStateProperty.all(true),
                 ),
               ),
-            ],
+              menuItemStyleData: MenuItemStyleData(
+                height: 40,
+                padding: EdgeInsets.symmetric(horizontal: 16),
+              ),
+            ),
           ),
         ),
       ],
@@ -203,34 +317,60 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           ),
         ),
         const SizedBox(height: 4),
-        TextFormField(
-          controller: _whatsappController,
-          keyboardType: TextInputType.phone,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(10),
-          ],
-          style: TextStyle(
-            color: Color(0xFF1E1E1E),
-            fontSize: 16,
-            fontFamily: 'DM Sans',
-            fontWeight: FontWeight.w500,
+        Container(
+          height: 44,
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(width: 0.5, color: Color(0xFF2C333D)),
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-          decoration: InputDecoration(
-            hintText: 'Enter your WhatsApp number',
-            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5),
+          child: TextFormField(
+            controller: _whatsappController,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
+            style: TextStyle(
+              color: Color(0xFF1E1E1E),
+              fontSize: 16,
+              fontFamily: 'DM Sans',
+              fontWeight: FontWeight.w500,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5),
+            decoration: InputDecoration(
+              hintText: 'Enter your WhatsApp number',
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorStyle: TextStyle(
+                color: Color(0xFFCC0000),
+                fontSize: 12,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w400,
+              ),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Color(0xFF2C333D), width: 1),
-            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your WhatsApp number';
+              }
+              if (value.length != 10) {
+                return 'Please enter a valid 10-digit number';
+              }
+              return null;
+            },
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "Make sure it's your active WhatsApp number.",
+          style: TextStyle(
+            color: Color(0xFFCC0000),
+            fontSize: 12,
+            fontFamily: 'DM Sans',
+            fontWeight: FontWeight.w400,
           ),
         ),
       ],
@@ -250,14 +390,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            // Handle continue
-
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => LandingPage()),
-            );
-          },
+          onTap: _validateAndContinue,
           borderRadius: BorderRadius.circular(8),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
