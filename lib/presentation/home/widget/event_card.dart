@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
+import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
 import 'package:myotherapp/presentation/home/pages/individual_event_page.dart';
 import 'package:myotherapp/presentation/home/widget/svg_icon.dart';
 
@@ -33,21 +34,28 @@ class EventCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            ColoredBox(
-              color: Colors.red,
-              child: Image.network(
-                'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
-                width: 48,
-                height: 48,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 52,
-                    height: 52,
-                    color: Colors.grey.shade200,
-                    child: const Icon(Icons.image_not_supported),
-                  );
-                },
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ClubIndividualPage()),
+                );
+              },
+              child: SizedBox(
+                child: Image.network(
+                  'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 52,
+                      height: 52,
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.image_not_supported),
+                    );
+                  },
+                ),
               ),
             ),
             Expanded(
@@ -61,11 +69,20 @@ class EventCard extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  Text(
-                    organizer,
-                    style: textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w400,
-                      color: Colors.black,
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => ClubIndividualPage()),
+                      );
+                    },
+                    child: Text(
+                      organizer,
+                      style: textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w400,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
                 ],
@@ -82,14 +99,22 @@ class EventCard extends StatelessWidget {
         ),
 
         /// Event Image
-        Container(
-          height: size.height * .5,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10.0),
-            image: DecorationImage(
-              image: NetworkImage(imageUrl),
-              fit: BoxFit.cover,
+        InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => IndividualEventPage()),
+            );
+          },
+          child: Container(
+            height: size.height * .5,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10.0),
+              image: DecorationImage(
+                image: NetworkImage(imageUrl),
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ),

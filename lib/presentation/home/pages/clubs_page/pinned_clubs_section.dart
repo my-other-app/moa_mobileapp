@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
 
 class PinnedClubsSection extends StatelessWidget {
   final List<Map<String, String>> pinnedClubs;
@@ -35,23 +36,32 @@ class PinnedClubsSection extends StatelessWidget {
             separatorBuilder: (context, index) => const SizedBox(width: 16),
             itemBuilder: (context, index) {
               final club = pinnedClubs[index];
-              return Column(
-                children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundImage: NetworkImage(club['imageUrl']!),
-                  ),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    width: 60, // limit the width so text can wrap/ellipsis
-                    child: Text(
-                      club['name']!,
-                      style: const TextStyle(fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
+              return InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => ClubIndividualPage()),
+                  );
+                },
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundImage: NetworkImage(club['imageUrl']!),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      width: 60, // limit the width so text can wrap/ellipsis
+                      child: Text(
+                        club['name']!,
+                        style: const TextStyle(fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
               );
             },
           ),

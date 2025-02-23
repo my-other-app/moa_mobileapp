@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/themes/app_colors.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
+import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
 import 'package:myotherapp/presentation/home/widget/svg_icon.dart';
 
 class NoteCard extends StatelessWidget {
@@ -45,19 +46,28 @@ class NoteCard extends StatelessWidget {
               Row(
                 children: [
                   // Network image
-                  Image.network(
-                    logoUrl,
-                    width: 32,
-                    height: 32,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 32,
-                        height: 32,
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.image_not_supported),
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => ClubIndividualPage()),
                       );
                     },
+                    child: Image.network(
+                      logoUrl,
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 32,
+                          height: 32,
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.image_not_supported),
+                        );
+                      },
+                    ),
                   ),
                   const SizedBox(width: 8),
                   // Header text
@@ -80,14 +90,6 @@ class NoteCard extends StatelessWidget {
                     ],
                   ),
                 ],
-              ),
-              // Open link icon
-              GestureDetector(
-                onTap: onLinkTap,
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0).copyWith(right: 0),
-                  child: SvgIcon(svgIconPath: AssetResources.share),
-                ),
               ),
             ],
           ),
