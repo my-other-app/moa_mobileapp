@@ -40,7 +40,7 @@ class _EventFormPageState extends State<EventFormPage> {
     required Widget child,
     String? errorText,
   }) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: Column(
         mainAxisSize: MainAxisSize.min,

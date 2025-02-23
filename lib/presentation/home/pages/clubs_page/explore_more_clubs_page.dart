@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/presentation/home/widget/explore_more_club_card.dart';
-import 'package:myotherapp/presentation/home/widget/search_college_widget';
+import 'package:myotherapp/presentation/home/widget/search_college_widget.dart';
 
 class ExploreMoreClubsPage extends StatelessWidget {
   const ExploreMoreClubsPage({super.key});

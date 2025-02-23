@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/themes/app_theme.dart';
 import 'package:myotherapp/presentation/home/bloc/bottom_nav_bloc.dart';
+import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
+import 'package:myotherapp/presentation/home/pages/interests_selection_page.dart';
+import 'package:myotherapp/presentation/home/pages/onboarding_details_page.dart';
+import 'package:myotherapp/presentation/home/pages/onboarding_final_page.dart';
+import 'package:myotherapp/presentation/home/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/presentation/home/screen.dart';
 
 void main() {
@@ -25,9 +30,11 @@ class _MyAppState extends State<MyApp> {
       theme: AppTheme.themeData(),
       home: BlocProvider<BottomNavigatorBloc>(
         create: (_) => BottomNavigatorBloc(index: 0),
-        child: LandingPage(),
+        //child: OnboardingFinalPage(),
         //child: InterestsSelectionPage(),
         //child: ClubIndividualPage(),
+        //child: LandingPage(),
+        child: OnboardingDetailsPage(),
       ),
     );
   }

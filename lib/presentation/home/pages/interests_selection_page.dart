@@ -193,7 +193,7 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
   Widget _buildContinueButton() {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Container(
+      child: SizedBox(
         width: 361,
         height: 56,
         child: ElevatedButton(

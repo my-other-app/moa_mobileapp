@@ -30,7 +30,7 @@ class RegSuccessfullPage extends StatelessWidget {
               const SizedBox(height: 48),
 
               // The circle with the GIF inside
-              Container(
+              SizedBox(
                 width: 260,
                 height: 260,
                 child: ClipOval(
