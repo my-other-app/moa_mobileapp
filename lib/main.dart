@@ -33,8 +33,8 @@ class _MyAppState extends State<MyApp> {
         //child: OnboardingFinalPage(),
         //child: InterestsSelectionPage(),
         //child: ClubIndividualPage(),
-        //child: LandingPage(),
-        child: OnboardingDetailsPage(),
+        child: LandingPage(),
+        //child: OnboardingDetailsPage(),
       ),
     );
   }
