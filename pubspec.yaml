@@ -39,6 +39,7 @@ dependencies:
   flutter_svg: ^2.0.17
   dio: ^5.8.0+1
   dropdown_button2: ^2.3.9
+  google_sign_in: ^6.2.2
   #device_preview: ^1.2.0
 
 dev_dependencies:

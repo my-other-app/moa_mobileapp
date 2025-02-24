@@ -10,6 +10,8 @@ class EventCard extends StatelessWidget {
   final String imageUrl;
   final List<String> tags;
   final VoidCallback onTap;
+  //link
+  //club image
 
   const EventCard({
     super.key,
