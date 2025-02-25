@@ -2,9 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:myotherapp/presentation/home/screen.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:dio/dio.dart';
+
+// Organization model
+class Organization {
+  final int id;
+  final String name;
+
+  Organization({required this.id, required this.name});
+
+  factory Organization.fromJson(Map<String, dynamic> json) {
+    return Organization(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+    );
+  }
+}
 
 class OnboardingDetailsPage extends StatefulWidget {
-  const OnboardingDetailsPage({super.key});
+  final String? initialName; // Optional initial value for name
+  const OnboardingDetailsPage({super.key, this.initialName});
 
   @override
   State<OnboardingDetailsPage> createState() => _OnboardingDetailsPageState();
@@ -12,23 +29,45 @@ class OnboardingDetailsPage extends StatefulWidget {
 
 class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _nameController = TextEditingController();
+  late TextEditingController _nameController;
   final TextEditingController _whatsappController = TextEditingController();
-  String? _selectedCollege;
+  Organization? _selectedOrganization;
   bool _autovalidateMode = false;
+  List<Organization> _orgList = [];
+  final TextEditingController _searchController = TextEditingController();
 
-  final List<String> colleges = [
-    'College 1',
-    'College 2',
-    'College 3',
-    'College 4',
-    'College 5',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Initialize the name field with the provided initial value if available.
+    _nameController = TextEditingController(text: widget.initialName ?? "");
+    fetchOrganizations();
+  }
+
+  // Fetch organization list from API.
+  Future<void> fetchOrganizations() async {
+    try {
+      Dio dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://api.staging.myotherapp.com/api/v1',
+          headers: {'Content-Type': 'application/json'},
+        ),
+      );
+      final response = await dio.get('/orgs/list');
+      final List data = response.data;
+      setState(() {
+        _orgList = data.map((json) => Organization.fromJson(json)).toList();
+      });
+    } catch (error) {
+      print("Error fetching organizations: $error");
+    }
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _whatsappController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -48,7 +87,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFFFFFA0),
+      backgroundColor: const Color(0xFFFFFFA0),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -68,7 +107,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
                         const SizedBox(height: 16),
                         _buildDragIndicator(),
                         const SizedBox(height: 24),
-                        Text(
+                        const Text(
                           'Slide in your deets!',
                           style: TextStyle(
                             color: Color(0xFF1E1E1E),
@@ -80,7 +119,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
                         const SizedBox(height: 24),
                         _buildNameField(),
                         const SizedBox(height: 36),
-                        _buildCollegeField(),
+                        _buildOrganizationField(),
                         const SizedBox(height: 36),
                         _buildWhatsappField(),
                         const SizedBox(height: 48),
@@ -114,7 +153,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           child: Container(
             height: 4,
             decoration: ShapeDecoration(
-              color: Color(0xFF17A58F),
+              color: const Color(0xFF17A58F),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(2),
               ),
@@ -153,7 +192,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Name',
           style: TextStyle(
             color: Color(0xFF2C333D),
@@ -168,19 +207,19 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           decoration: ShapeDecoration(
             color: Colors.white,
             shape: RoundedRectangleBorder(
-              side: BorderSide(width: 0.5, color: Color(0xFF2C333D)),
+              side: const BorderSide(width: 0.5, color: Color(0xFF2C333D)),
               borderRadius: BorderRadius.circular(8),
             ),
           ),
           child: TextFormField(
             controller: _nameController,
-            style: TextStyle(
+            style: const TextStyle(
               color: Color(0xFF1E1E1E),
               fontSize: 16,
               fontFamily: 'DM Sans',
               fontWeight: FontWeight.w500,
             ),
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               hintText: 'Enter your name',
               contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               border: InputBorder.none,
@@ -202,7 +241,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
+        const Text(
           "Make sure you've dropped your legit OG name.",
           style: TextStyle(
             color: Color(0xFFCC0000),
@@ -215,12 +254,12 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
     );
   }
 
-  Widget _buildCollegeField() {
+  Widget _buildOrganizationField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'College (if you are a student)',
+        const Text(
+          'Organization (if you are a student)',
           style: TextStyle(
             color: Color(0xFF2C333D),
             fontSize: 12,
@@ -234,19 +273,19 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           decoration: ShapeDecoration(
             color: Colors.white,
             shape: RoundedRectangleBorder(
-              side: BorderSide(width: 0.5, color: Color(0xFF2C333D)),
+              side: const BorderSide(width: 0.5, color: Color(0xFF2C333D)),
               borderRadius: BorderRadius.circular(8),
             ),
           ),
           child: DropdownButtonHideUnderline(
-            child: DropdownButton2<String>(
+            child: DropdownButton2<Organization>(
               isExpanded: true,
               hint: Row(
-                children: [
+                children: const [
                   Icon(Icons.search, size: 18, color: Color(0xFF2C333D)),
                   SizedBox(width: 8),
                   Text(
-                    'Search Your College',
+                    'Search Your Organization',
                     style: TextStyle(
                       color: Color(0xFFB4B4B4),
                       fontSize: 16,
@@ -256,12 +295,12 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
                   ),
                 ],
               ),
-              items: colleges
-                  .map((item) => DropdownMenuItem(
-                        value: item,
+              items: _orgList
+                  .map((org) => DropdownMenuItem<Organization>(
+                        value: org,
                         child: Text(
-                          item,
-                          style: TextStyle(
+                          org.name,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontFamily: 'DM Sans',
                             fontWeight: FontWeight.w500,
@@ -269,14 +308,14 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
                         ),
                       ))
                   .toList(),
-              value: _selectedCollege,
+              value: _selectedOrganization,
               onChanged: (value) {
                 setState(() {
-                  _selectedCollege = value;
+                  _selectedOrganization = value;
                 });
               },
               buttonStyleData: ButtonStyleData(
-                padding: EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 height: 44,
               ),
               dropdownStyleData: DropdownStyleData(
@@ -292,9 +331,30 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
                   thumbVisibility: MaterialStateProperty.all(true),
                 ),
               ),
-              menuItemStyleData: MenuItemStyleData(
-                height: 40,
-                padding: EdgeInsets.symmetric(horizontal: 16),
+              dropdownSearchData: DropdownSearchData<Organization>(
+                searchController: _searchController,
+                searchInnerWidget: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      hintText: 'Search...',
+                    ),
+                    onChanged: (value) {
+                      setState(() {});
+                    },
+                  ),
+                ),
+                // Added required parameter for searchInnerWidgetHeight.
+                searchInnerWidgetHeight: 50,
+                searchMatchFn: (item, searchValue) {
+                  return item.value!.name
+                      .toLowerCase()
+                      .contains(searchValue.toLowerCase());
+                },
               ),
             ),
           ),
@@ -307,7 +367,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Whatsapp Number',
           style: TextStyle(
             color: Color(0xFF2C333D),
@@ -322,7 +382,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           decoration: ShapeDecoration(
             color: Colors.white,
             shape: RoundedRectangleBorder(
-              side: BorderSide(width: 0.5, color: Color(0xFF2C333D)),
+              side: const BorderSide(width: 0.5, color: Color(0xFF2C333D)),
               borderRadius: BorderRadius.circular(8),
             ),
           ),
@@ -333,13 +393,13 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
               FilteringTextInputFormatter.digitsOnly,
               LengthLimitingTextInputFormatter(10),
             ],
-            style: TextStyle(
+            style: const TextStyle(
               color: Color(0xFF1E1E1E),
               fontSize: 16,
               fontFamily: 'DM Sans',
               fontWeight: FontWeight.w500,
             ),
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               hintText: 'Enter your WhatsApp number',
               contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               border: InputBorder.none,
@@ -364,7 +424,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
+        const Text(
           "Make sure it's your active WhatsApp number.",
           style: TextStyle(
             color: Color(0xFFCC0000),
@@ -382,7 +442,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
       width: double.infinity,
       height: 56,
       decoration: ShapeDecoration(
-        color: Color(0xFF2C333D),
+        color: const Color(0xFF2C333D),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -396,7 +456,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+              children: const [
                 Text(
                   'Continue',
                   style: TextStyle(
@@ -406,7 +466,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
                     fontWeight: FontWeight.w400,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Icon(Icons.arrow_forward, color: Colors.white),
               ],
             ),

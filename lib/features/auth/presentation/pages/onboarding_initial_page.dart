@@ -1,89 +1,113 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../../bloc/login_cubit.dart';
+import '../../data/services/authentication_service.dart';
+import 'profile_check_page.dart'; // Make sure this file exists and is properly implemented
 
 class OnboardingInitialPage extends StatelessWidget {
-  OnboardingInitialPage({super.key});
+  OnboardingInitialPage({Key? key}) : super(key: key);
 
-  // Initialize GoogleSignIn with the scopes you need.
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: [
-      'email',
-
-      // Add additional scopes if needed.
-    ],
+    scopes: ['email', 'openid'],
     serverClientId:
         '497245325238-ceiht9g22u4eh9a3mdkmfbssa0fkevt1.apps.googleusercontent.com',
   );
 
-  // Function to handle Google Sign In.
-  Future<void> _handleGoogleSignIn() async {
+  Future<void> _handleGoogleSignIn(BuildContext context) async {
     try {
-      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      final account = await _googleSignIn.signIn();
       if (account != null) {
-        // Sign in successful.
-        final GoogleSignInAuthentication auth = await account.authentication;
+        final auth = await account.authentication;
         final String? idToken = auth.idToken;
-        final String? accessToken = auth.accessToken;
-
-        // Get platform information
-        final String platform = Platform.isAndroid ? "android" : "ios";
-
-        // Debug logs to verify the tokens
-        print("User signed in: ${account.email}");
-        print("ID Token: $idToken");
-        print("Access Token: $accessToken");
-        print("Platform: $platform");
-        print("User signed in: ${account}");
-        // TODO: Navigate or update your state as needed.
+        if (idToken != null) {
+          final String platform = Platform.isAndroid ? 'android' : 'ios';
+          // Trigger the login process via the cubit.
+          context.read<LoginCubit>().loginWithGoogle(idToken, platform);
+        } else {
+          print('No idToken received.');
+        }
       } else {
-        print("Google sign in cancelled");
+        print('Google sign in cancelled.');
       }
     } catch (error) {
-      print("Error during Google sign in: $error");
+      print('Error during Google sign in: $error');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFFFA0),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 80),
-                      _buildLogo(),
-                      const SizedBox(height: 48),
-                      _buildContent(),
-                      const Spacer(),
-                      _buildLoginButton(),
-                      const SizedBox(height: 80), // Bottom padding for grass
-                    ],
+    return BlocProvider(
+      create: (context) => LoginCubit(authService: AuthenticationService()),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFFFA0),
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 80),
+                        _buildLogo(),
+                        const SizedBox(height: 48),
+                        _buildContent(),
+                        const Spacer(),
+                        // Use Builder to get the correct context for the button.
+                        Builder(builder: (innerContext) {
+                          return _buildLoginButton(innerContext);
+                        }),
+                        const SizedBox(height: 80),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          // Wrap the grass image with IgnorePointer to prevent it from intercepting taps.
-          IgnorePointer(
-            child: Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Image.asset(
-                'assets/images/grass.png',
-                fit: BoxFit.cover,
+              ],
+            ),
+            // Background grass image.
+            IgnorePointer(
+              child: Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Image.asset(
+                  'assets/images/grass.png',
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-        ],
+            // Listen for login state changes.
+            BlocListener<LoginCubit, LoginState>(
+              listener: (context, state) {
+                if (state is LoginLoading) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Logging in...')),
+                  );
+                } else if (state is LoginSuccess) {
+                  print("Access Token: ${state.accessToken}");
+                  print("Refresh Token: ${state.refreshToken}");
+                  // Navigate to the ProfileCheckPage to verify if the profile is complete.
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          ProfileCheckPage(accessToken: state.accessToken),
+                    ),
+                  );
+                } else if (state is LoginFailure) {
+                  print("Login Failure: ${state.error}");
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${state.error}')),
+                  );
+                }
+              },
+              child: const SizedBox.shrink(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -123,7 +147,6 @@ class OnboardingInitialPage extends StatelessWidget {
       height: 106.15,
       child: Stack(
         children: [
-          // Background oval.
           const Positioned(
             left: 3.43,
             top: 2.43,
@@ -138,7 +161,6 @@ class OnboardingInitialPage extends StatelessWidget {
               ),
             ),
           ),
-          // Outer star shape.
           Positioned(
             left: 22.43,
             top: 0,
@@ -150,7 +172,6 @@ class OnboardingInitialPage extends StatelessWidget {
                 child: DecoratedBox(
                   decoration: ShapeDecoration(
                     color: Color(0xFFB4E5BC),
-                    // Ensure you have a valid StarBorder implementation.
                     shape: StarBorder(
                       points: 8,
                       innerRadiusRatio: 0.47,
@@ -164,7 +185,6 @@ class OnboardingInitialPage extends StatelessWidget {
               ),
             ),
           ),
-          // Inner star shape.
           Positioned(
             left: 28.43,
             top: 11,
@@ -222,7 +242,7 @@ class OnboardingInitialPage extends StatelessWidget {
     );
   }
 
-  Widget _buildLoginButton() {
+  Widget _buildLoginButton(BuildContext context) {
     return Container(
       width: double.infinity,
       height: 56,
@@ -235,10 +255,9 @@ class OnboardingInitialPage extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () async {
-            // Debug log to verify the tap is registered.
+          onTap: () {
             print('Login button tapped');
-            await _handleGoogleSignIn();
+            _handleGoogleSignIn(context);
           },
           borderRadius: BorderRadius.circular(8),
           child: Padding(

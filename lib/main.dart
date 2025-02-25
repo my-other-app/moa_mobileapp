@@ -1,42 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/themes/app_theme.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/presentation/home/bloc/bottom_nav_bloc.dart';
-import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
-import 'package:myotherapp/presentation/home/pages/interests_selection_page.dart';
-import 'package:myotherapp/presentation/home/pages/onboarding_details_page.dart';
-import 'package:myotherapp/presentation/home/pages/onboarding_final_page.dart';
-import 'package:myotherapp/presentation/home/pages/onboarding_initial_page.dart';
-import 'package:myotherapp/presentation/home/screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiBlocProvider(
+      providers: [
+        BlocProvider<BottomNavigatorBloc>(
+          create: (_) => BottomNavigatorBloc(index: 0),
+        ),
+        // You can add other global providers here
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       color: Colors.white,
       title: 'My Other App',
       theme: AppTheme.themeData(),
-      home: BlocProvider<BottomNavigatorBloc>(
-        create: (_) => BottomNavigatorBloc(index: 0),
-        //child: OnboardingFinalPage(),
-        //child: InterestsSelectionPage(),
-        //child: ClubIndividualPage(),
-        //child: LandingPage(),
-        //child: OnboardingDetailsPage(),
-        child: OnboardingInitialPage(),
-      ),
+      home: OnboardingInitialPage(),
     );
   }
 }
