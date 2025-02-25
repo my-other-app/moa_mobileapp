@@ -21,7 +21,9 @@ class Organization {
 
 class OnboardingDetailsPage extends StatefulWidget {
   final String? initialName; // Optional initial value for name
-  const OnboardingDetailsPage({super.key, this.initialName});
+  final String profileUrl;
+  const OnboardingDetailsPage(
+      {super.key, this.initialName, required this.profileUrl});
 
   @override
   State<OnboardingDetailsPage> createState() => _OnboardingDetailsPageState();
@@ -41,6 +43,8 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
     super.initState();
     // Initialize the name field with the provided initial value if available.
     _nameController = TextEditingController(text: widget.initialName ?? "");
+    print("profile =");
+    print(widget.profileUrl);
     fetchOrganizations();
   }
 

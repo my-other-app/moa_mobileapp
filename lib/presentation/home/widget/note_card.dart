@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/themes/app_colors.dart';
-import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
-import 'package:myotherapp/presentation/home/widget/svg_icon.dart';
 
 class NoteCard extends StatelessWidget {
   final String logoUrl; // URL to the logo image

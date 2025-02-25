@@ -7,7 +7,9 @@ import '../../data/services/profile_service.dart';
 
 class ProfileCheckPage extends StatelessWidget {
   final String accessToken;
-  const ProfileCheckPage({Key? key, required this.accessToken})
+  final String profileUrl;
+  const ProfileCheckPage(
+      {Key? key, required this.accessToken, required this.profileUrl})
       : super(key: key);
 
   @override
@@ -31,6 +33,7 @@ class ProfileCheckPage extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (context) => OnboardingDetailsPage(
                         initialName: state.profile.fullName,
+                        profileUrl: profileUrl,
                       ),
                     ),
                   );

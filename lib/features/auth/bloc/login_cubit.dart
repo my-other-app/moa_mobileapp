@@ -11,8 +11,11 @@ class LoginLoading extends LoginState {}
 class LoginSuccess extends LoginState {
   final String accessToken;
   final String refreshToken;
-
-  LoginSuccess({required this.accessToken, required this.refreshToken});
+  final String photoUrl;
+  LoginSuccess(
+      {required this.accessToken,
+      required this.refreshToken,
+      required this.photoUrl});
 }
 
 class LoginFailure extends LoginState {
@@ -26,7 +29,8 @@ class LoginCubit extends Cubit<LoginState> {
 
   LoginCubit({required this.authService}) : super(LoginInitial());
 
-  Future<void> loginWithGoogle(String idToken, String platform) async {
+  Future<void> loginWithGoogle(
+      String idToken, String platform, String photoUrl) async {
     emit(LoginLoading());
     try {
       final result = await authService.signInWithGoogle(
@@ -34,9 +38,9 @@ class LoginCubit extends Cubit<LoginState> {
         platform: platform,
       );
       emit(LoginSuccess(
-        accessToken: result['access_token'],
-        refreshToken: result['refresh_token'],
-      ));
+          accessToken: result['access_token'],
+          refreshToken: result['refresh_token'],
+          photoUrl: photoUrl));
     } catch (e) {
       emit(LoginFailure(error: e.toString()));
     }

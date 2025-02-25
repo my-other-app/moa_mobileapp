@@ -8,7 +8,6 @@ import 'profile_check_page.dart'; // Make sure this file exists and is properly 
 
 class OnboardingInitialPage extends StatelessWidget {
   OnboardingInitialPage({Key? key}) : super(key: key);
-
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'openid'],
     serverClientId:
@@ -23,8 +22,12 @@ class OnboardingInitialPage extends StatelessWidget {
         final String? idToken = auth.idToken;
         if (idToken != null) {
           final String platform = Platform.isAndroid ? 'android' : 'ios';
+
           // Trigger the login process via the cubit.
-          context.read<LoginCubit>().loginWithGoogle(idToken, platform);
+          context
+              .read<LoginCubit>()
+              .loginWithGoogle(idToken, platform, account.photoUrl!);
+          print("User signed in: ${account.photoUrl}");
         } else {
           print('No idToken received.');
         }
@@ -93,8 +96,9 @@ class OnboardingInitialPage extends StatelessWidget {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          ProfileCheckPage(accessToken: state.accessToken),
+                      builder: (_) => ProfileCheckPage(
+                          accessToken: state.accessToken,
+                          profileUrl: state.photoUrl),
                     ),
                   );
                 } else if (state is LoginFailure) {

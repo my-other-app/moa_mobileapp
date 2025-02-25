@@ -68,6 +68,7 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
             SliverAppBar(
               // Makes the app bar float up/down as you scroll
               floating: true,
+              automaticallyImplyLeading: false,
               // Snaps the app bar into view when you scroll up
               snap: true,
               // If pinned = true, the AppBar remains visible at the top;
