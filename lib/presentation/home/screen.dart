@@ -15,7 +15,7 @@ class LandingPage extends StatelessWidget {
   final List<Widget> _pages = <Widget>[
     HomePage(),
     EventsPage(),
-    CoursesPage(),
+    //CoursesPage(),
     ClubsPage(),
     ProfilePage()
   ];
@@ -51,7 +51,7 @@ List<BottomNavigationBarItem> getBottomNavBarItems() {
   return [
     getBottomNavBarItem(icon: Icons.home, label: 'Home'),
     getBottomNavBarItem(icon: Icons.event, label: 'Events'),
-    getBottomNavBarItem(icon: Icons.school, label: 'Courses'),
+    //getBottomNavBarItem(icon: Icons.school, label: 'Courses'),
     getBottomNavBarItem(icon: Icons.groups, label: 'Clubs'),
     getBottomNavBarItem(icon: Icons.person, label: 'Profile'),
   ];
