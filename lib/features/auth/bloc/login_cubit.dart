@@ -1,5 +1,12 @@
 import 'package:bloc/bloc.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:myotherapp/common/models/user/main.dart';
+import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/core/secure_storage/secure_storage.dart';
+import 'package:myotherapp/core/secure_storage/token_model.dart';
 import '../data/services/authentication_service.dart';
+import '../data/services/profile_service.dart';
 
 /// Login States
 abstract class LoginState {}
@@ -12,10 +19,14 @@ class LoginSuccess extends LoginState {
   final String accessToken;
   final String refreshToken;
   final String photoUrl;
-  LoginSuccess(
-      {required this.accessToken,
-      required this.refreshToken,
-      required this.photoUrl});
+  final UserModel? user;
+  
+  LoginSuccess({
+    required this.accessToken,
+    required this.refreshToken,
+    required this.photoUrl,
+    this.user,
+  });
 }
 
 class LoginFailure extends LoginState {
@@ -26,8 +37,13 @@ class LoginFailure extends LoginState {
 /// Login Cubit
 class LoginCubit extends Cubit<LoginState> {
   final AuthenticationService authService;
+  final ProfileService profileService;
 
-  LoginCubit({required this.authService}) : super(LoginInitial());
+  LoginCubit({
+    required this.authService,
+    ProfileService? profileService,
+  }) : profileService = profileService ?? ProfileService(),
+       super(LoginInitial());
 
   Future<void> loginWithGoogle(
       String idToken, String platform, String photoUrl) async {
@@ -37,10 +53,18 @@ class LoginCubit extends Cubit<LoginState> {
         idToken: idToken,
         platform: platform,
       );
+    
+      // Store tokens in secure storage
+      final secureStorage = SecureStorage.instance;
+      await secureStorage.updateTokens(TokenModel.fromJson(result));
+      
+      // Get user profile
+      final accessToken = result['access_token'];
       emit(LoginSuccess(
-          accessToken: result['access_token'],
-          refreshToken: result['refresh_token'],
-          photoUrl: photoUrl));
+        accessToken: accessToken,
+        refreshToken: result['refresh_token'],
+        photoUrl: photoUrl,
+      ));
     } catch (e) {
       emit(LoginFailure(error: e.toString()));
     }

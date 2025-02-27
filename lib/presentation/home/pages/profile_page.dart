@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/common/views/custom_option_tile.dart';
+import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/core/secure_storage/secure_storage.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/presentation/home/pages/certificate_page.dart';
 import 'package:myotherapp/presentation/home/pages/edit_profile_page.dart';
 import 'package:myotherapp/presentation/home/pages/my_badges_page.dart';
@@ -80,9 +84,46 @@ class ProfilePage extends StatelessWidget {
         'label': 'Log Out',
         'icon': AssetResources.logout,
         'onTap': (BuildContext context) {
-          // Perform logout logic here, or navigate to a login page, etc.
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Logged out')),
+          // Show confirmation dialog
+          showDialog(
+            context: context,
+            builder: (BuildContext dialogContext) {
+              return AlertDialog(
+                title: const Text('Confirm Logout'),
+                content: const Text('Are you sure you want to log out?'),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('Cancel'),
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                    },
+                  ),
+                  TextButton(
+                    child: const Text('Logout'),
+                    onPressed: () async {
+                      // Close the dialog
+                      Navigator.of(dialogContext).pop();
+                      
+                      // Clear tokens from secure storage
+                      await SecureStorage.instance.deleteTokens();
+                      
+                      // Dispatch logout event to AppBloc
+                      if (context.mounted) {
+                        context.read<AppBloc>().add(const LoggedOut());
+                        
+                        // Navigate to login page and clear navigation stack
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (context) => OnboardingInitialPage(),
+                          ),
+                          (route) => false,
+                        );
+                      }
+                    },
+                  ),
+                ],
+              );
+            },
           );
         },
       },

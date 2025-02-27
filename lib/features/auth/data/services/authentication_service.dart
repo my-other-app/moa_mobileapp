@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 class AuthenticationService {
+
   final Dio _dio;
 
   AuthenticationService({Dio? dio})
@@ -25,7 +26,7 @@ class AuthenticationService {
         },
       );
       return response.data;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       // Handle specific errors (e.g., 422 validation errors)
       if (e.response?.statusCode == 422) {
         throw Exception('Validation Error: ${e.response?.data}');
