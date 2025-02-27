@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart' show debugPrint, immutable;
 import 'package:hydrated_bloc/hydrated_bloc.dart';
@@ -21,14 +20,15 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
   void _onAppStarted(
     AppStarted event,
     Emitter<AppBlocState> emit,
-  ){
+  ) {
     // When app starts, check if we have stored state
     // If we already have a logged in state from hydrated storage, keep it
     // Otherwise, remain in initial state
     debugPrint('AppStarted event: Current state type: ${state.runtimeType}');
-    
+
     if (state is AppLoggedInState) {
-      debugPrint('User already logged in from hydrated state: ${(state as AppLoggedInState).user?.fullName}');
+      debugPrint(
+          'User already logged in from hydrated state: ${(state as AppLoggedInState).user?.fullName}');
     } else {
       debugPrint('No logged in state found, remaining in initial state');
     }
@@ -37,28 +37,74 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
   Future<void> _onLoggedIn(
     LoggedIn event,
     Emitter<AppBlocState> emit,
-  )async{
+  ) async {
     debugPrint('LoggedIn event with user: ${event.user.fullName}');
-    
-    final response = await APIService.instance.request(
-      '/user/profile/me',
-      DioMethod.get,
-    );
 
-    debugPrint('Profile response: ${response.data}');
+    try {
+      final response = await APIService.instance.request(
+        '/user/profile/me',
+        DioMethod.get,
+      );
 
-    emit(AppLoggedInState(
-      user: event.user, 
-      accessToken: event.accessToken, 
-      refreshToken: event.refreshToken,
-      profile: Profile.fromJson(response.data),
-    ));
+      debugPrint('Profile response: ${response.data}');
+
+      // Check if the response data is valid
+      if (response.data == null) {
+        debugPrint('Profile response data is null');
+        // Emit state without profile if data is null
+        emit(AppLoggedInState(
+          user: event.user,
+          accessToken: event.accessToken,
+          refreshToken: event.refreshToken,
+          profile: null,
+        ));
+        return;
+      }
+
+      // Check the structure of the response data
+      debugPrint('Profile response data type: ${response.data.runtimeType}');
+
+      Profile? profile;
+      try {
+        profile = Profile.fromJson(response.data);
+        debugPrint('Profile parsed successfully: $profile');
+      } catch (e) {
+        debugPrint('Error parsing profile from JSON: $e');
+        // Try to see if the data is nested
+        if (response.data is Map<String, dynamic> &&
+            response.data.containsKey('data') &&
+            response.data['data'] != null) {
+          try {
+            profile = Profile.fromJson(response.data['data']);
+            debugPrint('Profile parsed from nested data: $profile');
+          } catch (e) {
+            debugPrint('Error parsing profile from nested data: $e');
+          }
+        }
+      }
+
+      emit(AppLoggedInState(
+        user: event.user,
+        accessToken: event.accessToken,
+        refreshToken: event.refreshToken,
+        profile: profile,
+      ));
+    } catch (e) {
+      debugPrint('Error fetching profile: $e');
+      // Still emit logged in state but without profile
+      emit(AppLoggedInState(
+        user: event.user,
+        accessToken: event.accessToken,
+        refreshToken: event.refreshToken,
+        profile: null,
+      ));
+    }
   }
 
   void _onLoggedOut(
     LoggedOut event,
     Emitter<AppBlocState> emit,
-  ){
+  ) {
     SecureStorage.instance.deleteTokens();
     debugPrint('LoggedOut event received');
     emit(const AppBlocInitialState());
@@ -67,39 +113,61 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
   @override
   AppBlocState? fromJson(Map<String, dynamic> json) {
     try {
-      if (json['user'] == null || json['accessToken'] == null || json['refreshToken'] == null) {
-        print('Missing required fields in stored state, returning initial state');
+      final stateType = json['stateType'] as String?;
+      debugPrint('fromJson called with stateType: $stateType');
+      debugPrint('Full JSON: $json');
+
+      if (stateType == null) {
         return const AppBlocInitialState();
       }
-      
-      print('Restoring logged in state from storage');
+
+      if (stateType == 'AppBlocInitialState') {
+        return const AppBlocInitialState();
+      }
+
+      if (stateType == 'AppLoggedOutState') {
+        return const AppLoggedOutState();
+      }
+
       return AppLoggedInState(
         user: UserModel.fromJson(json['user']),
         accessToken: json['accessToken'],
         refreshToken: json['refreshToken'],
-        profile: Profile.fromJson(json['profile']),
+        profile:
+            json['profile'] != null ? Profile.fromJson(json['profile']) : null,
       );
     } catch (e) {
-      print('Error deserializing AppBlocState: $e');
+      debugPrint('Error deserializing AppBlocState: $e');
       return const AppBlocInitialState();
     }
   }
 
   @override
   Map<String, dynamic>? toJson(AppBlocState state) {
-   try {
-    if (state is AppLoggedInState && state.user != null) {
-      print('Saving logged in state to storage for user: ${state.user?.fullName}');
-      return {
-        'user': state.user?.toJson(state.user!),
-        'accessToken': state.accessToken,
-        'refreshToken': state.refreshToken,
-      };
+    try {
+      if (state is AppLoggedInState && state.user != null) {
+        debugPrint(
+            'Saving logged in state to storage for user: ${state.user?.fullName}');
+        return {
+          'stateType': 'AppLoggedInState',
+          'user': state.user?.toJson(state.user!),
+          'accessToken': state.accessToken,
+          'refreshToken': state.refreshToken,
+          'profile': state.profile?.toJson(),
+        };
+      } else if (state is AppLoggedOutState) {
+        return {
+          'stateType': 'AppLoggedOutState',
+        };
+      } else if (state is AppBlocInitialState) {
+        return {
+          'stateType': 'AppBlocInitialState',
+        };
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error serializing AppBlocState: $e');
+      return null;
     }
-    return null;
-   } catch (e) {
-    print('Error serializing AppBlocState: $e');
-    return null;
-   }
   }
 }

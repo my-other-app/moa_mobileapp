@@ -9,35 +9,30 @@ abstract class AppBlocState extends Equatable {
   final Profile? profile;
 
   @override
-  List<Object?> get props => <Object?>[user, accessToken, refreshToken];
+  List<Object?> get props => <Object?>[user, accessToken, refreshToken, profile];
 }
 
 class AppBlocInitialState extends AppBlocState {
   const AppBlocInitialState();
   
   @override
-  List<Object?> get props => <Object?>[user, accessToken, refreshToken];
+  List<Object?> get props => <Object?>[user, accessToken, refreshToken, profile];
 }
 
 class AppLoggedInState extends AppBlocState {
   const AppLoggedInState({
-    required UserModel user, 
-    required String accessToken, 
-    required String refreshToken,
-    required Profile profile,
-  }) : super(
-    user: user, 
-    accessToken: accessToken, 
-    refreshToken: refreshToken,
-    profile: profile
-  );
+    required super.user, 
+    required super.accessToken, 
+    required super.refreshToken,
+    required super.profile,
+  });
   
   @override
-  List<Object?> get props => <Object?>[user, accessToken, refreshToken];
+  List<Object?> get props => <Object?>[user, accessToken, refreshToken, profile];
 }
 
 class AppLoggedOutState extends AppBlocState {
   const AppLoggedOutState();
   @override
-  List<Object?> get props => <Object?>[user, accessToken, refreshToken];
+  List<Object?> get props => <Object?>[user, accessToken, refreshToken, profile ];
 }
