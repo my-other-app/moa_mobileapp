@@ -10,11 +10,12 @@ sealed class AppBlocEvent extends Equatable{
 
 
 class AppStarted extends AppBlocEvent {
-  const AppStarted({this.user, this.refreshToken, this.accessToken});
+  const AppStarted({this.user, this.refreshToken, this.accessToken,});
 
   final UserModel? user;
   final String? refreshToken;
   final String? accessToken;
+
 }
 
 class LoggedIn extends AppBlocEvent {
@@ -22,11 +23,13 @@ class LoggedIn extends AppBlocEvent {
    required this.user,
    required this.accessToken,
    required this.refreshToken,
+   required this.profile,
   });
 
   final UserModel user;
   final String accessToken;
   final String refreshToken;
+  final Profile profile;
 }
 
 class LoggedOut extends AppBlocEvent {

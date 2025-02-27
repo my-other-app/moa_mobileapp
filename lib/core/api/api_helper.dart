@@ -69,7 +69,7 @@ class APIService {
           );
         }
     } catch (e) {
-      debugPrint(e.toString());
+      debugPrint('Request failed 1111: $e');
       throw Exception('Request failed');
     }
   }

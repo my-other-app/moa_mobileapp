@@ -1,8 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart' show debugPrint, immutable;
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:myotherapp/common/models/user/main.dart';
+import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
+import 'package:myotherapp/features/auth/data/models/profile.dart';
 
 part 'app_bloc_event.dart';
 part 'app_bloc_state.dart';
@@ -31,15 +34,24 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
     }
   }
 
-  void _onLoggedIn(
+  Future<void> _onLoggedIn(
     LoggedIn event,
     Emitter<AppBlocState> emit,
-  ){
+  )async{
     debugPrint('LoggedIn event with user: ${event.user.fullName}');
+    
+    final response = await APIService.instance.request(
+      '/user/profile/me',
+      DioMethod.get,
+    );
+
+    debugPrint('Profile response: ${response.data}');
+
     emit(AppLoggedInState(
       user: event.user, 
       accessToken: event.accessToken, 
-      refreshToken: event.refreshToken
+      refreshToken: event.refreshToken,
+      profile: Profile.fromJson(response.data),
     ));
   }
 
@@ -65,6 +77,7 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
         user: UserModel.fromJson(json['user']),
         accessToken: json['accessToken'],
         refreshToken: json['refreshToken'],
+        profile: Profile.fromJson(json['profile']),
       );
     } catch (e) {
       print('Error deserializing AppBlocState: $e');
