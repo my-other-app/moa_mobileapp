@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_final_page.dart';
 
 class InterestsSelectionPage extends StatefulWidget {
   const InterestsSelectionPage({super.key});
@@ -342,15 +343,3 @@ final emergingTrendInterests = [
 ];
 
 // Dummy OnboardingFinalPage widget for navigation after a successful API call
-class OnboardingFinalPage extends StatelessWidget {
-  const OnboardingFinalPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Text("Onboarding Final Page"),
-      ),
-    );
-  }
-}

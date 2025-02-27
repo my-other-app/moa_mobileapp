@@ -1,70 +1,66 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/presentation/home/screen.dart';
 
-class InterestsSelectionPage extends StatefulWidget {
-  const InterestsSelectionPage({super.key});
+class OnboardingFinalPage extends StatefulWidget {
+  const OnboardingFinalPage({super.key});
 
   @override
-  State<InterestsSelectionPage> createState() => _InterestsSelectionPageState();
+  State<OnboardingFinalPage> createState() => _OnboardingFinalPageState();
 }
 
-class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
-  final Set<InterestItem> selectedInterests = {};
-  bool isLoading = false;
+class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
+  String? profileImageUrl;
   final Dio dio = Dio();
 
-  Future<void> _submitInterests() async {
-    // Retrieve access token from AppBloc state.
-    final accessToken = context.read<AppBloc>().state.accessToken;
-    // Extract selected interest IDs
-    List<int> interestIds = selectedInterests.map((item) => item.id).toList();
-    final url =
-        'https://api.staging.myotherapp.com/api/v1/user/interests/select';
+  @override
+  void initState() {
+    super.initState();
+    fetchUserProfile();
+  }
 
-    setState(() {
-      isLoading = true;
-    });
+  Future<void> fetchUserProfile() async {
+    // Get the access token from AppBloc
+    final accessToken = context.read<AppBloc>().state.accessToken;
+    const url = 'https://api.staging.myotherapp.com/api/v1/user/profile/me';
 
     try {
-      final response = await dio.post(
+      final response = await dio.get(
         url,
-        data: jsonEncode({'interest_ids': interestIds}),
         options: Options(
           headers: {
             'accept': 'application/json',
-            'Content-Type': 'application/json',
-            // Include the access token in your headers if needed. For example:
             'Authorization': 'Bearer $accessToken',
           },
         ),
       );
+      // Print full response to the console
+      print('User profile response: ${response.data}');
 
-      if (response.statusCode != null &&
-          response.statusCode! >= 200 &&
-          response.statusCode! < 300) {
-        // Navigate to the OnboardingFinalPage upon success
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const OnboardingFinalPage()),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text('Error submitting interests: ${response.statusCode}')),
-        );
+      final data = response.data;
+      String? imageUrl;
+      // Assume the image URL is found in the avatar image.
+      // It may be a string directly or a map containing a "url" key.
+      if (data != null &&
+          data['profile'] != null &&
+          data['profile']['avatar'] != null &&
+          data['profile']['avatar']['image'] != null) {
+        final avatarImage = data['profile']['avatar']['image'];
+        if (avatarImage is Map && avatarImage['url'] != null) {
+          imageUrl = avatarImage['url'];
+        } else if (avatarImage is String) {
+          imageUrl = avatarImage;
+        }
+      }
+      if (mounted) {
+        setState(() {
+          profileImageUrl = imageUrl;
+        });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error submitting interests: $e')),
-      );
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
+      print('Error fetching user profile: $e');
     }
   }
 
@@ -72,100 +68,37 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFA0),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildDragIndicator(),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title Section
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'SPILL THE TEA ON YOUR VIBES AND INTERESTS',
-                            style: TextStyle(
-                              color: Color(0xFF1E1E1E),
-                              fontSize: 24,
-                              fontFamily: 'BebasNeue',
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Choose up to 5 vibes that speak to you',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                              fontFamily: 'DM Sans',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Interest Sections
-                    _buildInterestSection('Academic', academicInterests),
-                    const SizedBox(height: 36),
-                    _buildInterestSection('Creative', creativeInterests),
-                    const SizedBox(height: 36),
-                    _buildInterestSection(
-                        'Emerging Trends', emergingTrendInterests),
-                  ],
-                ),
-              ),
-            ),
-            _buildContinueButton(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDragIndicator() {
-    return Container(
-      width: 393,
-      height: 21,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+      body: Stack(
         children: [
-          Expanded(
-            child: Container(
-              height: 4,
-              decoration: ShapeDecoration(
-                color: const Color(0xFF17A58F),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(2),
+          Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 48),
+                      _buildProfileCreatedSection(),
+                      const SizedBox(height: 24),
+                      _buildProfileImage(),
+                      const SizedBox(height: 24),
+                      _buildMotivationalText(),
+                      const SizedBox(height: 48),
+                      _buildStartJourneyButton(context),
+                      const SizedBox(height: 80), // bottom padding for grass
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              height: 4,
-              decoration: ShapeDecoration(
-                color: const Color(0xFF17A58F),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              height: 4,
-              decoration: ShapeDecoration(
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Image.asset(
+              'assets/images/grass.png',
+              fit: BoxFit.cover,
             ),
           ),
         ],
@@ -173,73 +106,155 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
     );
   }
 
-  Widget _buildInterestSection(String title, List<InterestItem> interests) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+  Widget _buildProfileImage() {
+    // Use a NetworkImage if profileImageUrl is available, otherwise fallback to a placeholder asset.
+    return Container(
+      width: 150,
+      height: 150,
+      decoration: ShapeDecoration(
+        image: DecorationImage(
+          image: profileImageUrl != null
+              ? NetworkImage(profileImageUrl!)
+              : const AssetImage('assets/images/profile_placeholder.png')
+                  as ImageProvider,
+          fit: BoxFit.cover,
+        ),
+        color: const Color(0xFFCCC1F0),
+        shape: const OvalBorder(),
+      ),
+    );
+  }
+
+  Widget _buildProfileCreatedSection() {
+    return SizedBox(
+      width: 361,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontFamily: 'DM Sans',
-              fontWeight: FontWeight.w700,
-            ),
+        children: const [
+          Row(
+            children: [
+              Text(
+                'PROFILE CREATED  ✅',
+                style: TextStyle(
+                  color: Color(0xFF1E1E1E),
+                  fontSize: 24,
+                  fontFamily: 'BebasNeue',
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: interests
-                .map((interest) => _buildInterestChip(interest))
-                .toList(),
+          SizedBox(height: 8),
+          Text(
+            "Your profile's all set, now it's time to dive into the events and level up",
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 14,
+              fontFamily: 'DM Sans',
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInterestChip(InterestItem interest) {
-    final isSelected = selectedInterests.contains(interest);
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (isSelected) {
-            selectedInterests.remove(interest);
-          } else if (selectedInterests.length < 5) {
-            selectedInterests.add(interest);
-          }
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(60),
-            side: BorderSide(
-              color: isSelected ? const Color(0xFF17A58F) : Colors.transparent,
-              width: 2,
-            ),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+  Widget _buildMotivationalText() {
+    return SizedBox(
+      width: 301,
+      child: RichText(
+        textAlign: TextAlign.center,
+        text: const TextSpan(
           children: [
-            Text(
-              interest.icon,
-              style: const TextStyle(fontSize: 20),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              interest.name,
-              style: const TextStyle(
+            TextSpan(
+              text: "Life's a ",
+              style: TextStyle(
                 color: Colors.black,
-                fontSize: 14,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
                 fontFamily: 'DM Sans',
-                fontWeight: FontWeight.w300,
+                fontWeight: FontWeight.w200,
+              ),
+            ),
+            TextSpan(
+              text: 'rollercoaster',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            TextSpan(
+              text: ', and setbacks are just bumps along the ride. ',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w200,
+              ),
+            ),
+            TextSpan(
+              text: 'Success takes time',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            TextSpan(
+              text: ", so don't rush—",
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w200,
+              ),
+            ),
+            TextSpan(
+              text: 'trust the process',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            TextSpan(
+              text: " and stay patient. 💫🌱\n\n'",
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w200,
+              ),
+            ),
+            TextSpan(
+              text:
+                  "Success isn't a sprint, it's a vibe. Keep going, it'll click",
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            TextSpan(
+              text: ".' ",
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w200,
               ),
             ),
           ],
@@ -248,108 +263,47 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
     );
   }
 
-  Widget _buildContinueButton() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: SizedBox(
-        width: 361,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: selectedInterests.isNotEmpty && !isLoading
-              ? _submitInterests
-              : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2C333D),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 128, vertical: 13),
-          ),
-          child: isLoading
-              ? const CircularProgressIndicator(color: Colors.white)
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Text(
-                      'CONTINUE',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontFamily: 'BebasNeue',
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, color: Colors.white),
-                  ],
-                ),
+  Widget _buildStartJourneyButton(BuildContext context) {
+    return Container(
+      decoration: ShapeDecoration(
+        color: const Color(0xFF2C333D),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
         ),
       ),
-    );
-  }
-}
-
-// Updated InterestItem model with id
-class InterestItem {
-  final int id;
-  final String name;
-  final String icon;
-
-  InterestItem({required this.id, required this.name, required this.icon});
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is InterestItem &&
-          runtimeType == other.runtimeType &&
-          id == other.id;
-
-  @override
-  int get hashCode => id.hashCode;
-}
-
-// Updated interest lists with ids for each interest
-final academicInterests = [
-  InterestItem(id: 1, name: 'Coding', icon: '💻'),
-  InterestItem(id: 2, name: 'UI/UX', icon: '🎨'),
-  InterestItem(id: 3, name: 'Data Science', icon: '📊'),
-  InterestItem(id: 4, name: 'Entrepreneurship', icon: '👨‍💼'),
-  InterestItem(id: 5, name: 'Marketing', icon: '🏷️'),
-  InterestItem(id: 6, name: 'Finance', icon: '💰'),
-  InterestItem(id: 7, name: 'AI/ML', icon: '🦾'),
-  InterestItem(id: 8, name: 'Analytics', icon: '📈'),
-  InterestItem(id: 9, name: 'Cybersecurity', icon: '🔒'),
-  InterestItem(id: 10, name: 'Product Management', icon: '🏭'),
-];
-
-final creativeInterests = [
-  InterestItem(id: 11, name: 'Photography', icon: '📸'),
-  InterestItem(id: 12, name: 'Music', icon: '🎵'),
-  InterestItem(id: 13, name: 'Film', icon: '🎬'),
-  InterestItem(id: 14, name: 'Animation', icon: '🐰'),
-  InterestItem(id: 15, name: 'Writing', icon: '✏️'),
-  InterestItem(id: 16, name: 'Fashion', icon: '👗'),
-  InterestItem(id: 17, name: 'Gaming', icon: '🎮'),
-];
-
-final emergingTrendInterests = [
-  InterestItem(id: 18, name: 'Blockchain', icon: '🔗'),
-  InterestItem(id: 19, name: 'VR/AR', icon: '🥽'),
-  InterestItem(id: 20, name: 'Memes & Internet Culture', icon: '🎭'),
-  InterestItem(id: 21, name: 'Content Creation', icon: '🎥'),
-  InterestItem(id: 22, name: 'E-Sports', icon: '🎮'),
-  InterestItem(id: 23, name: 'Space Exploration', icon: '🚀'),
-];
-
-// Dummy OnboardingFinalPage widget for navigation after a successful API call
-class OnboardingFinalPage extends StatelessWidget {
-  const OnboardingFinalPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Text("Onboarding Final Page"),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => LandingPage()),
+            );
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 13),
+            child: Row(
+              children: const [
+                Text(
+                  'START THE JOURNEY',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontFamily: 'BebasNeue',
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(
+                  Icons.arrow_forward,
+                  color: Colors.white,
+                )
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
