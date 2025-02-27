@@ -71,7 +71,7 @@ class ProfileDetails {
 class Org {
   final String? name;
   final String? type;
-  final String? logo;
+  final Logo? logo;
   final int? id;
 
   Org({
@@ -85,7 +85,9 @@ class Org {
     return Org(
       name: json['name'] as String?,
       type: json['type'] as String?,
-      logo: json['logo'] as String?,
+      logo: json['logo'] != null
+          ? Logo.fromJson(json['logo'] as Map<String, dynamic>)
+          : null,
       id: json['id'] as int?,
     );
   }
@@ -93,6 +95,34 @@ class Org {
   @override
   String toString() {
     return 'Org(name: $name, type: $type, logo: $logo, id: $id)';
+  }
+}
+
+class Logo {
+  final String? thumbnail;
+  final String? medium;
+  final String? large;
+  final String? original;
+
+  Logo({
+    this.thumbnail,
+    this.medium,
+    this.large,
+    this.original,
+  });
+
+  factory Logo.fromJson(Map<String, dynamic> json) {
+    return Logo(
+      thumbnail: json['thumbnail'] as String?,
+      medium: json['medium'] as String?,
+      large: json['large'] as String?,
+      original: json['original'] as String?,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'Logo(thumbnail: $thumbnail, medium: $medium, large: $large, original: $original)';
   }
 }
 

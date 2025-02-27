@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:myotherapp/presentation/home/screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/features/auth/presentation/pages/interests_selection_page.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:dio/dio.dart';
+
+// Import your bloc file here
 
 // Organization model
 class Organization {
@@ -37,14 +41,13 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
   bool _autovalidateMode = false;
   List<Organization> _orgList = [];
   final TextEditingController _searchController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Initialize the name field with the provided initial value if available.
     _nameController = TextEditingController(text: widget.initialName ?? "");
-    print("profile =");
-    print(widget.profileUrl);
+    print("profile = ${widget.profileUrl}");
     fetchOrganizations();
   }
 
@@ -67,12 +70,68 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
     }
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _whatsappController.dispose();
-    _searchController.dispose();
-    super.dispose();
+  // Function to create the user profile by calling the POST API.
+  Future<void> _createUserProfile() async {
+    if (_selectedOrganization == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an organization.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Retrieve the access token from your bloc.
+      final accessToken = context.read<AppBloc>().state.accessToken;
+
+      Dio dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://api.staging.myotherapp.com/api/v1',
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': 'Bearer $accessToken',
+          },
+        ),
+      );
+
+      // Prepare the form data.
+      final data = {
+        'full_name': _nameController.text.trim(),
+        'whatsapp': _whatsappController.text.trim(),
+        'org_id': _selectedOrganization!.id.toString(),
+      };
+
+      final response = await dio.post('/user/profile/create', data: data);
+      print("Profile creation response: ${response.data}");
+
+      if (response.statusCode == 200) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => InterestsSelectionPage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to create profile.')),
+        );
+      }
+    } catch (error) {
+      print("Error creating profile: $error");
+      if (error is DioException && error.response != null) {
+        print("Response data: ${error.response?.data}");
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('An error occurred during profile creation.')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   void _validateAndContinue() {
@@ -81,11 +140,16 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
     });
 
     if (_formKey.currentState?.validate() ?? false) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => LandingPage()),
-      );
+      _createUserProfile();
     }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _whatsappController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -145,6 +209,10 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
               fit: BoxFit.cover,
             ),
           ),
+          if (_isLoading)
+            const Positioned.fill(
+              child: Center(child: CircularProgressIndicator()),
+            ),
         ],
       ),
     );
@@ -352,7 +420,6 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
                     },
                   ),
                 ),
-                // Added required parameter for searchInnerWidgetHeight.
                 searchInnerWidgetHeight: 50,
                 searchMatchFn: (item, searchValue) {
                   return item.value!.name

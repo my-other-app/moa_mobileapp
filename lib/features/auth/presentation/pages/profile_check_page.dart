@@ -4,6 +4,7 @@ import 'package:myotherapp/common/models/user/main.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_details_page.dart';
+import 'package:myotherapp/features/auth/presentation/pages/interests_selection_page.dart';
 import 'package:myotherapp/presentation/home/screen.dart';
 import '../../bloc/profile_cubit.dart';
 import '../../data/services/profile_service.dart';
@@ -25,30 +26,35 @@ class ProfileCheckPage extends StatelessWidget {
           listener: (context, state) {
             if (state is ProfileLoaded) {
               print("Full profile data: ${state.profile}");
-              
+
               // Create a UserModel from the profile data
               final user = UserModel(
                 fullName: state.profile.fullName ?? '',
                 email: state.profile.email ?? '',
                 phone: state.profile.phone ?? '',
               );
-              
+
               // Get the refresh token from secure storage
               SecureStorage.instance.getAccessToken().then((tokenModel) {
                 // Update the AppBloc with the user and tokens
                 context.read<AppBloc>().add(
-                  LoggedIn(
-                    user: user,
-                    accessToken: accessToken,
-                    refreshToken: tokenModel.refreshToken,
-                  ),
-                );
-                
+                      LoggedIn(
+                        user: user,
+                        accessToken: accessToken,
+                        refreshToken: tokenModel.refreshToken,
+                      ),
+                    );
+
                 // Check the interest field from the nested profile.
                 final interest = state.profile.profile?.interest;
                 if (interest == null ||
                     interest.trim().isEmpty ||
                     interest.toLowerCase() == 'string') {
+                  // Navigator.pushReplacement(
+                  //   context,
+                  //   MaterialPageRoute(
+                  //       builder: (context) => InterestsSelectionPage()),
+                  // );
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
