@@ -2,17 +2,21 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:myotherapp/core/secure_storage/secure_storage.dart';
+import 'package:myotherapp/core/secure_storage/token_model.dart';
 import '../../bloc/login_cubit.dart';
 import '../../data/services/authentication_service.dart';
 import 'profile_check_page.dart'; // Make sure this file exists and is properly implemented
 
 class OnboardingInitialPage extends StatelessWidget {
-  OnboardingInitialPage({Key? key}) : super(key: key);
+  OnboardingInitialPage({super.key});
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'openid'],
     serverClientId:
         '497245325238-ceiht9g22u4eh9a3mdkmfbssa0fkevt1.apps.googleusercontent.com',
   );
+
+  final SecureStorage secureStorage = SecureStorage.instance;
 
   Future<void> _handleGoogleSignIn(BuildContext context) async {
     try {
@@ -26,7 +30,7 @@ class OnboardingInitialPage extends StatelessWidget {
           // Trigger the login process via the cubit.
           context
               .read<LoginCubit>()
-              .loginWithGoogle(idToken, platform, account.photoUrl!);
+              .loginWithGoogle(idToken, platform, account.photoUrl ?? '');
           print("User signed in: ${account.photoUrl}");
         } else {
           print('No idToken received.');
@@ -90,8 +94,6 @@ class OnboardingInitialPage extends StatelessWidget {
                     const SnackBar(content: Text('Logging in...')),
                   );
                 } else if (state is LoginSuccess) {
-                  print("Access Token: ${state.accessToken}");
-                  print("Refresh Token: ${state.refreshToken}");
                   // Navigate to the ProfileCheckPage to verify if the profile is complete.
                   Navigator.pushReplacement(
                     context,
@@ -102,7 +104,6 @@ class OnboardingInitialPage extends StatelessWidget {
                     ),
                   );
                 } else if (state is LoginFailure) {
-                  print("Login Failure: ${state.error}");
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Error: ${state.error}')),
                   );
