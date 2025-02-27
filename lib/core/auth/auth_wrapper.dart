@@ -4,6 +4,12 @@ import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/presentation/home/screen.dart';
 
+
+///
+/// Auth Wrapper
+///
+/// This widget detects whether a user is logged in or not and shows the appropriate page
+///
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 

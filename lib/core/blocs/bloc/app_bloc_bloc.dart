@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart' show debugPrint, immutable;
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:myotherapp/common/models/user/main.dart';
+import 'package:myotherapp/core/secure_storage/secure_storage.dart';
 
 part 'app_bloc_event.dart';
 part 'app_bloc_state.dart';
@@ -46,7 +47,8 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
     LoggedOut event,
     Emitter<AppBlocState> emit,
   ){
-    print('LoggedOut event received');
+    SecureStorage.instance.deleteTokens();
+    debugPrint('LoggedOut event received');
     emit(const AppBlocInitialState());
   }
 

@@ -31,9 +31,11 @@ class SecureStorage {
     debugPrint('-----------------------------------------------');
   }
 
+  
   Future<void> deleteTokens() async {
     await storage.delete(key: 'access_token');
     await storage.delete(key: 'refresh_token');
+    debugPrint('deleted tokens');
   }
 
   Future<TokenModel> getAccessToken() async {

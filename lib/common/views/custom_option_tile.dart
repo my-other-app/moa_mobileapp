@@ -33,7 +33,7 @@ class CustomOptionTile extends StatelessWidget {
                 backgroundColor: Color(0xffF3F3F3),
                 radius: 24,
                 child: leadingImageName != null
-                    ? Image.asset(leadingImageName!)
+                    ? Image.asset(leadingImageName!, height: 25, width: 25,)
                     : Icon(icon),
               ),
             title,
