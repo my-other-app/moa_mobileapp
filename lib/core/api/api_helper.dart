@@ -2,8 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:myotherapp/core/api/api_execptions.dart';
 
-//TO-DO: Replace this with your actual base URL
-const String baseUrl = "https://doth-backend.pulsetap.in/";
+const String baseUrl = "https://api.staging.myotherapp.com/api/v1";
 
 enum Method { get, post, put, patch, delete }
 
