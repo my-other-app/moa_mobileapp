@@ -5,6 +5,7 @@ import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
 import 'package:myotherapp/presentation/login/onboarding_final_page.dart';
 import 'package:myotherapp/presentation/home/screen.dart';
+import '../../../../presentation/login/onboarding_details_page.dart';
 import '../../bloc/profile_cubit.dart';
 import '../../data/services/profile_service.dart';
 
@@ -49,20 +50,20 @@ class ProfileCheckPage extends StatelessWidget {
                   if (interest == null ||
                       interest.trim().isEmpty ||
                       interest.toLowerCase() == 'string') {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => OnboardingFinalPage()),
-                    );
                     // Navigator.pushReplacement(
                     //   context,
                     //   MaterialPageRoute(
-                    //     builder: (context) => OnboardingDetailsPage(
-                    //       initialName: state.profile.fullName ?? '',
-                    //       profileUrl: profileUrl,
-                    //     ),
-                    //   ),
+                    //       builder: (context) => OnboardingFinalPage()),
                     // );
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => OnboardingDetailsPage(
+                          initialName: state.profile.fullName ?? '',
+                          profileUrl: profileUrl,
+                        ),
+                      ),
+                    );
                   } else {
                     Navigator.pushReplacement(
                       context,

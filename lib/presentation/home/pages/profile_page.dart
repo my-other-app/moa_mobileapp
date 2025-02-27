@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/common/views/custom_option_tile.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
-import 'package:myotherapp/core/secure_storage/secure_storage.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/presentation/home/pages/certificate_page.dart';
 import 'package:myotherapp/presentation/home/pages/edit_profile_page.dart';
@@ -102,11 +101,11 @@ class ProfilePage extends StatelessWidget {
                     child: const Text('Logout'),
                     onPressed: () async {
                       // Close the dialog
-                      Navigator.of(dialogContext).pop();                      
+                      Navigator.of(dialogContext).pop();
                       // Dispatch logout event to AppBloc
                       if (context.mounted) {
                         context.read<AppBloc>().add(const LoggedOut());
-                        
+
                         // Navigate to login page and clear navigation stack
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(
@@ -153,9 +152,10 @@ class ProfilePage extends StatelessWidget {
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children:[
+                          children: [
                             Text(
-                              context.read<AppBloc>().state.user?.fullName ?? 'User',
+                              context.read<AppBloc>().state.user?.fullName ??
+                                  'User',
                               style: TextStyle(
                                 fontSize: 36,
                                 fontFamily: 'BebasNeue',

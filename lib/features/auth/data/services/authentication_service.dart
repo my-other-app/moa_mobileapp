@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 
 class AuthenticationService {
