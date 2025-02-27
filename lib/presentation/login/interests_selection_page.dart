@@ -1,8 +1,7 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/presentation/login/onboarding_final_page.dart';
 
 class InterestsSelectionPage extends StatefulWidget {
@@ -15,57 +14,52 @@ class InterestsSelectionPage extends StatefulWidget {
 class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
   final Set<InterestItem> selectedInterests = {};
   bool isLoading = false;
-  final Dio dio = Dio();
 
   Future<void> _submitInterests() async {
-    // Retrieve access token from AppBloc state.
-    final accessToken = context.read<AppBloc>().state.accessToken;
-    // Extract selected interest IDs
     List<int> interestIds = selectedInterests.map((item) => item.id).toList();
-    final url =
-        'https://api.staging.myotherapp.com/api/v1/user/interests/select';
 
     setState(() {
       isLoading = true;
     });
 
     try {
-      final response = await dio.post(
-        url,
-        data: jsonEncode({'interest_ids': interestIds}),
-        options: Options(
-          headers: {
-            'accept': 'application/json',
-            'Content-Type': 'application/json',
-            // Include the access token in your headers if needed. For example:
-            'Authorization': 'Bearer $accessToken',
-          },
-        ),
+      final response = await APIService.instance.request(
+        '/user/interests/select',
+        DioMethod.post,
+        formData: jsonEncode({'interests': interestIds}),
       );
+      print('Interest selection response: ${response.data}');
 
-      if (response.statusCode != null &&
-          response.statusCode! >= 200 &&
-          response.statusCode! < 300) {
-        // Navigate to the OnboardingFinalPage upon success
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const OnboardingFinalPage()),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text('Error submitting interests: ${response.statusCode}')),
-        );
+      if (mounted) {
+        if (response.statusCode != null &&
+            response.statusCode! >= 200 &&
+            response.statusCode! < 300) {
+          // Navigate to the OnboardingFinalPage upon success
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const OnboardingFinalPage()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content:
+                    Text('Error submitting interests: ${response.statusCode}')),
+          );
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error submitting interests: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error submitting interests: $e')),
+        );
+      }
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 

@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/common/models/user/main.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
-import 'package:myotherapp/presentation/login/onboarding_final_page.dart';
+import 'package:myotherapp/presentation/login/interests_selection_page.dart';
 import 'package:myotherapp/presentation/home/screen.dart';
 import '../../../../presentation/login/onboarding_details_page.dart';
 import '../../bloc/profile_cubit.dart';
@@ -42,6 +42,7 @@ class ProfileCheckPage extends StatelessWidget {
                           user: user,
                           accessToken: accessToken,
                           refreshToken: tokenModel.refreshToken,
+                          profile: state.profile,
                         ),
                       );
 
@@ -56,14 +57,13 @@ class ProfileCheckPage extends StatelessWidget {
                     //       builder: (context) => OnboardingFinalPage()),
                     // );
                     Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => OnboardingDetailsPage(
-                          initialName: state.profile.fullName ?? '',
-                          profileUrl: profileUrl,
-                        ),
-                      ),
-                    );
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => OnboardingDetailsPage(
+                            initialName: state.profile.fullName ?? '',
+                            profileUrl: profileUrl,
+                          ),
+                        ));
                   } else {
                     Navigator.pushReplacement(
                       context,
