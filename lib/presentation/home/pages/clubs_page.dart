@@ -104,11 +104,15 @@ class ClubsPage extends StatelessWidget {
 
   ClubsPage({super.key});
   final List<String> colleges = [
-    "yourcollege 1",
-    "yourcollege 2",
-    "yourcollege 3",
-    "yourcollege 4",
-    "yourcollege 5"
+    "College",
+    "District",
+    "State",
+    "AI",
+    "IOT",
+    "Web",
+    "Design",
+    "Cyber Security",
+    "App Development"
   ];
 
   @override
