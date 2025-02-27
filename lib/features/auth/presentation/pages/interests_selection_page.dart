@@ -314,31 +314,31 @@ final academicInterests = [
   InterestItem(id: 7, name: 'UI/UX', icon: '🎨'),
   InterestItem(id: 8, name: 'Data Science', icon: '📊'),
   InterestItem(id: 9, name: 'Entrepreneurship', icon: '👨‍💼'),
-  InterestItem(id: 5, name: 'Marketing', icon: '🏷️'),
-  InterestItem(id: 6, name: 'Finance', icon: '💰'),
+  InterestItem(id: 10, name: 'Marketing', icon: '🏷️'),
+  InterestItem(id: 11, name: 'Finance', icon: '💰'),
   InterestItem(id: 2, name: 'AI/ML', icon: '🦾'),
-  InterestItem(id: 8, name: 'Analytics', icon: '📈'),
-  InterestItem(id: 9, name: 'Cybersecurity', icon: '🔒'),
-  InterestItem(id: 10, name: 'Product Management', icon: '🏭'),
+  InterestItem(id: 12, name: 'Analytics', icon: '📈'),
+  InterestItem(id: 13, name: 'Cybersecurity', icon: '🔒'),
+  InterestItem(id: 14, name: 'Product Management', icon: '🏭'),
 ];
 
 final creativeInterests = [
-  InterestItem(id: 11, name: 'Photography', icon: '📸'),
-  InterestItem(id: 12, name: 'Music', icon: '🎵'),
-  InterestItem(id: 13, name: 'Film', icon: '🎬'),
-  InterestItem(id: 14, name: 'Animation', icon: '🐰'),
-  InterestItem(id: 15, name: 'Writing', icon: '✏️'),
-  InterestItem(id: 16, name: 'Fashion', icon: '👗'),
-  InterestItem(id: 17, name: 'Gaming', icon: '🎮'),
+  InterestItem(id: 15, name: 'Photography', icon: '📸'),
+  InterestItem(id: 16, name: 'Music', icon: '🎵'),
+  InterestItem(id: 17, name: 'Film', icon: '🎬'),
+  InterestItem(id: 18, name: 'Animation', icon: '🐰'),
+  InterestItem(id: 19, name: 'Writing', icon: '✏️'),
+  InterestItem(id: 20, name: 'Fashion', icon: '👗'),
+  InterestItem(id: 21, name: 'Gaming', icon: '🎮'),
 ];
 
 final emergingTrendInterests = [
-  InterestItem(id: 18, name: 'Blockchain', icon: '🔗'),
-  InterestItem(id: 19, name: 'VR/AR', icon: '🥽'),
-  InterestItem(id: 20, name: 'Memes & Internet Culture', icon: '🎭'),
-  InterestItem(id: 21, name: 'Content Creation', icon: '🎥'),
-  InterestItem(id: 22, name: 'E-Sports', icon: '🎮'),
-  InterestItem(id: 23, name: 'Space Exploration', icon: '🚀'),
+  InterestItem(id: 22, name: 'Blockchain', icon: '🔗'),
+  InterestItem(id: 23, name: 'VR/AR', icon: '🥽'),
+  InterestItem(id: 24, name: 'Memes & Internet Culture', icon: '🎭'),
+  InterestItem(id: 25, name: 'Content Creation', icon: '🎥'),
+  InterestItem(id: 26, name: 'E-Sports', icon: '🎮'),
+  InterestItem(id: 27, name: 'Space Exploration', icon: '🚀'),
 ];
 
 // Dummy OnboardingFinalPage widget for navigation after a successful API call
