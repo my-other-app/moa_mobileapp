@@ -35,7 +35,6 @@ class AppLoggedInState extends AppBlocState {
 
 class AppLoggedOutState extends AppBlocState {
   const AppLoggedOutState();
-  
   @override
   List<Object?> get props => <Object?>[user, accessToken, refreshToken];
 }

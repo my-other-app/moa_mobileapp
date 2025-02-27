@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_final_page.dart';
+import 'package:myotherapp/presentation/login/onboarding_final_page.dart';
 
 class InterestsSelectionPage extends StatefulWidget {
   const InterestsSelectionPage({super.key});

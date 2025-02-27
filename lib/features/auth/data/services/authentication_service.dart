@@ -1,38 +1,40 @@
 import 'package:dio/dio.dart';
+import 'package:myotherapp/core/api/api_helper.dart';
 
 class AuthenticationService {
+  // final Dio _dio;
 
-  final Dio _dio;
-
-  AuthenticationService({Dio? dio})
-      : _dio = dio ??
-            Dio(
-              BaseOptions(
-                baseUrl: 'https://api.staging.myotherapp.com/api/v1',
-                headers: {'Content-Type': 'application/json'},
-              ),
-            );
+  // AuthenticationService({Dio? dio})
+  //     : _dio = dio ??
+  //           Dio(
+  //             BaseOptions(
+  //               baseUrl: 'https://api.staging.myotherapp.com/api/v1',
+  //               headers: {'Content-Type': 'application/json'},
+  //             ),
+  //           );
 
   Future<Map<String, dynamic>> signInWithGoogle({
     required String idToken,
     required String platform,
   }) async {
-    try {
-      final response = await _dio.post(
-        '/auth/google',
-        data: {
-          'id_token': idToken,
-          'platform': platform,
-        },
-      );
-      return response.data;
-    } on DioException catch (e) {
-      // Handle specific errors (e.g., 422 validation errors)
-      if (e.response?.statusCode == 422) {
-        throw Exception('Validation Error: ${e.response?.data}');
-      } else {
-        throw Exception('Login failed: ${e.message}');
-      }
-    }
+    // final response = await _dio.post(
+    //   '/auth/google',
+    //   data: {
+    //     'id_token': idToken,
+    //     'platform': platform,
+    //   },
+    // );
+    final response = await APIService.instance.request(
+      '/auth/google',
+      DioMethod.post,
+      param: {
+        'id_token': idToken,
+        'platform': platform,
+      },
+      skipAuthToken: true,
+    );
+    if (response.statusCode == 200) return response.data;
+
+    throw Exception('Login failed: ${response.data}');
   }
 }

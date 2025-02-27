@@ -102,11 +102,7 @@ class ProfilePage extends StatelessWidget {
                     child: const Text('Logout'),
                     onPressed: () async {
                       // Close the dialog
-                      Navigator.of(dialogContext).pop();
-                      
-                      // Clear tokens from secure storage
-                      await SecureStorage.instance.deleteTokens();
-                      
+                      Navigator.of(dialogContext).pop();                      
                       // Dispatch logout event to AppBloc
                       if (context.mounted) {
                         context.read<AppBloc>().add(const LoggedOut());
@@ -157,9 +153,9 @@ class ProfilePage extends StatelessWidget {
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: const [
+                          children:[
                             Text(
-                              'EDWIN EMMANUEL ROY',
+                              context.read<AppBloc>().state.user?.fullName ?? 'User',
                               style: TextStyle(
                                 fontSize: 36,
                                 fontFamily: 'BebasNeue',

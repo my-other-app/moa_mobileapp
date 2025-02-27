@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
-import '../../bloc/login_cubit.dart';
-import '../../data/services/authentication_service.dart';
-import 'profile_check_page.dart'; // Make sure this file exists and is properly implemented
+import 'package:myotherapp/features/auth/bloc/login_cubit.dart';
+import 'package:myotherapp/features/auth/data/services/authentication_service.dart';
+import 'package:myotherapp/features/auth/presentation/pages/profile_check_page.dart';
+// Make sure this file exists and is properly implemented
 
 class OnboardingInitialPage extends StatelessWidget {
   OnboardingInitialPage({super.key});
@@ -74,11 +75,11 @@ class OnboardingInitialPage extends StatelessWidget {
               ],
             ),
             // Background grass image.
-            IgnorePointer(
-              child: Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0, 
+              child: IgnorePointer(
                 child: Image.asset(
                   'assets/images/grass.png',
                   fit: BoxFit.cover,
@@ -264,28 +265,26 @@ class OnboardingInitialPage extends StatelessWidget {
             _handleGoogleSignIn(context);
           },
           borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 85, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
-                  'assets/images/google_logo.png',
-                  width: 32,
-                  height: 32,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/images/google_logo.png',
+                width: 32,
+                height: 32,
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'LOGIN WITH GOOGLE',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontFamily: 'Bebas Neue',
+                  fontWeight: FontWeight.w400,
                 ),
-                const SizedBox(width: 16),
-                const Text(
-                  'Login With Google',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontFamily: 'Bebas Neue',
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
