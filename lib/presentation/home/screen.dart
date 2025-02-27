@@ -4,7 +4,6 @@ import 'package:myotherapp/presentation/home/bloc/bottom_nav_bloc.dart';
 import 'package:myotherapp/presentation/home/bloc/bottom_nav_event.dart';
 import 'package:myotherapp/presentation/home/bloc/bottom_nav_state.dart';
 import 'package:myotherapp/presentation/home/pages/clubs_page.dart';
-import 'package:myotherapp/presentation/home/pages/courses_page.dart';
 import 'package:myotherapp/presentation/home/pages/events_page.dart';
 import 'package:myotherapp/presentation/home/pages/home_page.dart';
 import 'package:myotherapp/presentation/home/pages/profile_page.dart';

@@ -1,8 +1,6 @@
 import 'package:bloc/bloc.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/common/models/user/main.dart';
-import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
 import 'package:myotherapp/core/secure_storage/token_model.dart';
 import '../data/services/authentication_service.dart';
@@ -20,7 +18,7 @@ class LoginSuccess extends LoginState {
   final String refreshToken;
   final String photoUrl;
   final UserModel? user;
-  
+
   LoginSuccess({
     required this.accessToken,
     required this.refreshToken,
@@ -42,8 +40,8 @@ class LoginCubit extends Cubit<LoginState> {
   LoginCubit({
     required this.authService,
     ProfileService? profileService,
-  }) : profileService = profileService ?? ProfileService(),
-       super(LoginInitial());
+  })  : profileService = profileService ?? ProfileService(),
+        super(LoginInitial());
 
   Future<void> loginWithGoogle(
       String idToken, String platform, String photoUrl) async {
@@ -53,11 +51,11 @@ class LoginCubit extends Cubit<LoginState> {
         idToken: idToken,
         platform: platform,
       );
-    
+
       // Store tokens in secure storage
       final secureStorage = SecureStorage.instance;
       await secureStorage.updateTokens(TokenModel.fromJson(result));
-      
+
       // Get user profile
       final accessToken = result['access_token'];
       emit(LoginSuccess(
