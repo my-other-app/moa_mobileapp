@@ -15,8 +15,6 @@ class ExploreMoreClubCard extends StatelessWidget {
       {'label': 'UI/UX', 'color': Colors.red.shade100},
       {'label': 'Web Designing', 'color': Colors.green.shade100},
       {'label': 'AI/ML', 'color': Colors.amber.shade100},
-      {'label': 'DSA', 'color': Colors.pink.shade100},
-      {'label': 'Competitive Coding', 'color': Colors.purple.shade100},
     ];
 
     return InkWell(

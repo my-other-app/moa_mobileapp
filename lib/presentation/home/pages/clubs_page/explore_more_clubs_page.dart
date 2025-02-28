@@ -1,9 +1,48 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/presentation/home/widget/explore_more_club_card.dart';
 import 'package:myotherapp/presentation/home/widget/search_college_widget.dart';
 
-class ExploreMoreClubsPage extends StatelessWidget {
+import '../../../../core/api/api_helper.dart';
+
+class ExploreMoreClubsPage extends StatefulWidget {
   const ExploreMoreClubsPage({super.key});
+
+  @override
+  State<ExploreMoreClubsPage> createState() => _ExploreMoreClubsPageState();
+}
+
+class _ExploreMoreClubsPageState extends State<ExploreMoreClubsPage> {
+  List<dynamic> clubs = [];
+  bool isLoading = true;
+  String? errorMessage;
+
+  Future<void> _fetchData() async {
+    try {
+      Response<dynamic> res = await APIService.instance.request(
+        '/clubs/list',
+        DioMethod.get,
+      );
+      setState(() {
+        // Adjust this based on your API response structure.
+        // Here we assume events are under the key 'items'.
+        clubs = res.data['items'] ?? [];
+        print(clubs);
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
 
   @override
   Widget build(BuildContext context) {
