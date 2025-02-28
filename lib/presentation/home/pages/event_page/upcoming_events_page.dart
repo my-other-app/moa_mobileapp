@@ -1,78 +1,109 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:myotherapp/presentation/home/widget/event_card.dart';
 
-import '../../widget/event_card.dart';
-
-class UpcomingEventsPage extends StatelessWidget {
+class UpcomingEventsPage extends StatefulWidget {
   const UpcomingEventsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.white,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: <Widget>[
-          EventCard(
-            title: 'Blender free 2 day',
-            organizer: 'IEDC CET',
-            tags: ['workshop', 'online', 'paid', '2 hours'],
-            onTap: () {},
-            imageUrl:
-                'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZXf3nbnry-f9qbUwAUfTt-pQssbF3JVjFjg&s',
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
-            child: Divider(
-              thickness: 1,
-              color: Colors.black,
-              indent: 50,
-              endIndent: 50,
-            ),
-          ),
-          EventCard(
-            title: 'Blender free 2 day',
-            organizer: 'IEDC CET',
-            tags: ['workshop', 'online', 'paid', '2 hours'],
-            onTap: () {},
-            imageUrl:
-                'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
-            child: Divider(
-              thickness: 1,
-              color: Colors.black,
-              indent: 50,
-              endIndent: 50,
-            ),
-          ),
-          EventCard(
-            title: 'Blender free 2 day',
-            organizer: 'IEDC CET',
-            tags: ['workshop', 'online', 'paid', '2 hours'],
-            onTap: () {},
-            imageUrl:
-                'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
-            child: Divider(
-              thickness: 1,
-              color: Colors.black,
-              indent: 50,
-              endIndent: 50,
-            ),
-          ),
-          EventCard(
-            title: 'Blender free 2 day',
-            organizer: 'IEDC CET',
-            tags: ['workshop', 'online', 'paid', '2 hours'],
-            onTap: () {},
-            imageUrl:
-                'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
-          ),
-        ],
+  State<UpcomingEventsPage> createState() => _UpcomingEventsPageState();
+}
+
+class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
+  List<dynamic> events = [];
+  bool isLoading = true;
+  String? errorMessage;
+
+  Future<void> _fetchData() async {
+    try {
+      Response<dynamic> res = await APIService.instance.request(
+        '/events/list?is_registered=true&is_ended=false&offset=0&limit=10',
+        DioMethod.get,
+      );
+      setState(() {
+        events = res.data['items'] ?? [];
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Widget _buildEventCards() {
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: events.length,
+      separatorBuilder: (context, index) => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20.0),
+        child: Divider(
+          thickness: 1,
+          color: Colors.black,
+          indent: 50,
+          endIndent: 50,
+        ),
       ),
+      itemBuilder: (context, index) {
+        final event = events[index];
+        return EventCard(
+          orgImage: event['club']?['logo']?['thumbnail'] ?? '',
+          title: event['name'] ?? 'No Title',
+          organizer: event['club']?['name'] ?? 'Unknown Organizer',
+          tags: [
+            event['category']?['name'] ?? '',
+            event['is_online'] == true ? 'Online' : 'Offline',
+            event['has_fee'] == true ? 'Paid' : 'Free',
+            '${event['duration']} Hours'
+          ],
+          onTap: () {
+            // Handle tap event here.
+          },
+          imageUrl:
+              event['poster']?['medium'] ?? 'https://via.placeholder.com/150',
+          eventId: event['id'],
+          clubId: event['club']['id'],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (errorMessage != null) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: Text('Error: $errorMessage')),
+      );
+    }
+    if (events.isEmpty) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Text(
+            'Nothing to show on the feed',
+            style: TextStyle(fontSize: 18),
+          ),
+        ),
+      );
+    }
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: _buildEventCards(),
     );
   }
 }

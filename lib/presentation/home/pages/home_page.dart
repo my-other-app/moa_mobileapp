@@ -11,7 +11,7 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return SearchTabHeader(
       tabTitles: const ['FOR YOU', 'FOLLOWING'],
-      tabPages: const [
+      tabPages: [
         ForYouEventsPage(),
         FollowingEventsPage(),
       ],

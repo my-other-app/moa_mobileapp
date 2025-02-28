@@ -7,7 +7,9 @@ import '../../../core/resources/asset_resources.dart';
 import '../widget/svg_icon.dart';
 
 class IndividualEventPage extends StatelessWidget {
-  const IndividualEventPage({Key? key}) : super(key: key);
+  final int eventId;
+  const IndividualEventPage({Key? key, required this.eventId})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {

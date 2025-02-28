@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/presentation/home/widget/event_card.dart';
-import 'package:myotherapp/presentation/home/widget/note_card.dart';
 
 class ForYouEventsPage extends StatefulWidget {
   const ForYouEventsPage({super.key});
@@ -22,7 +21,6 @@ class _ForYouEventsPageState extends State<ForYouEventsPage> {
         '/events/list?offset=0&limit=10',
         DioMethod.get,
       );
-      // Assuming the response contains a key "items" with an array of events.
       setState(() {
         events = res.data['items'] ?? [];
         isLoading = false;
@@ -56,24 +54,23 @@ class _ForYouEventsPageState extends State<ForYouEventsPage> {
       ),
       itemBuilder: (context, index) {
         final event = events[index];
-        print(event['club']?['name']);
-        // Map API data to your EventCard properties.
         return EventCard(
+          orgImage: event['club']?['logo']?['thumbnail'] ?? '',
           title: event['name'] ?? 'No Title',
           organizer: event['club']?['name'] ?? 'Unknown Organizer',
-          // For tags, here we add category name and other optional details.
           tags: [
             event['category']?['name'] ?? '',
             event['is_online'] == true ? 'Online' : 'Offline',
-            if (event['has_fee'] == true) 'Paid' else 'Free',
+            event['has_fee'] == true ? 'Paid' : 'Free',
             '${event['duration']} Hours'
           ],
           onTap: () {
             // Handle tap event here.
           },
-          // Using the "medium" poster image as an example.
           imageUrl:
               event['poster']?['medium'] ?? 'https://via.placeholder.com/150',
+          eventId: event['id'],
+          clubId: event['club']['id'],
         );
       },
     );
@@ -82,10 +79,25 @@ class _ForYouEventsPageState extends State<ForYouEventsPage> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+          child: CircularProgressIndicator(
+        backgroundColor: Colors.white,
+      ));
     }
     if (errorMessage != null) {
       return Center(child: Text('Error: $errorMessage'));
+    }
+    // If there are no events, show a message.
+    if (events.isEmpty) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Text(
+            'Nothing to show on the feed',
+            style: TextStyle(fontSize: 18),
+          ),
+        ),
+      );
     }
     return Scaffold(
       backgroundColor: Colors.white,

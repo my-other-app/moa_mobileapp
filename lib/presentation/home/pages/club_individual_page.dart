@@ -4,7 +4,8 @@ import 'package:myotherapp/presentation/home/pages/club_profile_page.dart';
 import 'package:myotherapp/presentation/home/widget/club_tab_header.dart';
 
 class ClubIndividualPage extends StatelessWidget {
-  const ClubIndividualPage({super.key});
+  final int clubId;
+  const ClubIndividualPage({super.key, required this.clubId});
 
   @override
   Widget build(BuildContext context) {

@@ -23,7 +23,10 @@ class ExploreMoreClubCard extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => ClubIndividualPage()),
+          MaterialPageRoute(
+              builder: (context) => ClubIndividualPage(
+                    clubId: 1,
+                  )),
         );
       },
       child: Container(

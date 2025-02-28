@@ -41,7 +41,9 @@ class PinnedClubsSection extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => ClubIndividualPage()),
+                        builder: (context) => ClubIndividualPage(
+                              clubId: 1,
+                            )),
                   );
                 },
                 child: Column(

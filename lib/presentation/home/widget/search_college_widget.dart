@@ -16,6 +16,7 @@ class SearchAndCollegeList extends StatelessWidget {
         _buildSearchBox(),
         const SizedBox(height: 16),
         _buildCollegesList(),
+        const SizedBox(height: 24),
       ],
     );
   }

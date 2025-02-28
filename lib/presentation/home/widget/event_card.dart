@@ -10,6 +10,10 @@ class EventCard extends StatelessWidget {
   final String imageUrl;
   final List<String> tags;
   final VoidCallback onTap;
+  final String orgImage;
+  final int eventId;
+  final int clubId;
+
   //link
   //club image
 
@@ -20,6 +24,9 @@ class EventCard extends StatelessWidget {
     required this.imageUrl,
     required this.tags,
     required this.onTap,
+    required this.orgImage,
+    required this.eventId,
+    required this.clubId,
   });
 
   @override
@@ -40,12 +47,15 @@ class EventCard extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => ClubIndividualPage()),
+                  MaterialPageRoute(
+                      builder: (context) => ClubIndividualPage(
+                            clubId: clubId,
+                          )),
                 );
               },
               child: SizedBox(
                 child: Image.network(
-                  'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
+                  orgImage,
                   width: 48,
                   height: 48,
                   fit: BoxFit.cover,
@@ -76,7 +86,9 @@ class EventCard extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => ClubIndividualPage()),
+                            builder: (context) => ClubIndividualPage(
+                                  clubId: clubId,
+                                )),
                       );
                     },
                     child: Text(
@@ -105,7 +117,10 @@ class EventCard extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => IndividualEventPage()),
+              MaterialPageRoute(
+                  builder: (context) => IndividualEventPage(
+                        eventId: eventId,
+                      )),
             );
           },
           child: Container(
@@ -145,7 +160,10 @@ class EventCard extends StatelessWidget {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => IndividualEventPage()),
+              MaterialPageRoute(
+                  builder: (context) => IndividualEventPage(
+                        eventId: eventId,
+                      )),
             );
           },
           child: Text('TAKE A CLOSER LOOK OF THE EVENT'),
