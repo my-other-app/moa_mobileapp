@@ -150,7 +150,7 @@ class EventCard extends StatelessWidget {
                 ],
                 Text(
                   tag,
-                  style: textTheme.bodySmall,
+                  style: TextStyle(fontSize: 12),
                 ),
               ],
             );
