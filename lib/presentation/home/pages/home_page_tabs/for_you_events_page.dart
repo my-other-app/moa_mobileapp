@@ -1,9 +1,32 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/presentation/home/widget/event_card.dart';
 import 'package:myotherapp/presentation/home/widget/note_card.dart';
 
-class ForYouEventsPage extends StatelessWidget {
+class ForYouEventsPage extends StatefulWidget {
   const ForYouEventsPage({super.key});
+
+  @override
+  State<ForYouEventsPage> createState() => _ForYouEventsPageState();
+}
+
+class _ForYouEventsPageState extends State<ForYouEventsPage> {
+  late Response<dynamic>? res;
+  Future<void> _fetchData() async {
+    res = await APIService.instance.request(
+      '/clubs/list?offset=0&limit=10',
+      DioMethod.get,
+    );
+    print(res);
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    _fetchData();
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {

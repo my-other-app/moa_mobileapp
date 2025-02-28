@@ -51,19 +51,18 @@ class ProfileCheckPage extends StatelessWidget {
                   if (interest == null ||
                       interest.trim().isEmpty ||
                       interest.toLowerCase() == 'string') {
-                    // Navigator.pushReplacement(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //       builder: (context) => OnboardingFinalPage()),
-                    // );
                     Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => OnboardingDetailsPage(
-                            initialName: state.profile.fullName ?? '',
-                            profileUrl: profileUrl,
-                          ),
-                        ));
+                      context,
+                      MaterialPageRoute(builder: (context) => LandingPage()),
+                    );
+                    // Navigator.pushReplacement(
+                    //     context,
+                    //     MaterialPageRoute(
+                    //       builder: (context) => OnboardingDetailsPage(
+                    //         initialName: state.profile.fullName ?? '',
+                    //         profileUrl: profileUrl,
+                    //       ),
+                    //     ));
                   } else {
                     Navigator.pushReplacement(
                       context,
