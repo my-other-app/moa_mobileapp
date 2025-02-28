@@ -1,3 +1,4 @@
+
 class Profile {
   final String? fullName;
   final String? email;
@@ -31,6 +32,18 @@ class Profile {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'full_name': fullName,
+      'email': email,
+      'phone': phone,
+      'username': username,
+      'user_type': userType,
+      'profile': profile?.toJson(),
+    };
+  }
+
   @override
   String toString() {
     return 'Profile(id: $id, fullName: $fullName, email: $email, phone: $phone, username: $username, userType: $userType, profile: $profile)';
@@ -54,12 +67,22 @@ class ProfileDetails {
 
   factory ProfileDetails.fromJson(Map<String, dynamic> json) {
     return ProfileDetails(
-      interest: json['interest'] as String?, // New interest field
+      interest: json['interest'] as String?,
       whatsapp: json['whatsapp'] as String?,
       org: json['org'] != null ? Org.fromJson(json['org']) : null,
       avatar: json['avatar'] != null ? Avatar.fromJson(json['avatar']) : null,
       profilePic: json['profile_pic'] as Map<String, dynamic>?,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'interest': interest,
+      'whatsapp': whatsapp,
+      'org': org?.toJson(),
+      'avatar': avatar?.toJson(),
+      'profile_pic': profilePic,
+    };
   }
 
   @override
@@ -92,6 +115,15 @@ class Org {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'type': type,
+      'logo': logo?.toJson(),
+      'id': id,
+    };
+  }
+
   @override
   String toString() {
     return 'Org(name: $name, type: $type, logo: $logo, id: $id)';
@@ -120,6 +152,15 @@ class Logo {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'thumbnail': thumbnail,
+      'medium': medium,
+      'large': large,
+      'original': original,
+    };
+  }
+
   @override
   String toString() {
     return 'Logo(thumbnail: $thumbnail, medium: $medium, large: $large, original: $original)';
@@ -143,6 +184,14 @@ class Avatar {
       iconType: json['icon_type'] as String?,
       content: json['content'] as String?,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'icon_type': iconType,
+      'content': content,
+    };
   }
 
   @override
