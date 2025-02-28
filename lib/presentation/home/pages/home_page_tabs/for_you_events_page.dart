@@ -12,109 +12,84 @@ class ForYouEventsPage extends StatefulWidget {
 }
 
 class _ForYouEventsPageState extends State<ForYouEventsPage> {
-  late Response<dynamic>? res;
+  List<dynamic> events = [];
+  bool isLoading = true;
+  String? errorMessage;
+
   Future<void> _fetchData() async {
-    res = await APIService.instance.request(
-      '/clubs/list?offset=0&limit=10',
-      DioMethod.get,
-    );
-    print(res);
+    try {
+      Response<dynamic> res = await APIService.instance.request(
+        '/events/list?offset=0&limit=10',
+        DioMethod.get,
+      );
+      // Assuming the response contains a key "items" with an array of events.
+      setState(() {
+        events = res.data['items'] ?? [];
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
   }
 
   @override
   void initState() {
-    // TODO: implement initState
-    _fetchData();
     super.initState();
+    _fetchData();
+  }
+
+  Widget _buildEventCards() {
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: events.length,
+      separatorBuilder: (context, index) => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20.0),
+        child: Divider(
+          thickness: 1,
+          color: Colors.black,
+          indent: 50,
+          endIndent: 50,
+        ),
+      ),
+      itemBuilder: (context, index) {
+        final event = events[index];
+        print(event['club']?['name']);
+        // Map API data to your EventCard properties.
+        return EventCard(
+          title: event['name'] ?? 'No Title',
+          organizer: event['club']?['name'] ?? 'Unknown Organizer',
+          // For tags, here we add category name and other optional details.
+          tags: [
+            event['category']?['name'] ?? '',
+            event['is_online'] == true ? 'Online' : 'Offline',
+            if (event['has_fee'] == true) 'Paid' else 'Free',
+            '${event['duration']} Hours'
+          ],
+          onTap: () {
+            // Handle tap event here.
+          },
+          // Using the "medium" poster image as an example.
+          imageUrl:
+              event['poster']?['medium'] ?? 'https://via.placeholder.com/150',
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.white,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: <Widget>[
-          EventCard(
-            title: 'Blender free 2 day',
-            organizer: 'IEDC CET',
-            tags: ['Workshop', 'Online', 'Paid', '2 Hours'],
-            onTap: () {},
-            imageUrl:
-                "https://static.vecteezy.com/system/resources/previews/022/590/539/original/summer-party-poster-design-music-party-flyer-artwork-template-vector.jpg",
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
-            child: Divider(
-              thickness: 1,
-              color: Colors.black,
-              indent: 50,
-              endIndent: 50,
-            ),
-          ),
-          NoteCard(
-            logoUrl:
-                'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
-            headerTitle: 'Tinkerhub HQ',
-            headerSubtitle: '2 days ago',
-            cardTitle: 'Another TinkerHub Card',
-            description:
-                'A longer description shows how the card automatically grows '
-                'as the content increases.',
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
-            child: Divider(
-              thickness: 1,
-              color: Colors.black,
-              indent: 50,
-              endIndent: 50,
-            ),
-          ),
-          EventCard(
-            title: 'Blender free 2 day',
-            organizer: 'IEDC CET',
-            tags: ['Workshop', 'Online', 'Paid', '2 Hours'],
-            onTap: () {},
-            imageUrl:
-                'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
-            child: Divider(
-              thickness: 1,
-              color: Colors.black,
-              indent: 50,
-              endIndent: 50,
-            ),
-          ),
-          EventCard(
-            title: 'Blender free 2 day',
-            organizer: 'IEDC CET',
-            tags: ['Workshop', 'Online', 'Paid', '2 Hours'],
-            onTap: () {},
-            imageUrl:
-                'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
-            child: Divider(
-              thickness: 1,
-              color: Colors.black,
-              indent: 50,
-              endIndent: 50,
-            ),
-          ),
-          EventCard(
-            title: 'Blender free 2 day',
-            organizer: 'IEDC CET',
-            tags: ['Workshop', 'Online', 'Paid', '2 Hours'],
-            onTap: () {},
-            imageUrl:
-                'https://fastly.picsum.photos/id/288/536/354.jpg?hmac=0_DALLGv6guhuEVpDdbFjlA-yvbIhMjnl1YhHtfhW10',
-          ),
-        ],
-      ),
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (errorMessage != null) {
+      return Center(child: Text('Error: $errorMessage'));
+    }
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: _buildEventCards(),
     );
   }
 }
