@@ -264,7 +264,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 Expanded(
                   child: _infoCard(
                     context,
-                    icon: Icons.calendar_month,
+                    icon: AssetResources.eventdate,
                     title: 'Date of Event',
                     value: eventDateTime != null
                         ? "${eventDateTime!.day}-${eventDateTime!.month}-${eventDateTime!.year}"
@@ -275,7 +275,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 Expanded(
                   child: _infoCard(
                     context,
-                    icon: Icons.payment,
+                    icon: AssetResources.regfee,
                     title: 'Registration Fee',
                     value: hasFee == true ? '₹ $regFee' : 'Free',
                   ),
@@ -289,7 +289,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 Expanded(
                   child: _infoCard(
                     context,
-                    icon: Icons.access_time,
+                    icon: AssetResources.eventtime,
                     title: 'Time of Event',
                     value: eventDateTime != null
                         ? _formatTime(eventDateTime!)
@@ -300,7 +300,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 Expanded(
                   child: _infoCard(
                     context,
-                    icon: Icons.hourglass_bottom,
+                    icon: AssetResources.duration,
                     title: 'Duration',
                     value: "$duration Hours",
                   ),
@@ -314,7 +314,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 Expanded(
                   child: _infoCard(
                     context,
-                    icon: Icons.location_on,
+                    icon: AssetResources.location,
                     title: 'Location',
                     value: locationName ?? 'N/A',
                   ),
@@ -323,7 +323,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 Expanded(
                   child: _infoCard(
                     context,
-                    icon: Icons.card_giftcard,
+                    icon: AssetResources.prize,
                     title: 'Prize Worth',
                     value: hasPrize == true ? '₹ $prizeAmount' : 'None',
                   ),
@@ -419,10 +419,10 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
 
 // Helper Widget for info items.
 Widget _infoCard(BuildContext context,
-    {required IconData icon, required String title, required String value}) {
+    {required String icon, required String title, required String value}) {
   return Container(
     width: MediaQuery.of(context).size.width * 0.4,
-    padding: const EdgeInsets.all(8.0),
+    padding: const EdgeInsets.all(7.0),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(8),
       color: Colors.white,
@@ -431,17 +431,25 @@ Widget _infoCard(BuildContext context,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: Theme.of(context).primaryColor),
+        const SizedBox(height: 4),
+        CircleAvatar(
+          backgroundColor: Color(0xffF3F3F3),
+          radius: 24,
+          child: Image.asset(
+            icon,
+            height: 25,
+            width: 25,
+          ),
+        ),
         const SizedBox(height: 10),
         Text(
           title,
           style: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.bold,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 4),
         Text(
           value,
           style: const TextStyle(
@@ -450,7 +458,6 @@ Widget _infoCard(BuildContext context,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        const SizedBox(height: 20),
       ],
     ),
   );

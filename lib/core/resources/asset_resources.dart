@@ -12,4 +12,10 @@ class AssetResources {
   static const String mycertificates = "assets/icons/mycertificates.webp";
   static const String notifications = "assets/icons/notifications.webp";
   static const String settings = "assets/icons/settings.webp";
+  static const String duration = "assets/icons/duration.webp";
+  static const String eventdate = "assets/icons/eventdate.webp";
+  static const String eventtime = "assets/icons/eventtime.webp";
+  static const String location = "assets/icons/location.webp";
+  static const String prize = "assets/icons/prize.webp";
+  static const String regfee = "assets/icons/regfee.webp";
 }
