@@ -19,8 +19,8 @@ class AppStarted extends AppBlocEvent {
 
 }
 
-class LoggedIn extends AppBlocEvent {
-  const LoggedIn({
+class LoggedInEvent extends AppBlocEvent {
+  const LoggedInEvent({
    required this.user,
    required this.accessToken,
    required this.refreshToken,
@@ -33,6 +33,12 @@ class LoggedIn extends AppBlocEvent {
   final Profile profile;
 }
 
-class LoggedOut extends AppBlocEvent {
-  const LoggedOut();
+class UpdateUserDetailsEvent extends AppBlocEvent{
+  const UpdateUserDetailsEvent({required this.profile});
+  
+  final Profile profile;
+}
+
+class LoggedOutEvent extends AppBlocEvent {
+  const LoggedOutEvent();
 }

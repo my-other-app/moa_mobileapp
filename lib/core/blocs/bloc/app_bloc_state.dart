@@ -31,6 +31,18 @@ class AppLoggedInState extends AppBlocState {
   List<Object?> get props => <Object?>[user, accessToken, refreshToken, profile];
 }
 
+class UpdateUserDetailsState extends AppBlocState {
+  const UpdateUserDetailsState({
+    required super.user, 
+    required super.accessToken, 
+    required super.refreshToken,
+    required super.profile,
+  });
+  
+  @override
+  List<Object?> get props => <Object?>[user, accessToken, refreshToken, profile];
+}
+
 class AppLoggedOutState extends AppBlocState {
   const AppLoggedOutState();
   @override

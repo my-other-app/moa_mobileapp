@@ -12,8 +12,9 @@ part 'app_bloc_state.dart';
 class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
   AppBloc({required this.user}) : super(const AppBlocInitialState()) {
     on<AppStarted>(_onAppStarted);
-    on<LoggedIn>(_onLoggedIn);
-    on<LoggedOut>(_onLoggedOut);
+    on<LoggedInEvent>(_onLoggedIn);
+    on<LoggedOutEvent>(_onLoggedOut);
+    on<UpdateUserDetailsEvent>(_onUpdateUserDetails);
   }
   final UserModel? user;
 
@@ -34,8 +35,21 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
     }
   }
 
+  Future<void> _onUpdateUserDetails(
+    UpdateUserDetailsEvent event,
+    Emitter<AppBlocState> emit,
+  ) async {
+    debugPrint('UpdateUserDetails event with user: ${event.profile.fullName}');
+    emit(UpdateUserDetailsState(
+      user: user,
+      accessToken: state.accessToken,
+      refreshToken: state.refreshToken,
+      profile: event.profile,
+    ));
+  }
+
   Future<void> _onLoggedIn(
-    LoggedIn event,
+    LoggedInEvent event,
     Emitter<AppBlocState> emit,
   ) async {
     debugPrint('LoggedIn event with user: ${event.user.fullName}');
@@ -56,7 +70,7 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
           user: event.user,
           accessToken: event.accessToken,
           refreshToken: event.refreshToken,
-          profile: null,
+          profile: event.profile,
         ));
         return;
       }
@@ -102,7 +116,7 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
   }
 
   void _onLoggedOut(
-    LoggedOut event,
+    LoggedOutEvent event,
     Emitter<AppBlocState> emit,
   ) {
     SecureStorage.instance.deleteTokens();

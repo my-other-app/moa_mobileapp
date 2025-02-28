@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
 
 class InterestsPage extends StatefulWidget {
   const InterestsPage({super.key});
@@ -8,7 +10,7 @@ class InterestsPage extends StatefulWidget {
 }
 
 class _InterestsPageState extends State<InterestsPage> {
-  final Set<String> _selectedInterests = {};
+  final List<InterestItem> _selectedInterests = [];
 
   final Map<String, List<InterestItem>> interests = {
     'Academic': [
@@ -43,14 +45,14 @@ class _InterestsPageState extends State<InterestsPage> {
   };
 
   Widget _buildInterestChip(InterestItem interest) {
-    final isSelected = _selectedInterests.contains(interest.name);
+    final isSelected = _selectedInterests.contains(InterestItem(name: interest.name, icon: interest.icon));
     return GestureDetector(
       onTap: () {
         setState(() {
           if (isSelected) {
-            _selectedInterests.remove(interest.name);
+            _selectedInterests.remove(InterestItem(name: interest.name, icon: interest.icon));
           } else if (_selectedInterests.length < 5) {
-            _selectedInterests.add(interest.name);
+            _selectedInterests.add(InterestItem(name: interest.name, icon: interest.icon));
           }
         });
       },
@@ -91,6 +93,13 @@ class _InterestsPageState extends State<InterestsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final List<dynamic> currentIntrests =
+        context.watch<AppBloc>().state.profile?.profile?.interests ?? [];
+
+    for (var interest in currentIntrests) {
+      _selectedInterests.add(InterestItem(name: interest.name, icon: interest.icon));
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(

@@ -17,15 +17,9 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Example tags
-    final tags = [
-      {'label': 'Coding', 'color': Colors.lightBlue.shade100},
-      {'label': 'Entrepreneurship', 'color': Colors.yellow.shade100},
-      {'label': 'UI/UX', 'color': Colors.red.shade100},
-      {'label': 'Project Management', 'color': Colors.green.shade100},
-      {'label': 'Leadership', 'color': Colors.amber.shade100},
-      {'label': 'DSA', 'color': Colors.pink.shade100},
-      {'label': 'Competitive Coding', 'color': Colors.purple.shade100},
-    ];
+    final tags = context.read<AppBloc>().state.profile?.profile?.interests ?? [];
+
+  
 
     // For each menu item, define a label, icon, and onTap function
     final menuItems = [
@@ -104,7 +98,7 @@ class ProfilePage extends StatelessWidget {
                       Navigator.of(dialogContext).pop();
                       // Dispatch logout event to AppBloc
                       if (context.mounted) {
-                        context.read<AppBloc>().add(const LoggedOut());
+                        context.read<AppBloc>().add(const LoggedOutEvent());
 
                         // Navigate to login page and clear navigation stack
                         Navigator.of(context).pushAndRemoveUntil(
@@ -154,7 +148,7 @@ class ProfilePage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
-                              context.read<AppBloc>().state.user?.fullName ??
+                              context.read<AppBloc>().state.profile?.fullName ??
                                   'User',
                               style: TextStyle(
                                 fontSize: 36,
@@ -162,7 +156,7 @@ class ProfilePage extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              'COLLEGE OF ENGINEERING TRIVANDRUM',
+                              context.read<AppBloc>().state.profile?.profile?.org?.name ??  'COLLEGE OF ENGINEERING TRIVANDRUM',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontFamily: 'BebasNeue',
@@ -181,11 +175,11 @@ class ProfilePage extends StatelessWidget {
                                 horizontal: 8,
                               ),
                               decoration: BoxDecoration(
-                                color: tag['color'] as Color,
+                                color: Color(tag.hashCode),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                tag['label'] as String,
+                                '${tag.icon}  ${tag.name}',
                                 style: const TextStyle(fontSize: 12),
                               ),
                             );
