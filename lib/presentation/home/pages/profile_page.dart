@@ -17,10 +17,6 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Example tags
-    final tags = context.read<AppBloc>().state.profile?.profile?.interests ?? [];
-
-  
-
     // For each menu item, define a label, icon, and onTap function
     final menuItems = [
       {
@@ -117,110 +113,117 @@ class ProfilePage extends StatelessWidget {
         },
       },
     ];
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            spacing: 40, // If you're using a package like spaced_column
-            children: [
-              // 1) Avatar, Name, College
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 16, // If you're using spaced_row or similar
+return BlocBuilder<AppBloc, AppBlocState>(
+      buildWhen: (previous, current) {
+        return current.profile != previous.profile;
+      },
+      builder: (context, state) {
+        final tags = state.profile?.interests ?? [];
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                spacing: 40, // If you're using a package like spaced_column
                 children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.purple.shade500,
-                    child: Image.network(
-                      'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      spacing: 24, // If using spaced_column
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                  // 1) Avatar, Name, College
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 16, // If you're using spaced_row or similar
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Colors.purple.shade500,
+                        child: Image.network(
+                          'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          spacing: 24, // If using spaced_column
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              context.read<AppBloc>().state.profile?.fullName ??
-                                  'User',
-                              style: TextStyle(
-                                fontSize: 36,
-                                fontFamily: 'BebasNeue',
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  state.profile?.fullName ?? 'User',
+                                  style: TextStyle(
+                                    fontSize: 36,
+                                    fontFamily: 'BebasNeue',
+                                  ),
+                                ),
+                                Text(
+                                  state.profile?.profile?.org?.name ??
+                                      'COLLEGE OF ENGINEERING TRIVANDRUM',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontFamily: 'BebasNeue',
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(
-                              context.read<AppBloc>().state.profile?.profile?.org?.name ??  'COLLEGE OF ENGINEERING TRIVANDRUM',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontFamily: 'BebasNeue',
-                              ),
+                            // 2) Tags
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: tags.map((tag) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                    horizontal: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Color(tag.hashCode),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '${tag.icon}  ${tag.name}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                );
+                              }).toList(),
                             ),
                           ],
                         ),
-                        // 2) Tags
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: tags.map((tag) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 4,
-                                horizontal: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Color(tag.hashCode),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '${tag.icon}  ${tag.name}',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
+
+                  // 2) The menu list
+                  Column(
+                    children: List.generate(menuItems.length, (index) {
+                      final item = menuItems[index];
+                      return Column(
+                        children: [
+                          CustomOptionTile(
+                            verticalSpacing: 16,
+                            leadingImageName: item['icon'].toString(),
+                            title: Text(
+                              item['label'] as String,
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                            onTap: () {
+                              // Call the function we stored in 'onTap'
+                              final onTapFunc =
+                                  item['onTap'] as void Function(BuildContext);
+                              onTapFunc(context);
+                            },
+                          ),
+                          if (index < menuItems.length - 1)
+                            const Divider(height: 0),
+                        ],
+                      );
+                    }),
                   ),
                 ],
               ),
-
-              // 2) The menu list
-              Column(
-                children: List.generate(menuItems.length, (index) {
-                  final item = menuItems[index];
-                  return Column(
-                    children: [
-                      CustomOptionTile(
-                        verticalSpacing: 16,
-                        leadingImageName: item['icon'].toString(),
-                        title: Text(
-                          item['label'] as String,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        onTap: () {
-                          // Call the function we stored in 'onTap'
-                          final onTapFunc =
-                              item['onTap'] as void Function(BuildContext);
-                          onTapFunc(context);
-                        },
-                      ),
-                      if (index < menuItems.length - 1)
-                        const Divider(height: 0),
-                    ],
-                  );
-                }),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

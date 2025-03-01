@@ -98,7 +98,7 @@ class _ExploreMoreClubsPageState extends State<ExploreMoreClubsPage> {
                                         club['logo']['thumbnail'] != null
                                     ? club['logo']['thumbnail']
                                     : '',
-                                intrests: club['interests'] != null
+                                interests: club['interests'] != null
                                     ? (club['interests'] as List)
                                         .map((interest) =>
                                             interest['name'] ?? '')

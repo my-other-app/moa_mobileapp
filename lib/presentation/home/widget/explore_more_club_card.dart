@@ -8,7 +8,7 @@ class ExploreMoreClubCard extends StatefulWidget {
   final String name;
   final int followersCount;
   final String logo;
-  final List<dynamic> intrests; // Each interest should be a string
+  final List<dynamic> interests; // Each interest should be a string
   final int id;
   final String clubSlug;
   final bool isFollowing;
@@ -17,7 +17,7 @@ class ExploreMoreClubCard extends StatefulWidget {
     required this.name,
     required this.followersCount,
     required this.logo,
-    required this.intrests,
+    required this.interests,
     required this.id,
     required this.clubSlug,
     required this.isFollowing,
@@ -132,7 +132,7 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
                 spacing: 8,
                 runSpacing: 8,
                 alignment: WrapAlignment.start,
-                children: widget.intrests.asMap().entries.map((entry) {
+                children: widget.interests.asMap().entries.map((entry) {
                   int index = entry.key;
                   final interest = entry.value;
                   final Color assignedColor =

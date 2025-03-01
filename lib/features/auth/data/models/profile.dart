@@ -1,5 +1,5 @@
 
-class Profile {
+class Profile{
   final String? fullName;
   final String? email;
   final String? phone;
@@ -7,16 +7,17 @@ class Profile {
   final int id;
   final String? userType;
   final ProfileDetails? profile;
+  List<Interest>? interests;
 
-  Profile({
-    required this.id,
-    this.fullName,
-    this.email,
-    this.phone,
-    this.username,
-    this.userType,
-    this.profile,
-  });
+  Profile(
+      {required this.id,
+      this.fullName,
+      this.email,
+      this.phone,
+      this.username,
+      this.userType,
+      this.profile,
+      this.interests});
 
   factory Profile.fromJson(Map<String, dynamic> json) {
     return Profile(
@@ -29,6 +30,9 @@ class Profile {
       profile: json['profile'] != null
           ? ProfileDetails.fromJson(json['profile'])
           : null,
+      interests: (json['interests'] as List<dynamic>?)
+          ?.map((e) => Interest.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -41,6 +45,7 @@ class Profile {
       'username': username,
       'user_type': userType,
       'profile': profile?.toJson(),
+      'interests': interests?.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -48,16 +53,21 @@ class Profile {
   String toString() {
     return 'Profile(id: $id, fullName: $fullName, email: $email, phone: $phone, username: $username, userType: $userType, profile: $profile)';
   }
+  
+
 }
+
 class ProfileDetails {
-   List<Interest>? interests;
-   String? whatsapp;
-   Org? org;
-   Avatar? avatar;
-   Map<String, dynamic>? profilePic;
+  String? fullName;
+  List<Interest>? interests;
+  String? whatsapp;
+  Org? org;
+  Avatar? avatar;
+  Map<String, dynamic>? profilePic;
 
   ProfileDetails({
-    this.interests,
+    // this.interests,
+    this.fullName,
     this.whatsapp,
     this.org,
     this.avatar,
@@ -66,7 +76,8 @@ class ProfileDetails {
 
   factory ProfileDetails.fromJson(Map<String, dynamic> json) {
     return ProfileDetails(
-      interests: (json['interests'] as List<dynamic>?)?.map((e) => Interest.fromJson(e as Map<String, dynamic>)).toList(),
+      fullName: json['full_name'] as String?,
+      // interests: (json['interests'] as List<dynamic>?)?.map((e) => Interest.fromJson(e as Map<String, dynamic>)).toList(),
       whatsapp: json['whatsapp'] as String?,
       org: json['org'] != null ? Org.fromJson(json['org']) : null,
       avatar: json['avatar'] != null ? Avatar.fromJson(json['avatar']) : null,
@@ -76,7 +87,7 @@ class ProfileDetails {
 
   Map<String, dynamic> toJson() {
     return {
-      'interests': interests?.map((e) => e.toJson()).toList(),
+      // 'interests': interests?.map((e) => e.toJson()).toList(),
       'whatsapp': whatsapp,
       'org': org?.toJson(),
       'avatar': avatar?.toJson(),
@@ -91,27 +102,27 @@ class ProfileDetails {
 }
 
 class Interest {
-  final int id;
-  final String name;
-  final String icon;
-  final String iconType;
-  final Category category;
+  final int? id;
+  final String? name;
+  final String? icon;
+  final String? iconType;
+  // final Category? category;
 
   Interest({
     required this.id,
     required this.name,
     required this.icon,
     required this.iconType,
-    required this.category,
+    // required this.category,
   });
 
   factory Interest.fromJson(Map<String, dynamic> json) {
     return Interest(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      icon: json['icon'] as String,
-      iconType: json['icon_type'] as String,
-      category: Category.fromJson(json['category'] as Map<String, dynamic>),
+      id: json['id'] != null ? json['id'] as int : null,
+      name: json['name'] != null ? json['name'] as String : null,
+      icon: json['icon'] != null ? json['icon'] as String : null,
+      iconType: json['icon_type'] != null ? json['icon_type'] as String : null,
+      // category: Category.fromJson(json['category'] as Map<String, dynamic>),
     );
   }
 
@@ -121,7 +132,7 @@ class Interest {
       'name': name,
       'icon': icon,
       'icon_type': iconType,
-      'category': category.toJson(),
+      // 'category': category?.toJson(),
     };
   }
 }

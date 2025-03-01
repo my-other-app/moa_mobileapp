@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/presentation/login/interests_selection_page.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
@@ -46,7 +49,11 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.initialName ?? "");
+    //need to handle these using provider || bloc
+    setState(() {
+      _nameController = TextEditingController(text: widget.initialName);
+    });
+
     print("profile = ${widget.profileUrl}");
     fetchOrganizations();
   }
@@ -54,13 +61,15 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
   // Fetch organization list from API.
   Future<void> fetchOrganizations() async {
     try {
-      Dio dio = Dio(
-        BaseOptions(
-          baseUrl: 'https://api.staging.myotherapp.com/api/v1',
-          headers: {'Content-Type': 'application/json'},
-        ),
-      );
-      final response = await dio.get('/orgs/list');
+      // Dio dio = Dio(
+      //   BaseOptions(
+      //     baseUrl: 'https://api.staging.myotherapp.com/api/v1',
+      //     headers: {'Content-Type': 'application/json'},
+      //   ),
+      // );
+      // final response = await dio.get('/orgs/list');
+      final response =
+          await APIService.instance.request('/orgs/list', DioMethod.get);
       final List data = response.data;
       setState(() {
         _orgList = data.map((json) => Organization.fromJson(json)).toList();
@@ -85,33 +94,38 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
 
     try {
       // Retrieve the access token from your bloc.
-      final accessToken = context.read<AppBloc>().state.accessToken;
+      // final accessToken = context.read<AppBloc>().state.accessToken;
 
-      Dio dio = Dio(
-        BaseOptions(
-          baseUrl: 'https://api.staging.myotherapp.com/api/v1',
-          headers: {
-            'accept': 'application/json',
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': 'Bearer $accessToken',
-          },
-        ),
-      );
+      // Dio dio = Dio(
+      //   BaseOptions(
+      //     baseUrl: 'https://api.staging.myotherapp.com/api/v1',
+      //     headers: {
+      //       'accept': 'application/json',
+      //       'Content-Type': 'application/x-www-form-urlencoded',
+      //       'Authorization': 'Bearer $accessToken',
+      //     },
+      //   ),
+      // );
 
-      // Prepare the form data.
+      // // Prepare the form data.
       final data = {
         'full_name': _nameController.text.trim(),
         'whatsapp': _whatsappController.text.trim(),
         'org_id': _selectedOrganization!.id.toString(),
       };
 
-      final response = await dio.post('/user/profile/create', data: data);
+      // final response = await dio.post('/user/profile/create', data: data);
+      final response = await APIService.instance.request(
+          '/user/profile/create',
+          contentType: Headers.formUrlEncodedContentType,
+          DioMethod.post,
+          param: data);
       print("Profile creation response: ${response.data}");
 
       if (response.statusCode == 200) {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => InterestsSelectionPage()),
+          MaterialPageRoute(builder: (context) => InterestsSelectionPage(isOnboarding: true,)),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -123,6 +137,15 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
       if (error is DioException && error.response != null) {
         print("Response data: ${error.response?.data}");
       }
+
+      if (error is DioException && error.response?.data['message'] == 'Profile already exists') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => InterestsSelectionPage(isOnboarding: true,)),
+        );
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('An error occurred during profile creation.')),

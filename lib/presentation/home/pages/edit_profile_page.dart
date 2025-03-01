@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io' show HttpHeaders;
 
 import 'package:dio/dio.dart';
@@ -7,7 +8,11 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/features/auth/data/models/profile.dart';
 import 'package:myotherapp/presentation/home/pages/interests_page.dart';
+import 'package:myotherapp/presentation/login/interests_selection_page.dart';
+import 'package:myotherapp/presentation/login/onboarding_details_page.dart'
+    show Organization;
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -20,33 +25,37 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   // ignore: unused_field
   TextEditingController _nameController = TextEditingController();
-  TextEditingController _collegeController = TextEditingController();
+  // TextEditingController _collegeController = TextEditingController();
   TextEditingController _whatsappController = TextEditingController();
+  final ValueNotifier<Organization?> _collegeNameNotifier = ValueNotifier(null);
 
-  final List<String> colleges = [
-    'College of Engineering Trivandrum',
-    'Government Engineering College, Thrissur',
-    'TKM College of Engineering',
-    'Model Engineering College',
-    'Government Engineering College, Barton Hill',
-    'Government College Thalassey'
-  ];
+  List<Organization> colleges = [];
 
   @override
   void initState() {
     super.initState();
     final initialProfile = context.read<AppBloc>().state.profile;
-
     _nameController =
         TextEditingController(text: initialProfile?.fullName ?? 'USER');
-    _collegeController = TextEditingController(
-        text: initialProfile?.profile?.org?.name ?? 'College name');
     _whatsappController = TextEditingController(
         text: initialProfile?.profile?.whatsapp ?? '1234567890');
 
-    if (!colleges.contains(_collegeController.text)) {
-      colleges.add(_collegeController.text);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await fetchOrgDetails();
+      _collegeNameNotifier.value = colleges
+          .where(
+              (college) => college.name == initialProfile?.profile?.org?.name)
+          .first;
+    });
+  }
+
+  Future<void> fetchOrgDetails() async {
+    final response =
+        await APIService.instance.request('/orgs/list', DioMethod.get);
+    final List data = response.data;
+    setState(() {
+      colleges = data.map((json) => Organization.fromJson(json)).toList();
+    });
   }
 
   Widget _buildInputField({
@@ -79,9 +88,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           final updatedProfile = state.profile;
           if (updatedProfile != null) {
             setState(() {
-              _nameController.text = updatedProfile.fullName ?? 'USER';
-              _collegeController.text =
-                  updatedProfile.profile?.org?.name ?? 'College name';
+              _nameController.text = updatedProfile.profile?.fullName ?? 'USER';
               _whatsappController.text =
                   updatedProfile.profile?.whatsapp ?? '1234567890';
             });
@@ -169,116 +176,119 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        _buildInputField(
-                          label: 'College (if you are a student)',
-                          child: DropdownButtonFormField2<String>(
-                            value: _collegeController.text,
-                            hint: Text(
-                              'Select your college',
+                        ValueListenableBuilder(
+                          valueListenable: _collegeNameNotifier,
+                          builder: (_, college, __) => _buildInputField(
+                            label: 'College (if you are a student)',
+                            child: DropdownButtonFormField2<Organization>(
+                              value: college,
+                              hint: Text(
+                                'Select your college',
+                                style: TextStyle(
+                                  color: Color(0xFFB4B4B4),
+                                  fontSize: 16,
+                                  fontFamily: 'DM Sans',
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                              isExpanded: true,
+                              buttonStyleData: ButtonStyleData(
+                                height: 56,
+                                padding: EdgeInsets.only(right: 8),
+                              ),
+                              iconStyleData: IconStyleData(
+                                icon: Icon(Icons.keyboard_arrow_down,
+                                    color: Color(0xFF2C333D)),
+                              ),
+                              dropdownStyleData: DropdownStyleData(
+                                maxHeight: 300,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color(0xFF2C333D).withOpacity(0.1),
+                                      spreadRadius: 1,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                offset: const Offset(0, -4),
+                                scrollbarTheme: ScrollbarThemeData(
+                                  radius: const Radius.circular(40),
+                                  thickness: MaterialStateProperty.all(6),
+                                  thumbVisibility:
+                                      MaterialStateProperty.all(true),
+                                ),
+                              ),
+                              menuItemStyleData: MenuItemStyleData(
+                                height: 40,
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                              ),
                               style: TextStyle(
-                                color: Color(0xFFB4B4B4),
+                                color: Color(0xFF1E1E1E),
                                 fontSize: 16,
                                 fontFamily: 'DM Sans',
                                 fontWeight: FontWeight.w400,
                               ),
-                            ),
-                            isExpanded: true,
-                            buttonStyleData: ButtonStyleData(
-                              height: 56,
-                              padding: EdgeInsets.only(right: 8),
-                            ),
-                            iconStyleData: IconStyleData(
-                              icon: Icon(Icons.keyboard_arrow_down,
-                                  color: Color(0xFF2C333D)),
-                            ),
-                            dropdownStyleData: DropdownStyleData(
-                              maxHeight: 300,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.white,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Color(0xFF2C333D).withOpacity(0.1),
-                                    spreadRadius: 1,
-                                    blurRadius: 4,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              offset: const Offset(0, -4),
-                              scrollbarTheme: ScrollbarThemeData(
-                                radius: const Radius.circular(40),
-                                thickness: MaterialStateProperty.all(6),
-                                thumbVisibility:
-                                    MaterialStateProperty.all(true),
-                              ),
-                            ),
-                            menuItemStyleData: MenuItemStyleData(
-                              height: 40,
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                            ),
-                            style: TextStyle(
-                              color: Color(0xFF1E1E1E),
-                              fontSize: 16,
-                              fontFamily: 'DM Sans',
-                              fontWeight: FontWeight.w400,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Select your college',
-                              prefixIcon: Padding(
-                                padding: EdgeInsets.only(left: 16, right: 8),
-                                child: Icon(Icons.search,
-                                    size: 18, color: Color(0xFF2C333D)),
-                              ),
-                              prefixIconConstraints:
-                                  BoxConstraints(minWidth: 40, minHeight: 40),
-                              hintStyle: TextStyle(
-                                color: Color(0xFFB4B4B4),
-                                fontSize: 16,
-                                fontFamily: 'DM Sans',
-                                fontWeight: FontWeight.w500,
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                    color: Color(0xFF2C333D), width: 0.5),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                    color: Color(0xFF2C333D), width: 0.5),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                    color: Color(0xFF2C333D), width: 1),
-                              ),
-                            ),
-                            items: colleges.map((String college) {
-                              return DropdownMenuItem<String>(
-                                value: college,
-                                child: Text(
-                                  college,
-                                  style: TextStyle(
-                                    color: Color(0xFF1E1E1E),
-                                    fontSize: 16,
-                                    fontFamily: 'DM Sans',
-                                    fontWeight: FontWeight.w400,
-                                  ),
+                              decoration: InputDecoration(
+                                hintText: 'Select your college',
+                                prefixIcon: Padding(
+                                  padding: EdgeInsets.only(left: 16, right: 8),
+                                  child: Icon(Icons.search,
+                                      size: 18, color: Color(0xFF2C333D)),
                                 ),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {});
-                            },
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please select your college';
-                              }
-                              return null;
-                            },
+                                prefixIconConstraints:
+                                    BoxConstraints(minWidth: 40, minHeight: 40),
+                                hintStyle: TextStyle(
+                                  color: Color(0xFFB4B4B4),
+                                  fontSize: 16,
+                                  fontFamily: 'DM Sans',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                      color: Color(0xFF2C333D), width: 0.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                      color: Color(0xFF2C333D), width: 0.5),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                      color: Color(0xFF2C333D), width: 1),
+                                ),
+                              ),
+                              items: colleges.map((Organization college) {
+                                return DropdownMenuItem<Organization>(
+                                  value: college,
+                                  child: Text(
+                                    college.name,
+                                    style: TextStyle(
+                                      color: Color(0xFF1E1E1E),
+                                      fontSize: 16,
+                                      fontFamily: 'DM Sans',
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (Organization? newValue) {
+                                _collegeNameNotifier.value = newValue;
+                              },
+                              validator: (value) {
+                                if (value == null) {
+                                  return 'Please select your college';
+                                }
+                                return null;
+                              },
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -342,7 +352,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => InterestsPage()),
+                                  builder: (context) => InterestsSelectionPage(
+                                      isOnboarding: false)),
                             );
                           },
                           child: Container(
@@ -384,23 +395,48 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       onPressed: () async {
                         if (_formKey.currentState!.validate()) {
                           _formKey.currentState!.save();
-                          try{
-                          final response = await APIService.instance.request(
-                            '/user/profile/create',
-                            DioMethod.post,
-                            param: {
-                              'whatsapp': _whatsappController.text,
-                              'profile_pic': '',
-                              // 'name': _nameController.text,
-                              // 'org_id': _collegeController.text,
-                            },
-                            headers: {
-                              HttpHeaders.acceptHeader : Headers.multipartFormDataContentType
-                            }
-                          );
+                          try {
+                            final response = await APIService.instance.request(
+                                contentType: Headers.formUrlEncodedContentType,
+                                '/user/profile/update',
+                                DioMethod.post,
+                                param: {
+                                  'full_name': _nameController.text.toString(),
+                                  'whatsapp':
+                                      _whatsappController.text.toString(),
+                                  if (_collegeNameNotifier.value != null)
+                                    'org_id': _collegeNameNotifier.value?.id,
+                                });
 
-                          debugPrint(response.data.toString());}
-                          catch(e){
+                            if (response.statusCode == 200) {
+                              debugPrint(response.data.toString());
+
+                              Profile? updateProfile =
+                                  context.read<AppBloc>().state.profile;
+
+                              log('profile from context: ${updateProfile?.toJson()}');
+
+                              if (updateProfile != null) {
+                                updateProfile.profile?.whatsapp =
+                                    response.data['whatsapp'];
+                                updateProfile.profile?.fullName =
+                                    response.data['full_name'];
+
+                                // Set org to null if _collegeNameNotifier.value is null
+                                updateProfile.profile?.org =
+                                    _collegeNameNotifier.value != null
+                                        ? Org(
+                                            id: _collegeNameNotifier.value?.id,
+                                            name: _collegeNameNotifier
+                                                .value?.name)
+                                        : null;
+
+                                context.read<AppBloc>().add(
+                                    UpdateUserDetailsEvent(
+                                        profile: updateProfile));
+                              }
+                            }
+                          } catch (e) {
                             debugPrint(e.toString());
                           }
                         }

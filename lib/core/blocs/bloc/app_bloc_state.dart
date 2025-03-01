@@ -13,7 +13,7 @@ abstract class AppBlocState extends Equatable {
 }
 
 class AppBlocInitialState extends AppBlocState {
-  const AppBlocInitialState();
+  const AppBlocInitialState({super.user, super.accessToken, super.refreshToken, super.profile});
   
   @override
   List<Object?> get props => <Object?>[user, accessToken, refreshToken, profile];
@@ -38,7 +38,8 @@ class UpdateUserDetailsState extends AppBlocState {
     required super.refreshToken,
     required super.profile,
   });
-  
+ 
+
   @override
   List<Object?> get props => <Object?>[user, accessToken, refreshToken, profile];
 }

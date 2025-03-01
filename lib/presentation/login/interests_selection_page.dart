@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
@@ -6,7 +8,9 @@ import 'package:myotherapp/features/auth/data/models/profile.dart';
 import 'package:myotherapp/presentation/login/onboarding_final_page.dart';
 
 class InterestsSelectionPage extends StatefulWidget {
-  const InterestsSelectionPage({super.key});
+  const InterestsSelectionPage({super.key, required this.isOnboarding});
+
+  final bool isOnboarding;
 
   @override
   State<InterestsSelectionPage> createState() => _InterestsSelectionPageState();
@@ -16,8 +20,29 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
   final Set<InterestItem> selectedInterests = {};
   bool isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      List<Interest>? currentInterests =
+          context.read<AppBloc>().state.profile?.interests;
+
+      debugPrint('Current interests: $currentInterests');
+
+      currentInterests?.forEach((intrests) => selectedInterests.add(
+          InterestItem(
+              id: intrests.id, name: intrests.name, icon: intrests.icon)));
+
+      setState(() {
+        selectedInterests;
+      });
+    });
+  }
+
   Future<void> _submitInterests() async {
-    List<int> interestIds = selectedInterests.map((item) => item.id).toList();
+    List<int> interestIds =
+        selectedInterests.map((item) => item.id ?? 0).toList();
 
     setState(() {
       isLoading = true;
@@ -41,9 +66,11 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
 
           if (response.data is List) {
             ///updating the intrests in appBloc
-            profile?.profile?.interests = (response.data as List)
+            profile?.interests = (response.data as List)
                 .map((e) => Interest.fromJson(e as Map<String, dynamic>))
                 .toList();
+
+            debugPrint('Updated interests: ${jsonEncode(profile?.profile?.interests)}');
 
             context.read<AppBloc>().add(
                   UpdateUserDetailsEvent(
@@ -53,11 +80,17 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
           }
 
           // Navigate to the OnboardingFinalPage upon success
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const OnboardingFinalPage()),
-          );
+
+          if (widget.isOnboarding) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const OnboardingFinalPage()),
+            );
+          }
+          else {
+            Navigator.pop(context);
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -84,11 +117,31 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFA0),
+      backgroundColor:
+          widget.isOnboarding ? const Color(0xFFFFFFA0) : Colors.white,
+      appBar: widget.isOnboarding
+          ? null
+          : AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back_ios, color: Color(0xFF2C333D)),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              title: Text(
+                'INTERESTS',
+                style: TextStyle(
+                  color: Color(0xFF2C333D),
+                  fontSize: 24,
+                  fontFamily: 'BebasNeue',
+                ),
+              ),
+              centerTitle: true,
+            ),
       body: SafeArea(
         child: Column(
           children: [
-            _buildDragIndicator(),
+            if (widget.isOnboarding) _buildDragIndicator(),
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
@@ -242,12 +295,12 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              interest.icon,
+              interest.icon ?? '',
               style: const TextStyle(fontSize: 20),
             ),
             const SizedBox(width: 4),
             Text(
-              interest.name,
+              interest.name ?? '',
               style: const TextStyle(
                 color: Colors.black,
                 fontSize: 14,
@@ -304,9 +357,9 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
 
 // Updated InterestItem model with id
 class InterestItem {
-  final int id;
-  final String name;
-  final String icon;
+  final int? id;
+  final String? name;
+  final String? icon;
 
   InterestItem({required this.id, required this.name, required this.icon});
 
