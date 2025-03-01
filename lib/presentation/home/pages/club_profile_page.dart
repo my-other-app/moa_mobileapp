@@ -75,17 +75,11 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
         org = clubInfo.org;
         isLoading = false;
       });
-      print("Club Name: $name");
-      print("Location: $locationName");
-      print("About: $about");
-      print("Followers: $followersCount");
-      print("Socials: $socials");
     } catch (e) {
       setState(() {
         errorMessage = e.toString();
         isLoading = false;
       });
-      print("API Error: $e");
     }
   }
 

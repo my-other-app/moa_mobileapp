@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
 import '../../../core/themes/app_colors.dart';
@@ -29,9 +28,8 @@ class ExploreMoreClubCard extends StatelessWidget {
       const Color(0xFFF9FFA1),
       const Color(0xFFB8DFF2),
       const Color(0xFFFFC84A),
-      const Color(0xFFE1C9FF),
+      const Color(0xFFFFDEDD),
     ];
-    final Random random = Random();
 
     return InkWell(
       onTap: () {
@@ -97,15 +95,17 @@ class ExploreMoreClubCard extends StatelessWidget {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: intrests.map((interest) {
-                  // Select a random color from the color list.
-                  final Color randomColor =
-                      colorList[random.nextInt(colorList.length)];
+                alignment: WrapAlignment.start,
+                children: intrests.asMap().entries.map((entry) {
+                  int index = entry.key;
+                  final interest = entry.value;
+                  final Color assignedColor =
+                      colorList[index % colorList.length];
                   return Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: randomColor,
+                      color: assignedColor,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -115,6 +115,7 @@ class ExploreMoreClubCard extends StatelessWidget {
                   );
                 }).toList(),
               ),
+
               const SizedBox(height: 24),
               // Buttons.
               Row(
