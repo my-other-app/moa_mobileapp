@@ -48,17 +48,18 @@ class ProfileCheckPage extends StatelessWidget {
 
                   // Check the interest field from the nested profile.
                   final interests = state.profile.profile?.interests;
-                  if (interests == null ||
-                      interests.isEmpty ) {
-                    // Navigator.pushReplacement(
-                    //   context,
-                    //   MaterialPageRoute(builder: (context) => LandingPage()),
-                    // );
+                  if (interests == null || interests.isEmpty) {
                     Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => InterestsSelectionPage(),
-                        ));
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              OnboardingDetailsPage(profileUrl: profileUrl)),
+                    );
+                    // Navigator.pushReplacement(
+                    //     context,
+                    //     MaterialPageRoute(
+                    //       builder: (context) => InterestsSelectionPage(),
+                    //     ));
                   } else {
                     Navigator.pushReplacement(
                       context,

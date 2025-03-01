@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myotherapp/core/resources/asset_resources.dart';
 
 import '../../../core/themes/app_colors.dart';
 
@@ -133,7 +134,7 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
                 Expanded(
                   child: _infoCard(
                     context,
-                    icon: Icons.school,
+                    icon: AssetResources.college,
                     title: 'College',
                     value: 'COLLEGE OF ENGINEERING TRIVANDRUM',
                   ),
@@ -144,7 +145,7 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
                 Expanded(
                   child: _infoCard(
                     context,
-                    icon: Icons.location_on,
+                    icon: AssetResources.location,
                     title: 'Location',
                     value: 'SREEKARYAM, TRIVANDRUM',
                   ),
@@ -319,7 +320,7 @@ bridge the gap between academics and real-world applications...""";
 
 // Helper Widget for info items
 Widget _infoCard(BuildContext context,
-    {required IconData icon, required String title, required String value}) {
+    {required String icon, required String title, required String value}) {
   return Container(
     width: MediaQuery.of(context).size.width * 0.4, // Adjust for layout
     padding: const EdgeInsets.all(8.0),
@@ -335,7 +336,11 @@ Widget _infoCard(BuildContext context,
         CircleAvatar(
           backgroundColor: Color(0xffF3F3F3),
           radius: 24,
-          child: Icon(icon, color: Theme.of(context).primaryColor),
+          child: Image.asset(
+            icon,
+            height: 25,
+            width: 25,
+          ),
         ),
         const SizedBox(height: 5),
         Text(

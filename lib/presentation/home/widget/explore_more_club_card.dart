@@ -1,21 +1,35 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
-
 import '../../../core/themes/app_colors.dart';
 
 class ExploreMoreClubCard extends StatelessWidget {
-  const ExploreMoreClubCard({super.key});
+  final String name;
+  final int followersCount;
+  final String logo;
+  final List<dynamic>
+      intrests; // Each interest should be a string (or convertible to string)
+  final int id;
+  const ExploreMoreClubCard({
+    super.key,
+    required this.name,
+    required this.followersCount,
+    required this.logo,
+    required this.intrests,
+    required this.id,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Sample tags with background colors
-    final List<Map<String, dynamic>> tags = [
-      {'label': 'Programming', 'color': Colors.lightBlue.shade100},
-      {'label': 'App Development', 'color': Colors.yellow.shade200},
-      {'label': 'UI/UX', 'color': Colors.red.shade100},
-      {'label': 'Web Designing', 'color': Colors.green.shade100},
-      {'label': 'AI/ML', 'color': Colors.amber.shade100},
+    // Define a list of colors to choose from randomly.
+    final List<Color> colorList = [
+      const Color(0xFFE1C9FF),
+      const Color(0xFFF9FFA1),
+      const Color(0xFFB8DFF2),
+      const Color(0xFFFFC84A),
+      const Color(0xFFE1C9FF),
     ];
+    final Random random = Random();
 
     return InkWell(
       onTap: () {
@@ -23,7 +37,7 @@ class ExploreMoreClubCard extends StatelessWidget {
           context,
           MaterialPageRoute(
               builder: (context) => ClubIndividualPage(
-                    clubId: 1,
+                    clubId: id,
                   )),
         );
       },
@@ -38,33 +52,36 @@ class ExploreMoreClubCard extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Row with Logo, Title, and Follower Count
+              // Row with Logo, Title, and Follower Count.
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Logo
+                  // Logo from variable.
                   Image.network(
-                    'https://avatars.githubusercontent.com/u/98015594?s=280&v=4', // Replace with TinkerHub logo
+                    (logo != null && logo.isNotEmpty)
+                        ? logo
+                        : 'https://picsum.photos/200',
                     width: 40,
                     height: 40,
                     fit: BoxFit.cover,
                   ),
+
                   const SizedBox(width: 12),
-                  // Club name and followers
+                  // Club name and followers.
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        'Tinkerhub CET',
-                        style: TextStyle(
+                        name,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        '123 Followers',
-                        style: TextStyle(
+                        '$followersCount Followers',
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Colors.black,
                         ),
@@ -74,51 +91,52 @@ class ExploreMoreClubCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-
-              // Tags
+              // Tags from the interests list with random colors.
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: tags.map((tagItem) {
+                children: intrests.map((interest) {
+                  // Select a random color from the color list.
+                  final Color randomColor =
+                      colorList[random.nextInt(colorList.length)];
                   return Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: tagItem['color'] as Color,
+                      color: randomColor,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      tagItem['label'],
+                      interest.toString(),
                       style: const TextStyle(fontSize: 14),
                     ),
                   );
                 }).toList(),
               ),
               const SizedBox(height: 24),
-
-              // Buttons
+              // Buttons.
               Row(
                 children: [
-                  // Left button
+                  // Left button.
                   Expanded(
                     child: FilledButton(
                       onPressed: () {
-                        // TODO: Implement "Join the Team" logic
+                        // TODO: Implement "Join the Team" logic.
                       },
                       style: FilledButton.styleFrom(
-                        backgroundColor: Color(0xFFFFFFFF),
-                        foregroundColor: Color(0xFF2C333D),
-                        side: BorderSide(color: Color(0xFF2C333D)),
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF2C333D),
+                        side: const BorderSide(color: Color(0xFF2C333D)),
                       ),
                       child: const Text('JOIN THE TEAM'),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Right button
+                  // Right button.
                   Expanded(
                     child: FilledButton(
                       onPressed: () {
-                        // TODO: Implement "Follow" logic
+                        // TODO: Implement "Follow" logic.
                       },
                       child: const Text(
                         'FOLLOW',
