@@ -13,7 +13,7 @@ class EventCard extends StatelessWidget {
   final String orgImage;
   final int eventId;
   final int clubId;
-
+  final String clubSlug;
   //link
   //club image
 
@@ -27,6 +27,7 @@ class EventCard extends StatelessWidget {
     required this.orgImage,
     required this.eventId,
     required this.clubId,
+    required this.clubSlug,
   });
 
   @override
@@ -50,6 +51,8 @@ class EventCard extends StatelessWidget {
                   MaterialPageRoute(
                       builder: (context) => ClubIndividualPage(
                             clubId: clubId,
+                            clubSlug: clubSlug,
+                            clubname: organizer,
                           )),
                 );
               },
@@ -88,6 +91,8 @@ class EventCard extends StatelessWidget {
                         MaterialPageRoute(
                             builder: (context) => ClubIndividualPage(
                                   clubId: clubId,
+                                  clubSlug: clubSlug,
+                                  clubname: organizer,
                                 )),
                       );
                     },

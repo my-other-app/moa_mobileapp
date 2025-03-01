@@ -105,6 +105,7 @@ class _ExploreMoreClubsPageState extends State<ExploreMoreClubsPage> {
                                         .toList()
                                     : [],
                                 id: club['id'] ?? 0,
+                                clubSlug: club['slug'] ?? '',
                               );
                             },
                           ),

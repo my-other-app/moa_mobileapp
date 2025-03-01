@@ -71,6 +71,7 @@ class _PastEventsPageState extends State<PastEventsPage> {
               event['poster']?['medium'] ?? 'https://via.placeholder.com/150',
           eventId: event['id'],
           clubId: event['club']['id'],
+          clubSlug: event['club']?['slug'] ?? '',
         );
       },
     );

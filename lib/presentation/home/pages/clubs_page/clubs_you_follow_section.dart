@@ -27,6 +27,7 @@ class ClubsYouFollowSection extends StatelessWidget {
             return ClubListTile(
               clubName: club['name']!,
               imageUrl: club['imageUrl']!,
+              clubSlug: '',
             );
           },
         ),

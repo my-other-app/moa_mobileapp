@@ -51,6 +51,8 @@ class NoteCard extends StatelessWidget {
                         MaterialPageRoute(
                             builder: (context) => ClubIndividualPage(
                                   clubId: 1,
+                                  clubname: '',
+                                  clubSlug: '',
                                 )),
                       );
                     },

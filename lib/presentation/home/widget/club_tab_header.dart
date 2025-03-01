@@ -32,6 +32,8 @@ class CustomTab extends StatelessWidget {
 class ClubTabHeader extends StatefulWidget {
   /// Titles that appear in the TabBar.
   final List<String> tabTitles;
+  final String clubName;
+  final String clubSlug;
 
   /// Pages (scrollable) associated with each tab.
   final List<Widget> tabPages;
@@ -40,6 +42,8 @@ class ClubTabHeader extends StatefulWidget {
     super.key,
     required this.tabTitles,
     required this.tabPages,
+    required this.clubName,
+    required this.clubSlug,
   });
 
   @override
@@ -78,9 +82,9 @@ class _ClubTabHeaderState extends State<ClubTabHeader>
               // The "title" area: put the search bar here.
               // Alternatively, you could use flexibleSpace and
               // FlexibleSpaceBar for more complex behavior.
-              title: const Text(
-                'TinkerHub CET',
-                style: TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
+              title: Text(
+                widget.clubName,
+                style: const TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
               ),
               actions: [
                 IconButton(

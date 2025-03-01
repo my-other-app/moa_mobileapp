@@ -10,6 +10,7 @@ class ExploreMoreClubCard extends StatelessWidget {
   final List<dynamic>
       intrests; // Each interest should be a string (or convertible to string)
   final int id;
+  final String clubSlug;
   const ExploreMoreClubCard({
     super.key,
     required this.name,
@@ -17,6 +18,7 @@ class ExploreMoreClubCard extends StatelessWidget {
     required this.logo,
     required this.intrests,
     required this.id,
+    required this.clubSlug,
   });
 
   @override
@@ -38,6 +40,8 @@ class ExploreMoreClubCard extends StatelessWidget {
           MaterialPageRoute(
               builder: (context) => ClubIndividualPage(
                     clubId: id,
+                    clubSlug: clubSlug,
+                    clubname: name,
                   )),
         );
       },
@@ -58,9 +62,7 @@ class ExploreMoreClubCard extends StatelessWidget {
                 children: [
                   // Logo from variable.
                   Image.network(
-                    (logo != null && logo.isNotEmpty)
-                        ? logo
-                        : 'https://picsum.photos/200',
+                    (logo.isNotEmpty) ? logo : 'https://picsum.photos/200',
                     width: 40,
                     height: 40,
                     fit: BoxFit.cover,

@@ -5,12 +5,26 @@ import 'package:myotherapp/presentation/home/widget/club_tab_header.dart';
 
 class ClubIndividualPage extends StatelessWidget {
   final int clubId;
-  const ClubIndividualPage({super.key, required this.clubId});
+  final String clubname;
+  final String clubSlug;
+  const ClubIndividualPage(
+      {super.key,
+      required this.clubId,
+      required this.clubname,
+      required this.clubSlug});
 
   @override
   Widget build(BuildContext context) {
     return ClubTabHeader(
-        tabTitles: ["PROFILE", "NOTES"],
-        tabPages: [ClubProfilePage(), ClubNotesPage()]);
+      tabTitles: ["PROFILE", "NOTES"],
+      tabPages: [
+        ClubProfilePage(
+          id: clubId,
+        ),
+        ClubNotesPage()
+      ],
+      clubName: clubname,
+      clubSlug: clubSlug,
+    );
   }
 }

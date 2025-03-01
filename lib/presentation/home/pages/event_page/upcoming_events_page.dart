@@ -55,6 +55,7 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
       itemBuilder: (context, index) {
         final event = events[index];
         return EventCard(
+          clubSlug: event['club']?['slug'] ?? '',
           orgImage: event['club']?['logo']?['thumbnail'] ?? '',
           title: event['name'] ?? 'No Title',
           organizer: event['club']?['name'] ?? 'Unknown Organizer',

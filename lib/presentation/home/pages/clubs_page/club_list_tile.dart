@@ -7,11 +7,12 @@ import '../../widget/clubs_option_screen.dart';
 class ClubListTile extends StatelessWidget {
   final String clubName;
   final String imageUrl;
-
+  final String clubSlug;
   const ClubListTile({
     super.key,
     required this.clubName,
     required this.imageUrl,
+    required this.clubSlug,
   });
 
   @override
@@ -23,6 +24,8 @@ class ClubListTile extends StatelessWidget {
           MaterialPageRoute(
               builder: (context) => ClubIndividualPage(
                     clubId: 1,
+                    clubSlug: clubSlug,
+                    clubname: clubName,
                   )),
         );
       },
