@@ -1,7 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/features/auth/data/models/profile.dart';
 import 'package:myotherapp/presentation/login/onboarding_final_page.dart';
 
 class InterestsSelectionPage extends StatefulWidget {
@@ -26,14 +27,31 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
       final response = await APIService.instance.request(
         '/user/interests/select',
         DioMethod.post,
-        formData: jsonEncode({'interests': interestIds}),
+        param: {
+          'interest_ids': interestIds,
+        },
       );
-      print('Interest selection response: ${response.data}');
+      debugPrint('Interest selection response: ${response.data}');
 
       if (mounted) {
         if (response.statusCode != null &&
             response.statusCode! >= 200 &&
             response.statusCode! < 300) {
+          Profile? profile = context.read<AppBloc>().state.profile;
+
+          if (response.data is List) {
+            ///updating the intrests in appBloc
+            profile?.profile?.interests = (response.data as List)
+                .map((e) => Interest.fromJson(e as Map<String, dynamic>))
+                .toList();
+
+            context.read<AppBloc>().add(
+                  UpdateUserDetailsEvent(
+                    profile: profile!,
+                  ),
+                );
+          }
+
           // Navigate to the OnboardingFinalPage upon success
           Navigator.pushReplacement(
             context,

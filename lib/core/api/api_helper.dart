@@ -27,6 +27,7 @@ class APIService {
     String? contentType,
     formData,
     bool skipAuthToken = false,
+    Map<String, dynamic>? headers,
   }) async {
     try {
       final token = skipAuthToken
@@ -43,6 +44,7 @@ class APIService {
           contentType: contentType ?? Headers.jsonContentType,
           headers: {
             if (!skipAuthToken) HttpHeaders.authorizationHeader: 'Bearer ${token.accessToken}',
+            if (headers != null) ...headers,
           },
         ),
       );

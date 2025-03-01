@@ -49,16 +49,15 @@ class Profile {
     return 'Profile(id: $id, fullName: $fullName, email: $email, phone: $phone, username: $username, userType: $userType, profile: $profile)';
   }
 }
-
 class ProfileDetails {
-  final String? interest;
-  final String? whatsapp;
-  final Org? org;
-  final Avatar? avatar;
-  final Map<String, dynamic>? profilePic;
+   List<Interest>? interests;
+   String? whatsapp;
+   Org? org;
+   Avatar? avatar;
+   Map<String, dynamic>? profilePic;
 
   ProfileDetails({
-    this.interest,
+    this.interests,
     this.whatsapp,
     this.org,
     this.avatar,
@@ -67,7 +66,7 @@ class ProfileDetails {
 
   factory ProfileDetails.fromJson(Map<String, dynamic> json) {
     return ProfileDetails(
-      interest: json['interest'] as String?,
+      interests: (json['interests'] as List<dynamic>?)?.map((e) => Interest.fromJson(e as Map<String, dynamic>)).toList(),
       whatsapp: json['whatsapp'] as String?,
       org: json['org'] != null ? Org.fromJson(json['org']) : null,
       avatar: json['avatar'] != null ? Avatar.fromJson(json['avatar']) : null,
@@ -77,7 +76,7 @@ class ProfileDetails {
 
   Map<String, dynamic> toJson() {
     return {
-      'interest': interest,
+      'interests': interests?.map((e) => e.toJson()).toList(),
       'whatsapp': whatsapp,
       'org': org?.toJson(),
       'avatar': avatar?.toJson(),
@@ -87,7 +86,75 @@ class ProfileDetails {
 
   @override
   String toString() {
-    return 'ProfileDetails(interest: $interest, whatsapp: $whatsapp, org: $org, avatar: $avatar, profilePic: $profilePic)';
+    return 'ProfileDetails(interests: $interests, whatsapp: $whatsapp, org: $org, avatar: $avatar, profilePic: $profilePic)';
+  }
+}
+
+class Interest {
+  final int id;
+  final String name;
+  final String icon;
+  final String iconType;
+  final Category category;
+
+  Interest({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.iconType,
+    required this.category,
+  });
+
+  factory Interest.fromJson(Map<String, dynamic> json) {
+    return Interest(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      icon: json['icon'] as String,
+      iconType: json['icon_type'] as String,
+      category: Category.fromJson(json['category'] as Map<String, dynamic>),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'icon': icon,
+      'icon_type': iconType,
+      'category': category.toJson(),
+    };
+  }
+}
+
+class Category {
+  final int id;
+  final String name;
+  final String icon;
+  final String iconType;
+
+  Category({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.iconType,
+  });
+
+  factory Category.fromJson(Map<String, dynamic> json) {
+    return Category(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      icon: json['icon'] as String,
+      iconType: json['icon_type'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'icon': icon,
+      'icon_type': iconType,
+    };
   }
 }
 

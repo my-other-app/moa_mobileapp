@@ -38,7 +38,7 @@ class ProfileCheckPage extends StatelessWidget {
                 if (context.mounted) {
                   // Update the AppBloc with the user and tokens
                   context.read<AppBloc>().add(
-                        LoggedIn(
+                        LoggedInEvent(
                           user: user,
                           accessToken: accessToken,
                           refreshToken: tokenModel.refreshToken,
@@ -47,22 +47,18 @@ class ProfileCheckPage extends StatelessWidget {
                       );
 
                   // Check the interest field from the nested profile.
-                  final interest = state.profile.profile?.interest;
-                  if (interest == null ||
-                      interest.trim().isEmpty ||
-                      interest.toLowerCase() == 'string') {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => LandingPage()),
-                    );
+                  final interests = state.profile.profile?.interests;
+                  if (interests == null ||
+                      interests.isEmpty ) {
                     // Navigator.pushReplacement(
-                    //     context,
-                    //     MaterialPageRoute(
-                    //       builder: (context) => OnboardingDetailsPage(
-                    //         initialName: state.profile.fullName ?? '',
-                    //         profileUrl: profileUrl,
-                    //       ),
-                    //     ));
+                    //   context,
+                    //   MaterialPageRoute(builder: (context) => LandingPage()),
+                    // );
+                    Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => InterestsSelectionPage(),
+                        ));
                   } else {
                     Navigator.pushReplacement(
                       context,

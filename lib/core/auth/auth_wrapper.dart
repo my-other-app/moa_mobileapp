@@ -19,7 +19,7 @@ class AuthWrapper extends StatelessWidget {
       builder: (context, state) {
         debugPrint('Current auth state: ${state.runtimeType}');
         
-        if (state is AppLoggedInState) {
+        if (state is! AppBlocInitialState || state is! AppLoggedOutState) {
           return  LandingPage();
         } else {
           return  OnboardingInitialPage();
