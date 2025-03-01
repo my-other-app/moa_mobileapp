@@ -5,6 +5,7 @@ import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
 import '../../widget/clubs_option_screen.dart';
 
 class ClubListTile extends StatelessWidget {
+  final int clubId;
   final String clubName;
   final String imageUrl;
   final String clubSlug;
@@ -13,6 +14,7 @@ class ClubListTile extends StatelessWidget {
     required this.clubName,
     required this.imageUrl,
     required this.clubSlug,
+    required this.clubId,
   });
 
   @override
@@ -23,7 +25,7 @@ class ClubListTile extends StatelessWidget {
           context,
           MaterialPageRoute(
               builder: (context) => ClubIndividualPage(
-                    clubId: 1,
+                    clubId: clubId,
                     clubSlug: clubSlug,
                     clubname: clubName,
                   )),
@@ -60,6 +62,7 @@ class ClubListTile extends StatelessWidget {
                   return ClubsOptionScreen(
                     clubName: clubName,
                     imageUrl: imageUrl,
+                    clubId: clubId,
                   );
                 },
               ),

@@ -5,8 +5,12 @@ import 'package:myotherapp/core/resources/asset_resources.dart';
 class ClubsOptionScreen extends StatelessWidget {
   final String clubName;
   final String imageUrl;
+  final int clubId;
   const ClubsOptionScreen(
-      {super.key, required this.clubName, required this.imageUrl});
+      {super.key,
+      required this.clubName,
+      required this.imageUrl,
+      required this.clubId});
 
   @override
   Widget build(BuildContext context) {

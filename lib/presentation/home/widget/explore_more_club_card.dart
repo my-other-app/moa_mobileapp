@@ -1,15 +1,17 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/presentation/home/pages/club_individual_page.dart';
 import '../../../core/themes/app_colors.dart';
 
-class ExploreMoreClubCard extends StatelessWidget {
+class ExploreMoreClubCard extends StatefulWidget {
   final String name;
   final int followersCount;
   final String logo;
-  final List<dynamic>
-      intrests; // Each interest should be a string (or convertible to string)
+  final List<dynamic> intrests; // Each interest should be a string
   final int id;
   final String clubSlug;
+  final bool isFollowing;
   const ExploreMoreClubCard({
     super.key,
     required this.name,
@@ -18,17 +20,51 @@ class ExploreMoreClubCard extends StatelessWidget {
     required this.intrests,
     required this.id,
     required this.clubSlug,
+    required this.isFollowing,
   });
 
   @override
+  State<ExploreMoreClubCard> createState() => _ExploreMoreClubCardState();
+}
+
+class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
+  late bool _isFollowing;
+
+  @override
+  void initState() {
+    super.initState();
+    _isFollowing = widget.isFollowing;
+  }
+
+  Future<void> _toggleFollow() async {
+    final String endpoint;
+    if (!_isFollowing) {
+      endpoint = '/clubs/follow/${widget.id}';
+    } else {
+      endpoint = '/clubs/unfollow/${widget.id}';
+    }
+    try {
+      Response<dynamic> res =
+          await APIService.instance.request(endpoint, DioMethod.post);
+      // Assuming the API returns a JSON with an "is_following" boolean field:
+      setState(() {
+        _isFollowing = res.data['is_following'] as bool;
+      });
+    } catch (e) {
+      // Handle error (for example, show a SnackBar)
+      print("Error toggling follow: $e");
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Define a list of colors to choose from randomly.
+    // Define a list of colors for the interest tags.
     final List<Color> colorList = [
       const Color(0xFFE1C9FF),
       const Color(0xFFF9FFA1),
       const Color(0xFFB8DFF2),
       const Color(0xFFFFC84A),
-      const Color(0xFFFFDEDD),
+      const Color(0xFFE1C9FF),
     ];
 
     return InkWell(
@@ -37,9 +73,9 @@ class ExploreMoreClubCard extends StatelessWidget {
           context,
           MaterialPageRoute(
               builder: (context) => ClubIndividualPage(
-                    clubId: id,
-                    clubSlug: clubSlug,
-                    clubname: name,
+                    clubId: widget.id,
+                    clubSlug: widget.clubSlug,
+                    clubname: widget.name,
                   )),
         );
       },
@@ -54,25 +90,25 @@ class ExploreMoreClubCard extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Row with Logo, Title, and Follower Count.
+              // Row with Logo, Club name, and Follower Count.
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Logo from variable.
+                  // Club logo with fallback.
                   Image.network(
-                    (logo.isNotEmpty) ? logo : 'https://picsum.photos/200',
+                    (widget.logo.isNotEmpty)
+                        ? widget.logo
+                        : 'https://picsum.photos/200',
                     width: 40,
                     height: 40,
                     fit: BoxFit.cover,
                   ),
-
                   const SizedBox(width: 12),
-                  // Club name and followers.
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        name,
+                        widget.name,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -80,7 +116,7 @@ class ExploreMoreClubCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '$followersCount Followers',
+                        '${widget.followersCount} Followers',
                         style: const TextStyle(
                           fontSize: 14,
                           color: Colors.black,
@@ -91,12 +127,12 @@ class ExploreMoreClubCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              // Tags from the interests list with random colors.
+              // Interest tags: assign colors based on index to avoid repeats.
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 alignment: WrapAlignment.start,
-                children: intrests.asMap().entries.map((entry) {
+                children: widget.intrests.asMap().entries.map((entry) {
                   int index = entry.key;
                   final interest = entry.value;
                   final Color assignedColor =
@@ -115,12 +151,10 @@ class ExploreMoreClubCard extends StatelessWidget {
                   );
                 }).toList(),
               ),
-
               const SizedBox(height: 24),
-              // Buttons.
+              // Buttons: "Join the Team" and Follow/Unfollow.
               Row(
                 children: [
-                  // Left button.
                   Expanded(
                     child: FilledButton(
                       onPressed: () {
@@ -135,15 +169,15 @@ class ExploreMoreClubCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Right button.
                   Expanded(
                     child: FilledButton(
-                      onPressed: () {
-                        // TODO: Implement "Follow" logic.
-                      },
-                      child: const Text(
-                        'FOLLOW',
-                        style: TextStyle(color: Colors.white),
+                      onPressed: _toggleFollow,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF2C333D),
+                      ),
+                      child: Text(
+                        _isFollowing ? 'UNFOLLOW' : 'FOLLOW',
+                        style: const TextStyle(color: Colors.white),
                       ),
                     ),
                   ),

@@ -161,7 +161,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
         appBar: AppBar(
           backgroundColor: Colors.white,
           title: const Text(
-            'HACKATHON',
+            'Event Details',
             style: TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
           ),
         ),
@@ -169,12 +169,13 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
       );
     }
     if (errorMessage != null) {
+      print(errorMessage);
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.white,
           title: const Text(
-            'HACKATHON',
+            'Event Details',
             style: TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
           ),
         ),

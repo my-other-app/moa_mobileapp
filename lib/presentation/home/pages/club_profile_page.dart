@@ -65,6 +65,7 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
         locationLink = clubInfo.locationLink;
         about = clubInfo.about;
         rating = clubInfo.rating;
+        //rating = 2;
         totalRatings = clubInfo.totalRatings;
         socials = clubInfo.socials;
         interests = clubInfo.interests;
@@ -124,7 +125,7 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
                             logo!['thumbnail'] != null &&
                             (logo!['thumbnail'] as String).isNotEmpty)
                         ? logo!['thumbnail']
-                        : 'https://via.placeholder.com/150',
+                        : 'https://picsum.photos/200',
                     width: 56,
                     height: 56,
                     fit: BoxFit.cover,

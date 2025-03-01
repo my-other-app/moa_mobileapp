@@ -106,6 +106,7 @@ class _ExploreMoreClubsPageState extends State<ExploreMoreClubsPage> {
                                     : [],
                                 id: club['id'] ?? 0,
                                 clubSlug: club['slug'] ?? '',
+                                isFollowing: club['is_following'],
                               );
                             },
                           ),

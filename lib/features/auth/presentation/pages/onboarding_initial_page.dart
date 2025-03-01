@@ -78,7 +78,7 @@ class OnboardingInitialPage extends StatelessWidget {
             Positioned(
               bottom: 0,
               left: 0,
-              right: 0, 
+              right: 0,
               child: IgnorePointer(
                 child: Image.asset(
                   'assets/images/grass.png',

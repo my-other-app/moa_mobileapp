@@ -27,12 +27,9 @@ class ProfileCubit extends Cubit<ProfileState> {
     emit(ProfileLoading());
     try {
       final profile = await profileService.getProfile(accessToken);
-      print(
-          "Profile fetched: $profile"); // This now uses your custom toString()
+
       emit(ProfileLoaded(profile: profile));
-    } catch (e, stacktrace) {
-      print("Error fetching profile: $e");
-      print("Stacktrace: $stacktrace");
+    } catch (e) {
       emit(ProfileFailure(error: e.toString()));
     }
   }

@@ -399,8 +399,8 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
                 offset: const Offset(0, -4),
                 scrollbarTheme: ScrollbarThemeData(
                   radius: const Radius.circular(40),
-                  thickness: MaterialStateProperty.all(6),
-                  thumbVisibility: MaterialStateProperty.all(true),
+                  thickness: WidgetStateProperty.all(6),
+                  thumbVisibility: WidgetStateProperty.all(true),
                 ),
               ),
               dropdownSearchData: DropdownSearchData<Organization>(

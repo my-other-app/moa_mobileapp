@@ -56,22 +56,26 @@ class EventInfo {
   factory EventInfo.fromJson(Map<String, dynamic> json) {
     return EventInfo(
       id: (json['id'] as num?)?.toInt() ?? 0,
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
+      name: json['name'] as String? ?? '',
+      slug: json['slug'] as String? ?? '',
       poster: json['poster'] ?? {},
-      eventDateTime: DateTime.parse(json['event_datetime']),
+      eventDateTime:
+          DateTime.tryParse(json['event_datetime'] as String? ?? '') ??
+              DateTime.now(),
       duration: (json['duration'] as num?)?.toInt() ?? 0,
-      locationName: json['location_name'] ?? '',
-      locationLink: json['location_link'] ?? '',
-      hasFee: json['has_fee'] ?? false,
+      locationName: json['location_name'] as String? ?? '',
+      locationLink: json['location_link'] as String? ?? '',
+      hasFee: json['has_fee'] as bool? ?? false,
       regFee: (json['reg_fee'] as num?)?.toInt() ?? 0,
-      hasPrize: json['has_prize'] ?? false,
+      hasPrize: json['has_prize'] as bool? ?? false,
       prizeAmount: (json['prize_amount'] as num?)?.toInt() ?? 0,
-      isOnline: json['is_online'] ?? false,
-      regStartDate: DateTime.parse(json['reg_startdate']),
-      regEndDate: DateTime.parse(json['reg_enddate']),
-      club: Club.fromJson(json['club']),
-      category: Category.fromJson(json['category']),
+      isOnline: json['is_online'] as bool? ?? false,
+      regStartDate: DateTime.tryParse(json['reg_startdate'] as String? ?? '') ??
+          DateTime.now(),
+      regEndDate: DateTime.tryParse(json['reg_enddate'] as String? ?? '') ??
+          DateTime.now(),
+      club: Club.fromJson(json['club'] ?? {}),
+      category: Category.fromJson(json['category'] ?? {}),
       interests: (json['interests'] as List<dynamic>?)
               ?.map((e) => Interest.fromJson(e))
               .toList() ??
@@ -82,10 +86,10 @@ class EventInfo {
           [],
       rating: (json['rating'] as num?)?.toInt() ?? 0,
       totalRating: (json['total_rating'] as num?)?.toInt() ?? 0,
-      about: json['about'] ?? '',
-      contactPhone: json['contact_phone'] ?? '',
-      contactEmail: json['contact_email'] ?? '',
-      url: json['url'] ?? '',
+      about: json['about'] as String? ?? '',
+      contactPhone: json['contact_phone'] as String? ?? '',
+      contactEmail: json['contact_email'] as String? ?? '',
+      url: json['url'] as String? ?? '',
     );
   }
 }

@@ -21,7 +21,6 @@ class ProfileService {
       }),
     );
     // Print the raw JSON response from the API
-    print("Raw profile API response: ${response.data}");
     return Profile.fromJson(response.data);
   }
 }

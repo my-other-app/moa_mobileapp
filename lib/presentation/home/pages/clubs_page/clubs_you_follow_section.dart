@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-
 import 'club_list_tile.dart';
 
 class ClubsYouFollowSection extends StatelessWidget {
-  final List<Map<String, String>> clubs;
+  final List<dynamic> clubs;
 
   const ClubsYouFollowSection({
     Key? key,
@@ -25,9 +24,10 @@ class ClubsYouFollowSection extends StatelessWidget {
           itemBuilder: (context, index) {
             final club = clubs[index];
             return ClubListTile(
-              clubName: club['name']!,
-              imageUrl: club['imageUrl']!,
-              clubSlug: '',
+              clubId: club['id'],
+              clubName: club['name'] ?? 'name',
+              imageUrl: club['logo']['thumbnail'] ?? '',
+              clubSlug: club['slug'],
             );
           },
         ),

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/presentation/home/pages/clubs_page/explore_more_clubs_page.dart';
 import 'package:myotherapp/presentation/home/widget/search_college_widget.dart';
-
 import 'clubs_page/clubs_you_follow_section.dart';
 import 'clubs_page/pinned_clubs_section.dart';
 
@@ -136,7 +135,7 @@ class _ClubsPageState extends State<ClubsPage> {
                     Expanded(
                       child: SingleChildScrollView(
                         child: ClubsYouFollowSection(
-                          clubs: test,
+                          clubs: followingClubs,
                         ),
                       ),
                     ),
