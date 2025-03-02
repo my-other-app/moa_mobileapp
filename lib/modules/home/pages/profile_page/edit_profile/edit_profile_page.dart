@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/modules/login/data/models/profile.dart';
 import 'package:myotherapp/modules/login/pages/interests_selection_page.dart';
 import 'package:myotherapp/modules/login/pages/onboarding_details_page.dart' show Organization;

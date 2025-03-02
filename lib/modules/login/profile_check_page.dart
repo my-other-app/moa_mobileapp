@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/common/models/user/user_model.dart';
-import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
 import 'package:myotherapp/modules/home/screen.dart';
 import 'package:myotherapp/modules/login/bloc/profile_cubit.dart';
@@ -48,7 +48,8 @@ class ProfileCheckPage extends StatelessWidget {
 
                   // Check the interest field from the nested profile.
                   final interests = state.profile.interests;
-                  if (interests == null || interests.isEmpty) {
+                  // if (interests == null || interests.isEmpty) {
+                  if (interests != null && interests.isNotEmpty) {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(

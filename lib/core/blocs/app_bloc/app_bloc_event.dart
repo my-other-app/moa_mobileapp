@@ -34,7 +34,7 @@ class LoggedInEvent extends AppBlocEvent {
 
 class UpdateUserDetailsEvent extends AppBlocEvent{
   const UpdateUserDetailsEvent({super.accessToken, super.user, super.refreshToken, required super.profile});
-  
+
 }
 
 class LoggedOutEvent extends AppBlocEvent {

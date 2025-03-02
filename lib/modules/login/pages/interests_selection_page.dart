@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/modules/login/data/models/profile.dart';
-import 'package:myotherapp/modules/login/pages/onboarding_final_page.dart';
+import 'package:myotherapp/modules/login/pages/onboarding_avatar_picker_page.dart';
 
 class InterestsSelectionPage extends StatefulWidget {
   const InterestsSelectionPage({super.key, required this.isOnboarding});
@@ -85,7 +85,7 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                  builder: (context) => const OnboardingFinalPage()),
+                  builder: (context) => const OnboardingAvatarPickerPage()),
             );
           }
           else {

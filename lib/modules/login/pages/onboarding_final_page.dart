@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/modules/home/screen.dart';
 
 class OnboardingFinalPage extends StatefulWidget {
@@ -13,16 +13,14 @@ class OnboardingFinalPage extends StatefulWidget {
 
 class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
   String? profileImageUrl;
+
+  //TODO :these api fetches may not needed so once check and remove them
   final Dio dio = Dio();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFA0),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFFFFA0),
-        elevation: 0,
-      ),
       body: Stack(
         children: [
           Positioned(
@@ -34,45 +32,72 @@ class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
               fit: BoxFit.cover,
             ),
           ),
-          Column(
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 48),
-                      _buildProfileCreatedSection(),
-                      Spacer(),
-                      _buildProfileImage(),
-                      const SizedBox(height: 24),
-                      _buildMotivationalText(),
-                      Spacer(),
-                      Spacer(),
-                      // _buildStartJourneyButton(context),
-                      FilledButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => LandingPage()),
-                          );
-                        },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text("START THE JOURNEY"),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward, size: 28),
-                          ],
+          SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 48),
+                        _buildProfileCreatedSection(),
+                        Spacer(),
+                        BlocConsumer<AppBloc, AppBlocState>(
+                          listener: (context, state) {
+                            // TODO: implement listener
+                          },
+                          buildWhen: (previous, current) =>
+                              previous.profile?.profile?.avatar !=
+                              current.profile?.profile?.avatar,
+                          builder: (context, state) {
+                            return _buildProfileImage(state.profile?.profile?.avatar?.image.original);
+                          },
                         ),
-                      ),
-                      const SizedBox(height: 40), // bottom padding for grass
-                    ],
+                        const SizedBox(height: 24),
+                        _buildMotivationalText(),
+                        Spacer(),
+                        Spacer(),
+                        // _buildStartJourneyButton(context),
+                        FilledButton(
+                          onPressed: () {
+                            final currentAvatar = context
+                                .read<AppBloc>()
+                                .state
+                                .profile
+                                ?.profile
+                                ?.avatar;
+            
+                            if (currentAvatar != null) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => LandingPage()),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content:
+                                        Text('select profile pic to proceed')),
+                              );
+                            }
+                          },
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text("START THE JOURNEY"),
+                              SizedBox(width: 8),
+                              Icon(Icons.arrow_forward, size: 28),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 40), // bottom padding for grass
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -266,7 +291,7 @@ class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
     );
   }
 
-  Widget _buildProfileImage() {
+  Widget _buildProfileImage(String? profileImageUrl) {
     // Use a NetworkImage if profileImageUrl is available, otherwise fallback to a placeholder asset.
     return Container(
       width: 150,
@@ -274,7 +299,7 @@ class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
       decoration: ShapeDecoration(
         image: DecorationImage(
           image: profileImageUrl != null
-              ? NetworkImage(profileImageUrl!)
+              ? NetworkImage(profileImageUrl)
               : const AssetImage('assets/images/profile_placeholder.png')
                   as ImageProvider,
           fit: BoxFit.cover,
