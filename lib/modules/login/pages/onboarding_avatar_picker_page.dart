@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
-import 'package:myotherapp/modules/home/screen.dart';
 import 'package:myotherapp/modules/login/pages/onboarding_final_page.dart';
 import 'package:myotherapp/modules/login/pages/widgest/avatar_picker_bottom_sheet.dart';
 
@@ -113,15 +112,14 @@ class OnboardingAvatarPickerPageState
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     BlocConsumer<AppBloc, AppBlocState>(
-                      listener: (context, state) {
-                      
-                      },
+                      listener: (context, state) {},
                       buildWhen: (previous, current) =>
                           previous.profile?.profile?.avatar !=
                           current.profile?.profile?.avatar,
                       builder: (context, state) {
                         //TODO  : need to add high res images
-                        return _buildProfileImage(state.profile?.profile?.avatar?.image.original);
+                        return _buildProfileImage(
+                            state.profile?.profile?.avatar?.image.original);
                       },
                     ),
                     SizedBox(height: 16),

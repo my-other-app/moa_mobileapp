@@ -24,7 +24,7 @@ class OnboardingInitialPage extends StatelessWidget {
       if (account != null) {
         final auth = await account.authentication;
         final String? idToken = auth.idToken;
-        if (idToken != null) {
+        if (idToken != null && context.mounted) {
           final String platform = Platform.isAndroid ? 'android' : 'ios';
 
           // Trigger the login process via the cubit.

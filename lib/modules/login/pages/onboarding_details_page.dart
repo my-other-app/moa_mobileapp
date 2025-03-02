@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
@@ -119,15 +118,20 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           param: data);
       debugPrint("Profile creation response: ${response.data}");
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 && mounted) {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => InterestsSelectionPage(isOnboarding: true,)),
+          MaterialPageRoute(
+              builder: (context) => InterestsSelectionPage(
+                    isOnboarding: true,
+                  )),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to create profile.')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to create profile.')),
+          );
+        }
       }
     } catch (error) {
       debugPrint("Error creating profile: $error");
@@ -135,18 +139,25 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
         debugPrint("Response data: ${error.response?.data}");
       }
 
-      if (error is DioException && error.response?.data['message'] == 'Profile already exists') {
+      if (error is DioException &&
+          error.response?.data['message'] == 'Profile already exists' &&
+          mounted) {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => InterestsSelectionPage(isOnboarding: true,)),
+          MaterialPageRoute(
+              builder: (context) => InterestsSelectionPage(
+                    isOnboarding: true,
+                  )),
         );
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('An error occurred during profile creation.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('An error occurred during profile creation.')),
+        );
+      }
     } finally {
       setState(() {
         _isLoading = false;

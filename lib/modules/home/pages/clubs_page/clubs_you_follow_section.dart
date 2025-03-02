@@ -23,7 +23,6 @@ class ClubsYouFollowSection extends StatelessWidget {
           itemCount: clubs.length,
           itemBuilder: (context, index) {
             final club = clubs[index];
-            print(club);
             return ClubListTile(
               clubId: club['id'],
               clubName: club['name'] ?? 'name',

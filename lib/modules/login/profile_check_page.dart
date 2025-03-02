@@ -8,7 +8,6 @@ import 'package:myotherapp/modules/login/bloc/profile_cubit.dart';
 import 'package:myotherapp/modules/login/data/models/profile.dart';
 import 'package:myotherapp/modules/login/data/services/profile_service.dart';
 import 'package:myotherapp/modules/login/pages/onboarding_details_page.dart';
-import 'package:myotherapp/modules/login/pages/onboarding_final_page.dart';
 
 class ProfileCheckPage extends StatelessWidget {
   final String accessToken;
@@ -58,7 +57,6 @@ class ProfileCheckPage extends StatelessWidget {
                                 initialName: state.profile.fullName,
                               )),
                     );
-                 
                   } else {
                     Navigator.pushReplacement(
                       context,
