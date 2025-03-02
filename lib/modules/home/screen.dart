@@ -14,9 +14,8 @@ class LandingPage extends StatelessWidget {
   final List<Widget> _pages = <Widget>[
     HomePage(),
     EventsPage(),
-    //CoursesPage(),
     ClubsPage(),
-    ProfilePage()
+    ProfilePage(),
   ];
 
   void onItemTapped(BuildContext context, int index) {
@@ -29,16 +28,20 @@ class LandingPage extends StatelessWidget {
       builder: (context, state) {
         return Scaffold(
           backgroundColor: Colors.white,
-          body: SafeArea(child: _pages[state.index]),
+          body: SafeArea(
+            child: IndexedStack(
+              index: state.index, 
+              children: _pages, 
+            ),
+          ),
           bottomNavigationBar: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
-            backgroundColor: Color(0xFF2C333D), // Dark background
+            backgroundColor: const Color(0xFF2C333D), 
             currentIndex: state.index,
             unselectedItemColor: Colors.grey[500],
-            selectedItemColor:
-                Color(0xFFF9FFA1), // Soft yellow for selected item
+            selectedItemColor: const Color(0xFFF9FFA1), 
             onTap: (index) => onItemTapped(context, index),
-            items: getBottomNavBarItems(), // Use the method to get items
+            items: getBottomNavBarItems(),
           ),
         );
       },
@@ -50,14 +53,15 @@ List<BottomNavigationBarItem> getBottomNavBarItems() {
   return [
     getBottomNavBarItem(icon: Icons.home, label: 'Home'),
     getBottomNavBarItem(icon: Icons.event, label: 'Events'),
-    //getBottomNavBarItem(icon: Icons.school, label: 'Courses'),
     getBottomNavBarItem(icon: Icons.groups, label: 'Clubs'),
     getBottomNavBarItem(icon: Icons.person, label: 'Profile'),
   ];
 }
 
-BottomNavigationBarItem getBottomNavBarItem(
-    {required IconData icon, required String label}) {
+BottomNavigationBarItem getBottomNavBarItem({
+  required IconData icon,
+  required String label,
+}) {
   return BottomNavigationBarItem(
     icon: Icon(icon),
     label: label,

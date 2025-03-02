@@ -10,7 +10,10 @@ class FollowingEventsPage extends StatefulWidget {
   State<FollowingEventsPage> createState() => _FollowingEventsPageState();
 }
 
-class _FollowingEventsPageState extends State<FollowingEventsPage> {
+class _FollowingEventsPageState extends State<FollowingEventsPage> with AutomaticKeepAliveClientMixin{
+  @override
+  bool get wantKeepAlive => true;
+
   List<dynamic> events = [];
   bool isLoading = true;
   String? errorMessage;
