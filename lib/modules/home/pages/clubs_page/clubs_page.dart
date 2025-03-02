@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/modules/home/custom_widgets/search_college_widget.dart';
 import 'package:myotherapp/modules/home/pages/clubs_page/explore_more_clubs_page.dart';
+import 'package:myotherapp/modules/home/pages/clubs_page/no_clubs_following_page.dart';
 import 'package:myotherapp/modules/home/pages/home_page/home_page_tabs/for_you_events_page.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -119,6 +120,7 @@ class _ClubsPageState extends State<ClubsPage> {
           : errorMessage != null
               ? Center(child: Text('Error: $errorMessage'))
               : Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     SearchAndCollegeList(
                       colleges: colleges,
@@ -126,7 +128,7 @@ class _ClubsPageState extends State<ClubsPage> {
                     // Show PinnedClubsSection only if there are pinned clubs.
                     if (pinnedClubs.isNotEmpty) ...[
                       PinnedClubsSection(
-                        pinnedClubs: test,
+                        pinnedClubs: pinnedClubs,
                       ),
                       const Padding(
                         padding:
@@ -135,6 +137,7 @@ class _ClubsPageState extends State<ClubsPage> {
                       ),
                       const SizedBox(height: 16),
                     ],
+                    // ...
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
@@ -171,14 +174,19 @@ class _ClubsPageState extends State<ClubsPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: ClubsYouFollowSection(
-                          clubs: followingClubs,
-                        ),
-                      ),
-                    ),
+                    // const SizedBox(height: 16),
+                    followingClubs.isEmpty
+                        ? Expanded(
+                            child:
+                                NoClubsFollowingPage()) // Show this widget if no clubs are followed.
+                        : Expanded(
+                            child: SingleChildScrollView(
+                              child: ClubsYouFollowSection(
+                                clubs: followingClubs,
+                              ),
+                            ),
+                          ),
+// ...
                   ],
                 ),
     );

@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/modules/home/custom_widgets/event_card.dart';
-import 'package:myotherapp/presentation/home/pages/no_notes_page.dart';
+import 'package:myotherapp/modules/home/pages/clubs_page/no_notes_page.dart';
 
 class PastEventsPage extends StatefulWidget {
   const PastEventsPage({super.key});

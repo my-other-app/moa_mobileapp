@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:myotherapp/modules/home/pages/clubs_page/club_individual_page.dart';
 
 class PinnedClubsSection extends StatelessWidget {
-  final List<Map<String, String>> pinnedClubs;
+  final List<dynamic> pinnedClubs;
   const PinnedClubsSection({
     super.key,
     required this.pinnedClubs,
@@ -42,9 +42,9 @@ class PinnedClubsSection extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                         builder: (context) => ClubIndividualPage(
-                              clubId: 1,
-                              clubname: '',
-                              clubSlug: 's',
+                              clubId: club['id'],
+                              clubname: club['name'],
+                              clubSlug: club['slug'],
                             )),
                   );
                 },
