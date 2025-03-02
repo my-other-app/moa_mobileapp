@@ -19,4 +19,8 @@ class AssetResources {
   static const String prize = "assets/icons/prize.webp";
   static const String regfee = "assets/icons/regfee.webp";
   static const String college = "assets/icons/college.webp";
+  static const String home = "assets/icons/home.svg";
+  static const String events = "assets/icons/events.svg";
+  static const String clubs = "assets/icons/clubs.svg";
+  static const String profile = "assets/icons/profile.svg";
 }

@@ -16,17 +16,17 @@ BottomNavigationBarItem getBottomNavBarItem({
 }) {
   return BottomNavigationBarItem(
     icon: SvgPicture.asset(image, color: Colors.grey),
-    activeIcon: SvgPicture.asset(image, color: Colors.white),
+    activeIcon: SvgPicture.asset(image, color: Color(0xFFF9FFA1)),
     label: label,
   );
 }
 
 List<BottomNavigationBarItem> getBottomNavBarItems() {
   return [
-    getBottomNavBarItem(image: AssetResources.share, label: 'Home'),
-    getBottomNavBarItem(image: AssetResources.share, label: 'Events'),
-    getBottomNavBarItem(image: AssetResources.share, label: 'Clubs'),
-    getBottomNavBarItem(image: AssetResources.share, label: 'Profile'),
+    getBottomNavBarItem(image: AssetResources.home, label: 'Home'),
+    getBottomNavBarItem(image: AssetResources.events, label: 'Events'),
+    getBottomNavBarItem(image: AssetResources.clubs, label: 'Clubs'),
+    getBottomNavBarItem(image: AssetResources.profile, label: 'Profile'),
   ];
 }
 
