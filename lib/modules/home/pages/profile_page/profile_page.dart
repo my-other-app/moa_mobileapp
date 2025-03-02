@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/common/widgets/custom_option_tile.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/modules/home/bloc/bottom_nav_bloc.dart';
+import 'package:myotherapp/modules/home/bloc/bottom_nav_event.dart';
 import 'package:myotherapp/modules/login/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/modules/home/pages/profile_page/certificates/certificate_page.dart';
 import 'package:myotherapp/modules/home/pages/profile_page/edit_profile/edit_profile_page.dart';
@@ -95,6 +97,9 @@ class ProfilePage extends StatelessWidget {
                       // Dispatch logout event to AppBloc
                       if (context.mounted) {
                         context.read<AppBloc>().add(const LoggedOutEvent());
+                        context
+                            .read<BottomNavigatorBloc>()
+                            .add(UpdateIndexEvent(index: 0));
 
                         // Navigate to login page and clear navigation stack
                         Navigator.of(context).pushAndRemoveUntil(
@@ -113,7 +118,7 @@ class ProfilePage extends StatelessWidget {
         },
       },
     ];
-return BlocBuilder<AppBloc, AppBlocState>(
+    return BlocBuilder<AppBloc, AppBlocState>(
       buildWhen: (previous, current) {
         return current.profile != previous.profile;
       },

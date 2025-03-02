@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/modules/home/pages/clubs_page/club_individual_page.dart';
@@ -57,12 +58,15 @@ class EventCard extends StatelessWidget {
                 );
               },
               child: SizedBox(
-                child: Image.network(
-                  orgImage,
-                  width: 48,
-                  height: 48,
+                width: 48,
+                height: 48,
+                child: CachedNetworkImage(
+                  imageUrl: orgImage,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
+                  placeholder: (context, url) => Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                  errorWidget: (context, url, error) {
                     return Container(
                       width: 48,
                       height: 48,
@@ -119,27 +123,71 @@ class EventCard extends StatelessWidget {
 
         /// Event Image
         InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => IndividualEventPage(
-                        eventId: eventId,
-                      )),
-            );
-          },
-          child: Container(
-            height: size.height * .5,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10.0),
-              image: DecorationImage(
-                image: NetworkImage(imageUrl),
-                fit: BoxFit.cover,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => IndividualEventPage(
+                          eventId: eventId,
+                        )),
+              );
+            },
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
+              fit: BoxFit.cover,
+              imageBuilder: (context, imageProvider) => Container(
+                height: size.height * 0.5,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10.0),
+                  image: DecorationImage(
+                    image: imageProvider,
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
+              placeholder: (context, url) => Container(
+                height: size.height * 0.5,
+
+                width: double.infinity,
+
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10.0),
+
+                  color: Colors.grey[300], // Placeholder color
+                ),
+
+                child: Center(
+                    child:
+                        CircularProgressIndicator()), // Optional loading indicator
+              ),
+              errorWidget: (context, url, error) => Container(
+                height: size.height * 0.5,
+
+                width: double.infinity,
+
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10.0),
+
+                  color: Colors.red, // Error color
+                ),
+
+                child: Center(child: Icon(Icons.error)), // Optional error icon
+              ),
+            )
+
+            // Container(
+            //   height: size.height * .5,
+            //   width: double.infinity,
+            //   decoration: BoxDecoration(
+            //     borderRadius: BorderRadius.circular(10.0),
+            //     image: DecorationImage(
+            //       image: NetworkImage(imageUrl),
+            //       fit: BoxFit.cover,
+            //     ),
+            //   ),
+            // ),
             ),
-          ),
-        ),
 
         /// Tags
         Row(
