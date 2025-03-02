@@ -9,11 +9,11 @@ abstract class AppBlocState extends Equatable {
   final Profile? profile;
 
   @override
-  List<Object?> get props => <Object?>[user, accessToken, refreshToken, profile];
+  List<Object?> get props => <Object?>[user, accessToken, refreshToken, profile?.toJson()];
 }
 
 class AppBlocInitialState extends AppBlocState {
-  const AppBlocInitialState();
+  const AppBlocInitialState({super.user, super.accessToken, super.refreshToken, super.profile});
   
   @override
   List<Object?> get props => <Object?>[user, accessToken, refreshToken, profile];
@@ -38,7 +38,8 @@ class UpdateUserDetailsState extends AppBlocState {
     required super.refreshToken,
     required super.profile,
   });
-  
+ 
+  // Override props to ensure equality comparison uses the profile data
   @override
   List<Object?> get props => <Object?>[user, accessToken, refreshToken, profile];
 }
