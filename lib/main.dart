@@ -5,6 +5,8 @@ import 'package:myotherapp/core/auth/auth_wrapper.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/core/themes/app_theme.dart';
 import 'package:myotherapp/modules/home/bloc/bottom_nav_bloc.dart';
+import 'package:myotherapp/modules/login/pages/onboarding_avatar_picker_page.dart';
+import 'package:myotherapp/modules/login/pages/onboarding_final_page.dart';
 import 'package:path_provider/path_provider.dart';
 
 void main() async {
@@ -52,6 +54,7 @@ class MyAppView extends StatelessWidget {
       title: 'My Other App',
       theme: AppTheme.themeData(),
       home: const AuthWrapper(),
+      //home: OnboardingAvatarPickerPage(),
     );
   }
 }

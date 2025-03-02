@@ -20,7 +20,7 @@ Widget _buildDragIndicator() {
         child: Container(
           height: 4,
           decoration: ShapeDecoration(
-            color: Colors.white,
+            color: const Color(0xFF17A58F),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(2),
             ),
@@ -32,7 +32,7 @@ Widget _buildDragIndicator() {
         child: Container(
           height: 4,
           decoration: ShapeDecoration(
-            color: Colors.white,
+            color: const Color(0xFF17A58F),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(2),
             ),
