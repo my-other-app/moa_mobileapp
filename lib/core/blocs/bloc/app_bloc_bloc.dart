@@ -1,33 +1,52 @@
+import 'dart:developer';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart' show debugPrint, immutable;
 import 'package:hydrated_bloc/hydrated_bloc.dart';
-import 'package:myotherapp/common/models/user/main.dart';
+import 'package:myotherapp/common/models/user/user_model.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
-import 'package:myotherapp/features/auth/data/models/profile.dart';
+import 'package:myotherapp/modules/login/data/models/profile.dart';
 
 part 'app_bloc_event.dart';
 part 'app_bloc_state.dart';
 
 class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
-  AppBloc({required this.user}) : super(const AppBlocInitialState()) {
+  AppBloc() : super(const AppBlocInitialState()) {
     on<AppStarted>(_onAppStarted);
     on<LoggedInEvent>(_onLoggedIn);
     on<LoggedOutEvent>(_onLoggedOut);
     on<UpdateUserDetailsEvent>(_onUpdateUserDetails);
   }
-  final UserModel? user;
 
   void _onAppStarted(
     AppStarted event,
     Emitter<AppBlocState> emit,
-  ) {
+  ) async {
     // When app starts, check if we have stored state
     // If we already have a logged in state from hydrated storage, keep it
     // Otherwise, remain in initial state
     debugPrint('AppStarted event: Current state type: ${state.runtimeType}');
 
     if (state is AppLoggedInState) {
+      final response = await APIService.instance.request(
+        '/user/profile/me',
+        DioMethod.get,
+      );
+
+      if (response.data == null) {
+
+         Profile updatedProfile = Profile.fromJson(response.data);
+
+         debugPrint('Updated profile: $updatedProfile');
+        emit(UpdateUserDetailsState(
+            user: state.user,
+            accessToken: state.accessToken,
+            refreshToken: state.refreshToken,
+            profile: updatedProfile));
+      }
+
+      debugPrint('Profile response: ${response.data}');
       debugPrint(
           'User already logged in from hydrated state: ${(state as AppLoggedInState).user?.fullName}');
     } else {
@@ -39,20 +58,32 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
     UpdateUserDetailsEvent event,
     Emitter<AppBlocState> emit,
   ) async {
-    debugPrint('UpdateUserDetails event with user: ${event.profile.fullName}');
-    emit(UpdateUserDetailsState(
-      user: user,
-      accessToken: state.accessToken,
-      refreshToken: state.refreshToken,
-      profile: event.profile,
-    ));
+    log('UpdateUserDetails event with user: ${event.profile?.toJson()}');
+    
+    // Create a new profile object to ensure it's detected as a change
+    Profile? updatedProfile;
+    if (event.profile != null) {
+      // Create a new profile object from the JSON to ensure it's a new reference
+      final profileJson = event.profile!.toJson();
+      updatedProfile = Profile.fromJson(profileJson);
+    }
+    
+    // Create the new state with the new profile object
+    final newState = UpdateUserDetailsState(
+      user: event.user ?? state.user,
+      accessToken: event.accessToken ?? state.accessToken,
+      refreshToken: event.refreshToken ?? state.refreshToken,
+      profile: updatedProfile,
+    );
+    
+    emit(newState);
   }
 
   Future<void> _onLoggedIn(
     LoggedInEvent event,
     Emitter<AppBlocState> emit,
   ) async {
-    debugPrint('LoggedIn event with user: ${event.user.fullName}');
+    debugPrint('LoggedIn event with user: ${event.user?.fullName}');
 
     try {
       final response = await APIService.instance.request(
@@ -78,10 +109,10 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
       // Check the structure of the response data
       debugPrint('Profile response data type: ${response.data.runtimeType}');
 
-      Profile? profile;
+      Profile? recentlyFetchedProfile;
       try {
-        profile = Profile.fromJson(response.data);
-        debugPrint('Profile parsed successfully: $profile');
+        recentlyFetchedProfile = Profile.fromJson(response.data);
+        debugPrint('Profile parsed successfully: $recentlyFetchedProfile');
       } catch (e) {
         debugPrint('Error parsing profile from JSON: $e');
         // Try to see if the data is nested
@@ -89,8 +120,8 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
             response.data.containsKey('data') &&
             response.data['data'] != null) {
           try {
-            profile = Profile.fromJson(response.data['data']);
-            debugPrint('Profile parsed from nested data: $profile');
+            recentlyFetchedProfile = Profile.fromJson(response.data['data']);
+            debugPrint('Profile parsed from nested data: $recentlyFetchedProfile');
           } catch (e) {
             debugPrint('Error parsing profile from nested data: $e');
           }
@@ -101,7 +132,7 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
         user: event.user,
         accessToken: event.accessToken,
         refreshToken: event.refreshToken,
-        profile: profile,
+        profile: recentlyFetchedProfile,
       ));
     } catch (e) {
       debugPrint('Error fetching profile: $e');
@@ -110,7 +141,7 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
         user: event.user,
         accessToken: event.accessToken,
         refreshToken: event.refreshToken,
-        profile: null,
+        profile: event.profile,
       ));
     }
   }

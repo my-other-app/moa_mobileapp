@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/auth/auth_wrapper.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/core/themes/app_theme.dart';
-import 'package:myotherapp/presentation/home/bloc/bottom_nav_bloc.dart';
+import 'package:myotherapp/modules/home/bloc/bottom_nav_bloc.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<AppBloc>(
           create: (_) {
-            final bloc = AppBloc(user: null);
+            final bloc = AppBloc();
             // Dispatch the AppStarted event to check for existing login state
             bloc.add(const AppStarted());
             return bloc;

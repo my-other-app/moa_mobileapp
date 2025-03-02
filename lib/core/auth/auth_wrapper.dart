@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
-import 'package:myotherapp/presentation/home/screen.dart';
+import 'package:myotherapp/modules/login/pages/onboarding_initial_page.dart';
+import 'package:myotherapp/modules/home/screen.dart';
 
 ///
 /// Auth Wrapper
@@ -18,10 +18,10 @@ class AuthWrapper extends StatelessWidget {
       builder: (context, state) {
         debugPrint('Current auth state: ${state.runtimeType}');
 
-        if (state is! AppBlocInitialState || state is! AppLoggedOutState) {
-          return LandingPage();
-        } else {
+        if (state is AppBlocInitialState || state is AppLoggedOutState) {
           return OnboardingInitialPage();
+        } else {
+          return LandingPage();
         }
       },
     );
