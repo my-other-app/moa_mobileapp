@@ -174,7 +174,7 @@ class ProfilePage extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   Text(
-                                    state.profile?.fullName ?? 'User',
+                                    state.profile?.profile?.fullName ?? 'User',
                                     style: TextStyle(
                                       fontSize: 36,
                                       fontFamily: 'BebasNeue',

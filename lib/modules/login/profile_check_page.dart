@@ -5,6 +5,7 @@ import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
 import 'package:myotherapp/modules/home/screen.dart';
 import 'package:myotherapp/modules/login/bloc/profile_cubit.dart';
+import 'package:myotherapp/modules/login/data/models/profile.dart';
 import 'package:myotherapp/modules/login/data/services/profile_service.dart';
 import 'package:myotherapp/modules/login/pages/onboarding_details_page.dart';
 import 'package:myotherapp/modules/login/pages/onboarding_final_page.dart';
@@ -47,9 +48,8 @@ class ProfileCheckPage extends StatelessWidget {
                       );
 
                   // Check the interest field from the nested profile.
-                  final interests = state.profile.interests;
-                  // if (interests == null || interests.isEmpty) {
-                  if (interests != null && interests.isNotEmpty) {
+                  final ProfileDetails? profile = state.profile.profile;
+                  if (profile == null) {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
@@ -58,21 +58,12 @@ class ProfileCheckPage extends StatelessWidget {
                                 initialName: state.profile.fullName,
                               )),
                     );
-                    // Navigator.pushReplacement(
-                    //     context,
-                    //     MaterialPageRoute(
-                    //       builder: (context) => InterestsSelectionPage(),
-                    //     ));
+                 
                   } else {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(
-                          builder: (context) => OnboardingFinalPage()),
+                      MaterialPageRoute(builder: (context) => LandingPage()),
                     );
-                    // Navigator.pushReplacement(
-                    //   context,
-                    //   MaterialPageRoute(builder: (context) => LandingPage()),
-                    // );
                   }
                 }
               }).catchError((error) {

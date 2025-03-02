@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,7 +30,7 @@ class _EditProfilePageState extends State<EditProfilePage>{
   void initState() {
     super.initState();
     final initialProfile = context.read<AppBloc>().state.profile;
-    _nameController = TextEditingController(text: initialProfile?.fullName ?? 'USER');
+    _nameController = TextEditingController(text: initialProfile?.profile?.fullName ?? 'USER');
     _whatsappController = TextEditingController(text: initialProfile?.profile?.whatsapp ?? '1234567890');
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -310,7 +312,9 @@ class _EditProfilePageState extends State<EditProfilePage>{
           },
         );
 
-        if (response.statusCode == 200) {
+        if (response.statusCode == 200 && mounted) {
+
+          log('API Response for profile upate: ${response.data}');
           Profile? updatedProfile = context.read<AppBloc>().state.profile;
           if (updatedProfile != null) {
             updatedProfile.profile?.whatsapp = response.data['whatsapp'];
@@ -318,8 +322,6 @@ class _EditProfilePageState extends State<EditProfilePage>{
             updatedProfile.profile?.org = _collegeNameNotifier.value != null
                     ? Org(id: _collegeNameNotifier.value?.id, name: _collegeNameNotifier.value?.name)
                     : null;
-
-            debugPrint('Dispatching UpdateUserDetailsEvent with profile: ${updatedProfile.fullName}');
             context.read<AppBloc>().add(UpdateUserDetailsEvent(profile: updatedProfile));
             debugPrint('UpdateUserDetailsEvent dispatched');
           }

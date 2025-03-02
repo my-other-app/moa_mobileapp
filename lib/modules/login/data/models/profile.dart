@@ -88,6 +88,7 @@ class ProfileDetails {
   Map<String, dynamic> toJson() {
     return {
       // 'interests': interests?.map((e) => e.toJson()).toList(),
+      'full_name': fullName,
       'whatsapp': whatsapp,
       'org': org?.toJson(),
       'avatar': avatar?.toJson(),
