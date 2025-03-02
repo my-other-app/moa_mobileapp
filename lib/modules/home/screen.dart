@@ -15,8 +15,8 @@ BottomNavigationBarItem getBottomNavBarItem({
   required String label,
 }) {
   return BottomNavigationBarItem(
-    icon: SvgPicture.asset(image, color: Colors.grey),
-    activeIcon: SvgPicture.asset(image, color: Color(0xFFF9FFA1)),
+    icon: SvgPicture.asset(image, colorFilter: ColorFilter.mode(Colors.grey, BlendMode.srcIn)),
+    activeIcon: SvgPicture.asset(image, colorFilter: ColorFilter.mode(Color(0xFFF9FFA1), BlendMode.srcIn)),
     label: label,
   );
 }

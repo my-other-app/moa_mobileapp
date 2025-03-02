@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/modules/login/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/modules/home/screen.dart';
 

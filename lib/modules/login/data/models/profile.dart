@@ -88,6 +88,7 @@ class ProfileDetails {
   Map<String, dynamic> toJson() {
     return {
       // 'interests': interests?.map((e) => e.toJson()).toList(),
+      'full_name': fullName,
       'whatsapp': whatsapp,
       'org': org?.toJson(),
       'avatar': avatar?.toJson(),
@@ -244,36 +245,62 @@ class Logo {
     return 'Logo(thumbnail: $thumbnail, medium: $medium, large: $large, original: $original)';
   }
 }
-
 class Avatar {
-  final int? id;
-  final String? iconType;
-  final String? content;
+  final int id;
+  final String name;
+  final ImageUrls image;
 
   Avatar({
-    this.id,
-    this.iconType,
-    this.content,
+    required this.id,
+    required this.name,
+    required this.image,
   });
 
   factory Avatar.fromJson(Map<String, dynamic> json) {
     return Avatar(
-      id: json['id'] as int?,
-      iconType: json['icon_type'] as String?,
-      content: json['content'] as String?,
+      id: json['id'],
+      name: json['name'],
+      image: ImageUrls.fromJson(json['image']),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'icon_type': iconType,
-      'content': content,
+      'name': name,
+      'image': image.toJson(),
     };
   }
+}
 
-  @override
-  String toString() {
-    return 'Avatar(id: $id, iconType: $iconType, content: $content)';
+class ImageUrls {
+  final String thumbnail;
+  final String medium;
+  final String large;
+  final String original;
+
+  ImageUrls({
+    required this.thumbnail,
+    required this.medium,
+    required this.large,
+    required this.original,
+  });
+
+  factory ImageUrls.fromJson(Map<String, dynamic> json) {
+    return ImageUrls(
+      thumbnail: json['thumbnail'],
+      medium: json['medium'],
+      large: json['large'],
+      original: json['original'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'thumbnail': thumbnail,
+      'medium': medium,
+      'large': large,
+      'original': original,
+    };
   }
 }

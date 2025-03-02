@@ -22,6 +22,7 @@ class _FollowingEventsPageState extends State<FollowingEventsPage>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     if (isLoading) {
       return const Scaffold(
         backgroundColor: Colors.white,

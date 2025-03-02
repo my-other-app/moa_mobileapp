@@ -1,4 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
+import 'package:myotherapp/modules/home/screen.dart';
+import 'package:myotherapp/modules/login/pages/onboarding_final_page.dart';
 import 'package:myotherapp/modules/login/pages/widgest/avatar_picker_bottom_sheet.dart';
 
 Widget _buildDragIndicator() {
@@ -43,8 +48,7 @@ Widget _buildDragIndicator() {
   );
 }
 
-Widget _buildProfileImage() {
-  // Use a NetworkImage if profileImageUrl is available, otherwise fallback to a placeholder asset.
+Widget _buildProfileImage(String? avatarUrl) {
   return Container(
     width: 150,
     height: 150,
@@ -59,6 +63,19 @@ Widget _buildProfileImage() {
       color: const Color(0xFFCCC1F0),
       shape: const OvalBorder(),
     ),
+    child: CachedNetworkImage(
+      imageUrl: avatarUrl ?? '',
+      imageBuilder: (context, imageProvider) => Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: imageProvider,
+            fit: BoxFit.cover,
+          ),
+        ),
+      ),
+      placeholder: (context, url) => const CircularProgressIndicator(),
+      errorWidget: (context, url, error) => const Icon(Icons.face),
+    ),
   );
 }
 
@@ -66,11 +83,11 @@ class OnboardingAvatarPickerPage extends StatefulWidget {
   const OnboardingAvatarPickerPage({super.key});
 
   @override
-  _OnboardingAvatarPickerPageState createState() =>
-      _OnboardingAvatarPickerPageState();
+  OnboardingAvatarPickerPageState createState() =>
+      OnboardingAvatarPickerPageState();
 }
 
-class _OnboardingAvatarPickerPageState
+class OnboardingAvatarPickerPageState
     extends State<OnboardingAvatarPickerPage> {
   @override
   Widget build(BuildContext context) {
@@ -78,57 +95,74 @@ class _OnboardingAvatarPickerPageState
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFA0),
-      appBar: AppBar(
-        title: _buildDragIndicator(),
-        backgroundColor: const Color(0xFFFFFFA0),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0).copyWith(bottom: 32),
-        child: Column(
-          spacing: 8,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              "Time to flex with your profile pic",
-              style: textTheme.headlineSmall,
-            ),
-            Text("Choose your profile pic", style: textTheme.bodyMedium),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildProfileImage(),
-                  SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: () {
-                      showModalBottomSheet(
-                          context: context,
-                          builder: (_) => AvatarPickerBottomSheet());
-                    },
-                    child: Text(
-                      "Tap to choose",
-                      style: textTheme.bodyLarge!.copyWith(
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0).copyWith(bottom: 32),
+          child: Column(
+            spacing: 8,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildDragIndicator(),
+              Text(
+                "Time to flex with your profile pic",
+                style: textTheme.headlineSmall,
+              ),
+              Text("Choose your profile pic", style: textTheme.bodyMedium),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    BlocConsumer<AppBloc, AppBlocState>(
+                      listener: (context, state) {
+                      
+                      },
+                      buildWhen: (previous, current) =>
+                          previous.profile?.profile?.avatar !=
+                          current.profile?.profile?.avatar,
+                      builder: (context, state) {
+                        //TODO  : need to add high res images
+                        return _buildProfileImage(state.profile?.profile?.avatar?.image.original);
+                      },
                     ),
-                  )
-                ],
+                    SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: () {
+                        showModalBottomSheet(
+                            context: context,
+                            builder: (_) => AvatarPickerBottomSheet());
+                      },
+                      child: Text(
+                        "Tap to choose",
+                        style: textTheme.bodyLarge!.copyWith(
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    )
+                  ],
+                ),
               ),
-            ),
-            Spacer(),
-            FilledButton(
-              onPressed: () {},
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text("START THE JOURNEY"),
-                  SizedBox(width: 8),
-                  Icon(Icons.arrow_forward, size: 28),
-                ],
-              ),
-            )
-          ],
+              Spacer(),
+              FilledButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OnboardingFinalPage(),
+                    ),
+                  );
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("START THE JOURNEY"),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward, size: 28),
+                  ],
+                ),
+              )
+            ],
+          ),
         ),
       ),
     );
