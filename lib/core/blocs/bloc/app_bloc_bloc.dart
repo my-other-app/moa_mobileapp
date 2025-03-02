@@ -3,22 +3,21 @@ import 'dart:developer';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart' show debugPrint, immutable;
 import 'package:hydrated_bloc/hydrated_bloc.dart';
-import 'package:myotherapp/common/models/user/main.dart';
+import 'package:myotherapp/common/models/user/user_model.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
-import 'package:myotherapp/features/auth/data/models/profile.dart';
+import 'package:myotherapp/modules/login/data/models/profile.dart';
 
 part 'app_bloc_event.dart';
 part 'app_bloc_state.dart';
 
 class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
-  AppBloc({required this.user}) : super(const AppBlocInitialState()) {
+  AppBloc() : super(const AppBlocInitialState()) {
     on<AppStarted>(_onAppStarted);
     on<LoggedInEvent>(_onLoggedIn);
     on<LoggedOutEvent>(_onLoggedOut);
     on<UpdateUserDetailsEvent>(_onUpdateUserDetails);
   }
-  final UserModel? user;
 
   void _onAppStarted(
     AppStarted event,
@@ -41,7 +40,7 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
 
          debugPrint('Updated profile: $updatedProfile');
         emit(UpdateUserDetailsState(
-            user: user,
+            user: state.user,
             accessToken: state.accessToken,
             refreshToken: state.refreshToken,
             profile: updatedProfile));

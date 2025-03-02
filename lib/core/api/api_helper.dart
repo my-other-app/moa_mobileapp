@@ -35,8 +35,7 @@ class APIService {
           : await SecureStorage.instance.getAccessToken();
 
       /// TODO: Handle token expiration
-      /// TODO: Handle token refresh
-      /// TODO: Handle token revocation
+      /// Use the intrecept in dio to refresh token if token is expired
 
       final dio = Dio(
         BaseOptions(
