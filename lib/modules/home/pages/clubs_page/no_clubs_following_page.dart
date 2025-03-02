@@ -27,14 +27,16 @@ class NoClubsFollowingPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             SizedBox(
-              child: Text(
-                'No notes have been made by the club yet.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 12,
-                  fontFamily: 'DM Sans',
-                  fontWeight: FontWeight.w300,
+              child: Center(
+                child: Text(
+                  'You are not following any clubs, checkout clubs',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 12,
+                    fontFamily: 'DM Sans',
+                    fontWeight: FontWeight.w300,
+                  ),
                 ),
               ),
             ),

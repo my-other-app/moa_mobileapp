@@ -24,5 +24,7 @@ class AssetResources {
   static const String clubs = "assets/icons/clubs.svg";
   static const String profile = "assets/icons/profile.svg";
   static const String nonotes = "assets/images/nonotes.webp";
-  static const String noclubsfollowing = "assets/images/nofollowclubs.webp";
+  static const String noclubsfollowing = "assets/images/noeventclubs.webp";
+  static const String nocertificate = "assets/images/nocertificates.webp";
+  static const String nofollowclub = "assets/images/nofollowclubs.webp";
 }
