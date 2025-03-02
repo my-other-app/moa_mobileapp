@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/modules/home/screen.dart';
@@ -16,9 +16,67 @@ class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
   final Dio dio = Dio();
 
   @override
-  void initState() {
-    super.initState();
-    fetchUserProfile();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFFFA0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFFFFA0),
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Image.asset(
+              'assets/images/grass.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+          Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 48),
+                      _buildProfileCreatedSection(),
+                      Spacer(),
+                      _buildProfileImage(),
+                      const SizedBox(height: 24),
+                      _buildMotivationalText(),
+                      Spacer(),
+                      Spacer(),
+                      // _buildStartJourneyButton(context),
+                      FilledButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => LandingPage()),
+                          );
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text("START THE JOURNEY"),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward, size: 28),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40), // bottom padding for grass
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> fetchUserProfile() async {
@@ -65,98 +123,9 @@ class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFFFA0),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 48),
-                      _buildProfileCreatedSection(),
-                      const SizedBox(height: 24),
-                      _buildProfileImage(),
-                      const SizedBox(height: 24),
-                      _buildMotivationalText(),
-                      const SizedBox(height: 48),
-                      _buildStartJourneyButton(context),
-                      const SizedBox(height: 80), // bottom padding for grass
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Image.asset(
-              'assets/images/grass.png',
-              fit: BoxFit.cover,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileImage() {
-    // Use a NetworkImage if profileImageUrl is available, otherwise fallback to a placeholder asset.
-    return Container(
-      width: 150,
-      height: 150,
-      decoration: ShapeDecoration(
-        image: DecorationImage(
-          image: profileImageUrl != null
-              ? NetworkImage(profileImageUrl!)
-              : const AssetImage('assets/images/profile_placeholder.png')
-                  as ImageProvider,
-          fit: BoxFit.cover,
-        ),
-        color: const Color(0xFFCCC1F0),
-        shape: const OvalBorder(),
-      ),
-    );
-  }
-
-  Widget _buildProfileCreatedSection() {
-    return SizedBox(
-      width: 361,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Row(
-            children: [
-              Text(
-                'PROFILE CREATED  ✅',
-                style: TextStyle(
-                  color: Color(0xFF1E1E1E),
-                  fontSize: 24,
-                  fontFamily: 'BebasNeue',
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Text(
-            "Your profile's all set, now it's time to dive into the events and level up",
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 14,
-              fontFamily: 'DM Sans',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
+  void initState() {
+    super.initState();
+    fetchUserProfile();
   }
 
   Widget _buildMotivationalText() {
@@ -263,47 +232,55 @@ class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
     );
   }
 
-  Widget _buildStartJourneyButton(BuildContext context) {
-    return Container(
-      decoration: ShapeDecoration(
-        color: const Color(0xFF2C333D),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => LandingPage()),
-            );
-          },
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 13),
-            child: Row(
-              children: const [
-                Text(
-                  'START THE JOURNEY',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontFamily: 'BebasNeue',
-                    fontWeight: FontWeight.w400,
-                  ),
+  Widget _buildProfileCreatedSection() {
+    return SizedBox(
+      width: 361,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Row(
+            children: [
+              Text(
+                'PROFILE CREATED  ✅',
+                style: TextStyle(
+                  color: Color(0xFF1E1E1E),
+                  fontSize: 24,
+                  fontFamily: 'BebasNeue',
+                  fontWeight: FontWeight.w400,
                 ),
-                SizedBox(width: 8),
-                Icon(
-                  Icons.arrow_forward,
-                  color: Colors.white,
-                )
-              ],
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            "Your profile's all set, now it's time to dive into the events and level up",
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 14,
+              fontFamily: 'DM Sans',
+              fontWeight: FontWeight.w500,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileImage() {
+    // Use a NetworkImage if profileImageUrl is available, otherwise fallback to a placeholder asset.
+    return Container(
+      width: 150,
+      height: 150,
+      decoration: ShapeDecoration(
+        image: DecorationImage(
+          image: profileImageUrl != null
+              ? NetworkImage(profileImageUrl!)
+              : const AssetImage('assets/images/profile_placeholder.png')
+                  as ImageProvider,
+          fit: BoxFit.cover,
         ),
+        color: const Color(0xFFCCC1F0),
+        shape: const OvalBorder(),
       ),
     );
   }
