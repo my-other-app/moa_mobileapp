@@ -11,13 +11,14 @@ import 'package:myotherapp/modules/login/pages/interests_selection_page.dart';
 import 'package:myotherapp/modules/login/pages/onboarding_details_page.dart' show Organization;
 
 class EditProfilePage extends StatefulWidget {
-  const EditProfilePage({Key? key}) : super(key: key);
+  const EditProfilePage({super.key});
 
   @override
   State<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfilePageState extends State<EditProfilePage> {
+class _EditProfilePageState extends State<EditProfilePage>{
+
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _whatsappController;
@@ -319,7 +320,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ? Org(id: _collegeNameNotifier.value?.id, name: _collegeNameNotifier.value?.name)
                     : null;
 
+            debugPrint('Dispatching UpdateUserDetailsEvent with profile: ${updatedProfile.fullName}');
             context.read<AppBloc>().add(UpdateUserDetailsEvent(profile: updatedProfile));
+            debugPrint('UpdateUserDetailsEvent dispatched');
           }
         }
       } catch (e) {

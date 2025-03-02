@@ -58,14 +58,25 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
     UpdateUserDetailsEvent event,
     Emitter<AppBlocState> emit,
   ) async {
-    debugPrint('UpdateUserDetails event with user: ${event.profile?.fullName}');
     log('UpdateUserDetails event with user: ${event.profile?.toJson()}');
-    emit(UpdateUserDetailsState(
-      user: event.user,
-      accessToken: event.accessToken,
-      refreshToken: event.refreshToken,
-      profile: event.profile,
-    ));
+    
+    // Create a new profile object to ensure it's detected as a change
+    Profile? updatedProfile;
+    if (event.profile != null) {
+      // Create a new profile object from the JSON to ensure it's a new reference
+      final profileJson = event.profile!.toJson();
+      updatedProfile = Profile.fromJson(profileJson);
+    }
+    
+    // Create the new state with the new profile object
+    final newState = UpdateUserDetailsState(
+      user: event.user ?? state.user,
+      accessToken: event.accessToken ?? state.accessToken,
+      refreshToken: event.refreshToken ?? state.refreshToken,
+      profile: updatedProfile,
+    );
+    
+    emit(newState);
   }
 
   Future<void> _onLoggedIn(

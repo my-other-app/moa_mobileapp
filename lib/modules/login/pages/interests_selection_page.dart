@@ -28,7 +28,7 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
       List<Interest>? currentInterests =
           context.read<AppBloc>().state.profile?.interests;
 
-      debugPrint('Current interests: $currentInterests');
+      debugPrint('Current interests: ${currentInterests?.map((e) => e.toJson()).toList()}}');
 
       currentInterests?.forEach((intrests) => selectedInterests.add(
           InterestItem(

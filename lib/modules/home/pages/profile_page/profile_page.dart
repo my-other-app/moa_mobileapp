@@ -118,10 +118,25 @@ class ProfilePage extends StatelessWidget {
         },
       },
     ];
-    return BlocBuilder<AppBloc, AppBlocState>(
-      buildWhen: (previous, current) {
-        return current.profile != previous.profile;
+   // Add a BlocListener to verify state changes are being received
+   return BlocListener<AppBloc, AppBlocState>(
+      listener: (context, state) {
+        debugPrint('🔔 ProfilePage - BlocListener received state: ${state.runtimeType}');
+        debugPrint('🔔 Profile in state: ${state.profile?.fullName}');
       },
+      listenWhen: (previous, current) => true, // Listen to all state changes
+      child: BlocBuilder<AppBloc, AppBlocState>(
+        buildWhen: (previous, current) {
+          // Add debug prints to verify if buildWhen is being called
+          debugPrint('ProfilePage - buildWhen called');
+          debugPrint('Previous state: ${previous.runtimeType}, Current state: ${current.runtimeType}');
+          debugPrint('Previous profile: ${previous.profile}, Current profile: ${current.profile}');
+          
+          // Ensure we rebuild when profile changes, including after UpdateUserDetailsEvent
+          final shouldRebuild = current.profile != previous.profile || current is UpdateUserDetailsState;
+          debugPrint('Should rebuild: $shouldRebuild');
+          return shouldRebuild;
+        },
       builder: (context, state) {
         final tags = state.profile?.interests ?? [];
         return Scaffold(
@@ -162,7 +177,7 @@ class ProfilePage extends StatelessWidget {
                                 ),
                                 Text(
                                   state.profile?.profile?.org?.name ??
-                                      'COLLEGE OF ENGINEERING TRIVANDRUM',
+                                      '',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontFamily: 'BebasNeue',
@@ -229,6 +244,7 @@ class ProfilePage extends StatelessWidget {
           ),
         );
       },
-    );
+    ),
+  ); 
   }
 }
