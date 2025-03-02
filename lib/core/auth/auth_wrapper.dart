@@ -4,7 +4,6 @@ import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/presentation/home/screen.dart';
 
-
 ///
 /// Auth Wrapper
 ///
@@ -18,11 +17,11 @@ class AuthWrapper extends StatelessWidget {
     return BlocBuilder<AppBloc, AppBlocState>(
       builder: (context, state) {
         debugPrint('Current auth state: ${state.runtimeType}');
-        
+
         if (state is! AppBlocInitialState || state is! AppLoggedOutState) {
-          return  LandingPage();
+          return LandingPage();
         } else {
-          return  OnboardingInitialPage();
+          return OnboardingInitialPage();
         }
       },
     );
