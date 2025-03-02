@@ -46,6 +46,7 @@ dependencies:
   path_provider: ^2.1.5
   url_launcher: ^6.1.7
   cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
 
   #device_preview: ^1.2.0
 

@@ -2,18 +2,37 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/modules/home/custom_widgets/event_card.dart';
+import 'package:shimmer/shimmer.dart';
 
 class ForYouEventsPage extends StatefulWidget {
   const ForYouEventsPage({super.key});
 
   @override
   State<ForYouEventsPage> createState() => _ForYouEventsPageState();
-  
 }
 
-class _ForYouEventsPageState extends State<ForYouEventsPage> with AutomaticKeepAliveClientMixin{
+class SimmerContainer extends StatelessWidget {
+  final double height;
+  final double width;
 
-   @override
+  const SimmerContainer({super.key, required this.height, required this.width});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      width: width,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4),
+        color: Colors.grey[200],
+      ),
+    );
+  }
+}
+
+class _ForYouEventsPageState extends State<ForYouEventsPage>
+    with AutomaticKeepAliveClientMixin {
+  @override
   bool get wantKeepAlive => true;
 
   @override
@@ -27,70 +46,64 @@ class _ForYouEventsPageState extends State<ForYouEventsPage> with AutomaticKeepA
     // Fetch data when the widget is built
     _fetchData(eventsNotifier, isLoadingNotifier, errorMessageNotifier);
 
-    return ValueListenableBuilder<List<dynamic>>(
-      valueListenable: eventsNotifier,
-      builder: (context, events, child) {
-        return ValueListenableBuilder<bool>(
-          valueListenable: isLoadingNotifier,
-          builder: (context, isLoading, child) {
-            if (isLoading) {
-              return const Center(
-                child: CircularProgressIndicator(
-                  backgroundColor: Colors.white,
-                ),
-              );
-            }
-            return ValueListenableBuilder<String?>(
-              valueListenable: errorMessageNotifier,
-              builder: (context, errorMessage, child) {
-                if (errorMessage != null) {
-                  return Center(child: Text('Error: $errorMessage'));
-                }
-                // If there are no events, show a message.
-                if (events.isEmpty) {
-                  return const Scaffold(
-                    backgroundColor: Colors.white,
-                    body: Center(
-                      child: Text(
-                        'Nothing to show on the feed',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                    ),
-                  );
-                }
-                return Scaffold(
-                  backgroundColor: Colors.white,
-                  body: RefreshIndicator(
-                    onRefresh: () => _fetchData(eventsNotifier, isLoadingNotifier, errorMessageNotifier),
-                    child: _buildEventCards(events),
+    return ColoredBox(
+      color: Colors.white,
+      child: ValueListenableBuilder<List<dynamic>>(
+        valueListenable: eventsNotifier,
+        builder: (context, events, child) {
+          return ValueListenableBuilder<bool>(
+            valueListenable: isLoadingNotifier,
+            builder: (context, isLoading, child) {
+              if (isLoading) {
+                // return const Center(
+                //   child: CircularProgressIndicator(
+                //     backgroundColor: Colors.white,
+                //   ),
+                // );
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    spacing: 24,
+                    children: [
+                      _buildEventCardShimmer(),
+                      _buildEventCardShimmer(),
+                    ],
                   ),
                 );
-              },
-            );
-          },
-        );
-      },
+              }
+              return ValueListenableBuilder<String?>(
+                valueListenable: errorMessageNotifier,
+                builder: (context, errorMessage, child) {
+                  if (errorMessage != null) {
+                    return Center(child: Text('Error: $errorMessage'));
+                  }
+                  // If there are no events, show a message.
+                  if (events.isEmpty) {
+                    return const Scaffold(
+                      backgroundColor: Colors.white,
+                      body: Center(
+                        child: Text(
+                          'Nothing to show on the feed',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                      ),
+                    );
+                  }
+                  return Scaffold(
+                    backgroundColor: Colors.white,
+                    body: RefreshIndicator(
+                      onRefresh: () => _fetchData(eventsNotifier,
+                          isLoadingNotifier, errorMessageNotifier),
+                      child: _buildEventCards(events),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
     );
-  }
-
-  Future<void> _fetchData(
-      ValueNotifier<List<dynamic>> eventsNotifier,
-      ValueNotifier<bool> isLoadingNotifier,
-      ValueNotifier<String?> errorMessageNotifier) async {
-    try {
-      isLoadingNotifier.value = true; // Set loading to true when fetching data
-      Response<dynamic> res = await APIService.instance.request(
-        '/events/list?offset=0&limit=10',
-        DioMethod.get,
-      );
-      List<dynamic> fetchedEvents = res.data['items'] ?? [];
-      // Update the ValueNotifier with the fetched events
-      eventsNotifier.value = fetchedEvents;
-    } catch (e) {
-      errorMessageNotifier.value = e.toString();
-    } finally {
-      isLoadingNotifier.value = false; // Set loading to false in the end
-    }
   }
 
   Widget _buildEventCards(List<dynamic> events) {
@@ -129,5 +142,64 @@ class _ForYouEventsPageState extends State<ForYouEventsPage> with AutomaticKeepA
         );
       },
     );
+  }
+
+  Widget _buildEventCardShimmer() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade100,
+      highlightColor: Colors.grey.shade300,
+      child: Column(
+        spacing: 16,
+        children: [
+          Row(
+            spacing: 8,
+            children: [
+              SimmerContainer(
+                height: 52,
+                width: 52,
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 12,
+                children: [
+                  SimmerContainer(
+                    height: 24,
+                    width: 200,
+                  ),
+                  SimmerContainer(
+                    height: 16,
+                    width: 120,
+                  ),
+                ],
+              )
+            ],
+          ),
+          SimmerContainer(
+            height: 200,
+            width: double.infinity,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _fetchData(
+      ValueNotifier<List<dynamic>> eventsNotifier,
+      ValueNotifier<bool> isLoadingNotifier,
+      ValueNotifier<String?> errorMessageNotifier) async {
+    try {
+      isLoadingNotifier.value = true; // Set loading to true when fetching data
+      Response<dynamic> res = await APIService.instance.request(
+        '/events/list?offset=0&limit=10',
+        DioMethod.get,
+      );
+      List<dynamic> fetchedEvents = res.data['items'] ?? [];
+      // Update the ValueNotifier with the fetched events
+      eventsNotifier.value = fetchedEvents;
+    } catch (e) {
+      errorMessageNotifier.value = e.toString();
+    } finally {
+      isLoadingNotifier.value = false; // Set loading to false in the end
+    }
   }
 }

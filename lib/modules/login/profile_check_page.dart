@@ -6,8 +6,8 @@ import 'package:myotherapp/core/secure_storage/secure_storage.dart';
 import 'package:myotherapp/modules/home/screen.dart';
 import 'package:myotherapp/modules/login/bloc/profile_cubit.dart';
 import 'package:myotherapp/modules/login/data/services/profile_service.dart';
-import 'package:myotherapp/modules/login/pages/onboarding_avatar_picker_page.dart';
 import 'package:myotherapp/modules/login/pages/onboarding_details_page.dart';
+import 'package:myotherapp/modules/login/pages/onboarding_final_page.dart';
 
 class ProfileCheckPage extends StatelessWidget {
   final String accessToken;
@@ -66,7 +66,7 @@ class ProfileCheckPage extends StatelessWidget {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => OnboardingAvatarPickerPage()),
+                          builder: (context) => OnboardingFinalPage()),
                     );
                     // Navigator.pushReplacement(
                     //   context,

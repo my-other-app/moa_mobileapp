@@ -10,32 +10,44 @@ class FollowingEventsPage extends StatefulWidget {
   State<FollowingEventsPage> createState() => _FollowingEventsPageState();
 }
 
-class _FollowingEventsPageState extends State<FollowingEventsPage> with AutomaticKeepAliveClientMixin{
+class _FollowingEventsPageState extends State<FollowingEventsPage>
+    with AutomaticKeepAliveClientMixin {
+  List<dynamic> events = [];
+
+  bool isLoading = true;
+  String? errorMessage;
   @override
   bool get wantKeepAlive => true;
 
-  List<dynamic> events = [];
-  bool isLoading = true;
-  String? errorMessage;
-
-  Future<void> _fetchData() async {
-    try {
-      Response<dynamic> res = await APIService.instance.request(
-        '/events/list?is_following=true&offset=0&limit=10',
-        DioMethod.get,
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
       );
-      setState(() {
-        // Adjust this based on your API response structure.
-        // Here we assume events are under the key 'items'.
-        events = res.data['items'] ?? [];
-        isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        errorMessage = e.toString();
-        isLoading = false;
-      });
     }
+    if (errorMessage != null) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: Text('Error: $errorMessage')),
+      );
+    }
+    if (events.isEmpty) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Text(
+            'Nothing to show from the clubs you follow',
+            style: TextStyle(fontSize: 18),
+          ),
+        ),
+      );
+    }
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: _buildEventCards(),
+    );
   }
 
   @override
@@ -82,34 +94,23 @@ class _FollowingEventsPageState extends State<FollowingEventsPage> with Automati
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator()),
+  Future<void> _fetchData() async {
+    try {
+      Response<dynamic> res = await APIService.instance.request(
+        '/events/list?is_following=true&offset=0&limit=10',
+        DioMethod.get,
       );
+      setState(() {
+        // Adjust this based on your API response structure.
+        // Here we assume events are under the key 'items'.
+        events = res.data['items'] ?? [];
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
     }
-    if (errorMessage != null) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: Text('Error: $errorMessage')),
-      );
-    }
-    if (events.isEmpty) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: Text(
-            'Nothing to show from the clubs you follow',
-            style: TextStyle(fontSize: 18),
-          ),
-        ),
-      );
-    }
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: _buildEventCards(),
-    );
   }
 }

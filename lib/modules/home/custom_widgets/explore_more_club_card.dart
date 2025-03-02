@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/modules/home/pages/clubs_page/club_individual_page.dart';
+
 import '../../../core/themes/app_colors.dart';
 
 class ExploreMoreClubCard extends StatefulWidget {
@@ -29,32 +30,6 @@ class ExploreMoreClubCard extends StatefulWidget {
 
 class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
   late bool _isFollowing;
-
-  @override
-  void initState() {
-    super.initState();
-    _isFollowing = widget.isFollowing;
-  }
-
-  Future<void> _toggleFollow() async {
-    final String endpoint;
-    if (!_isFollowing) {
-      endpoint = '/clubs/follow/${widget.id}';
-    } else {
-      endpoint = '/clubs/unfollow/${widget.id}';
-    }
-    try {
-      Response<dynamic> res =
-          await APIService.instance.request(endpoint, DioMethod.post);
-      // Assuming the API returns a JSON with an "is_following" boolean field:
-      setState(() {
-        _isFollowing = res.data['is_following'] as bool;
-      });
-    } catch (e) {
-      // Handle error (for example, show a SnackBar)
-      debugPrint("Error toggling follow: $e");
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +64,7 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Row with Logo, Club name, and Follower Count.
               Row(
@@ -188,5 +164,31 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
         ),
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _isFollowing = widget.isFollowing;
+  }
+
+  Future<void> _toggleFollow() async {
+    final String endpoint;
+    if (!_isFollowing) {
+      endpoint = '/clubs/follow/${widget.id}';
+    } else {
+      endpoint = '/clubs/unfollow/${widget.id}';
+    }
+    try {
+      Response<dynamic> res =
+          await APIService.instance.request(endpoint, DioMethod.post);
+      // Assuming the API returns a JSON with an "is_following" boolean field:
+      setState(() {
+        _isFollowing = res.data['is_following'] as bool;
+      });
+    } catch (e) {
+      // Handle error (for example, show a SnackBar)
+      debugPrint("Error toggling follow: $e");
+    }
   }
 }

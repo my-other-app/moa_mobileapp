@@ -3,6 +3,86 @@ import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/modules/home/custom_widgets/explore_more_club_card.dart';
 import 'package:myotherapp/modules/home/custom_widgets/search_college_widget.dart';
+import 'package:myotherapp/modules/home/pages/home_page/home_page_tabs/for_you_events_page.dart';
+import 'package:shimmer/shimmer.dart';
+
+class ExploreClubCardShimmer extends StatelessWidget {
+  const ExploreClubCardShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 16,
+          children: [
+            Row(
+              spacing: 16,
+              children: [
+                SimmerContainer(
+                  height: 52,
+                  width: 52,
+                ),
+                Column(
+                  spacing: 8,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SimmerContainer(
+                      height: 16,
+                      width: 200,
+                    ),
+                    SimmerContainer(
+                      height: 16,
+                      width: 100,
+                    ),
+                  ],
+                )
+              ],
+            ),
+            Wrap(
+              alignment: WrapAlignment.start,
+              spacing: 8,
+              runSpacing: 8,
+              runAlignment: WrapAlignment.start,
+              children: List.generate(
+                5,
+                (index) => SimmerContainer(
+                  height: 16,
+                  width: 100,
+                ),
+              ),
+            ),
+            // Row(
+            //   spacing: 12,
+            //   children: [
+            //     Expanded(
+            //       child: SimmerContainer(
+            //         height: 48,
+            //         width: 100,
+            //       ),
+            //     ),
+            //     Expanded(
+            //       child: SimmerContainer(
+            //         height: 48,
+            //         width: 100,
+            //       ),
+            //     ),
+            //   ],
+            // )
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class ExploreMoreClubsPage extends StatefulWidget {
   const ExploreMoreClubsPage({super.key});
@@ -15,31 +95,6 @@ class _ExploreMoreClubsPageState extends State<ExploreMoreClubsPage> {
   List<dynamic> clubs = [];
   bool isLoading = true;
   String? errorMessage;
-
-  Future<void> _fetchData() async {
-    try {
-      Response<dynamic> res = await APIService.instance.request(
-        '/clubs/list',
-        DioMethod.get,
-      );
-      setState(() {
-        clubs = res.data['items'] ?? [];
-        debugPrint("Clubs: $clubs");
-        isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        errorMessage = e.toString();
-        isLoading = false;
-      });
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchData();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +116,15 @@ class _ExploreMoreClubsPageState extends State<ExploreMoreClubsPage> {
         centerTitle: true,
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              shrinkWrap: true,
+              itemCount: 15,
+              itemBuilder: (BuildContext context, int index) {
+                return ExploreClubCardShimmer();
+              },
+              separatorBuilder: (_, __) => const SizedBox(height: 36),
+            )
           : errorMessage != null
               ? Center(child: Text('Error: $errorMessage'))
               : clubs.isEmpty
@@ -114,5 +177,30 @@ class _ExploreMoreClubsPageState extends State<ExploreMoreClubsPage> {
                       ],
                     ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    try {
+      Response<dynamic> res = await APIService.instance.request(
+        '/clubs/list',
+        DioMethod.get,
+      );
+      setState(() {
+        clubs = res.data['items'] ?? [];
+        debugPrint("Clubs: $clubs");
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
   }
 }
