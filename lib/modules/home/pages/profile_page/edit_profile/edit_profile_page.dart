@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -171,7 +170,7 @@ class _EditProfilePageState extends State<EditProfilePage>{
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Color(0xFF2C333D).withOpacity(0.1),
+                color: Color(0xFF2C333D).withValues(alpha:  0.1),
                 spreadRadius: 1,
                 blurRadius: 4,
                 offset: Offset(0, 2),
@@ -181,8 +180,8 @@ class _EditProfilePageState extends State<EditProfilePage>{
           offset: const Offset(0, -4),
           scrollbarTheme: ScrollbarThemeData(
             radius: const Radius.circular(40),
-            thickness: MaterialStateProperty.all(6),
-            thumbVisibility: MaterialStateProperty.all(true),
+            thickness: WidgetStateProperty.all(6),
+            thumbVisibility: WidgetStateProperty.all(true),
           ),
         ),
         menuItemStyleData: const MenuItemStyleData(
@@ -356,22 +355,23 @@ class _EditProfilePageState extends State<EditProfilePage>{
     );
   }
 
-  DropdownStyleData _dropdownStyle() {
-    return DropdownStyleData(
-      maxHeight: 300,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(color: Color(0xFF2C333D).withOpacity(0.1), spreadRadius: 1, blurRadius: 4, offset: Offset(0, 2)),
-        ],
-      ),
-      offset: const Offset(0, -4),
-      scrollbarTheme: ScrollbarThemeData(
-        radius: const Radius.circular(40),
-        thickness: MaterialStateProperty.all(6),
-        thumbVisibility: MaterialStateProperty.all(true),
-      ),
-    );
-  }
+  // DropdownStyleData _dropdownStyle() {
+  //   return DropdownStyleData(
+  //     maxHeight: 300,
+  //     decoration: BoxDecoration(
+  //       borderRadius: BorderRadius.circular(8),
+  //       color: Colors.white,
+  //       boxShadow: [
+  //         BoxShadow(color: Color(0xFF2C333D).withValues(alpha: 0.1), spreadRadius: 1, blurRadius: 4, offset: Offset(0, 2)),
+  //       ],
+  //     ),
+  //     offset: const Offset(0, -4),
+  //     scrollbarTheme: ScrollbarThemeData(
+  //       radius: const Radius.circular(40),
+  //       thickness: WidgetStateProperty.all(6),
+  //       thumbVisibility: WidgetStateProperty.all(true),
+  //     ),
+  //   );
+  // }
+
 }

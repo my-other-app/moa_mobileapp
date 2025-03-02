@@ -66,11 +66,11 @@ class OnboardingAvatarPickerPage extends StatefulWidget {
   const OnboardingAvatarPickerPage({super.key});
 
   @override
-  _OnboardingAvatarPickerPageState createState() =>
-      _OnboardingAvatarPickerPageState();
+  OnboardingAvatarPickerPageState createState() =>
+      OnboardingAvatarPickerPageState();
 }
 
-class _OnboardingAvatarPickerPageState
+class OnboardingAvatarPickerPageState
     extends State<OnboardingAvatarPickerPage> {
   @override
   Widget build(BuildContext context) {
