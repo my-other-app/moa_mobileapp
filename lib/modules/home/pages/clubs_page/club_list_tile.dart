@@ -59,6 +59,7 @@ class ClubListTile extends StatelessWidget {
                   borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                 ),
                 builder: (_) {
+                  print("club id on club list page:- $clubId");
                   return ClubsOptionScreen(
                     clubName: clubName,
                     imageUrl: imageUrl,

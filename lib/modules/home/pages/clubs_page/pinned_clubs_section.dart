@@ -14,7 +14,7 @@ class PinnedClubsSection extends StatelessWidget {
       children: [
         // "PINNED" heading
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
@@ -52,13 +52,14 @@ class PinnedClubsSection extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 24,
-                      backgroundImage: NetworkImage(club['imageUrl']!),
+                      backgroundImage:
+                          NetworkImage(club['logo']['thumbnail'] ?? ''),
                     ),
                     const SizedBox(height: 4),
                     SizedBox(
                       width: 60, // limit the width so text can wrap/ellipsis
                       child: Text(
-                        club['name']!,
+                        club['name'] ?? '',
                         style: const TextStyle(fontSize: 12),
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,

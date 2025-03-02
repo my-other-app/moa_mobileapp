@@ -131,8 +131,7 @@ class _ClubsPageState extends State<ClubsPage> {
                         pinnedClubs: pinnedClubs,
                       ),
                       const Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: EdgeInsets.symmetric(horizontal: 16),
                         child: Divider(height: 0, thickness: 1),
                       ),
                       const SizedBox(height: 16),
