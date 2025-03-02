@@ -8,7 +8,8 @@ import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/blocs/bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/modules/login/data/models/profile.dart';
 import 'package:myotherapp/modules/login/pages/interests_selection_page.dart';
-import 'package:myotherapp/modules/login/pages/onboarding_details_page.dart' show Organization;
+import 'package:myotherapp/modules/login/pages/onboarding_details_page.dart'
+    show Organization;
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -17,8 +18,7 @@ class EditProfilePage extends StatefulWidget {
   State<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfilePageState extends State<EditProfilePage>{
-
+class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _whatsappController;
@@ -29,8 +29,10 @@ class _EditProfilePageState extends State<EditProfilePage>{
   void initState() {
     super.initState();
     final initialProfile = context.read<AppBloc>().state.profile;
-    _nameController = TextEditingController(text: initialProfile?.fullName ?? 'USER');
-    _whatsappController = TextEditingController(text: initialProfile?.profile?.whatsapp ?? '1234567890');
+    _nameController =
+        TextEditingController(text: initialProfile?.fullName ?? 'USER');
+    _whatsappController = TextEditingController(
+        text: initialProfile?.profile?.whatsapp ?? '1234567890');
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await fetchOrgDetails();
@@ -42,7 +44,8 @@ class _EditProfilePageState extends State<EditProfilePage>{
   }
 
   Future<void> fetchOrgDetails() async {
-    final response = await APIService.instance.request('/orgs/list', DioMethod.get);
+    final response =
+        await APIService.instance.request('/orgs/list', DioMethod.get);
     final List data = response.data;
     setState(() {
       colleges = data.map((json) => Organization.fromJson(json)).toList();
@@ -76,7 +79,8 @@ class _EditProfilePageState extends State<EditProfilePage>{
           if (updatedProfile != null) {
             setState(() {
               _nameController.text = updatedProfile.profile?.fullName ?? 'USER';
-              _whatsappController.text = updatedProfile.profile?.whatsapp ?? '1234567890';
+              _whatsappController.text =
+                  updatedProfile.profile?.whatsapp ?? '1234567890';
             });
           }
         }
@@ -124,7 +128,7 @@ class _EditProfilePageState extends State<EditProfilePage>{
                           _buildEditInterestsButton(),
                         ],
                       ),
- ),
+                    ),
                   ),
                   _buildSaveButton(),
                 ],
@@ -143,97 +147,102 @@ class _EditProfilePageState extends State<EditProfilePage>{
         controller: _nameController,
         style: _inputTextStyle,
         decoration: _inputDecoration('Enter your name'),
-        validator: (value) => value == null || value.isEmpty ? 'Please enter your name' : null,
+        validator: (value) =>
+            value == null || value.isEmpty ? 'Please enter your name' : null,
       ),
     );
   }
 
- Widget _buildCollegeDropdown() {
-  return ValueListenableBuilder<Organization?>(
-    valueListenable: _collegeNameNotifier,
-    builder: (_, college, __) => _buildInputField(
-      label: 'College (if you are a student)',
-      child: DropdownButtonFormField2<Organization>(
-        value: college,
-        hint: _dropdownHint('Select your college'),
-        isExpanded: true,
-        buttonStyleData: const ButtonStyleData(
-          height: 40, // Reduced height
-          padding: EdgeInsets.only(right: 8),
-        ),
-        iconStyleData: const IconStyleData(
-          icon: Icon(Icons.keyboard_arrow_down, color: Color(0xFF2C333D)),
-        ),
-        dropdownStyleData: DropdownStyleData(
-          maxHeight: 300,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Color(0xFF2C333D).withOpacity(0.1),
-                spreadRadius: 1,
-                blurRadius: 4,
-                offset: Offset(0, 2),
-              ),
-            ],
+  Widget _buildCollegeDropdown() {
+    return ValueListenableBuilder<Organization?>(
+      valueListenable: _collegeNameNotifier,
+      builder: (_, college, __) => _buildInputField(
+        label: 'College (if you are a student)',
+        child: DropdownButtonFormField2<Organization>(
+          value: college,
+          hint: _dropdownHint('Select your college'),
+          isExpanded: true,
+          buttonStyleData: const ButtonStyleData(
+            height: 40, // Reduced height
+            padding: EdgeInsets.only(right: 8),
           ),
-          offset: const Offset(0, -4),
-          scrollbarTheme: ScrollbarThemeData(
-            radius: const Radius.circular(40),
-            thickness: MaterialStateProperty.all(6),
-            thumbVisibility: MaterialStateProperty.all(true),
+          iconStyleData: const IconStyleData(
+            icon: Icon(Icons.keyboard_arrow_down, color: Color(0xFF2C333D)),
           ),
-        ),
-        menuItemStyleData: const MenuItemStyleData(
-          height: 40,
-          padding: EdgeInsets.symmetric(horizontal: 16),
-        ),
-        style: _inputTextStyle,
-        decoration: InputDecoration(
-          hintText: 'Select your college',
-          hintStyle: TextStyle(
-            color: Color(0xFFB4B4B4),
-            fontSize: 16,
-            fontFamily: 'DM Sans',
-            fontWeight: FontWeight.w400,
-          ),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 8),
-            child: Icon(Icons.school, size: 18, color: Color(0xFF2C333D)),
-          ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Reduced vertical padding
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Color(0xFF2C333D), width: 1),
-          ),
-        ),
-        items: colleges.map((Organization college) {
-          return DropdownMenuItem<Organization>(
-            value: college,
-            child: Text(
-              college.name,
-              style: _inputTextStyle,
+          dropdownStyleData: DropdownStyleData(
+            maxHeight: 300,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0xFF2C333D).withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
-          );
-        }).toList(),
-        onChanged: (Organization? newValue) {
-          _collegeNameNotifier.value = newValue;
-        },
-        validator: (value) => value == null ? 'Please select your college' : null,
+            offset: const Offset(0, -4),
+            scrollbarTheme: ScrollbarThemeData(
+              radius: const Radius.circular(40),
+              thickness: MaterialStateProperty.all(6),
+              thumbVisibility: MaterialStateProperty.all(true),
+            ),
+          ),
+          menuItemStyleData: const MenuItemStyleData(
+            height: 40,
+            padding: EdgeInsets.symmetric(horizontal: 16),
+          ),
+          style: _inputTextStyle,
+          decoration: InputDecoration(
+            hintText: 'Select your college',
+            hintStyle: TextStyle(
+              color: Color(0xFFB4B4B4),
+              fontSize: 16,
+              fontFamily: 'DM Sans',
+              fontWeight: FontWeight.w400,
+            ),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(left: 16, right: 8),
+              child: Icon(Icons.school, size: 18, color: Color(0xFF2C333D)),
+            ),
+            prefixIconConstraints:
+                const BoxConstraints(minWidth: 40, minHeight: 40),
+            contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 8), // Reduced vertical padding
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Color(0xFF2C333D), width: 1),
+            ),
+          ),
+          items: colleges.map((Organization college) {
+            return DropdownMenuItem<Organization>(
+              value: college,
+              child: Text(
+                college.name,
+                style: _inputTextStyle,
+              ),
+            );
+          }).toList(),
+          onChanged: (Organization? newValue) {
+            _collegeNameNotifier.value = newValue;
+          },
+          validator: (value) =>
+              value == null ? 'Please select your college' : null,
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
+
   Widget _buildWhatsappField() {
     return _buildInputField(
       label: 'Whatsapp Number',
@@ -247,7 +256,8 @@ class _EditProfilePageState extends State<EditProfilePage>{
         ],
         decoration: _inputDecoration('Enter your WhatsApp number'),
         validator: (value) {
-          if (value == null || value.isEmpty) return 'Please enter your WhatsApp number';
+          if (value == null || value.isEmpty)
+            return 'Please enter your WhatsApp number';
           if (value.length != 10) return 'Please enter a valid 10-digit number';
           return null;
         },
@@ -260,17 +270,21 @@ class _EditProfilePageState extends State<EditProfilePage>{
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => InterestsSelectionPage(isOnboarding: false)),
+          MaterialPageRoute(
+              builder: (context) =>
+                  InterestsSelectionPage(isOnboarding: false)),
         );
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE)))),
+        decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE)))),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Edit Interests', style: _inputTextStyle),
-            const Icon(Icons.arrow_forward_ios, color: Color(0xFF2C333D), size: 16),
+            const Icon(Icons.arrow_forward_ios,
+                color: Color(0xFF2C333D), size: 16),
           ],
         ),
       ),
@@ -290,7 +304,8 @@ class _EditProfilePageState extends State<EditProfilePage>{
         ),
         child: const Text(
           'SAVE',
-          style: TextStyle(color: Colors.white, fontSize: 24, fontFamily: 'BebasNeue'),
+          style: TextStyle(
+              color: Colors.white, fontSize: 24, fontFamily: 'BebasNeue'),
         ),
       ),
     );
@@ -307,7 +322,8 @@ class _EditProfilePageState extends State<EditProfilePage>{
           param: {
             'full_name': _nameController.text,
             'whatsapp': _whatsappController.text,
-            if (_collegeNameNotifier.value != null) 'org_id': _collegeNameNotifier.value?.id,
+            if (_collegeNameNotifier.value != null)
+              'org_id': _collegeNameNotifier.value?.id,
           },
         );
 
@@ -317,11 +333,16 @@ class _EditProfilePageState extends State<EditProfilePage>{
             updatedProfile.profile?.whatsapp = response.data['whatsapp'];
             updatedProfile.profile?.fullName = response.data['full_name'];
             updatedProfile.profile?.org = _collegeNameNotifier.value != null
-                    ? Org(id: _collegeNameNotifier.value?.id, name: _collegeNameNotifier.value?.name)
-                    : null;
+                ? Org(
+                    id: _collegeNameNotifier.value?.id,
+                    name: _collegeNameNotifier.value?.name)
+                : null;
 
-            debugPrint('Dispatching UpdateUserDetailsEvent with profile: ${updatedProfile.fullName}');
-            context.read<AppBloc>().add(UpdateUserDetailsEvent(profile: updatedProfile));
+            debugPrint(
+                'Dispatching UpdateUserDetailsEvent with profile: ${updatedProfile.fullName}');
+            context
+                .read<AppBloc>()
+                .add(UpdateUserDetailsEvent(profile: updatedProfile));
             debugPrint('UpdateUserDetailsEvent dispatched');
           }
         }
@@ -334,11 +355,21 @@ class _EditProfilePageState extends State<EditProfilePage>{
   InputDecoration _inputDecoration(String hintText) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: TextStyle(color: Color(0xFFB4B4B4), fontSize: 16, fontFamily: 'DM Sans', fontWeight: FontWeight.w400),
+      hintStyle: TextStyle(
+          color: Color(0xFFB4B4B4),
+          fontSize: 16,
+          fontFamily: 'DM Sans',
+          fontWeight: FontWeight.w400),
       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Color(0xFF2C333D), width: 1)),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5)),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Color(0xFF2C333D), width: 1)),
     );
   }
 
@@ -352,7 +383,11 @@ class _EditProfilePageState extends State<EditProfilePage>{
   Widget _dropdownHint(String hint) {
     return Text(
       hint,
-      style: TextStyle(color: Color(0xFFB4B4B4), fontSize: 16, fontFamily: 'DM Sans', fontWeight: FontWeight.w400),
+      style: TextStyle(
+          color: Color(0xFFB4B4B4),
+          fontSize: 16,
+          fontFamily: 'DM Sans',
+          fontWeight: FontWeight.w400),
     );
   }
 
@@ -363,7 +398,11 @@ class _EditProfilePageState extends State<EditProfilePage>{
         borderRadius: BorderRadius.circular(8),
         color: Colors.white,
         boxShadow: [
-          BoxShadow(color: Color(0xFF2C333D).withOpacity(0.1), spreadRadius: 1, blurRadius: 4, offset: Offset(0, 2)),
+          BoxShadow(
+              color: Color(0xFF2C333D).withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: Offset(0, 2)),
         ],
       ),
       offset: const Offset(0, -4),

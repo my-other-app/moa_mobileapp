@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/modules/home/custom_widgets/event_card.dart';
+import 'package:myotherapp/modules/home/pages/home_page/home_page_tabs/no_following_club_page.dart';
 
 class FollowingEventsPage extends StatefulWidget {
   const FollowingEventsPage({super.key});
@@ -34,15 +35,7 @@ class _FollowingEventsPageState extends State<FollowingEventsPage>
       );
     }
     if (events.isEmpty) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: Text(
-            'Nothing to show from the clubs you follow',
-            style: TextStyle(fontSize: 18),
-          ),
-        ),
-      );
+      return NoFollowingClubPage();
     }
     return Scaffold(
       backgroundColor: Colors.white,
