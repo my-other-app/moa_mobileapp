@@ -47,10 +47,7 @@ class LandingPage extends StatelessWidget {
         return Scaffold(
           backgroundColor: Colors.white,
           body: SafeArea(
-            child: IndexedStack(
-              index: state.index,
-              children: _pages,
-            ),
+            child: _pages[state.index], 
           ),
           bottomNavigationBar: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,

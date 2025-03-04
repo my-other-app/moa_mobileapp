@@ -28,7 +28,8 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
       List<Interest>? currentInterests =
           context.read<AppBloc>().state.profile?.interests;
 
-      debugPrint('Current interests: ${currentInterests?.map((e) => e.toJson()).toList()}}');
+      debugPrint(
+          'Current interests: ${currentInterests?.map((e) => e.toJson()).toList()}}');
 
       currentInterests?.forEach((intrests) => selectedInterests.add(
           InterestItem(
@@ -62,33 +63,46 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
         if (response.statusCode != null &&
             response.statusCode! >= 200 &&
             response.statusCode! < 300) {
-          Profile? profile = context.read<AppBloc>().state.profile;
+          final profileRes = await APIService.instance.request(
+            '/user/profile/me',
+            DioMethod.get,
+          );
+          Profile? profile;
 
-          if (response.data is List) {
+          if (profileRes.data != null && profileRes.statusCode == 200) {
+            Profile updatedProfile = Profile.fromJson(profileRes.data);
+
+            debugPrint('Updated profile: $updatedProfile');
+
+            profile = updatedProfile;
+          } else {
+            profile = Profile.fromJson({});
+          }
+
+          if (profileRes.data is List && mounted) {
             ///updating the intrests in appBloc
-            profile?.interests = (response.data as List)
+            profile.interests = (profileRes.data as List)
                 .map((e) => Interest.fromJson(e as Map<String, dynamic>))
                 .toList();
 
-            debugPrint('Updated interests: ${jsonEncode(profile?.profile?.interests)}');
+            debugPrint('Updated interests: ${jsonEncode(profile.interests)}');
 
             context.read<AppBloc>().add(
                   UpdateUserDetailsEvent(
-                    profile: profile!,
+                    profile: profile,
                   ),
                 );
           }
 
           // Navigate to the OnboardingFinalPage upon success
 
-          if (widget.isOnboarding) {
+          if (widget.isOnboarding && mounted) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                   builder: (context) => const OnboardingAvatarPickerPage()),
             );
-          }
-          else {
+          } else if (mounted) {
             Navigator.pop(context);
           }
         } else {
