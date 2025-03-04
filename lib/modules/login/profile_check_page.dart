@@ -8,6 +8,7 @@ import 'package:myotherapp/modules/login/bloc/profile_cubit.dart';
 import 'package:myotherapp/modules/login/data/models/profile.dart';
 import 'package:myotherapp/modules/login/data/services/profile_service.dart';
 import 'package:myotherapp/modules/login/pages/onboarding_details_page.dart';
+import 'package:myotherapp/modules/login/pages/onboarding_initial_page.dart';
 
 class ProfileCheckPage extends StatelessWidget {
   final String accessToken;
@@ -61,6 +62,8 @@ class ProfileCheckPage extends StatelessWidget {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(builder: (context) => LandingPage()),
+                                            // MaterialPageRoute(builder: (context) => OnboardingAvatarPickerPage()),
+
                     );
                   }
                 }
@@ -70,7 +73,7 @@ class ProfileCheckPage extends StatelessWidget {
                 if (context.mounted) {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (context) => LandingPage()),
+                    MaterialPageRoute(builder: (context) => OnboardingInitialPage()),
                   );
                 }
               });

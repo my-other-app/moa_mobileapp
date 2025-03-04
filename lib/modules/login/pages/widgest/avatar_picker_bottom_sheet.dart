@@ -111,15 +111,39 @@ class AvatarPickerBottomSheet extends StatelessWidget {
                       },
                     );
                     if (response.statusCode == 200 && context.mounted) {
-                      Profile currentProfile =
-                          context.read<AppBloc>().state.profile!;
+                      // Profile? currentProfile =
+                      //     context.read<AppBloc>().state.profile;
+                          //TODO : to check why profile is null for new user at this point
+                           Profile? currentProfile;
+                          // context.read<AppBloc>().state.profile;
 
-                      currentProfile.profile?.avatar =
+                      // if (currentProfile == null ||
+                      //     currentProfile.profile == null) {
+                        final profileRes = await APIService.instance.request(
+                          '/user/profile/me',
+                          DioMethod.get,
+                        );
+
+                        if (profileRes.data != null &&
+                            profileRes.statusCode == 200) {
+                          Profile updatedProfile =
+                              Profile.fromJson(profileRes.data);
+
+                          debugPrint('Updated profile: $updatedProfile');
+
+                          currentProfile = updatedProfile;
+                        }
+                      // }
+
+                    if (context.mounted) {
+                      currentProfile?.profile?.avatar =
                           selectedAvatarNotifier.value!;
                       context
                           .read<AppBloc>()
                           .add(UpdateUserDetailsEvent(profile: currentProfile));
+                    
                       Navigator.pop(context);
+                    }
                     }
                   } catch (e) {
                     if (context.mounted) {
