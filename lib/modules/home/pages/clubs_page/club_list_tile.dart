@@ -33,7 +33,7 @@ class ClubListTile extends StatelessWidget {
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        padding: const EdgeInsets.only(left: 4, top: 8, right: 0, bottom: 8),
+        padding: const EdgeInsets.only(left: 20, top: 8, right: 10, bottom: 8),
         decoration: BoxDecoration(
           color: const Color(0xFFFDFDFC), // Slightly off-white
           borderRadius: BorderRadius.circular(8),

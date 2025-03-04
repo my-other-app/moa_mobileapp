@@ -119,12 +119,18 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
         });
         _timer?.cancel();
       } else {
-        final hours = diff.inHours.toString().padLeft(2, '0');
+        final days = diff.inDays;
+        final hours = (diff.inHours % 24).toString().padLeft(2, '0');
         final minutes = (diff.inMinutes % 60).toString().padLeft(2, '0');
         final seconds = (diff.inSeconds % 60).toString().padLeft(2, '0');
         setState(() {
-          countdownText =
-              'Registration closes in $hours hrs $minutes mins $seconds secs';
+          if (days > 0) {
+            countdownText =
+                'Registration closes in $days day${days > 1 ? 's' : ''} $hours hrs $minutes mins $seconds secs';
+          } else {
+            countdownText =
+                'Registration closes in $hours hrs $minutes mins $seconds secs';
+          }
         });
       }
     });

@@ -62,14 +62,14 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const Divider(height: 0),
 
-          CustomOptionTile(
-            verticalSpacing: 16,
-            icon: Icons.help,
-            title: const Text('Help Centre'),
-            onTap: () {
-              // Navigate to help center screen or show dialog
-            },
-          ),
+          // CustomOptionTile(
+          //   verticalSpacing: 16,
+          //   icon: Icons.help,
+          //   title: const Text('Help Centre'),
+          //   onTap: () {
+          //     // Navigate to help center screen or show dialog
+          //   },
+          // ),
           const Divider(height: 0),
 
           // Contact Support Row
