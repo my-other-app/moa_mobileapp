@@ -35,10 +35,9 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
       );
 
       if (response.data == null) {
+        Profile updatedProfile = Profile.fromJson(response.data);
 
-         Profile updatedProfile = Profile.fromJson(response.data);
-
-         debugPrint('Updated profile: $updatedProfile');
+        debugPrint('Updated profile: $updatedProfile');
         emit(UpdateUserDetailsState(
             user: state.user,
             accessToken: state.accessToken,
@@ -59,7 +58,7 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
     Emitter<AppBlocState> emit,
   ) async {
     log('UpdateUserDetails event with user: ${event.profile?.toJson()}');
-    
+
     // Create a new profile object to ensure it's detected as a change
     Profile? updatedProfile;
     if (event.profile != null) {
@@ -67,7 +66,7 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
       final profileJson = event.profile!.toJson();
       updatedProfile = Profile.fromJson(profileJson);
     }
-    
+
     // Create the new state with the new profile object
     final newState = UpdateUserDetailsState(
       user: event.user ?? state.user,
@@ -75,7 +74,7 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
       refreshToken: event.refreshToken ?? state.refreshToken,
       profile: updatedProfile,
     );
-    
+
     emit(newState);
   }
 
@@ -121,7 +120,8 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
             response.data['data'] != null) {
           try {
             recentlyFetchedProfile = Profile.fromJson(response.data['data']);
-            debugPrint('Profile parsed from nested data: $recentlyFetchedProfile');
+            debugPrint(
+                'Profile parsed from nested data: $recentlyFetchedProfile');
           } catch (e) {
             debugPrint('Error parsing profile from nested data: $e');
           }
@@ -155,6 +155,7 @@ class AppBloc extends HydratedBloc<AppBlocEvent, AppBlocState> {
     emit(const AppBlocInitialState());
   }
 
+  /// to store and retrive from hydrarted bloc
   @override
   AppBlocState? fromJson(Map<String, dynamic> json) {
     try {

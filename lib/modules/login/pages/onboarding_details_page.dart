@@ -57,13 +57,6 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
   // Fetch organization list from API.
   Future<void> fetchOrganizations() async {
     try {
-      // Dio dio = Dio(
-      //   BaseOptions(
-      //     baseUrl: 'https://api.staging.myotherapp.com/api/v1',
-      //     headers: {'Content-Type': 'application/json'},
-      //   ),
-      // );
-      // final response = await dio.get('/orgs/list');
       final response =
           await APIService.instance.request('/orgs/list', DioMethod.get);
       final List data = response.data;

@@ -4,6 +4,7 @@ import '../models/profile.dart';
 class ProfileService {
   final Dio _dio;
 
+//TODO: Should use network service;
   ProfileService({Dio? dio})
       : _dio = dio ??
             Dio(
@@ -12,7 +13,7 @@ class ProfileService {
                 headers: {'Content-Type': 'application/json'},
               ),
             );
-
+  //TODO: need to get access token through service locator
   Future<Profile> getProfile(String accessToken) async {
     final response = await _dio.get(
       '/user/profile/me',
