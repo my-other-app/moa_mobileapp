@@ -14,7 +14,7 @@ class OnboardingFinalPage extends StatefulWidget {
 class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
   String? profileImageUrl;
 
-  //TODO :these api fetches may not needed so once check and remove them
+  //TODO :these api fetches may not needed so check and remove this
   final Dio dio = Dio();
 
   @override
@@ -51,7 +51,8 @@ class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
                               previous.profile?.profile?.avatar !=
                               current.profile?.profile?.avatar,
                           builder: (context, state) {
-                            return _buildProfileImage(state.profile?.profile?.avatar?.image.original);
+                            return _buildProfileImage(
+                                state.profile?.profile?.avatar?.image.original);
                           },
                         ),
                         const SizedBox(height: 24),
@@ -67,7 +68,6 @@ class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
                                 .profile
                                 ?.profile
                                 ?.avatar;
-            
                             if (currentAvatar != null) {
                               Navigator.pushReplacement(
                                 context,

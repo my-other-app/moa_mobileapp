@@ -161,19 +161,7 @@ class EventCard extends StatelessWidget {
                     child:
                         CircularProgressIndicator()), // Optional loading indicator
               ),
-              errorWidget: (context, url, error) => Container(
-                height: size.height * 0.5,
-
-                width: double.infinity,
-
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10.0),
-
-                  color: Colors.red, // Error color
-                ),
-
-                child: Center(child: Icon(Icons.error)), // Optional error icon
-              ),
+              errorWidget: (context, url, error) => SizedBox.shrink(),
             )
 
             // Container(

@@ -23,13 +23,13 @@ class ExploreMoreClubCard extends StatefulWidget {
     required this.clubSlug,
     required this.isFollowing,
   });
-
   @override
   State<ExploreMoreClubCard> createState() => _ExploreMoreClubCardState();
 }
 
 class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
   late bool _isFollowing;
+  late int _followersCount;
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +92,7 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${widget.followersCount} Followers',
+                        '$_followersCount Followers',
                         style: const TextStyle(
                           fontSize: 14,
                           color: Colors.black,
@@ -170,8 +170,10 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
   void initState() {
     super.initState();
     _isFollowing = widget.isFollowing;
+    _followersCount = widget.followersCount;
   }
 
+  //TODO: need to handle this toggle in a better way
   Future<void> _toggleFollow() async {
     final String endpoint;
     if (!_isFollowing) {
@@ -179,12 +181,21 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
     } else {
       endpoint = '/clubs/unfollow/${widget.id}';
     }
+
+    if (widget.isFollowing != _isFollowing) {
+      _followersCount = widget.followersCount;
+    } else {
+      _followersCount =
+          _isFollowing ? widget.followersCount - 1 : widget.followersCount + 1;
+    }
+
     try {
       Response<dynamic> res =
           await APIService.instance.request(endpoint, DioMethod.post);
       // Assuming the API returns a JSON with an "is_following" boolean field:
       setState(() {
         _isFollowing = res.data['is_following'] as bool;
+        _followersCount;
       });
     } catch (e) {
       // Handle error (for example, show a SnackBar)

@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
 import 'package:myotherapp/modules/login/profile_check_page.dart';
-import 'package:myotherapp/modules/login/bloc/login_cubit.dart';
+import 'package:myotherapp/modules/login/cubit/login_cubit.dart';
 import 'package:myotherapp/modules/login/data/services/authentication_service.dart';
 // Make sure this file exists and is properly implemented
 
@@ -32,6 +32,10 @@ class OnboardingInitialPage extends StatelessWidget {
               .read<LoginCubit>()
               .loginWithGoogle(idToken, platform, account.photoUrl ?? '');
           debugPrint("User signed in: ${account.photoUrl}");
+
+          //need to disconnect the google account after obtaining the token.
+          // then only account selection will be shown on next time.
+          await _googleSignIn.disconnect();
         } else {
           debugPrint('No idToken received.');
         }
