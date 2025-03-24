@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:myotherapp/core/api/endpoints.dart';
 import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/modules/login/data/models/profile.dart';
 import 'package:myotherapp/modules/login/pages/onboarding_avatar_picker_page.dart';
@@ -64,9 +65,7 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
             response.statusCode! >= 200 &&
             response.statusCode! < 300) {
           final profileRes = await APIService.instance.request(
-            '/user/profile/me',
-            DioMethod.get,
-          );
+              Endpoints.getProfile.url, Endpoints.getProfile.requestType);
           Profile? profile;
 
           if (profileRes.data != null && profileRes.statusCode == 200) {
@@ -79,11 +78,8 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
             profile = Profile.fromJson({});
           }
 
-          if (profileRes.data is List && mounted) {
+          if (mounted) {
             ///updating the intrests in appBloc
-            profile.interests = (profileRes.data as List)
-                .map((e) => Interest.fromJson(e as Map<String, dynamic>))
-                .toList();
 
             debugPrint('Updated interests: ${jsonEncode(profile.interests)}');
 
@@ -343,7 +339,7 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 128, vertical: 13),
+            // padding: const EdgeInsets.symmetric(horizontal: 128, vertical: 13),
           ),
           child: isLoading
               ? const CircularProgressIndicator(color: Colors.white)
