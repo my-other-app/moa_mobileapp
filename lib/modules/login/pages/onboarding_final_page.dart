@@ -107,7 +107,7 @@ class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
   Future<void> fetchUserProfile() async {
     // Get the access token from AppBloc
     final accessToken = context.read<AppBloc>().state.accessToken;
-    const url = 'https://api.staging.myotherapp.com/api/v1/user/profile/me';
+    const url = 'https://api.myotherapp.com/api/v1/user/profile/me';
 
     try {
       final response = await dio.get(

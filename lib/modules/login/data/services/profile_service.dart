@@ -9,7 +9,7 @@ class ProfileService {
       : _dio = dio ??
             Dio(
               BaseOptions(
-                baseUrl: 'https://api.staging.myotherapp.com/api/v1',
+                baseUrl: 'https://api.myotherapp.com/api/v1',
                 headers: {'Content-Type': 'application/json'},
               ),
             );

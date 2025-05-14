@@ -13,11 +13,11 @@ class APIService {
 
   String get baseUrl {
     if (kDebugMode) {
-      return 'https://api.staging.myotherapp.com/api/v1';
+      return 'https://api.myotherapp.com/api/v1';
     }
 
     // TODO : replace with Production url
-    return 'https://api.staging.myotherapp.com/api/v1';
+    return 'https://api.myotherapp.com/api/v1';
   }
 
   Future<Response> request(
@@ -42,7 +42,8 @@ class APIService {
           baseUrl: baseUrl,
           contentType: contentType ?? Headers.jsonContentType,
           headers: {
-            if (!skipAuthToken) HttpHeaders.authorizationHeader: 'Bearer ${token.accessToken}',
+            if (!skipAuthToken)
+              HttpHeaders.authorizationHeader: 'Bearer ${token.accessToken}',
             if (headers != null) ...headers,
           },
         ),
@@ -68,7 +69,7 @@ class APIService {
             endpoint,
             data: param ?? formData,
           );
-        }
+      }
     } catch (e) {
       debugPrint('Request failed 1111: $e');
       throw Exception('Request failed');
