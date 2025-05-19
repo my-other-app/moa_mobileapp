@@ -25,7 +25,7 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
     const Color(0xFFFFC84A),
     const Color(0xFFFFDEDD),
   ];
-
+  ClubInfo? clubInfo;
   // State variables for club fields.
   int? id;
   String? name;
@@ -47,6 +47,29 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
   bool isLoading = true;
   String? errorMessage;
   bool _expanded = false;
+  Future<void> _toggleFollow() async {
+    if (clubInfo == null) return;
+
+    final isCurrentlyFollowing = clubInfo!.userData['is_following'];
+    final endpoint = isCurrentlyFollowing
+        ? '/clubs/unfollow/${clubInfo!.id}'
+        : '/clubs/follow/${clubInfo!.id}';
+
+    try {
+      await APIService.instance.request(
+        endpoint,
+        DioMethod.post,
+      );
+
+      // Refetch updated data to refresh UI
+      await _fetchData();
+    } catch (e) {
+      debugPrint('Follow/Unfollow failed: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Action failed. Please try again.')),
+      );
+    }
+  }
 
   Future<void> _fetchData() async {
     try {
@@ -56,25 +79,26 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
       );
       log("API Response: ${res.data}");
       // Parse the response into our model.
-      ClubInfo clubInfo = ClubInfo.fromJson(res.data);
+      clubInfo = ClubInfo.fromJson(res.data);
+      print(clubInfo!.userData);
       setState(() {
-        id = clubInfo.id;
-        name = clubInfo.name;
-        slug = clubInfo.slug;
-        logo = clubInfo.logo;
-        locationName = clubInfo.locationName;
-        locationLink = clubInfo.locationLink;
-        about = clubInfo.about;
-        rating = clubInfo.rating;
+        id = clubInfo!.id;
+        name = clubInfo!.name;
+        slug = clubInfo!.slug;
+        logo = clubInfo!.logo;
+        locationName = clubInfo!.locationName;
+        locationLink = clubInfo!.locationLink;
+        about = clubInfo!.about;
+        rating = clubInfo!.rating;
         //rating = 2;
-        totalRatings = clubInfo.totalRatings;
-        socials = clubInfo.socials;
-        interests = clubInfo.interests;
-        followersCount = clubInfo.followersCount;
-        contactPhone = clubInfo.contactPhone;
-        contactEmail = clubInfo.contactEmail;
-        userData = clubInfo.userData;
-        org = clubInfo.org;
+        totalRatings = clubInfo!.totalRatings;
+        socials = clubInfo!.socials;
+        interests = clubInfo!.interests;
+        followersCount = clubInfo!.followersCount;
+        contactPhone = clubInfo!.contactPhone;
+        contactEmail = clubInfo!.contactEmail;
+        userData = clubInfo!.userData;
+        org = clubInfo!.org;
         isLoading = false;
       });
     } catch (e) {
@@ -206,16 +230,14 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () {
-                      // Implement "Follow" logic.
-                    },
+                    onPressed: _toggleFollow,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2C333D),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text(
-                      'FOLLOW',
-                      style: TextStyle(fontSize: 24),
+                    child: Text(
+                      userData?['is_following'] == true ? 'UNFOLLOW' : 'FOLLOW',
+                      style: const TextStyle(fontSize: 24),
                     ),
                   ),
                 ),
@@ -283,27 +305,27 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
             ),
 
             const SizedBox(height: 24),
-            // Rating section.
-            _buildRatingSection(context),
-            const SizedBox(height: 24),
-            // Achievements section.
-            Text(
-              'ACHIEVEMENTS',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildAchievementPlaceholder(),
-                _buildAchievementPlaceholder(),
-                _buildAchievementPlaceholder(),
-              ],
-            ),
-            const SizedBox(height: 32),
-            // Need Help section.
+            // // Rating section.
+            // _buildRatingSection(context),
+            // const SizedBox(height: 24),
+            // // Achievements section.
+            // Text(
+            //   'ACHIEVEMENTS',
+            //   style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            //         fontWeight: FontWeight.bold,
+            //       ),
+            // ),
+            // const SizedBox(height: 16),
+            // Row(
+            //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            //   children: [
+            //     _buildAchievementPlaceholder(),
+            //     _buildAchievementPlaceholder(),
+            //     _buildAchievementPlaceholder(),
+            //   ],
+            // ),
+            // const SizedBox(height: 32),
+            // // Need Help section.
             const Text(
               'Need Help?',
               style: TextStyle(

@@ -204,7 +204,7 @@ class ProfilePage extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      '${tag.icon}  ${tag.name}',
+                                      '${tag.name}',
                                       style: const TextStyle(fontSize: 12),
                                     ),
                                   );

@@ -36,7 +36,7 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           CustomOptionTile(
             verticalSpacing: 16,
-            leadingImageName: AssetResources.notifications,
+            leadingImageName: AssetResources.eventnotification,
             title: const Text('Event Notification'),
             onTap: () {},
             trailing: Switch(
@@ -50,7 +50,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
           CustomOptionTile(
             verticalSpacing: 16,
-            icon: Icons.group,
+            leadingImageName: AssetResources.clubsupdate,
             title: const Text('Club Updates'),
             onTap: () {},
             trailing: Switch(
@@ -75,7 +75,7 @@ class _SettingsPageState extends State<SettingsPage> {
           // Contact Support Row
           CustomOptionTile(
             verticalSpacing: 16,
-            icon: Icons.phone,
+            leadingImageName: AssetResources.contsctsupport,
             title: const Text('Contact Support'),
             onTap: () {
               // Navigate to contact screen or show dialog
@@ -86,7 +86,7 @@ class _SettingsPageState extends State<SettingsPage> {
           // Terms and Conditions Row
           CustomOptionTile(
             verticalSpacing: 16,
-            icon: Icons.description,
+            leadingImageName: AssetResources.termsandcondition,
             title: const Text('Terms and Conditions'),
             onTap: () {
               // Navigate to T&C screen or show dialog
@@ -97,8 +97,19 @@ class _SettingsPageState extends State<SettingsPage> {
           // Privacy Policy Row
           CustomOptionTile(
             verticalSpacing: 16,
-            icon: Icons.lock,
+            leadingImageName: AssetResources.privacypolicy,
             title: const Text('Privacy Policy'),
+            onTap: () {
+              // Navigate to privacy policy
+            },
+          ),
+          const Divider(height: 0),
+
+          // Privacy Policy Row
+          CustomOptionTile(
+            verticalSpacing: 16,
+            leadingImageName: AssetResources.deleteaccount,
+            title: const Text('Delete Account'),
             onTap: () {
               // Navigate to privacy policy
             },

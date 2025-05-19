@@ -27,4 +27,10 @@ class AssetResources {
   static const String noclubsfollowing = "assets/images/noeventclubs.webp";
   static const String nocertificate = "assets/images/nocertificates.webp";
   static const String nofollowclub = "assets/images/nofollowclubs.webp";
+  static const String eventnotification = "assets/icons/eventnotification.webp";
+  static const String termsandcondition = "assets/icons/termsandcondition.webp";
+  static const String contsctsupport = "assets/icons/contactsupport.webp";
+  static const String clubsupdate = "assets/icons/clubsupdate.webp";
+  static const String privacypolicy = "assets/icons/privacypolicy.webp";
+  static const String deleteaccount = "assets/icons/deleteaccount.webp";
 }

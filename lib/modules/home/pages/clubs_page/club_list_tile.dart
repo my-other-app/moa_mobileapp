@@ -41,10 +41,16 @@ class ClubListTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              backgroundImage: NetworkImage(imageUrl),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.network(
+                imageUrl,
+                width: 36,
+                height: 36,
+                fit: BoxFit.cover,
+              ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 clubName,
