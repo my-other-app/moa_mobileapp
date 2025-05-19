@@ -520,32 +520,32 @@ bridge the gap between academics and real-world applications...""";
     );
   }
 
-  Widget _buildRatingSection(BuildContext context) {
-    // Assume rating is returned as int, but convert to double.
-    // If your API returns a double, you can use it directly.
-    double avgRating = rating != null ? rating!.toDouble() : 0;
-    return Column(
-      children: [
-        buildRatingStars(avgRating),
-        const SizedBox(height: 8),
-        Text(
-          "$avgRating (${totalRatings ?? 0} ratings)",
-          style: const TextStyle(fontSize: 20),
-        ),
-      ],
-    );
-  }
+  // Widget _buildRatingSection(BuildContext context) {
+  //   // Assume rating is returned as int, but convert to double.
+  //   // If your API returns a double, you can use it directly.
+  //   double avgRating = rating != null ? rating!.toDouble() : 0;
+  //   return Column(
+  //     children: [
+  //       buildRatingStars(avgRating),
+  //       const SizedBox(height: 8),
+  //       Text(
+  //         "$avgRating (${totalRatings ?? 0} ratings)",
+  //         style: const TextStyle(fontSize: 20),
+  //       ),
+  //     ],
+  //   );
+  // }
 
-  Widget _buildAchievementPlaceholder() {
-    return Container(
-      width: 64,
-      height: 64,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        shape: BoxShape.circle,
-      ),
-    );
-  }
+  // Widget _buildAchievementPlaceholder() {
+  //   return Container(
+  //     width: 64,
+  //     height: 64,
+  //     decoration: BoxDecoration(
+  //       color: Colors.grey.shade200,
+  //       shape: BoxShape.circle,
+  //     ),
+  //   );
+  // }
 }
 
 // Models for ClubInfo, Interest, and Org.

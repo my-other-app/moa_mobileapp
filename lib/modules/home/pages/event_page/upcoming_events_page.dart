@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/modules/home/custom_widgets/event_card.dart';
+import 'package:myotherapp/modules/home/pages/event_page/no_registered_event_page.dart';
 
 class UpcomingEventsPage extends StatefulWidget {
   const UpcomingEventsPage({super.key});
@@ -92,15 +93,7 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
       );
     }
     if (events.isEmpty) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: Text(
-            'Nothing to show on the feed',
-            style: TextStyle(fontSize: 18),
-          ),
-        ),
-      );
+      return NoRegisteredEventPage();
     }
     return Scaffold(
       backgroundColor: Colors.white,

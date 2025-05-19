@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/modules/home/custom_widgets/event_card.dart';
-import 'package:myotherapp/modules/home/pages/clubs_page/no_notes_page.dart';
+import 'package:myotherapp/modules/home/pages/event_page/no_past_events_page.dart';
 
 class PastEventsPage extends StatefulWidget {
   const PastEventsPage({super.key});
@@ -93,7 +93,7 @@ class _PastEventsPageState extends State<PastEventsPage> {
       );
     }
     if (events.isEmpty) {
-      return NoNotesPage();
+      return NoPastEventsPage();
     }
     return Scaffold(
       backgroundColor: Colors.white,

@@ -33,4 +33,6 @@ class AssetResources {
   static const String clubsupdate = "assets/icons/clubsupdate.webp";
   static const String privacypolicy = "assets/icons/privacypolicy.webp";
   static const String deleteaccount = "assets/icons/deleteaccount.webp";
+  static const String noevents = "assets/images/noevents.webp";
+  static const String nonotification = "assets/images/nonotification.webp";
 }
