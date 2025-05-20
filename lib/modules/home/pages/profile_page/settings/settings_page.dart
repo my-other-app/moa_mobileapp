@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/common/widgets/custom_option_tile.dart';
+import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
+import 'package:myotherapp/modules/home/bloc/bottom_nav_bloc.dart';
+import 'package:myotherapp/modules/home/bloc/bottom_nav_event.dart';
+import 'package:myotherapp/modules/home/pages/profile_page/settings/terms_and_condition_page.dart';
+import 'package:myotherapp/modules/login/pages/onboarding_initial_page.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -77,8 +84,14 @@ class _SettingsPageState extends State<SettingsPage> {
             verticalSpacing: 16,
             leadingImageName: AssetResources.contsctsupport,
             title: const Text('Contact Support'),
-            onTap: () {
-              // Navigate to contact screen or show dialog
+            onTap: () async {
+              if (await canLaunchUrl(
+                  Uri.parse("https://wa.me/+917025662019"))) {
+                await launchUrl(Uri.parse("https://wa.me/+917025662019"));
+              } else {
+                // You might want to handle the error gracefully.
+                throw 'Could not launch https://wa.me/+917025662019';
+              }
             },
           ),
           const Divider(height: 0),
@@ -89,6 +102,10 @@ class _SettingsPageState extends State<SettingsPage> {
             leadingImageName: AssetResources.termsandcondition,
             title: const Text('Terms and Conditions'),
             onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => TermsAndConditionPage()),
+              );
               // Navigate to T&C screen or show dialog
             },
           ),
@@ -111,7 +128,47 @@ class _SettingsPageState extends State<SettingsPage> {
             leadingImageName: AssetResources.deleteaccount,
             title: const Text('Delete Account'),
             onTap: () {
-              // Navigate to privacy policy
+              // Show confirmation dialog
+              showDialog(
+                context: context,
+                builder: (BuildContext dialogContext) {
+                  return AlertDialog(
+                    title: const Text('Confirm Delete'),
+                    content: const Text(
+                        'Are you sure you want to delete your account?'),
+                    actions: <Widget>[
+                      TextButton(
+                        child: const Text('Cancel'),
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                        },
+                      ),
+                      TextButton(
+                        child: const Text('Delete'),
+                        onPressed: () async {
+                          // Close the dialog
+                          Navigator.of(dialogContext).pop();
+                          // Dispatch logout event to AppBloc
+                          if (context.mounted) {
+                            context.read<AppBloc>().add(const LoggedOutEvent());
+                            context
+                                .read<BottomNavigatorBloc>()
+                                .add(UpdateIndexEvent(index: 0));
+
+                            // Navigate to login page and clear navigation stack
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (context) => OnboardingInitialPage(),
+                              ),
+                              (route) => false,
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  );
+                },
+              );
             },
           ),
         ],
