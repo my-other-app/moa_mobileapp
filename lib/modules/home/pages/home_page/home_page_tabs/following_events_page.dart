@@ -83,6 +83,7 @@ class _FollowingEventsPageState extends State<FollowingEventsPage>
               event['poster']?['medium'] ?? 'https://via.placeholder.com/150',
           eventId: event['id'],
           clubId: event['club']['id'],
+          eventSlug: event['slug'],
         );
       },
     );

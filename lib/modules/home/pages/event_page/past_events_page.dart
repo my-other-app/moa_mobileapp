@@ -73,6 +73,7 @@ class _PastEventsPageState extends State<PastEventsPage> {
           eventId: event['id'],
           clubId: event['club']['id'],
           clubSlug: event['club']?['slug'] ?? '',
+          eventSlug: event['slug'],
         );
       },
     );

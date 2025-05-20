@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:myotherapp/common/widgets/custom_option_tile.dart';
+import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/modules/home/bloc/bottom_nav_bloc.dart';
 import 'package:myotherapp/modules/home/bloc/bottom_nav_event.dart';
+import 'package:myotherapp/modules/home/pages/profile_page/settings/privacy_policy_page.dart';
 import 'package:myotherapp/modules/home/pages/profile_page/settings/terms_and_condition_page.dart';
 import 'package:myotherapp/modules/login/pages/onboarding_initial_page.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -85,9 +87,11 @@ class _SettingsPageState extends State<SettingsPage> {
             leadingImageName: AssetResources.contsctsupport,
             title: const Text('Contact Support'),
             onTap: () async {
-              if (await canLaunchUrl(
-                  Uri.parse("https://wa.me/+917025662019"))) {
-                await launchUrl(Uri.parse("https://wa.me/+917025662019"));
+              if (await canLaunchUrl(Uri.parse("https://wa.me/917025662019"))) {
+                await launchUrl(
+                  Uri.parse("https://wa.me/917025662019"),
+                  mode: LaunchMode.externalApplication,
+                );
               } else {
                 // You might want to handle the error gracefully.
                 throw 'Could not launch https://wa.me/+917025662019';
@@ -117,7 +121,10 @@ class _SettingsPageState extends State<SettingsPage> {
             leadingImageName: AssetResources.privacypolicy,
             title: const Text('Privacy Policy'),
             onTap: () {
-              // Navigate to privacy policy
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => PrivacyPolicyPage()),
+              );
             },
           ),
           const Divider(height: 0),
@@ -146,21 +153,47 @@ class _SettingsPageState extends State<SettingsPage> {
                       TextButton(
                         child: const Text('Delete'),
                         onPressed: () async {
-                          // Close the dialog
                           Navigator.of(dialogContext).pop();
-                          // Dispatch logout event to AppBloc
-                          if (context.mounted) {
-                            context.read<AppBloc>().add(const LoggedOutEvent());
-                            context
-                                .read<BottomNavigatorBloc>()
-                                .add(UpdateIndexEvent(index: 0));
 
-                            // Navigate to login page and clear navigation stack
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (context) => OnboardingInitialPage(),
-                              ),
-                              (route) => false,
+                          try {
+                            // Optional: show loading state
+
+                            // API Call
+                            final res = await APIService.instance.request(
+                              '/api/v1/user/delete',
+                              DioMethod.delete,
+                            );
+
+                            // Optional: check status
+                            if (res.statusCode == 200 ||
+                                res.data['success'] == true) {
+                              // Dispatch logout and reset state
+                              if (context.mounted) {
+                                context
+                                    .read<AppBloc>()
+                                    .add(const LoggedOutEvent());
+                                context
+                                    .read<BottomNavigatorBloc>()
+                                    .add(UpdateIndexEvent(index: 0));
+
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        OnboardingInitialPage(),
+                                  ),
+                                  (route) => false,
+                                );
+                              }
+                            } else {
+                              // Handle API failure
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text('Failed to delete account.')),
+                              );
+                            }
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
                             );
                           }
                         },

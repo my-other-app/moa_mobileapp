@@ -73,6 +73,7 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
               event['poster']?['medium'] ?? 'https://via.placeholder.com/150',
           eventId: event['id'],
           clubId: event['club']['id'],
+          eventSlug: event['slug'],
         );
       },
     );

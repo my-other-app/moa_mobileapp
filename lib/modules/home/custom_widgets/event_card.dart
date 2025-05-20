@@ -4,6 +4,7 @@ import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/modules/home/pages/clubs_page/club_individual_page.dart';
 import 'package:myotherapp/modules/home/pages/event_page/individual_event_page.dart';
 import 'package:myotherapp/modules/home/custom_widgets/svg_icon.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EventCard extends StatelessWidget {
   final String title;
@@ -15,21 +16,22 @@ class EventCard extends StatelessWidget {
   final int eventId;
   final int clubId;
   final String clubSlug;
+  final String eventSlug;
   //link
   //club image
 
-  const EventCard({
-    super.key,
-    required this.title,
-    required this.organizer,
-    required this.imageUrl,
-    required this.tags,
-    required this.onTap,
-    required this.orgImage,
-    required this.eventId,
-    required this.clubId,
-    required this.clubSlug,
-  });
+  const EventCard(
+      {super.key,
+      required this.title,
+      required this.organizer,
+      required this.imageUrl,
+      required this.tags,
+      required this.onTap,
+      required this.orgImage,
+      required this.eventId,
+      required this.clubId,
+      required this.clubSlug,
+      required this.eventSlug});
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +114,12 @@ class EventCard extends StatelessWidget {
               ),
             ),
             GestureDetector(
-              onTap: onTap,
+              onTap: () async {
+                final Uri url =
+                    Uri.parse("https://events.myotherapp.com/$eventSlug");
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+                print(url);
+              },
               child: Padding(
                 padding: const EdgeInsets.all(8.0).copyWith(right: 0),
                 child: SvgIcon(svgIconPath: AssetResources.share),

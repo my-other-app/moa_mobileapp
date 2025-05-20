@@ -5,6 +5,7 @@ import 'package:myotherapp/common/models/events/event_model.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/core/themes/app_colors.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../custom_widgets/svg_icon.dart';
 import 'package:myotherapp/modules/home/pages/event_page/event_form_page.dart';
 
@@ -159,6 +160,8 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
     // Loading and error handling.
     if (isLoading) {
       return Scaffold(
@@ -201,8 +204,12 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
         actions: [
           IconButton(
             icon: SvgIcon(svgIconPath: AssetResources.share),
-            onPressed: () {
-              // TODO: Implement share functionality.
+            onPressed: () async {
+              final Uri url = Uri.parse("https://events.myotherapp.com/$slug");
+              await launchUrl(url, mode: LaunchMode.externalApplication);
+              print(url);
+              print(id);
+              print(slug);
             },
           ),
         ],
@@ -242,26 +249,32 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name ?? 'Event Name',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                Expanded(
+                  // ✅ Wrap this to prevent overflow
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name ?? 'Event Name',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis, // Optional
                       ),
-                    ),
-                    Text(
-                      club?.name ?? 'Organizer',
-                      style: const TextStyle(
-                        fontSize: 12,
+                      Text(
+                        club?.name ?? 'Organizer',
+                        style: const TextStyle(
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis, // Optional
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
+
             const SizedBox(height: 16),
             // Info Grid.
             Row(
