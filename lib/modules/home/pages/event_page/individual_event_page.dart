@@ -160,8 +160,6 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     // Loading and error handling.
     if (isLoading) {
       return Scaffold(
