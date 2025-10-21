@@ -417,7 +417,10 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => EventFormPage(),
+                            builder: (context) => EventFormPage(
+                              eventId: id ?? 0,
+                              additionalDetails: additionalDetails,
+                            ),
                           ),
                         );
                       },
