@@ -14,7 +14,6 @@ void main() async {
   HydratedBloc.storage = await HydratedStorage.build(
       storageDirectory: HydratedStorageDirectory(
           (await getApplicationDocumentsDirectory()).path));
-
   runApp(const MyApp());
 }
 
@@ -52,7 +51,7 @@ class MyAppView extends StatelessWidget {
       title: 'My Other App',
       theme: AppTheme.themeData(),
       home: const AuthWrapper(),
-      //home: NoClubsFollowingPage(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }

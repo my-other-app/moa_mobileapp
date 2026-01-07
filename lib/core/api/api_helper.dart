@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:myotherapp/core/config/env/env.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
 import 'package:myotherapp/core/secure_storage/token_model.dart';
 
@@ -11,14 +12,7 @@ class APIService {
 
   static final APIService instance = APIService._singleton();
 
-  String get baseUrl {
-    if (kDebugMode) {
-      return 'https://api.myotherapp.com/api/v1';
-    }
-
-    // TODO : replace with Production url
-    return 'https://api.myotherapp.com/api/v1';
-  }
+  String get baseUrl => Env.apiBaseUrl;
 
   Future<Response> request(
     String endpoint,

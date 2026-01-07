@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/common/widgets/custom_option_tile.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
@@ -11,6 +12,7 @@ import 'package:myotherapp/modules/home/pages/profile_page/settings/terms_and_co
 import 'package:myotherapp/modules/login/pages/onboarding_initial_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Settings page - migrated to Riverpod with exact same UI.
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -25,6 +27,34 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Wrap in ProviderScope to enable Riverpod in this screen
+    return ProviderScope(
+      child: _SettingsPageContent(
+        eventNotification: _eventNotification,
+        clubUpdates: _clubUpdates,
+        onEventNotificationChanged: (v) =>
+            setState(() => _eventNotification = v),
+        onClubUpdatesChanged: (v) => setState(() => _clubUpdates = v),
+      ),
+    );
+  }
+}
+
+class _SettingsPageContent extends ConsumerWidget {
+  final bool eventNotification;
+  final bool clubUpdates;
+  final ValueChanged<bool> onEventNotificationChanged;
+  final ValueChanged<bool> onClubUpdatesChanged;
+
+  const _SettingsPageContent({
+    required this.eventNotification,
+    required this.clubUpdates,
+    required this.onEventNotificationChanged,
+    required this.onClubUpdatesChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -38,7 +68,7 @@ class _SettingsPageState extends State<SettingsPage> {
         centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
-        elevation: 0, // Remove AppBar shadow
+        elevation: 0,
       ),
       body: ListView(
         padding: EdgeInsets.all(16),
@@ -49,10 +79,8 @@ class _SettingsPageState extends State<SettingsPage> {
             title: const Text('Event Notification'),
             onTap: () {},
             trailing: Switch(
-              value: _eventNotification,
-              onChanged: (bool newValue) {
-                setState(() => _eventNotification = newValue);
-              },
+              value: eventNotification,
+              onChanged: onEventNotificationChanged,
             ),
           ),
           const Divider(height: 0),
@@ -63,22 +91,11 @@ class _SettingsPageState extends State<SettingsPage> {
             title: const Text('Club Updates'),
             onTap: () {},
             trailing: Switch(
-              value: _clubUpdates,
-              onChanged: (bool newValue) {
-                setState(() => _clubUpdates = newValue);
-              },
+              value: clubUpdates,
+              onChanged: onClubUpdatesChanged,
             ),
           ),
           const Divider(height: 0),
-
-          // CustomOptionTile(
-          //   verticalSpacing: 16,
-          //   icon: Icons.help,
-          //   title: const Text('Help Centre'),
-          //   onTap: () {
-          //     // Navigate to help center screen or show dialog
-          //   },
-          // ),
           const Divider(height: 0),
 
           // Contact Support Row
@@ -93,7 +110,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   mode: LaunchMode.externalApplication,
                 );
               } else {
-                // You might want to handle the error gracefully.
                 throw 'Could not launch https://wa.me/+917025662019';
               }
             },
@@ -110,7 +126,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 context,
                 MaterialPageRoute(builder: (_) => TermsAndConditionPage()),
               );
-              // Navigate to T&C screen or show dialog
             },
           ),
           const Divider(height: 0),
@@ -129,83 +144,78 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const Divider(height: 0),
 
-          // Privacy Policy Row
+          // Delete Account Row
           CustomOptionTile(
             verticalSpacing: 16,
             leadingImageName: AssetResources.deleteaccount,
             title: const Text('Delete Account'),
             onTap: () {
-              // Show confirmation dialog
-              showDialog(
-                context: context,
-                builder: (BuildContext dialogContext) {
-                  return AlertDialog(
-                    title: const Text('Confirm Delete'),
-                    content: const Text(
-                        'Are you sure you want to delete your account?'),
-                    actions: <Widget>[
-                      TextButton(
-                        child: const Text('Cancel'),
-                        onPressed: () {
-                          Navigator.of(dialogContext).pop();
-                        },
-                      ),
-                      TextButton(
-                        child: const Text('Delete'),
-                        onPressed: () async {
-                          Navigator.of(dialogContext).pop();
-
-                          try {
-                            // Optional: show loading state
-
-                            // API Call
-                            final res = await APIService.instance.request(
-                              '/api/v1/user/delete',
-                              DioMethod.delete,
-                            );
-
-                            // Optional: check status
-                            if (res.statusCode == 200 ||
-                                res.data['success'] == true) {
-                              // Dispatch logout and reset state
-                              if (context.mounted) {
-                                context
-                                    .read<AppBloc>()
-                                    .add(const LoggedOutEvent());
-                                context
-                                    .read<BottomNavigatorBloc>()
-                                    .add(UpdateIndexEvent(index: 0));
-
-                                Navigator.of(context).pushAndRemoveUntil(
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        OnboardingInitialPage(),
-                                  ),
-                                  (route) => false,
-                                );
-                              }
-                            } else {
-                              // Handle API failure
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content: Text('Failed to delete account.')),
-                              );
-                            }
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error: $e')),
-                            );
-                          }
-                        },
-                      ),
-                    ],
-                  );
-                },
-              );
+              _showDeleteAccountDialog(context);
             },
           ),
         ],
       ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Delete'),
+          content: const Text('Are you sure you want to delete your account?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Delete'),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+
+                try {
+                  final res = await APIService.instance.request(
+                    '/api/v1/user/delete',
+                    DioMethod.delete,
+                  );
+
+                  if (res.statusCode == 200 || res.data['success'] == true) {
+                    if (context.mounted) {
+                      context.read<AppBloc>().add(const LoggedOutEvent());
+                      context
+                          .read<BottomNavigatorBloc>()
+                          .add(UpdateIndexEvent(index: 0));
+
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (context) => OnboardingInitialPage(),
+                        ),
+                        (route) => false,
+                      );
+                    }
+                  } else {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to delete account.')),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
