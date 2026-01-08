@@ -1,16 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/common/widgets/custom_option_tile.dart';
 import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
 import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/certificates/certificate_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/edit_profile_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/badges/my_badges_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/notifications/notifications_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/settings_page.dart';
-
 import 'package:myotherapp/core/resources/asset_resources.dart';
 
 /// Profile Page - exact same UI as original, using Riverpod for state.
@@ -43,50 +38,35 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         'label': 'Edit Profile',
         'icon': AssetResources.editprofile,
         'onTap': (BuildContext context) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const EditProfilePage()),
-          );
+          context.push('/profile/edit');
         },
       },
       {
         'label': 'My Certificates',
         'icon': AssetResources.mycertificates,
         'onTap': (BuildContext context) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => CertificatePage()),
-          );
+          context.push('/profile/certificates');
         },
       },
       {
         'label': 'My Badges',
         'icon': AssetResources.mybadges,
         'onTap': (BuildContext context) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const MyBadgesPage()),
-          );
+          context.push('/profile/badges');
         },
       },
       {
         'label': 'Notifications',
         'icon': AssetResources.notifications,
         'onTap': (BuildContext context) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => NotificationsNewPage()),
-          );
+          context.push('/profile/notifications');
         },
       },
       {
         'label': 'Settings',
         'icon': AssetResources.settings,
         'onTap': (BuildContext context) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const SettingsPage()),
-          );
+          context.push('/profile/settings');
         },
       },
       {

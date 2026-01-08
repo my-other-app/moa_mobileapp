@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:myotherapp/features/auth/presentation/pages/profile_check_page.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/features/auth/presentation/cubits/login_cubit.dart';
 import 'package:myotherapp/features/auth/data/services/authentication_service.dart';
 import 'package:myotherapp/features/auth/data/services/profile_service.dart';
@@ -43,15 +43,10 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
         const SnackBar(content: Text('Logging in...')),
       );
     } else if (state is LoginSuccess) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProfileCheckPage(
-            accessToken: state.accessToken,
-            profileUrl: state.photoUrl,
-          ),
-        ),
-      );
+      context.go('/auth/profile-check', extra: {
+        'accessToken': state.accessToken,
+        'profileUrl': state.photoUrl,
+      });
     } else if (state is LoginFailure) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${state.error}')),

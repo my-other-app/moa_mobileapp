@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/common/widgets/custom_option_tile.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
 import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
-import 'package:myotherapp/features/profile/presentation/pages/settings/privacy_policy_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/settings/terms_and_condition_page.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -95,10 +94,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             leadingImageName: AssetResources.termsandcondition,
             title: const Text('Terms and Conditions'),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => TermsAndConditionPage()),
-              );
+              context.push('/profile/settings/terms');
             },
           ),
           const Divider(height: 0),
@@ -109,10 +105,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             leadingImageName: AssetResources.privacypolicy,
             title: const Text('Privacy Policy'),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => PrivacyPolicyPage()),
-              );
+              context.push('/profile/settings/privacy');
             },
           ),
           const Divider(height: 0),

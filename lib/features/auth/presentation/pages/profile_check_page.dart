@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/storage/secure_storage_service.dart';
 import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart'
     hide ProfileState;
-import 'package:myotherapp/features/main/presentation/pages/landing_page.dart';
 import 'package:myotherapp/features/auth/presentation/cubits/profile_cubit.dart';
 import 'package:myotherapp/features/auth/data/models/profile.dart';
 import 'package:myotherapp/features/auth/data/services/profile_service.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_details_page.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 
-/// Profile Check Page - fully migrated to Riverpod and callback-based ProfileCubit.
+/// Profile Check Page - fully migrated to Riverpod and GoRouter.
 class ProfileCheckPage extends ConsumerStatefulWidget {
   final String accessToken;
   final String profileUrl;
@@ -66,31 +64,18 @@ class _ProfileCheckPageState extends ConsumerState<ProfileCheckPage> {
           if (!mounted) return;
 
           if (profile == null) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => OnboardingDetailsPage(
-                  profileUrl: widget.profileUrl,
-                  initialName: state.profile.fullName,
-                ),
-              ),
-            );
+            context.go('/onboarding/details', extra: {
+              'profileUrl': widget.profileUrl,
+              'initialName': state.profile.fullName,
+            });
           } else {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => LandingPage()),
-            );
+            context.go('/');
           }
         }
       } catch (error) {
         debugPrint("Error getting tokens: $error");
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const OnboardingInitialPage(),
-            ),
-          );
+          context.go('/auth/onboarding');
         }
       }
     } else if (state is ProfileFailure) {
