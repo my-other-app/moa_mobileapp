@@ -11,7 +11,7 @@ import 'package:myotherapp/core/network/interceptors/logging_interceptor.dart';
 ///
 /// This client is configured with:
 /// - Base URL from environment
-/// - Auth interceptor for automatic token injection
+/// - Auth interceptor for automatic token injection and refresh
 /// - Error interceptor for consistent error handling
 /// - Certificate pinning for MITM protection (production)
 /// - Logging interceptor for debug mode
@@ -32,7 +32,7 @@ final dioProvider = Provider<Dio>((ref) {
   // Add interceptors - order matters!
   dio.interceptors.addAll([
     CertPinningInterceptor(), // Security first
-    AuthInterceptor(ref),
+    AuthInterceptor(ref, dio), // Pass dio for refresh API calls
     ErrorInterceptor(),
     if (kDebugMode) LoggingInterceptor(),
   ]);
