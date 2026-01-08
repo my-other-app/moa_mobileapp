@@ -6,8 +6,8 @@ import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
 import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
-import 'package:myotherapp/modules/home/pages/profile_page/settings/privacy_policy_page.dart';
-import 'package:myotherapp/modules/home/pages/profile_page/settings/terms_and_condition_page.dart';
+import 'package:myotherapp/features/profile/presentation/pages/settings/privacy_policy_page.dart';
+import 'package:myotherapp/features/profile/presentation/pages/settings/terms_and_condition_page.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 

@@ -2,7 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/features/clubs/presentation/pages/club_individual_page.dart';
-import 'package:myotherapp/modules/home/pages/event_page/individual_event_page.dart';
+import 'package:myotherapp/features/events/presentation/pages/individual_event_page.dart';
 import 'package:myotherapp/shared/widgets/svg_icon.dart';
 import 'package:url_launcher/url_launcher.dart';
 
