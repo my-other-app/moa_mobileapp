@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/common/widgets/custom_option_tile.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/modules/home/bloc/bottom_nav_bloc.dart';
-import 'package:myotherapp/modules/home/bloc/bottom_nav_event.dart';
+import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
+import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
 import 'package:myotherapp/modules/home/pages/profile_page/settings/privacy_policy_page.dart';
 import 'package:myotherapp/modules/home/pages/profile_page/settings/terms_and_condition_page.dart';
-import 'package:myotherapp/modules/login/pages/onboarding_initial_page.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Settings page migrated to Riverpod - exact same UI as legacy.
@@ -163,13 +161,11 @@ class _SettingsPageRiverpodState extends ConsumerState<SettingsPageRiverpod> {
                   );
 
                   if (res.statusCode == 200 || res.data['success'] == true) {
-                    // Dispatch logout and reset state - still using Bloc for now
-                    if (context.mounted) {
-                      context.read<AppBloc>().add(const LoggedOutEvent());
-                      context
-                          .read<BottomNavigatorBloc>()
-                          .add(UpdateIndexEvent(index: 0));
+                    // Use Riverpod for logout
+                    await ref.read(authStateProvider.notifier).logout();
+                    ref.read(bottomNavIndexProvider.notifier).resetToHome();
 
+                    if (context.mounted) {
                       Navigator.of(context).pushAndRemoveUntil(
                         MaterialPageRoute(
                           builder: (context) => OnboardingInitialPage(),
@@ -178,14 +174,18 @@ class _SettingsPageRiverpodState extends ConsumerState<SettingsPageRiverpod> {
                       );
                     }
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to delete account.')),
-                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to delete account.')),
+                      );
+                    }
                   }
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
                 }
               },
             ),

@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/modules/home/pages/clubs_page/club_individual_page.dart';
+import 'package:myotherapp/features/clubs/presentation/pages/club_individual_page.dart';
 
 import '../../../core/themes/app_colors.dart';
 

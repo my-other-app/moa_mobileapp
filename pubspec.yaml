@@ -39,11 +39,6 @@ dependencies:
   flutter_riverpod: ^2.4.10
   riverpod_annotation: ^2.3.4
   
-  # State Management - Legacy (keeping temporarily for gradual migration)
-  bloc: ^9.0.0
-  flutter_bloc: ^9.0.0
-  hydrated_bloc: ^10.0.0
-  
   # Navigation
   go_router: ^14.0.0
   

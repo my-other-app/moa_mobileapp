@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/modules/home/pages/clubs_page/club_individual_page.dart';
+import 'package:myotherapp/features/clubs/presentation/pages/club_individual_page.dart';
 
 class PinnedClubsSection extends StatelessWidget {
   final List<dynamic> pinnedClubs;

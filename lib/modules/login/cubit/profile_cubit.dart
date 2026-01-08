@@ -1,7 +1,7 @@
-import 'package:bloc/bloc.dart';
 import '../data/models/profile.dart';
 import '../data/services/profile_service.dart';
 
+/// Profile state classes (no longer using Bloc).
 abstract class ProfileState {}
 
 class ProfileInitial extends ProfileState {}
@@ -18,19 +18,29 @@ class ProfileFailure extends ProfileState {
   ProfileFailure({required this.error});
 }
 
-class ProfileCubit extends Cubit<ProfileState> {
+/// ProfileCubit - converted to simple callback-based class (no Bloc dependency).
+class ProfileCubit {
   final ProfileService profileService;
+  ProfileState _state = ProfileInitial();
 
-  ProfileCubit({required this.profileService}) : super(ProfileInitial());
+  ProfileState get state => _state;
+
+  // Callback for state changes
+  void Function(ProfileState)? onStateChanged;
+
+  ProfileCubit({required this.profileService});
 
   Future<void> getProfile(String accessToken) async {
-    emit(ProfileLoading());
+    _state = ProfileLoading();
+    onStateChanged?.call(_state);
+
     try {
       final profile = await profileService.getProfile(accessToken);
-
-      emit(ProfileLoaded(profile: profile));
+      _state = ProfileLoaded(profile: profile);
+      onStateChanged?.call(_state);
     } catch (e) {
-      emit(ProfileFailure(error: e.toString()));
+      _state = ProfileFailure(error: e.toString());
+      onStateChanged?.call(_state);
     }
   }
 }

@@ -1,22 +1,19 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
-import 'package:myotherapp/modules/login/data/models/profile.dart';
+import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
+import 'package:myotherapp/features/auth/data/models/profile.dart';
 
-class AvatarPickerBottomSheet extends StatelessWidget {
+/// Avatar Picker Bottom Sheet - migrated to Riverpod.
+class AvatarPickerBottomSheet extends ConsumerWidget {
   const AvatarPickerBottomSheet({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
 
-    // https://picsum.photos/200
-    // final List<Avatar> avatars = [];
-
     ValueNotifier<List<Avatar>> avatarsNotifier = ValueNotifier([]);
-
     ValueNotifier<Avatar?> selectedAvatarNotifier = ValueNotifier(null);
 
     fetchAvatars() async {
@@ -48,7 +45,6 @@ class AvatarPickerBottomSheet extends StatelessWidget {
                   valueListenable: avatarsNotifier,
                   builder: (context, avatars, child) {
                     if (avatars.isEmpty) {
-                      //TODO: Show shimmer when avatars are loading
                       return const Center(child: CircularProgressIndicator());
                     }
                     return ValueListenableBuilder(
@@ -89,10 +85,6 @@ class AvatarPickerBottomSheet extends StatelessWidget {
                                         CircularProgressIndicator(
                                             value: downloadProgress.progress),
                               ),
-                              // child: Image.network(
-                              //   avatars[index].image.thumbnail,
-                              //   fit: BoxFit.fill,
-                              // ),
                             ),
                           );
                         });
@@ -111,38 +103,10 @@ class AvatarPickerBottomSheet extends StatelessWidget {
                       },
                     );
                     if (response.statusCode == 200 && context.mounted) {
-                      // Profile? currentProfile =
-                      //     context.read<AppBloc>().state.profile;
-                      //TODO : to check why profile is null for new user at this point
-                      Profile? currentProfile;
-                      // context.read<AppBloc>().state.profile;
-
-                      // if (currentProfile == null ||
-                      //     currentProfile.profile == null) {
-
-                      //TODO: should use getProfile from login cubit
-                      final profileRes = await APIService.instance.request(
-                        '/user/profile/me',
-                        DioMethod.get,
-                      );
-
-                      if (profileRes.data != null &&
-                          profileRes.statusCode == 200) {
-                        Profile updatedProfile =
-                            Profile.fromJson(profileRes.data);
-
-                        debugPrint('Updated profile: $updatedProfile');
-
-                        currentProfile = updatedProfile;
-                      }
-                      // }
+                      // Reload profile using Riverpod
+                      await ref.read(profileProvider.notifier).loadProfile();
 
                       if (context.mounted) {
-                        currentProfile?.profile?.avatar =
-                            selectedAvatarNotifier.value!;
-                        context.read<AppBloc>().add(
-                            UpdateUserDetailsEvent(profile: currentProfile));
-
                         Navigator.pop(context);
                       }
                     }
@@ -154,7 +118,6 @@ class AvatarPickerBottomSheet extends StatelessWidget {
                                 'An error occurred during updating avatar.')),
                       );
                     }
-
                     debugPrint('Error selecting avatar: $e');
                   }
                 }

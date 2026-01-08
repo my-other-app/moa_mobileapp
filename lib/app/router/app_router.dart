@@ -64,7 +64,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/auth/profile-check',
           name: 'profileCheck',
           parentNavigatorKey: _rootNavigatorKey,
-          builder: (context, state) => const ProfileCheckPage()),
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            return ProfileCheckPage(
+              accessToken: extra?['accessToken'] ?? '',
+              profileUrl: extra?['profileUrl'] ?? '',
+            );
+          }),
 
       // Onboarding flow
       GoRoute(
@@ -73,7 +79,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
-            return OnboardingDetailsPage(initialName: extra?['initialName']);
+            return OnboardingDetailsPage(
+              initialName: extra?['initialName'],
+              profileUrl: extra?['profileUrl'] ?? '',
+            );
           }),
       GoRoute(
           path: '/onboarding/interests',

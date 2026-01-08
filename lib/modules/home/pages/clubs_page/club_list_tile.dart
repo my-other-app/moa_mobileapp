@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/themes/app_colors.dart';
-import 'package:myotherapp/modules/home/pages/clubs_page/club_individual_page.dart';
+import 'package:myotherapp/features/clubs/presentation/pages/club_individual_page.dart';
 
 import '../../custom_widgets/clubs_option_screen.dart';
 
@@ -65,7 +65,6 @@ class ClubListTile extends StatelessWidget {
                   borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                 ),
                 builder: (_) {
-                  print("club id on club list page:- $clubId");
                   return ClubsOptionScreen(
                     clubName: clubName,
                     imageUrl: imageUrl,

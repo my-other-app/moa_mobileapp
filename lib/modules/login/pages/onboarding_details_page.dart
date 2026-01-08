@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/modules/login/pages/interests_selection_page.dart';
+import 'package:myotherapp/features/auth/presentation/pages/interests_selection_page.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:dio/dio.dart';
 
@@ -50,7 +50,6 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
       _nameController = TextEditingController(text: widget.initialName);
     });
 
-    debugPrint("profile = ${widget.profileUrl}");
     fetchOrganizations();
   }
 
@@ -64,7 +63,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
         _orgList = data.map((json) => Organization.fromJson(json)).toList();
       });
     } catch (error) {
-      debugPrint("Error fetching organizations: $error");
+      // Error handled silently - UI shows empty org list
     }
   }
 
@@ -109,7 +108,6 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           contentType: Headers.formUrlEncodedContentType,
           DioMethod.post,
           param: data);
-      debugPrint("Profile creation response: ${response.data}");
 
       if (response.statusCode == 200 && mounted) {
         Navigator.push(
@@ -127,10 +125,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
         }
       }
     } catch (error) {
-      debugPrint("Error creating profile: $error");
-      if (error is DioException && error.response != null) {
-        debugPrint("Response data: ${error.response?.data}");
-      }
+      // Error handling without logging sensitive data
 
       if (error is DioException &&
           error.response?.data['message'] == 'Profile already exists' &&

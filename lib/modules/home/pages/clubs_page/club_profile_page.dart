@@ -1,5 +1,3 @@
-import 'dart:async';
-import 'dart:developer' show log;
 import 'dart:math' show Random;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -65,9 +63,11 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
       await _fetchData();
     } catch (e) {
       debugPrint('Follow/Unfollow failed: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Action failed. Please try again.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Action failed. Please try again.')),
+        );
+      }
     }
   }
 
@@ -77,10 +77,8 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
         '/clubs/info/${widget.id}',
         DioMethod.get,
       );
-      log("API Response: ${res.data}");
       // Parse the response into our model.
       clubInfo = ClubInfo.fromJson(res.data);
-      print(clubInfo!.userData);
       setState(() {
         id = clubInfo!.id;
         name = clubInfo!.name;

@@ -1,12 +1,15 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
-import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
+import 'package:myotherapp/features/auth/presentation/pages/interests_selection_page.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_details_page.dart'
+    show Organization;
 
-/// Edit profile page for updating user details.
+/// Edit Profile Page - fully migrated to Riverpod.
 class EditProfilePage extends ConsumerStatefulWidget {
   const EditProfilePage({super.key});
 
@@ -18,60 +21,80 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _whatsappController;
-  Organization? _selectedOrg;
+  final ValueNotifier<Organization?> _collegeNameNotifier = ValueNotifier(null);
+  List<Organization> colleges = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    final profile = ref.read(profileProvider).profile;
-    _nameController = TextEditingController(text: profile?.fullName ?? '');
-    _whatsappController = TextEditingController(text: profile?.whatsapp ?? '');
-    _selectedOrg = profile?.organization;
+    // Controllers will be initialized in didChangeDependencies
+    _nameController = TextEditingController();
+    _whatsappController = TextEditingController();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Get initial profile from Riverpod provider
+      final profileState = ref.read(profileProvider);
+      final initialProfile = profileState.profile;
+
+      if (initialProfile != null) {
+        _nameController.text = initialProfile.fullName;
+        _whatsappController.text = initialProfile.phone ?? '1234567890';
+      }
+
+      await fetchOrgDetails();
+      if (mounted && colleges.isNotEmpty && initialProfile != null) {
+        _collegeNameNotifier.value = colleges.firstWhere(
+          (college) => college.name == initialProfile.organization?.name,
+          orElse: () => colleges.first,
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _whatsappController.dispose();
+    _collegeNameNotifier.dispose();
     super.dispose();
   }
 
-  Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final success = await ref.read(profileProvider.notifier).updateProfile(
-          fullName: _nameController.text,
-          whatsapp: _whatsappController.text,
-          organizationId: _selectedOrg?.id,
-        );
-
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully')),
-      );
-      context.pop();
-    } else if (mounted) {
-      final error = ref.read(profileProvider).error;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error ?? 'Failed to update profile')),
-      );
+  Future<void> fetchOrgDetails() async {
+    try {
+      final response =
+          await APIService.instance.request('/orgs/list', DioMethod.get);
+      final List data = response.data;
+      if (mounted) {
+        setState(() {
+          colleges = data.map((json) => Organization.fromJson(json)).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch organizations: $e');
     }
   }
 
+  Widget _buildInputField({required String label, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: _labelTextStyle),
+        const SizedBox(height: 8),
+        child,
+      ],
+    );
+  }
+
+  TextStyle get _labelTextStyle => const TextStyle(
+        color: Color(0xFF1E1E1E),
+        fontSize: 12,
+        fontFamily: 'DM Sans',
+        fontWeight: FontWeight.w400,
+      );
+
   @override
   Widget build(BuildContext context) {
-    final organizationsAsync = ref.watch(organizationsProvider);
-    final profileState = ref.watch(profileProvider);
-
-    // Listen for profile updates
-    ref.listen(profileProvider, (prev, current) {
-      if (current.profile != null && prev?.profile != current.profile) {
-        _nameController.text = current.profile!.fullName;
-        _whatsappController.text = current.profile!.whatsapp ?? '';
-        _selectedOrg = current.profile!.organization;
-      }
-    });
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -79,7 +102,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF2C333D)),
-          onPressed: () => context.pop(),
+          onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           'EDIT PROFILE',
@@ -98,132 +121,25 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           child: Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: SingleChildScrollView(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Name field
-                        _buildLabel('Name'),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _nameController,
-                          style: _inputTextStyle,
-                          decoration: _inputDecoration('Enter your name'),
-                          validator: (value) => value?.isEmpty == true
-                              ? 'Please enter your name'
-                              : null,
-                        ),
+                        _buildNameField(),
                         const SizedBox(height: 24),
-
-                        // Organization dropdown
-                        _buildLabel('College (if you are a student)'),
-                        const SizedBox(height: 8),
-                        organizationsAsync.when(
-                          data: (orgs) => _buildOrgDropdown(orgs),
-                          loading: () => const LinearProgressIndicator(),
-                          error: (_, __) =>
-                              const Text('Failed to load organizations'),
-                        ),
+                        _buildCollegeDropdown(),
                         const SizedBox(height: 24),
-
-                        // WhatsApp field
-                        _buildLabel('WhatsApp Number'),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _whatsappController,
-                          style: _inputTextStyle,
-                          keyboardType: TextInputType.phone,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(10),
-                          ],
-                          decoration:
-                              _inputDecoration('Enter your WhatsApp number'),
-                          validator: (value) {
-                            if (value?.isEmpty == true) {
-                              return 'Please enter your WhatsApp number';
-                            }
-                            if (value!.length != 10) {
-                              return 'Please enter a valid 10-digit number';
-                            }
-                            return null;
-                          },
-                        ),
+                        _buildWhatsappField(),
                         const SizedBox(height: 24),
-
-                        // Edit interests
-                        InkWell(
-                          onTap: () => context.pushNamed('onboardingInterests',
-                              extra: {'isOnboarding': false}),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                  bottom: BorderSide(color: Color(0xFFEEEEEE))),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('Edit Interests', style: _inputTextStyle),
-                                const Icon(Icons.arrow_forward_ios,
-                                    color: Color(0xFF2C333D), size: 16),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Change avatar
-                        InkWell(
-                          onTap: () => context.pushNamed('onboardingAvatar',
-                              extra: {'isOnboarding': false}),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                  bottom: BorderSide(color: Color(0xFFEEEEEE))),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('Change Avatar', style: _inputTextStyle),
-                                const Icon(Icons.arrow_forward_ios,
-                                    color: Color(0xFF2C333D), size: 16),
-                              ],
-                            ),
-                          ),
-                        ),
+                        _buildEditInterestsButton(),
                       ],
                     ),
                   ),
                 ),
-
-                // Save button
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: profileState.isLoading ? null : _saveProfile,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2C333D),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: profileState.isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
-                        : const Text('SAVE',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontFamily: 'BebasNeue')),
-                  ),
-                ),
+                _buildSaveButton(),
               ],
             ),
           ),
@@ -232,59 +148,271 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     );
   }
 
-  Widget _buildLabel(String label) {
-    return Text(label,
-        style: TextStyle(
-            color: const Color(0xFF1E1E1E),
-            fontSize: 12,
-            fontFamily: 'DM Sans',
-            fontWeight: FontWeight.w400));
-  }
-
-  Widget _buildOrgDropdown(List<Organization> orgs) {
-    return DropdownButtonFormField2<Organization>(
-      value: _selectedOrg != null
-          ? orgs.firstWhere((o) => o.id == _selectedOrg!.id,
-              orElse: () => orgs.first)
-          : null,
-      hint: const Text('Select your college',
-          style: TextStyle(color: Color(0xFFB4B4B4))),
-      isExpanded: true,
-      items: orgs
-          .map((o) => DropdownMenuItem<Organization>(
-              value: o, child: Text(o.name, style: _inputTextStyle)))
-          .toList(),
-      onChanged: (value) => setState(() => _selectedOrg = value),
-      decoration: _inputDecoration(''),
-      dropdownStyleData: DropdownStyleData(
-        maxHeight: 300,
-        decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8), color: Colors.white),
+  Widget _buildNameField() {
+    return _buildInputField(
+      label: 'Name',
+      child: TextFormField(
+        controller: _nameController,
+        style: _inputTextStyle,
+        decoration: _inputDecoration('Enter your name'),
+        validator: (value) =>
+            value == null || value.isEmpty ? 'Please enter your name' : null,
       ),
     );
+  }
+
+  Widget _buildCollegeDropdown() {
+    return ValueListenableBuilder<Organization?>(
+      valueListenable: _collegeNameNotifier,
+      builder: (_, college, __) => _buildInputField(
+        label: 'College (if you are a student)',
+        child: DropdownButtonFormField2<Organization>(
+          value: college,
+          hint: _dropdownHint('Select your college'),
+          isExpanded: true,
+          buttonStyleData: const ButtonStyleData(
+            height: 40,
+            padding: EdgeInsets.only(right: 8),
+          ),
+          iconStyleData: const IconStyleData(
+            icon: Icon(Icons.keyboard_arrow_down, color: Color(0xFF2C333D)),
+          ),
+          dropdownStyleData: DropdownStyleData(
+            maxHeight: 300,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF2C333D).withValues(alpha: 0.1),
+                  spreadRadius: 1,
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            offset: const Offset(0, -4),
+            scrollbarTheme: ScrollbarThemeData(
+              radius: const Radius.circular(40),
+              thickness: WidgetStateProperty.all(6),
+              thumbVisibility: WidgetStateProperty.all(true),
+            ),
+          ),
+          menuItemStyleData: const MenuItemStyleData(
+            height: 40,
+            padding: EdgeInsets.symmetric(horizontal: 16),
+          ),
+          style: _inputTextStyle,
+          decoration: InputDecoration(
+            hintText: 'Select your college',
+            hintStyle: const TextStyle(
+              color: Color(0xFFB4B4B4),
+              fontSize: 16,
+              fontFamily: 'DM Sans',
+              fontWeight: FontWeight.w400,
+            ),
+            prefixIcon: const Padding(
+              padding: EdgeInsets.only(left: 16, right: 8),
+              child: Icon(Icons.school, size: 18, color: Color(0xFF2C333D)),
+            ),
+            prefixIconConstraints:
+                const BoxConstraints(minWidth: 40, minHeight: 40),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide:
+                  const BorderSide(color: Color(0xFF2C333D), width: 0.5),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide:
+                  const BorderSide(color: Color(0xFF2C333D), width: 0.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF2C333D), width: 1),
+            ),
+          ),
+          items: colleges.map((Organization college) {
+            return DropdownMenuItem<Organization>(
+              value: college,
+              child: Text(college.name, style: _inputTextStyle),
+            );
+          }).toList(),
+          onChanged: (Organization? newValue) {
+            _collegeNameNotifier.value = newValue;
+          },
+          validator: (value) =>
+              value == null ? 'Please select your college' : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWhatsappField() {
+    return _buildInputField(
+      label: 'Whatsapp Number',
+      child: TextFormField(
+        controller: _whatsappController,
+        style: _inputTextStyle,
+        keyboardType: TextInputType.phone,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(10),
+        ],
+        decoration: _inputDecoration('Enter your WhatsApp number'),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter your WhatsApp number';
+          }
+          if (value.length != 10) {
+            return 'Please enter a valid 10-digit number';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _buildEditInterestsButton() {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) =>
+                  InterestsSelectionPage(isOnboarding: false)),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Edit Interests', style: _inputTextStyle),
+            const Icon(Icons.arrow_forward_ios,
+                color: Color(0xFF2C333D), size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return Container(
+      width: double.infinity,
+      height: 48,
+      margin: const EdgeInsets.only(top: 24),
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _onSavePressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2C333D),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: _isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2),
+              )
+            : const Text(
+                'SAVE',
+                style: TextStyle(
+                    color: Colors.white, fontSize: 24, fontFamily: 'BebasNeue'),
+              ),
+      ),
+    );
+  }
+
+  Future<void> _onSavePressed() async {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      setState(() => _isLoading = true);
+
+      try {
+        final response = await APIService.instance.request(
+          contentType: Headers.formUrlEncodedContentType,
+          '/user/profile/update',
+          DioMethod.post,
+          param: {
+            'full_name': _nameController.text,
+            'whatsapp': _whatsappController.text,
+            if (_collegeNameNotifier.value != null)
+              'org_id': _collegeNameNotifier.value?.id,
+          },
+        );
+
+        if (response.statusCode == 200 && mounted) {
+          // Refresh profile using Riverpod provider
+          await ref.read(profileProvider.notifier).loadProfile();
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Profile updated successfully')),
+            );
+            Navigator.of(context).pop();
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update profile: $e')),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    }
   }
 
   InputDecoration _inputDecoration(String hintText) {
     return InputDecoration(
       hintText: hintText,
       hintStyle: const TextStyle(
-          color: Color(0xFFB4B4B4), fontSize: 16, fontFamily: 'DM Sans'),
+        color: Color(0xFFB4B4B4),
+        fontSize: 16,
+        fontFamily: 'DM Sans',
+        fontWeight: FontWeight.w400,
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF2C333D), width: 0.5)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFF2C333D), width: 0.5),
+      ),
       enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF2C333D), width: 0.5)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFF2C333D), width: 0.5),
+      ),
       focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF2C333D), width: 1)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFF2C333D), width: 1),
+      ),
     );
   }
 
   TextStyle get _inputTextStyle => const TextStyle(
-      color: Color(0xFF1E1E1E),
-      fontSize: 16,
-      fontFamily: 'DM Sans',
-      fontWeight: FontWeight.w400);
+        color: Color(0xFF1E1E1E),
+        fontSize: 16,
+        fontFamily: 'DM Sans',
+        fontWeight: FontWeight.w400,
+      );
+
+  Widget _dropdownHint(String hint) {
+    return Text(
+      hint,
+      style: const TextStyle(
+        color: Color(0xFFB4B4B4),
+        fontSize: 16,
+        fontFamily: 'DM Sans',
+        fontWeight: FontWeight.w400,
+      ),
+    );
+  }
 }

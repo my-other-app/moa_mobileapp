@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/modules/home/custom_widgets/search_college_widget.dart';
+import 'package:myotherapp/shared/widgets/search_college_widget.dart';
 import 'package:myotherapp/modules/home/pages/clubs_page/explore_more_clubs_page.dart';
 import 'package:myotherapp/modules/home/pages/clubs_page/no_clubs_following_page.dart';
 import 'package:myotherapp/modules/home/pages/home_page/home_page_tabs/for_you_events_page.dart';

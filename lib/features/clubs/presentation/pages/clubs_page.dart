@@ -1,298 +1,210 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:myotherapp/shared/widgets/search_college_widget.dart';
+import 'package:myotherapp/features/clubs/presentation/pages/explore_more_clubs_page.dart';
+import 'package:myotherapp/features/clubs/presentation/pages/no_clubs_following_page.dart';
+import 'package:myotherapp/features/home/presentation/pages/home_page_tabs/for_you_events_page.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:myotherapp/features/clubs/presentation/providers/clubs_provider.dart';
-import 'package:myotherapp/features/clubs/domain/entities/club_entity.dart';
 
-/// Clubs page showing pinned and following clubs.
-class ClubsPage extends ConsumerStatefulWidget {
+import 'package:myotherapp/features/clubs/presentation/pages/clubs_you_follow_section.dart';
+import 'package:myotherapp/features/clubs/presentation/pages/pinned_clubs_section.dart';
+
+/// Clubs Page - exact same UI as original, using APIService for data.
+class ClubsPage extends StatefulWidget {
   const ClubsPage({super.key});
 
   @override
-  ConsumerState<ClubsPage> createState() => _ClubsPageState();
+  State<ClubsPage> createState() => _ClubsPageState();
 }
 
-class _ClubsPageState extends ConsumerState<ClubsPage> {
+/// Shimmer loading widget for club tiles.
+class ClubTileShimmer extends StatelessWidget {
+  const ClubTileShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const SimmerContainer(height: 52, width: 52),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    SimmerContainer(height: 16, width: 200),
+                    SizedBox(height: 8),
+                    SimmerContainer(height: 16, width: 100),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                SimmerContainer(height: 16, width: double.infinity),
+                SizedBox(height: 4),
+                SimmerContainer(height: 16, width: double.infinity),
+                SizedBox(height: 4),
+                SimmerContainer(height: 16, width: 200),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ClubsPageState extends State<ClubsPage> {
+  List<dynamic> pinnedClubs = [];
+  List<dynamic> followingClubs = [];
+  final List<String> colleges = [
+    "College",
+    "District",
+    "State",
+    "AI",
+    "IOT",
+    "Web",
+    "Design",
+    "Cyber Security",
+    "App Development"
+  ];
+
+  bool isLoading = true;
+  String? errorMessage;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(followingClubsProvider.notifier).loadClubs();
-    });
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    try {
+      // Fetch pinned clubs
+      Response<dynamic> resPinned = await APIService.instance.request(
+        '/clubs/list?is_pinned=true',
+        DioMethod.get,
+      );
+
+      // Fetch clubs you follow
+      Response<dynamic> resFollowing = await APIService.instance.request(
+        '/clubs/list?is_following=true',
+        DioMethod.get,
+      );
+
+      if (mounted) {
+        setState(() {
+          pinnedClubs = resPinned.data['items'] ?? [];
+          followingClubs = resFollowing.data['items'] ?? [];
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          errorMessage = e.toString();
+          isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final pinnedAsync = ref.watch(pinnedClubsProvider);
-    final followingState = ref.watch(followingClubsProvider);
-
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Clubs',
-            style: TextStyle(
-                color: Color(0xFF1a1a2e), fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-              icon: const Icon(Icons.search, color: Color(0xFF1a1a2e)),
-              onPressed: () => context.pushNamed('exploreClubs'))
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(pinnedClubsProvider);
-          await ref.read(followingClubsProvider.notifier).refresh();
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (isLoading) {
+      return ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        shrinkWrap: true,
+        itemCount: 15,
+        itemBuilder: (BuildContext context, int index) {
+          return const ClubTileShimmer();
         },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        separatorBuilder: (_, __) => const SizedBox(height: 36),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Center(child: Text('Error: $errorMessage'));
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SearchAndCollegeList(colleges: colleges),
+        // Show PinnedClubsSection only if there are pinned clubs
+        if (pinnedClubs.isNotEmpty) ...[
+          PinnedClubsSection(pinnedClubs: pinnedClubs),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Divider(height: 0, thickness: 1),
+          ),
+          const SizedBox(height: 16),
+        ],
+        // Header with "Explore More Clubs" link
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildSectionHeader('Pinned Clubs'),
-              const SizedBox(height: 12),
-              pinnedAsync.when(
-                data: (clubs) => clubs.isEmpty
-                    ? _buildEmptyPinned()
-                    : _buildPinnedClubsList(clubs),
-                loading: () => _buildPinnedShimmer(),
-                error: (_, __) => _buildPinnedError(),
+              Text(
+                'CLUBS YOU FOLLOW',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontSize: 24,
+                      fontFamily: 'BebasNeue',
+                    ),
               ),
-              const SizedBox(height: 24),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                _buildSectionHeader('Clubs You Follow'),
-                TextButton(
-                    onPressed: () => context.pushNamed('exploreClubs'),
-                    child: const Text('Explore More',
-                        style: TextStyle(color: Color(0xFF17A58F)))),
-              ]),
-              const SizedBox(height: 12),
-              _buildFollowingSection(followingState),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ExploreMoreClubsPage(),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Explore More Clubs',
+                  style: TextStyle(
+                    decoration: TextDecoration.underline,
+                    decorationColor: Colors.redAccent,
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) => Text(title,
-      style: const TextStyle(
-          fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1a1a2e)));
-
-  Widget _buildPinnedClubsList(List<ClubListItem> clubs) {
-    return SizedBox(
-      height: 100,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: clubs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
-          final club = clubs[index];
-          return GestureDetector(
-            onTap: () => context.pushNamed('clubDetail',
-                pathParameters: {'clubId': club.id.toString()}),
-            child: Column(children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border:
-                        Border.all(color: const Color(0xFF17A58F), width: 2)),
-                child: ClipOval(
-                  child: club.logo?.thumbnail != null
-                      ? Image.network(club.logo!.thumbnail!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.business))
-                      : const Icon(Icons.business),
+        // Clubs list or empty state
+        followingClubs.isEmpty
+            ? Expanded(child: NoClubsFollowingPage())
+            : Expanded(
+                child: SingleChildScrollView(
+                  child: ClubsYouFollowSection(clubs: followingClubs),
                 ),
               ),
-              const SizedBox(height: 8),
-              SizedBox(
-                  width: 64,
-                  child: Text(club.name,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12))),
-            ]),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildEmptyPinned() => Container(
-      height: 100,
-      alignment: Alignment.center,
-      child: Text('Pin your favorite clubs for quick access',
-          style: TextStyle(color: Colors.grey[600])));
-
-  Widget _buildPinnedShimmer() {
-    return SizedBox(
-      height: 100,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: 4,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (_, __) => Shimmer.fromColors(
-          baseColor: Colors.grey[300]!,
-          highlightColor: Colors.grey[100]!,
-          child: Column(children: [
-            Container(
-                width: 64,
-                height: 64,
-                decoration: const BoxDecoration(
-                    shape: BoxShape.circle, color: Colors.white)),
-            const SizedBox(height: 8),
-            Container(width: 50, height: 12, color: Colors.white),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPinnedError() => Container(
-      height: 100,
-      alignment: Alignment.center,
-      child: const Text('Failed to load pinned clubs'));
-
-  Widget _buildFollowingSection(ClubsState state) {
-    if (state.isLoading && state.clubs.isEmpty) {
-      return _buildClubCardShimmerList();
-    }
-    if (state.error != null && state.clubs.isEmpty) {
-      return Center(
-          child: Column(children: [
-        Text('Error: ${state.error}'),
-        const SizedBox(height: 16),
-        ElevatedButton(
-            onPressed: () =>
-                ref.read(followingClubsProvider.notifier).loadClubs(),
-            child: const Text('Retry')),
-      ]));
-    }
-    if (state.clubs.isEmpty) {
-      return _buildNoFollowingState();
-    }
-
-    return Column(children: [
-      ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: state.clubs.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, index) => _ClubCard(club: state.clubs[index]),
-      ),
-      if (state.isLoadingMore)
-        const Padding(
-            padding: EdgeInsets.all(16), child: CircularProgressIndicator()),
-    ]);
-  }
-
-  Widget _buildNoFollowingState() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      alignment: Alignment.center,
-      child: Column(children: [
-        const Icon(Icons.people_outline, size: 64, color: Colors.grey),
-        const SizedBox(height: 16),
-        const Text('You\'re not following any clubs yet',
-            style: TextStyle(fontSize: 16, color: Colors.grey)),
-        const SizedBox(height: 16),
-        ElevatedButton(
-            onPressed: () => context.pushNamed('exploreClubs'),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF17A58F)),
-            child: const Text('Explore Clubs')),
-      ]),
-    );
-  }
-
-  Widget _buildClubCardShimmerList() {
-    return Column(
-        children: List.generate(
-            3,
-            (index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Shimmer.fromColors(
-                    baseColor: Colors.grey[300]!,
-                    highlightColor: Colors.grey[100]!,
-                    child: Container(
-                        height: 120,
-                        decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12))),
-                  ),
-                )));
-  }
-}
-
-class _ClubCard extends ConsumerWidget {
-  final ClubListItem club;
-
-  const _ClubCard({required this.club});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return GestureDetector(
-      onTap: () => context.pushNamed('clubDetail',
-          pathParameters: {'clubId': club.id.toString()}),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[200]!),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 4,
-                offset: const Offset(0, 2))
-          ],
-        ),
-        child: Row(children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.grey[200]),
-            child: club.logo?.thumbnail != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(club.logo!.thumbnail!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.business, color: Colors.grey)))
-                : const Icon(Icons.business, color: Colors.grey),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(club.name,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1a1a2e))),
-                const SizedBox(height: 4),
-                Text('${club.followersCount} followers',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-              ])),
-          IconButton(
-            icon: Icon(club.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                color: club.isPinned ? const Color(0xFF17A58F) : Colors.grey),
-            onPressed: () =>
-                ref.read(followingClubsProvider.notifier).togglePin(club.id),
-          ),
-        ]),
-      ),
+      ],
     );
   }
 }

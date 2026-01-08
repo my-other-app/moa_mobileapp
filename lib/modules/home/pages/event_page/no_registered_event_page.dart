@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/modules/home/screen.dart';
+import 'package:myotherapp/features/main/presentation/pages/landing_page.dart';
 
 class NoRegisteredEventPage extends StatelessWidget {
   const NoRegisteredEventPage({super.key});

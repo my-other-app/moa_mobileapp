@@ -205,9 +205,6 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             onPressed: () async {
               final Uri url = Uri.parse("https://events.myotherapp.com/$slug");
               await launchUrl(url, mode: LaunchMode.externalApplication);
-              print(url);
-              print(id);
-              print(slug);
             },
           ),
         ],

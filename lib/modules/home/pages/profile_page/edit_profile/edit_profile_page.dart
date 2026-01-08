@@ -2,24 +2,22 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
-import 'package:myotherapp/modules/login/data/models/profile.dart';
-import 'package:myotherapp/modules/login/pages/interests_selection_page.dart';
-import 'package:myotherapp/modules/login/pages/onboarding_details_page.dart'
+import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
+import 'package:myotherapp/features/auth/presentation/pages/interests_selection_page.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_details_page.dart'
     show Organization;
 
-/// Edit Profile Page - migrated to Riverpod with exact same UI.
-class EditProfilePage extends StatefulWidget {
+/// Edit Profile Page - fully migrated to Riverpod.
+class EditProfilePage extends ConsumerStatefulWidget {
   const EditProfilePage({super.key});
 
   @override
-  State<EditProfilePage> createState() => _EditProfilePageState();
+  ConsumerState<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfilePageState extends State<EditProfilePage> {
+class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _whatsappController;
@@ -30,18 +28,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void initState() {
     super.initState();
-    final initialProfile = context.read<AppBloc>().state.profile;
-    _nameController = TextEditingController(
-        text: initialProfile?.profile?.fullName ?? 'USER');
-    _whatsappController = TextEditingController(
-        text: initialProfile?.profile?.whatsapp ?? '1234567890');
+    // Controllers will be initialized in didChangeDependencies
+    _nameController = TextEditingController();
+    _whatsappController = TextEditingController();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Get initial profile from Riverpod provider
+      final profileState = ref.read(profileProvider);
+      final initialProfile = profileState.profile;
+
+      if (initialProfile != null) {
+        _nameController.text = initialProfile.fullName;
+        _whatsappController.text = initialProfile.phone ?? '1234567890';
+      }
+
       await fetchOrgDetails();
-      _collegeNameNotifier.value = colleges.firstWhere(
-        (college) => college.name == initialProfile?.profile?.org?.name,
-        orElse: () => colleges.first,
-      );
+      if (mounted && colleges.isNotEmpty && initialProfile != null) {
+        _collegeNameNotifier.value = colleges.firstWhere(
+          (college) => college.name == initialProfile.organization?.name,
+          orElse: () => colleges.first,
+        );
+      }
     });
   }
 
@@ -88,71 +95,52 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Wrap in ProviderScope for Riverpod access
-    return ProviderScope(
-      child: BlocListener<AppBloc, AppBlocState>(
-        listener: (context, state) {
-          if (state is UpdateUserDetailsState || state is AppLoggedInState) {
-            final updatedProfile = state.profile;
-            if (updatedProfile != null) {
-              setState(() {
-                _nameController.text =
-                    updatedProfile.profile?.fullName ?? 'USER';
-                _whatsappController.text =
-                    updatedProfile.profile?.whatsapp ?? '1234567890';
-              });
-            }
-          }
-        },
-        listenWhen: (previous, current) => previous.profile != current.profile,
-        child: Scaffold(
-          backgroundColor: Colors.white,
-          appBar: AppBar(
-            backgroundColor: Colors.white,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF2C333D)),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            title: const Text(
-              'EDIT PROFILE',
-              style: TextStyle(
-                color: Color(0xFF2C333D),
-                fontSize: 20,
-                fontFamily: 'BebasNeue',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-            centerTitle: true,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF2C333D)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'EDIT PROFILE',
+          style: TextStyle(
+            color: Color(0xFF2C333D),
+            fontSize: 20,
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.w400,
           ),
-          body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            _buildNameField(),
-                            const SizedBox(height: 24),
-                            _buildCollegeDropdown(),
-                            const SizedBox(height: 24),
-                            _buildWhatsappField(),
-                            const SizedBox(height: 24),
-                            _buildEditInterestsButton(),
-                          ],
-                        ),
-                      ),
+        ),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _buildNameField(),
+                        const SizedBox(height: 24),
+                        _buildCollegeDropdown(),
+                        const SizedBox(height: 24),
+                        _buildWhatsappField(),
+                        const SizedBox(height: 24),
+                        _buildEditInterestsButton(),
+                      ],
                     ),
-                    _buildSaveButton(),
-                  ],
+                  ),
                 ),
-              ),
+                _buildSaveButton(),
+              ],
             ),
           ),
         ),
@@ -360,25 +348,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
         );
 
         if (response.statusCode == 200 && mounted) {
-          Profile? updatedProfile = context.read<AppBloc>().state.profile;
-          if (updatedProfile != null) {
-            updatedProfile.profile?.whatsapp = response.data['whatsapp'];
-            updatedProfile.profile?.fullName = response.data['full_name'];
-            updatedProfile.profile?.org = _collegeNameNotifier.value != null
-                ? Org(
-                    id: _collegeNameNotifier.value?.id,
-                    name: _collegeNameNotifier.value?.name)
-                : null;
-            context
-                .read<AppBloc>()
-                .add(UpdateUserDetailsEvent(profile: updatedProfile));
+          // Refresh profile using Riverpod provider
+          await ref.read(profileProvider.notifier).loadProfile();
 
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile updated successfully')),
-              );
-              Navigator.of(context).pop();
-            }
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Profile updated successfully')),
+            );
+            Navigator.of(context).pop();
           }
         }
       } catch (e) {

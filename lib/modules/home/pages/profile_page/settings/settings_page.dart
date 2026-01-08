@@ -1,60 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/common/widgets/custom_option_tile.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/modules/home/bloc/bottom_nav_bloc.dart';
-import 'package:myotherapp/modules/home/bloc/bottom_nav_event.dart';
+import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
+import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
+import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
 import 'package:myotherapp/modules/home/pages/profile_page/settings/privacy_policy_page.dart';
 import 'package:myotherapp/modules/home/pages/profile_page/settings/terms_and_condition_page.dart';
-import 'package:myotherapp/modules/login/pages/onboarding_initial_page.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Settings page - migrated to Riverpod with exact same UI.
-class SettingsPage extends StatefulWidget {
+/// Settings page - fully migrated to Riverpod (no Bloc).
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage> {
   // Toggles for switches
   bool _eventNotification = true;
   bool _clubUpdates = false;
 
   @override
   Widget build(BuildContext context) {
-    // Wrap in ProviderScope to enable Riverpod in this screen
-    return ProviderScope(
-      child: _SettingsPageContent(
-        eventNotification: _eventNotification,
-        clubUpdates: _clubUpdates,
-        onEventNotificationChanged: (v) =>
-            setState(() => _eventNotification = v),
-        onClubUpdatesChanged: (v) => setState(() => _clubUpdates = v),
-      ),
-    );
-  }
-}
-
-class _SettingsPageContent extends ConsumerWidget {
-  final bool eventNotification;
-  final bool clubUpdates;
-  final ValueChanged<bool> onEventNotificationChanged;
-  final ValueChanged<bool> onClubUpdatesChanged;
-
-  const _SettingsPageContent({
-    required this.eventNotification,
-    required this.clubUpdates,
-    required this.onEventNotificationChanged,
-    required this.onClubUpdatesChanged,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -79,8 +50,10 @@ class _SettingsPageContent extends ConsumerWidget {
             title: const Text('Event Notification'),
             onTap: () {},
             trailing: Switch(
-              value: eventNotification,
-              onChanged: onEventNotificationChanged,
+              value: _eventNotification,
+              onChanged: (bool newValue) {
+                setState(() => _eventNotification = newValue);
+              },
             ),
           ),
           const Divider(height: 0),
@@ -91,8 +64,10 @@ class _SettingsPageContent extends ConsumerWidget {
             title: const Text('Club Updates'),
             onTap: () {},
             trailing: Switch(
-              value: clubUpdates,
-              onChanged: onClubUpdatesChanged,
+              value: _clubUpdates,
+              onChanged: (bool newValue) {
+                setState(() => _clubUpdates = newValue);
+              },
             ),
           ),
           const Divider(height: 0),
@@ -109,8 +84,6 @@ class _SettingsPageContent extends ConsumerWidget {
                   Uri.parse("https://wa.me/917025662019"),
                   mode: LaunchMode.externalApplication,
                 );
-              } else {
-                throw 'Could not launch https://wa.me/+917025662019';
               }
             },
           ),
@@ -150,7 +123,7 @@ class _SettingsPageContent extends ConsumerWidget {
             leadingImageName: AssetResources.deleteaccount,
             title: const Text('Delete Account'),
             onTap: () {
-              _showDeleteAccountDialog(context);
+              _showDeleteAccountDialog(context, ref);
             },
           ),
         ],
@@ -158,7 +131,7 @@ class _SettingsPageContent extends ConsumerWidget {
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
+  void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -184,12 +157,12 @@ class _SettingsPageContent extends ConsumerWidget {
                   );
 
                   if (res.statusCode == 200 || res.data['success'] == true) {
-                    if (context.mounted) {
-                      context.read<AppBloc>().add(const LoggedOutEvent());
-                      context
-                          .read<BottomNavigatorBloc>()
-                          .add(UpdateIndexEvent(index: 0));
+                    // Use Riverpod for logout
+                    ref.read(profileProvider.notifier).clearProfile();
+                    await ref.read(authStateProvider.notifier).logout();
+                    ref.read(bottomNavIndexProvider.notifier).resetToHome();
 
+                    if (context.mounted) {
                       Navigator.of(context).pushAndRemoveUntil(
                         MaterialPageRoute(
                           builder: (context) => OnboardingInitialPage(),

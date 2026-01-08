@@ -1,24 +1,18 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
-import 'package:myotherapp/modules/home/screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
+import 'package:myotherapp/features/main/presentation/pages/landing_page.dart';
 
-class OnboardingFinalPage extends StatefulWidget {
+/// Onboarding Final Page - migrated to Riverpod.
+class OnboardingFinalPage extends ConsumerWidget {
   const OnboardingFinalPage({super.key});
 
   @override
-  State<OnboardingFinalPage> createState() => _OnboardingFinalPageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileState = ref.watch(profileProvider);
+    final profile = profileState.profile;
+    final avatarUrl = profile?.avatar?.image.original;
 
-class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
-  String? profileImageUrl;
-
-  //TODO :these api fetches may not needed so check and remove this
-  final Dio dio = Dio();
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFA0),
       body: Stack(
@@ -43,31 +37,14 @@ class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
                         const SizedBox(height: 48),
                         _buildProfileCreatedSection(),
                         Spacer(),
-                        BlocConsumer<AppBloc, AppBlocState>(
-                          listener: (context, state) {
-                            // TODO: implement listener
-                          },
-                          buildWhen: (previous, current) =>
-                              previous.profile?.profile?.avatar !=
-                              current.profile?.profile?.avatar,
-                          builder: (context, state) {
-                            return _buildProfileImage(
-                                state.profile?.profile?.avatar?.image.original);
-                          },
-                        ),
+                        _buildProfileImage(avatarUrl),
                         const SizedBox(height: 24),
                         _buildMotivationalText(),
                         Spacer(),
                         Spacer(),
-                        // _buildStartJourneyButton(context),
                         FilledButton(
                           onPressed: () {
-                            final currentAvatar = context
-                                .read<AppBloc>()
-                                .state
-                                .profile
-                                ?.profile
-                                ?.avatar;
+                            final currentAvatar = profile?.avatar;
                             if (currentAvatar != null) {
                               Navigator.pushReplacement(
                                 context,
@@ -104,209 +81,108 @@ class _OnboardingFinalPageState extends State<OnboardingFinalPage> {
     );
   }
 
-  Future<void> fetchUserProfile() async {
-    // Get the access token from AppBloc
-    final accessToken = context.read<AppBloc>().state.accessToken;
-    const url = 'https://api.myotherapp.com/api/v1/user/profile/me';
-
-    try {
-      final response = await dio.get(
-        url,
-        options: Options(
-          headers: {
-            'accept': 'application/json',
-            'Authorization': 'Bearer $accessToken',
-          },
+  Widget _buildProfileCreatedSection() {
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Color(0xFF0A9D46), width: 2),
+          ),
+          padding: const EdgeInsets.all(6),
+          child: const Icon(
+            Icons.check,
+            size: 32,
+            color: Color(0xFF0A9D46),
+          ),
         ),
-      );
-      // Print full response to the console
-      debugPrint('User profile response: ${response.data}');
-
-      final data = response.data;
-      String? imageUrl;
-      // Assume the image URL is found in the avatar image.
-      // It may be a string directly or a map containing a "url" key.
-      if (data != null &&
-          data['profile'] != null &&
-          data['profile']['avatar'] != null &&
-          data['profile']['avatar']['image'] != null) {
-        final avatarImage = data['profile']['avatar']['image'];
-        if (avatarImage is Map && avatarImage['url'] != null) {
-          imageUrl = avatarImage['url'];
-        } else if (avatarImage is String) {
-          imageUrl = avatarImage;
-        }
-      }
-      if (mounted) {
-        setState(() {
-          profileImageUrl = imageUrl;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error fetching user profile: $e');
-    }
+        const SizedBox(height: 12),
+        Text(
+          'PROFILE',
+          style: TextStyle(
+            fontSize: 28,
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.w400,
+            color: Color(0xFF2C333D),
+          ),
+        ),
+        Text(
+          'CREATED',
+          style: TextStyle(
+            fontSize: 28,
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.w400,
+            color: Color(0xFF2C333D),
+          ),
+        ),
+      ],
+    );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    fetchUserProfile();
+  Widget _buildProfileImage(String? imageUrl) {
+    return GestureDetector(
+      onTap: () {
+        // TODO: Open avatar picker
+      },
+      child: Container(
+        width: 120,
+        height: 120,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color(0xFFA855F7),
+        ),
+        child: ClipOval(
+          child: imageUrl != null && imageUrl.isNotEmpty
+              ? Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      Icon(Icons.person, size: 60, color: Colors.white),
+                )
+              : Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add, size: 40, color: Colors.white),
+                      SizedBox(height: 4),
+                      Text(
+                        'add pic',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+      ),
+    );
   }
 
   Widget _buildMotivationalText() {
-    return SizedBox(
-      width: 301,
-      child: RichText(
-        textAlign: TextAlign.center,
-        text: const TextSpan(
-          children: [
-            TextSpan(
-              text: "Life's a ",
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-                fontFamily: 'DM Sans',
-                fontWeight: FontWeight.w200,
-              ),
-            ),
-            TextSpan(
-              text: 'rollercoaster',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-                fontFamily: 'DM Sans',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-            TextSpan(
-              text: ', and setbacks are just bumps along the ride. ',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-                fontFamily: 'DM Sans',
-                fontWeight: FontWeight.w200,
-              ),
-            ),
-            TextSpan(
-              text: 'Success takes time',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-                fontFamily: 'DM Sans',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-            TextSpan(
-              text: ", so don't rush—",
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-                fontFamily: 'DM Sans',
-                fontWeight: FontWeight.w200,
-              ),
-            ),
-            TextSpan(
-              text: 'trust the process',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-                fontFamily: 'DM Sans',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-            TextSpan(
-              text: " and stay patient. 💫🌱\n\n'",
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-                fontFamily: 'DM Sans',
-                fontWeight: FontWeight.w200,
-              ),
-            ),
-            TextSpan(
-              text:
-                  "Success isn't a sprint, it's a vibe. Keep going, it'll click",
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-                fontFamily: 'DM Sans',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-            TextSpan(
-              text: ".' ",
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-                fontFamily: 'DM Sans',
-                fontWeight: FontWeight.w200,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileCreatedSection() {
-    return SizedBox(
-      width: 361,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Row(
-            children: [
-              Text(
-                'PROFILE CREATED  ✅',
-                style: TextStyle(
-                  color: Color(0xFF1E1E1E),
-                  fontSize: 24,
-                  fontFamily: 'BebasNeue',
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ],
+    return Column(
+      children: [
+        Text(
+          "LET'S GO!",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 24,
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.w400,
+            color: Color(0xFF2C333D),
           ),
-          SizedBox(height: 8),
-          Text(
-            "Your profile's all set, now it's time to dive into the events and level up",
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Fuel your success journey, Crush every challenge, and Create unforgettable memories while doing it.',
+            textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.black,
               fontSize: 14,
-              fontFamily: 'DM Sans',
-              fontWeight: FontWeight.w500,
+              color: Color(0xFF5A5A5A),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileImage(String? profileImageUrl) {
-    // Use a NetworkImage if profileImageUrl is available, otherwise fallback to a placeholder asset.
-    return Container(
-      width: 150,
-      height: 150,
-      decoration: ShapeDecoration(
-        image: DecorationImage(
-          image: profileImageUrl != null
-              ? NetworkImage(profileImageUrl)
-              : const AssetImage('assets/images/profile_placeholder.png')
-                  as ImageProvider,
-          fit: BoxFit.cover,
         ),
-        color: const Color(0xFFCCC1F0),
-        shape: const OvalBorder(),
-      ),
+      ],
     );
   }
 }

@@ -47,8 +47,9 @@ class _EventFormPageState extends State<EventFormPage> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _additionalTextControllers.values
-        .forEach((controller) => controller.dispose());
+    for (final controller in _additionalTextControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -537,7 +538,7 @@ class _EventFormPageState extends State<EventFormPage> {
                           padding: const EdgeInsets.only(top: 24),
                           child: _buildAdditionalField(detail),
                         );
-                      }).toList(),
+                      }),
                     ],
                   ),
                 ),

@@ -1,9 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
-import 'package:myotherapp/modules/login/pages/onboarding_final_page.dart';
-import 'package:myotherapp/modules/login/pages/widgest/avatar_picker_bottom_sheet.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_final_page.dart';
+import 'package:myotherapp/features/auth/presentation/pages/widgest/avatar_picker_bottom_sheet.dart';
 
 Widget _buildDragIndicator() {
   return Row(
@@ -52,13 +52,6 @@ Widget _buildProfileImage(String? avatarUrl) {
     width: 150,
     height: 150,
     decoration: ShapeDecoration(
-      // image: DecorationImage(
-      //   image: profileImageUrl != null
-      //       ? NetworkImage(profileImageUrl!)
-      //       : const AssetImage('assets/images/profile_placeholder.png')
-      //           as ImageProvider,
-      //   fit: BoxFit.cover,
-      // ),
       color: const Color(0xFFCCC1F0),
       shape: const OvalBorder(),
     ),
@@ -78,19 +71,15 @@ Widget _buildProfileImage(String? avatarUrl) {
   );
 }
 
-class OnboardingAvatarPickerPage extends StatefulWidget {
+/// Onboarding Avatar Picker Page - migrated to Riverpod.
+class OnboardingAvatarPickerPage extends ConsumerWidget {
   const OnboardingAvatarPickerPage({super.key});
 
   @override
-  OnboardingAvatarPickerPageState createState() =>
-      OnboardingAvatarPickerPageState();
-}
-
-class OnboardingAvatarPickerPageState
-    extends State<OnboardingAvatarPickerPage> {
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
+    final profileState = ref.watch(profileProvider);
+    final avatarUrl = profileState.profile?.avatar?.image.original;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFA0),
@@ -111,17 +100,7 @@ class OnboardingAvatarPickerPageState
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    BlocConsumer<AppBloc, AppBlocState>(
-                      listener: (context, state) {},
-                      buildWhen: (previous, current) =>
-                          previous.profile?.profile?.avatar !=
-                          current.profile?.profile?.avatar,
-                      builder: (context, state) {
-                        //TODO  : need to add high res images
-                        return _buildProfileImage(
-                            state.profile?.profile?.avatar?.image.original);
-                      },
-                    ),
+                    _buildProfileImage(avatarUrl),
                     SizedBox(height: 16),
                     GestureDetector(
                       onTap: () {
@@ -153,12 +132,12 @@ class OnboardingAvatarPickerPageState
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text("START THE JOURNEY"),
+                    Text("CONTINUE"),
                     SizedBox(width: 8),
                     Icon(Icons.arrow_forward, size: 28),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         ),

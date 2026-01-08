@@ -1,9 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/modules/home/pages/clubs_page/club_individual_page.dart';
+import 'package:myotherapp/features/clubs/presentation/pages/club_individual_page.dart';
 import 'package:myotherapp/modules/home/pages/event_page/individual_event_page.dart';
-import 'package:myotherapp/modules/home/custom_widgets/svg_icon.dart';
+import 'package:myotherapp/shared/widgets/svg_icon.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class EventCard extends StatelessWidget {
@@ -118,7 +118,6 @@ class EventCard extends StatelessWidget {
                 final Uri url =
                     Uri.parse("https://events.myotherapp.com/$eventSlug");
                 await launchUrl(url, mode: LaunchMode.externalApplication);
-                print(url);
               },
               child: Padding(
                 padding: const EdgeInsets.all(8.0).copyWith(right: 0),

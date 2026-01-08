@@ -30,7 +30,7 @@ class AuthenticationService {
         'id_token': idToken,
         'platform': platform,
       },
-      skipAuthToken: true,
+      skipAuth: true,
     );
     if (response.statusCode == 200) return response.data;
 

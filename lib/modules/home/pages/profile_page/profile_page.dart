@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/common/widgets/custom_option_tile.dart';
-import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
-import 'package:myotherapp/modules/home/bloc/bottom_nav_bloc.dart';
-import 'package:myotherapp/modules/home/bloc/bottom_nav_event.dart';
-import 'package:myotherapp/modules/login/pages/onboarding_initial_page.dart';
+import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
+import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
+import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/modules/home/pages/profile_page/certificates/certificate_page.dart';
 import 'package:myotherapp/modules/home/pages/profile_page/edit_profile/edit_profile_page.dart';
 import 'package:myotherapp/modules/home/pages/profile_page/badges/my_badges_page.dart';
@@ -14,12 +13,30 @@ import 'package:myotherapp/modules/home/pages/profile_page/settings/settings_pag
 
 import '../../../../core/resources/asset_resources.dart';
 
-/// Profile Page - migrated to Riverpod with exact same UI.
-class ProfilePage extends StatelessWidget {
+/// Profile Page - fully migrated to Riverpod (no Bloc).
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
   @override
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends ConsumerState<ProfilePage> {
+  @override
+  void initState() {
+    super.initState();
+    // Load profile on page init
+    Future.microtask(() {
+      ref.read(profileProvider.notifier).loadProfile();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Watch profile state from Riverpod
+    final profileState = ref.watch(profileProvider);
+    final profile = profileState.profile;
+
     // Menu items - same as legacy
     final menuItems = [
       {
@@ -76,127 +93,147 @@ class ProfilePage extends StatelessWidget {
         'label': 'Log Out',
         'icon': AssetResources.logout,
         'onTap': (BuildContext context) {
-          _showLogoutDialog(context);
+          _showLogoutDialog(context, ref);
         },
       },
     ];
 
-    // Wrap in ProviderScope for Riverpod access
-    return ProviderScope(
-      child: BlocBuilder<AppBloc, AppBlocState>(
-        buildWhen: (previous, current) {
-          return current.profile != previous.profile ||
-              current is UpdateUserDetailsState;
-        },
-        builder: (context, state) {
-          final tags = state.profile?.interests ?? [];
-          return Scaffold(
-            backgroundColor: Colors.white,
-            body: SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 40),
-                    // 1) Avatar, Name, College
-                    Row(
+    final tags = profile?.interests ?? [];
+    final avatarUrl = profile?.avatar?.image.original;
+
+    // Show loading while fetching profile
+    if (profileState.isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const SizedBox(height: 40),
+              // 1) Avatar, Name, College
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Avatar with proper clipping
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.purple.shade500,
+                    ),
+                    child: ClipOval(
+                      child: avatarUrl != null && avatarUrl.isNotEmpty
+                          ? Image.network(
+                              avatarUrl,
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.person,
+                                      size: 30, color: Colors.white),
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                );
+                              },
+                            )
+                          : const Icon(Icons.person,
+                              size: 30, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 30,
-                          backgroundColor: Colors.purple.shade500,
-                          child: Image.network(
-                            state.profile?.profile?.avatar?.image.original ??
-                                'https://avatars.githubusercontent.com/u/98015594?s=280&v=4',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.person,
-                                    size: 30, color: Colors.white),
+                        Text(
+                          profile?.fullName ?? 'User',
+                          style: const TextStyle(
+                            fontSize: 36,
+                            fontFamily: 'BebasNeue',
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                state.profile?.profile?.fullName ?? 'User',
-                                style: const TextStyle(
-                                  fontSize: 36,
-                                  fontFamily: 'BebasNeue',
-                                ),
-                              ),
-                              Text(
-                                state.profile?.profile?.org?.name ?? '',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontFamily: 'BebasNeue',
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              // 2) Tags
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: tags.map((tag) {
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 4,
-                                      horizontal: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Color(tag.hashCode),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      tag.name ?? '',
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
+                        Text(
+                          profile?.organization?.name ?? '',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontFamily: 'BebasNeue',
                           ),
+                        ),
+                        const SizedBox(height: 24),
+                        // 2) Tags
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: tags.map((tag) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 4,
+                                horizontal: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Color(tag.hashCode),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                tag.name,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            );
+                          }).toList(),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 40),
-                    // 2) The menu list
-                    Column(
-                      children: List.generate(menuItems.length, (index) {
-                        final item = menuItems[index];
-                        return Column(
-                          children: [
-                            CustomOptionTile(
-                              verticalSpacing: 16,
-                              leadingImageName: item['icon'].toString(),
-                              title: Text(
-                                item['label'] as String,
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                              onTap: () {
-                                final onTapFunc = item['onTap'] as void
-                                    Function(BuildContext);
-                                onTapFunc(context);
-                              },
-                            ),
-                            if (index < menuItems.length - 1)
-                              const Divider(height: 0),
-                          ],
-                        );
-                      }),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ),
-          );
-        },
+              const SizedBox(height: 40),
+              // 2) The menu list
+              Column(
+                children: List.generate(menuItems.length, (index) {
+                  final item = menuItems[index];
+                  return Column(
+                    children: [
+                      CustomOptionTile(
+                        verticalSpacing: 16,
+                        leadingImageName: item['icon'].toString(),
+                        title: Text(
+                          item['label'] as String,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        onTap: () {
+                          final onTapFunc =
+                              item['onTap'] as void Function(BuildContext);
+                          onTapFunc(context);
+                        },
+                      ),
+                      if (index < menuItems.length - 1)
+                        const Divider(height: 0),
+                    ],
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  static void _showLogoutDialog(BuildContext context) {
+  static void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -214,12 +251,13 @@ class ProfilePage extends StatelessWidget {
               child: const Text('Logout'),
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
-                if (context.mounted) {
-                  context.read<AppBloc>().add(const LoggedOutEvent());
-                  context
-                      .read<BottomNavigatorBloc>()
-                      .add(UpdateIndexEvent(index: 0));
 
+                // Clear profile and auth state using Riverpod
+                ref.read(profileProvider.notifier).clearProfile();
+                await ref.read(authStateProvider.notifier).logout();
+                ref.read(bottomNavIndexProvider.notifier).resetToHome();
+
+                if (context.mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
                       builder: (context) => OnboardingInitialPage(),

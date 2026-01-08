@@ -1,111 +1,110 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:myotherapp/core/secure_storage/secure_storage.dart';
 import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
-import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
+import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart'
+    hide ProfileState;
+import 'package:myotherapp/features/main/presentation/pages/landing_page.dart';
+import 'package:myotherapp/features/auth/presentation/cubits/profile_cubit.dart';
+import 'package:myotherapp/features/auth/data/models/profile.dart';
+import 'package:myotherapp/features/auth/data/services/profile_service.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_details_page.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 
-/// Profile check page that determines where to navigate after login.
-///
-/// Checks if the user's profile is complete and navigates accordingly:
-/// - If profile incomplete → Onboarding details
-/// - If profile complete → Home
+/// Profile Check Page - fully migrated to Riverpod and callback-based ProfileCubit.
 class ProfileCheckPage extends ConsumerStatefulWidget {
-  const ProfileCheckPage({super.key});
+  final String accessToken;
+  final String profileUrl;
+
+  const ProfileCheckPage({
+    super.key,
+    required this.accessToken,
+    required this.profileUrl,
+  });
 
   @override
   ConsumerState<ProfileCheckPage> createState() => _ProfileCheckPageState();
 }
 
 class _ProfileCheckPageState extends ConsumerState<ProfileCheckPage> {
-  bool _hasCheckedProfile = false;
+  late ProfileCubit _profileCubit;
 
   @override
   void initState() {
     super.initState();
-    // Load profile on init
+    _profileCubit = ProfileCubit(profileService: ProfileService());
+    _profileCubit.onStateChanged = _handleProfileStateChange;
+
+    // Fetch profile after widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkProfile();
+      _profileCubit.getProfile(widget.accessToken);
     });
   }
 
-  Future<void> _checkProfile() async {
-    if (_hasCheckedProfile) return;
-    _hasCheckedProfile = true;
+  void _handleProfileStateChange(ProfileState state) async {
+    if (!mounted) return;
 
-    // Load the user's profile
-    await ref.read(profileProvider.notifier).loadProfile();
+    if (state is ProfileLoaded) {
+      debugPrint("Full profile data: ${state.profile}");
+
+      try {
+        final tokenModel = await SecureStorage.instance.getAccessToken();
+
+        if (mounted) {
+          // Update Riverpod auth state
+          await ref.read(authStateProvider.notifier).setAuthenticated(
+                accessToken: widget.accessToken,
+                refreshToken: tokenModel.refreshToken,
+              );
+
+          // Load profile into Riverpod provider
+          await ref.read(profileProvider.notifier).loadProfile();
+
+          // Check the interest field from the nested profile.
+          final ProfileDetails? profile = state.profile.profile;
+          if (!mounted) return;
+
+          if (profile == null) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => OnboardingDetailsPage(
+                  profileUrl: widget.profileUrl,
+                  initialName: state.profile.fullName,
+                ),
+              ),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => LandingPage()),
+            );
+          }
+        }
+      } catch (error) {
+        debugPrint("Error getting tokens: $error");
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const OnboardingInitialPage(),
+            ),
+          );
+        }
+      }
+    } else if (state is ProfileFailure) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Profile error: ${state.error}')),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Listen to profile state changes
-    ref.listen<ProfileState>(profileProvider, (previous, current) {
-      if (current.error != null) {
-        // Profile fetch failed - might need to create profile
-        debugPrint('Profile error: ${current.error}');
-        context.goNamed('onboardingDetails');
-        return;
-      }
-
-      if (!current.isLoading && current.profile != null) {
-        final profile = current.profile!;
-
-        if (profile.isProfileComplete) {
-          // Profile is complete - go to home
-          debugPrint('Profile complete, navigating to home');
-          context.goNamed('home');
-        } else {
-          // Profile incomplete - go to onboarding
-          debugPrint('Profile incomplete, navigating to details');
-          context.goNamed('onboardingDetails');
-        }
-      }
-    });
-
-    // Also listen for auth state to handle logout
-    ref.listen<AuthState>(authStateProvider, (previous, current) {
-      if (!current.isAuthenticated && current.isInitialized) {
-        // User logged out - go to login
-        context.goNamed('onboarding');
-      }
-    });
-
-    final profileState = ref.watch(profileProvider);
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFFFA0),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Loading indicator
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF17A58F)),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              profileState.isLoading
-                  ? 'Loading your profile...'
-                  : 'Setting things up...',
-              style: const TextStyle(
-                fontSize: 16,
-                color: Color(0xFF1a1a2e),
-              ),
-            ),
-            if (profileState.error != null) ...[
-              const SizedBox(height: 16),
-              Text(
-                profileState.error!,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.red,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ],
-        ),
-      ),
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
     );
   }
 }

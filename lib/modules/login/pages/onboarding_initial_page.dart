@@ -1,15 +1,20 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
-import 'package:myotherapp/modules/login/profile_check_page.dart';
-import 'package:myotherapp/modules/login/cubit/login_cubit.dart';
-import 'package:myotherapp/modules/login/data/services/authentication_service.dart';
-// Make sure this file exists and is properly implemented
+import 'package:myotherapp/features/auth/presentation/pages/profile_check_page.dart';
+import 'package:myotherapp/features/auth/presentation/cubits/login_cubit.dart';
+import 'package:myotherapp/features/auth/data/services/authentication_service.dart';
 
-class OnboardingInitialPage extends StatelessWidget {
-  OnboardingInitialPage({super.key});
+/// Onboarding Initial Page - migrated from Bloc to callback-based approach.
+class OnboardingInitialPage extends StatefulWidget {
+  const OnboardingInitialPage({super.key});
+
+  @override
+  State<OnboardingInitialPage> createState() => _OnboardingInitialPageState();
+}
+
+class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'openid'],
     serverClientId:
@@ -17,24 +22,54 @@ class OnboardingInitialPage extends StatelessWidget {
   );
 
   final SecureStorage secureStorage = SecureStorage.instance;
+  late LoginCubit _loginCubit;
 
-  Future<void> _handleGoogleSignIn(BuildContext context) async {
+  @override
+  void initState() {
+    super.initState();
+    _loginCubit = LoginCubit(authService: AuthenticationService());
+    _loginCubit.onStateChanged = _handleLoginStateChange;
+  }
+
+  void _handleLoginStateChange(LoginState state) {
+    if (!mounted) return;
+
+    if (state is LoginLoading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Logging in...')),
+      );
+    } else if (state is LoginSuccess) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProfileCheckPage(
+            accessToken: state.accessToken,
+            profileUrl: state.photoUrl,
+          ),
+        ),
+      );
+    } else if (state is LoginFailure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${state.error}')),
+      );
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
     try {
       final account = await _googleSignIn.signIn();
       if (account != null) {
         final auth = await account.authentication;
         final String? idToken = auth.idToken;
-        if (idToken != null && context.mounted) {
+        if (idToken != null && mounted) {
           final String platform = Platform.isAndroid ? 'android' : 'ios';
 
           // Trigger the login process via the cubit.
-          context
-              .read<LoginCubit>()
-              .loginWithGoogle(idToken, platform, account.photoUrl ?? '');
+          _loginCubit.loginWithGoogle(
+              idToken, platform, account.photoUrl ?? '');
           debugPrint("User signed in: ${account.photoUrl}");
 
-          //need to disconnect the google account after obtaining the token.
-          // then only account selection will be shown on next time.
+          // Disconnect google account to show account selection next time.
           await _googleSignIn.disconnect();
         } else {
           debugPrint('No idToken received.');
@@ -49,74 +84,43 @@ class OnboardingInitialPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => LoginCubit(authService: AuthenticationService()),
-      child: Scaffold(
-        backgroundColor: const Color(0xFFFFFFA0),
-        body: Stack(
-          children: [
-            Column(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 80),
-                        _buildLogo(),
-                        const SizedBox(height: 48),
-                        _buildContent(),
-                        const Spacer(),
-                        // Use Builder to get the correct context for the button.
-                        Builder(builder: (innerContext) {
-                          return _buildLoginButton(innerContext);
-                        }),
-                        const SizedBox(height: 80),
-                      ],
-                    ),
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFFFA0),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 80),
+                      _buildLogo(),
+                      const SizedBox(height: 48),
+                      _buildContent(),
+                      const Spacer(),
+                      _buildLoginButton(),
+                      const SizedBox(height: 80),
+                    ],
                   ),
                 ),
-              ],
-            ),
-            // Background grass image.
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: IgnorePointer(
-                child: Image.asset(
-                  'assets/images/grass.png',
-                  fit: BoxFit.cover,
-                ),
+              ),
+            ],
+          ),
+          // Background grass image.
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Image.asset(
+                'assets/images/grass.png',
+                fit: BoxFit.cover,
               ),
             ),
-            // Listen for login state changes.
-            BlocListener<LoginCubit, LoginState>(
-              listener: (context, state) {
-                if (state is LoginLoading) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Logging in...')),
-                  );
-                } else if (state is LoginSuccess) {
-                  // Navigate to the ProfileCheckPage to verify if the profile is complete.
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ProfileCheckPage(
-                          accessToken: state.accessToken,
-                          profileUrl: state.photoUrl),
-                    ),
-                  );
-                } else if (state is LoginFailure) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: ${state.error}')),
-                  );
-                }
-              },
-              child: const SizedBox.shrink(),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -251,7 +255,7 @@ class OnboardingInitialPage extends StatelessWidget {
     );
   }
 
-  Widget _buildLoginButton(BuildContext context) {
+  Widget _buildLoginButton() {
     return Container(
       width: double.infinity,
       height: 56,
@@ -266,7 +270,7 @@ class OnboardingInitialPage extends StatelessWidget {
         child: InkWell(
           onTap: () {
             debugPrint('Login button tapped');
-            _handleGoogleSignIn(context);
+            _handleGoogleSignIn();
           },
           borderRadius: BorderRadius.circular(8),
           child: Row(

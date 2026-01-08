@@ -25,8 +25,7 @@ class ClubsOptionScreen extends StatelessWidget {
         Navigator.pop(context);
       }
     } catch (e) {
-      // Optionally handle error
-      print("Error unfollowing club: $e");
+      // Error handled - user remains on current screen
       if (context.mounted) {
         Navigator.pop(context);
       }
@@ -44,8 +43,7 @@ class ClubsOptionScreen extends StatelessWidget {
         Navigator.pop(context);
       }
     } catch (e) {
-      // Optionally handle error
-      print("Error pinning club: $e");
+      // Error handled - user remains on current screen
       if (context.mounted) {
         Navigator.pop(context);
       }
@@ -85,7 +83,6 @@ class ClubsOptionScreen extends StatelessWidget {
                 leadingImageName: AssetResources.unfollow,
                 title: const Text('Unfollow'),
                 onTap: () {
-                  print("id on button $clubId");
                   _unfollowClub(context);
                 },
               ),

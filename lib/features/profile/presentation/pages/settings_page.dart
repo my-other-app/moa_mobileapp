@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:myotherapp/common/widgets/custom_option_tile.dart';
+import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:myotherapp/core/resources/asset_resources.dart';
+import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
+import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
+import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
+import 'package:myotherapp/modules/home/pages/profile_page/settings/privacy_policy_page.dart';
+import 'package:myotherapp/modules/home/pages/profile_page/settings/terms_and_condition_page.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:myotherapp/features/auth/presentation/providers/login_provider.dart';
 
-/// Settings page with account options.
+/// Settings page - fully migrated to Riverpod (no Bloc).
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
@@ -13,190 +20,175 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
+  // Toggles for switches
   bool _eventNotification = true;
   bool _clubUpdates = false;
-
-  Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  void _showDeleteAccountDialog() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: const Text(
-            'Are you sure you want to delete your account? This action cannot be undone.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel')),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              // TODO: Implement delete account API call
-              await ref.read(loginProvider.notifier).signOut();
-              if (mounted) context.goNamed('onboarding');
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel')),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              await ref.read(loginProvider.notifier).signOut();
-              if (mounted) context.goNamed('onboarding');
-            },
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF2C333D)),
-            onPressed: () => context.pop()),
-        title: const Text('SETTINGS',
-            style: TextStyle(
-                fontSize: 24,
-                fontFamily: 'BebasNeue',
-                color: Color(0xFF2C333D))),
+        title: const Text(
+          'SETTINGS',
+          style: TextStyle(
+            fontSize: 24,
+            fontFamily: "BebasNeue",
+          ),
+        ),
         centerTitle: true,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         children: [
-          // Notification settings
-          _buildSectionHeader('Notifications'),
-          _buildSwitchTile(
-            icon: Icons.event_note,
-            title: 'Event Notifications',
-            value: _eventNotification,
-            onChanged: (v) => setState(() => _eventNotification = v),
+          CustomOptionTile(
+            verticalSpacing: 16,
+            leadingImageName: AssetResources.eventnotification,
+            title: const Text('Event Notification'),
+            onTap: () {},
+            trailing: Switch(
+              value: _eventNotification,
+              onChanged: (bool newValue) {
+                setState(() => _eventNotification = newValue);
+              },
+            ),
           ),
-          _buildSwitchTile(
-            icon: Icons.group,
-            title: 'Club Updates',
-            value: _clubUpdates,
-            onChanged: (v) => setState(() => _clubUpdates = v),
+          const Divider(height: 0),
+
+          CustomOptionTile(
+            verticalSpacing: 16,
+            leadingImageName: AssetResources.clubsupdate,
+            title: const Text('Club Updates'),
+            onTap: () {},
+            trailing: Switch(
+              value: _clubUpdates,
+              onChanged: (bool newValue) {
+                setState(() => _clubUpdates = newValue);
+              },
+            ),
           ),
-          const SizedBox(height: 24),
+          const Divider(height: 0),
+          const Divider(height: 0),
 
-          // Support
-          _buildSectionHeader('Support'),
-          _buildTile(
-              icon: Icons.headset_mic,
-              title: 'Contact Support',
-              onTap: () => _launchUrl('https://wa.me/917025662019')),
-          const SizedBox(height: 24),
+          // Contact Support Row
+          CustomOptionTile(
+            verticalSpacing: 16,
+            leadingImageName: AssetResources.contsctsupport,
+            title: const Text('Contact Support'),
+            onTap: () async {
+              if (await canLaunchUrl(Uri.parse("https://wa.me/917025662019"))) {
+                await launchUrl(
+                  Uri.parse("https://wa.me/917025662019"),
+                  mode: LaunchMode.externalApplication,
+                );
+              }
+            },
+          ),
+          const Divider(height: 0),
 
-          // Legal
-          _buildSectionHeader('Legal'),
-          _buildTile(
-              icon: Icons.description,
-              title: 'Terms and Conditions',
-              onTap: () => context.push('/profile/settings/terms')),
-          _buildTile(
-              icon: Icons.privacy_tip,
-              title: 'Privacy Policy',
-              onTap: () => context.push('/profile/settings/privacy')),
-          const SizedBox(height: 24),
+          // Terms and Conditions Row
+          CustomOptionTile(
+            verticalSpacing: 16,
+            leadingImageName: AssetResources.termsandcondition,
+            title: const Text('Terms and Conditions'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => TermsAndConditionPage()),
+              );
+            },
+          ),
+          const Divider(height: 0),
 
-          // Account
-          _buildSectionHeader('Account'),
-          _buildTile(
-              icon: Icons.logout,
-              title: 'Logout',
-              onTap: _showLogoutDialog,
-              color: Colors.orange),
-          _buildTile(
-              icon: Icons.delete_forever,
-              title: 'Delete Account',
-              onTap: _showDeleteAccountDialog,
-              color: Colors.red),
+          // Privacy Policy Row
+          CustomOptionTile(
+            verticalSpacing: 16,
+            leadingImageName: AssetResources.privacypolicy,
+            title: const Text('Privacy Policy'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => PrivacyPolicyPage()),
+              );
+            },
+          ),
+          const Divider(height: 0),
+
+          // Delete Account Row
+          CustomOptionTile(
+            verticalSpacing: 16,
+            leadingImageName: AssetResources.deleteaccount,
+            title: const Text('Delete Account'),
+            onTap: () {
+              _showDeleteAccountDialog(context, ref);
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(title,
-          style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[600])),
-    );
-  }
+  void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Delete'),
+          content: const Text('Are you sure you want to delete your account?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Delete'),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
 
-  Widget _buildSwitchTile(
-      {required IconData icon,
-      required String title,
-      required bool value,
-      required ValueChanged<bool> onChanged}) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-            color: const Color(0xFF17A58F).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10)),
-        child: Icon(icon, color: const Color(0xFF17A58F)),
-      ),
-      title: Text(title, style: const TextStyle(fontSize: 16)),
-      trailing: Switch(
-          value: value,
-          onChanged: onChanged,
-          activeTrackColor: const Color(0xFF17A58F)),
-    );
-  }
+                try {
+                  final res = await APIService.instance.request(
+                    '/api/v1/user/delete',
+                    DioMethod.delete,
+                  );
 
-  Widget _buildTile(
-      {required IconData icon,
-      required String title,
-      required VoidCallback onTap,
-      Color? color}) {
-    final iconColor = color ?? const Color(0xFF17A58F);
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10)),
-        child: Icon(icon, color: iconColor),
-      ),
-      title: Text(title, style: TextStyle(fontSize: 16, color: color)),
-      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-      onTap: onTap,
+                  if (res.statusCode == 200 || res.data['success'] == true) {
+                    // Use Riverpod for logout
+                    ref.read(profileProvider.notifier).clearProfile();
+                    await ref.read(authStateProvider.notifier).logout();
+                    ref.read(bottomNavIndexProvider.notifier).resetToHome();
+
+                    if (context.mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (context) => OnboardingInitialPage(),
+                        ),
+                        (route) => false,
+                      );
+                    }
+                  } else {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to delete account.')),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }

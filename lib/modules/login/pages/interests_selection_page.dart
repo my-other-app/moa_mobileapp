@@ -1,23 +1,24 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/api/endpoints.dart';
-import 'package:myotherapp/core/blocs/app_bloc/app_bloc_bloc.dart';
-import 'package:myotherapp/modules/login/data/models/profile.dart';
-import 'package:myotherapp/modules/login/pages/onboarding_avatar_picker_page.dart';
+import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart'
+    hide ProfileState;
+import 'package:myotherapp/features/auth/data/models/profile.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_avatar_picker_page.dart';
 
-class InterestsSelectionPage extends StatefulWidget {
+/// Interests Selection Page - migrated to Riverpod.
+class InterestsSelectionPage extends ConsumerStatefulWidget {
   const InterestsSelectionPage({super.key, required this.isOnboarding});
 
   final bool isOnboarding;
 
   @override
-  State<InterestsSelectionPage> createState() => _InterestsSelectionPageState();
+  ConsumerState<InterestsSelectionPage> createState() =>
+      _InterestsSelectionPageState();
 }
 
-class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
+class _InterestsSelectionPageState
+    extends ConsumerState<InterestsSelectionPage> {
   final Set<InterestItem> selectedInterests = {};
   bool isLoading = false;
 
@@ -26,8 +27,21 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      List<Interest>? currentInterests =
-          context.read<AppBloc>().state.profile?.interests;
+      // Get current interests from Riverpod profileProvider
+      final profile = ref.read(profileProvider).profile;
+      List<Interest>? currentInterests;
+
+      // Map UserProfile interests to legacy Interest model
+      if (profile?.interests != null) {
+        currentInterests = profile!.interests
+            .map((i) => Interest(
+                  id: i.id,
+                  name: i.name,
+                  icon: i.icon,
+                  iconType: i.iconType,
+                ))
+            .toList();
+      }
 
       debugPrint(
           'Current interests: ${currentInterests?.map((e) => e.toJson()).toList()}}');
@@ -64,30 +78,10 @@ class _InterestsSelectionPageState extends State<InterestsSelectionPage> {
         if (response.statusCode != null &&
             response.statusCode! >= 200 &&
             response.statusCode! < 300) {
-          final profileRes = await APIService.instance.request(
-              Endpoints.getProfile.url, Endpoints.getProfile.requestType);
-          Profile? profile;
-
-          if (profileRes.data != null && profileRes.statusCode == 200) {
-            Profile updatedProfile = Profile.fromJson(profileRes.data);
-
-            debugPrint('Updated profile: $updatedProfile');
-
-            profile = updatedProfile;
-          } else {
-            profile = Profile.fromJson({});
-          }
-
           if (mounted) {
-            ///updating the intrests in appBloc
-
-            debugPrint('Updated interests: ${jsonEncode(profile.interests)}');
-
-            context.read<AppBloc>().add(
-                  UpdateUserDetailsEvent(
-                    profile: profile,
-                  ),
-                );
+            // Reload profile using Riverpod provider
+            await ref.read(profileProvider.notifier).loadProfile();
+            debugPrint('Profile reloaded via Riverpod');
           }
 
           // Navigate to the OnboardingFinalPage upon success

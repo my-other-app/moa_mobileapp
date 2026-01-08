@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/modules/home/custom_widgets/event_card.dart';
+import 'package:myotherapp/shared/widgets/event_card.dart';
 import 'package:myotherapp/modules/home/pages/home_page/home_page_tabs/no_following_club_page.dart';
 
 class FollowingEventsPage extends StatefulWidget {
