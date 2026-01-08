@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/secure_storage/secure_storage.dart';
+import 'package:myotherapp/core/storage/secure_storage_service.dart';
 import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart'
     hide ProfileState;
@@ -48,13 +48,14 @@ class _ProfileCheckPageState extends ConsumerState<ProfileCheckPage> {
       debugPrint("Full profile data: ${state.profile}");
 
       try {
-        final tokenModel = await SecureStorage.instance.getAccessToken();
+        final secureStorage = ref.read(secureStorageServiceProvider);
+        final refreshToken = await secureStorage.getRefreshToken();
 
         if (mounted) {
           // Update Riverpod auth state
           await ref.read(authStateProvider.notifier).setAuthenticated(
                 accessToken: widget.accessToken,
-                refreshToken: tokenModel.refreshToken,
+                refreshToken: refreshToken ?? '',
               );
 
           // Load profile into Riverpod provider

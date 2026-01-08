@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:myotherapp/core/secure_storage/secure_storage.dart';
 import 'package:myotherapp/features/auth/presentation/pages/profile_check_page.dart';
 import 'package:myotherapp/features/auth/presentation/cubits/login_cubit.dart';
 import 'package:myotherapp/features/auth/data/services/authentication_service.dart';
+import 'package:myotherapp/features/auth/data/services/profile_service.dart';
+import 'package:myotherapp/core/storage/secure_storage_service.dart';
 
 /// Onboarding Initial Page - migrated from Bloc to callback-based approach.
 class OnboardingInitialPage extends StatefulWidget {
@@ -21,13 +22,16 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
         '497245325238-ceiht9g22u4eh9a3mdkmfbssa0fkevt1.apps.googleusercontent.com',
   );
 
-  final SecureStorage secureStorage = SecureStorage.instance;
   late LoginCubit _loginCubit;
 
   @override
   void initState() {
     super.initState();
-    _loginCubit = LoginCubit(authService: AuthenticationService());
+    _loginCubit = LoginCubit(
+      authService: AuthenticationService(),
+      profileService: ProfileService(),
+      secureStorage: SecureStorageService(),
+    );
     _loginCubit.onStateChanged = _handleLoginStateChange;
   }
 

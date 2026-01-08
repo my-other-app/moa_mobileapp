@@ -1,7 +1,6 @@
 import 'package:myotherapp/common/models/user/user_model.dart';
-import 'package:myotherapp/core/secure_storage/secure_storage.dart';
-import 'package:myotherapp/core/secure_storage/token_model.dart';
 import 'package:myotherapp/features/auth/data/services/authentication_service.dart';
+import 'package:myotherapp/core/storage/secure_storage_service.dart';
 import 'package:myotherapp/features/auth/data/services/profile_service.dart';
 
 /// Login States
@@ -36,6 +35,7 @@ class LoginFailure extends LoginState {
 class LoginCubit {
   final AuthenticationService authService;
   final ProfileService profileService;
+  final SecureStorageService secureStorage;
 
   LoginState _state = LoginInitial();
   LoginState get state => _state;
@@ -45,8 +45,9 @@ class LoginCubit {
 
   LoginCubit({
     required this.authService,
-    ProfileService? profileService,
-  }) : profileService = profileService ?? ProfileService();
+    required this.profileService,
+    required this.secureStorage,
+  });
 
   Future<void> loginWithGoogle(
       String idToken, String platform, String photoUrl) async {
@@ -60,8 +61,10 @@ class LoginCubit {
       );
 
       // Store tokens in secure storage
-      final secureStorage = SecureStorage.instance;
-      await secureStorage.updateTokens(TokenModel.fromJson(result));
+      await secureStorage.saveTokens(
+        accessToken: result['access_token'],
+        refreshToken: result['refresh_token'],
+      );
 
       // Get user profile
       final accessToken = result['access_token'];
