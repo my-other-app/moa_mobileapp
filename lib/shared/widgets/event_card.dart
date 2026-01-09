@@ -78,12 +78,19 @@ class EventCard extends StatelessWidget {
                 spacing: 4,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  // Event title - tap to go to event page
+                  InkWell(
+                    onTap: () {
+                      context.push('/events/$eventId');
+                    },
+                    child: Text(
+                      title,
+                      style: textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
+                  // Organizer - tap to go to club page
                   InkWell(
                     onTap: () {
                       context.push('/clubs/$clubId', extra: {
