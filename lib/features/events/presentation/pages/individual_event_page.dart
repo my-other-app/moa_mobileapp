@@ -1239,13 +1239,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             child: FilledButton(
               onPressed: () async {
                 if (ticketUrl != null && ticketUrl!.isNotEmpty) {
-                  // Handle both relative and absolute URLs
-                  String fullUrl = ticketUrl!;
-                  if (ticketUrl!.startsWith('/')) {
-                    // Relative URL - prepend the API base domain
-                    fullUrl = 'https://api.myotherapp.com$ticketUrl';
-                  }
-                  final Uri url = Uri.parse(fullUrl);
+                  final Uri url = Uri.parse(ticketUrl!);
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -1302,13 +1296,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             child: FilledButton(
               onPressed: () async {
                 if (certificateUrl != null && certificateUrl!.isNotEmpty) {
-                  // Handle both relative and absolute URLs
-                  String fullUrl = certificateUrl!;
-                  if (certificateUrl!.startsWith('/')) {
-                    // Relative URL - prepend the API base domain
-                    fullUrl = 'https://api.myotherapp.com$certificateUrl';
-                  }
-                  final Uri url = Uri.parse(fullUrl);
+                  final Uri url = Uri.parse(certificateUrl!);
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
