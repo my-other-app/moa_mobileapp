@@ -243,20 +243,30 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             const SizedBox(height: 20),
             // Title & Organizer.
             Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: NetworkImage(
-                    club != null && club!.logo.isNotEmpty
-                        ? club!.logo['thumbnail'] ??
-                            'https://via.placeholder.com/150'
-                        : 'https://via.placeholder.com/150',
+                // Club logo - tap to go to club page
+                InkWell(
+                  onTap: () {
+                    if (club != null) {
+                      context.push('/clubs/${club!.id}', extra: {
+                        'clubSlug': club!.slug,
+                        'clubName': club!.name,
+                      });
+                    }
+                  },
+                  child: CircleAvatar(
+                    radius: 24,
+                    backgroundImage: NetworkImage(
+                      club != null && club!.logo.isNotEmpty
+                          ? club!.logo['thumbnail'] ??
+                              'https://via.placeholder.com/150'
+                          : 'https://via.placeholder.com/150',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  // ✅ Wrap this to prevent overflow
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -266,14 +276,26 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
-                        overflow: TextOverflow.ellipsis, // Optional
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        club?.name ?? 'Organizer',
-                        style: const TextStyle(
-                          fontSize: 12,
+                      // Club name - tap to go to club page
+                      InkWell(
+                        onTap: () {
+                          if (club != null) {
+                            context.push('/clubs/${club!.id}', extra: {
+                              'clubSlug': club!.slug,
+                              'clubName': club!.name,
+                            });
+                          }
+                        },
+                        child: Text(
+                          club?.name ?? 'Organizer',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis, // Optional
                       ),
                     ],
                   ),
