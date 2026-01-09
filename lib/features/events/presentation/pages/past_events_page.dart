@@ -190,6 +190,8 @@ class _PastEventsPageState extends State<PastEventsPage>
               eventId: event['id'],
               clubId: event['club']['id'],
               eventSlug: event['slug'],
+              status: EventCardStatus.attended,
+              certificateUrl: event['certificate_url'],
             );
           },
         ),

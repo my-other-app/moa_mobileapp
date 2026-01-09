@@ -13,7 +13,17 @@ import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
 
 class IndividualEventPage extends StatefulWidget {
   final int eventId;
-  const IndividualEventPage({super.key, required this.eventId});
+  final String? initialStatus;
+  final String? initialTicketUrl;
+  final String? initialCertificateUrl;
+
+  const IndividualEventPage({
+    super.key,
+    required this.eventId,
+    this.initialStatus,
+    this.initialTicketUrl,
+    this.initialCertificateUrl,
+  });
 
   @override
   State<IndividualEventPage> createState() => _IndividualEventPageState();
@@ -47,6 +57,16 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
   String? contactEmail;
   String? url;
 
+  // Registration/Attendance status
+  bool isRegistered = false;
+  bool isAttended = false;
+  String? ticketUrl;
+  String? certificateUrl;
+  int? userRating;
+  int? userPosition;
+  String? positionLabel;
+  List<EventDownload> downloads = [];
+
   bool isLoading = true;
   String? errorMessage;
 
@@ -54,6 +74,22 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
   Timer? _timer;
   String countdownText = '';
   bool registrationClosed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Set initial status from navigation if provided
+    if (widget.initialStatus != null) {
+      if (widget.initialStatus == 'registered') {
+        isRegistered = true;
+        ticketUrl = widget.initialTicketUrl;
+      } else if (widget.initialStatus == 'attended') {
+        isAttended = true;
+        certificateUrl = widget.initialCertificateUrl;
+      }
+    }
+    _fetchData();
+  }
 
   Future<void> _fetchData() async {
     try {
@@ -92,11 +128,40 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
         contactPhone = eventInfo.contactPhone;
         contactEmail = eventInfo.contactEmail;
         url = eventInfo.url;
+
+        // New registration/attendance fields
+        // IMPORTANT: Use API values if available, otherwise preserve navigation values
+        // This ensures status from EventCard navigation is not lost
+        if (eventInfo.isRegistered == true) {
+          isRegistered = true;
+        }
+        if (eventInfo.isAttended == true) {
+          isAttended = true;
+        }
+        // Only update URLs if API provides them
+        if (eventInfo.ticketUrl != null && eventInfo.ticketUrl!.isNotEmpty) {
+          ticketUrl = eventInfo.ticketUrl;
+        }
+        if (eventInfo.certificateUrl != null &&
+            eventInfo.certificateUrl!.isNotEmpty) {
+          certificateUrl = eventInfo.certificateUrl;
+        }
+        userRating = eventInfo.userRating;
+        userPosition = eventInfo.userPosition;
+        positionLabel = eventInfo.positionLabel;
+        downloads = eventInfo.downloads;
+
         isLoading = false;
+
+        // CRITICAL: Check if registration is already closed IMMEDIATELY
+        if (regEndDate != null && regEndDate!.isBefore(DateTime.now())) {
+          registrationClosed = true;
+          countdownText = 'Registration Closed';
+        }
       });
 
-      // Start the countdown timer if regEndDate is available.
-      if (regEndDate != null) {
+      // Start the countdown timer if regEndDate is available and not already closed.
+      if (regEndDate != null && !registrationClosed) {
         _startTimer();
       }
     } catch (e) {
@@ -143,12 +208,6 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchData();
   }
 
   String _formatTime(DateTime dt) {
@@ -383,6 +442,93 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
     );
   }
 
+  /// Shows time of event popup
+  void _showTimePopup(BuildContext context) {
+    String formattedTime =
+        eventDateTime != null ? _formatTime(eventDateTime!) : 'N/A';
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                backgroundColor: const Color(0xffF3F3F3),
+                radius: 28,
+                child: Image.asset(AssetResources.eventtime,
+                    height: 28, width: 28),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Time of Event',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                formattedTime,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'BebasNeue',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shows duration popup
+  void _showDurationPopup(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                backgroundColor: const Color(0xffF3F3F3),
+                radius: 28,
+                child:
+                    Image.asset(AssetResources.duration, height: 28, width: 28),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Duration',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$duration Hours',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'BebasNeue',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Helper to get ordinal suffix (1st, 2nd, 3rd, etc.)
   String _getOrdinal(int day) {
     if (day >= 11 && day <= 13) return '${day}TH';
@@ -395,6 +541,158 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
         return '${day}RD';
       default:
         return '${day}TH';
+    }
+  }
+
+  /// Helper to get ordinal position text (1st, 2nd, 3rd, etc. lowercase)
+  String _getOrdinalPosition(int position) {
+    if (position >= 11 && position <= 13) return '${position}th';
+    switch (position % 10) {
+      case 1:
+        return '${position}st';
+      case 2:
+        return '${position}nd';
+      case 3:
+        return '${position}rd';
+      default:
+        return '${position}th';
+    }
+  }
+
+  /// Shows rating dialog
+  void _showRatingDialog(BuildContext context) {
+    int selectedRating = 0;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Rate this Event',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'How was your experience?',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    return GestureDetector(
+                      onTap: () {
+                        setDialogState(() {
+                          selectedRating = index + 1;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(
+                          index < selectedRating
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: Colors.amber,
+                          size: 40,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: const BorderSide(color: Colors.grey),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: selectedRating > 0
+                            ? () async {
+                                Navigator.pop(context);
+                                await _submitRating(selectedRating);
+                              }
+                            : null,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Submit'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Submit rating to API
+  Future<void> _submitRating(int ratingValue) async {
+    try {
+      await APIService.instance.request(
+        '/events/rate/${widget.eventId}',
+        DioMethod.post,
+        param: {'rating': ratingValue},
+      );
+
+      setState(() {
+        userRating = ratingValue;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Thanks for your rating!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit rating: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -578,22 +876,28 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: _infoCard(
-                    context,
-                    icon: AssetResources.eventtime,
-                    title: 'Time of Event',
-                    value: eventDateTime != null
-                        ? _formatTime(eventDateTime!)
-                        : 'N/A',
+                  child: GestureDetector(
+                    onTap: () => _showTimePopup(context),
+                    child: _infoCard(
+                      context,
+                      icon: AssetResources.eventtime,
+                      title: 'Time of Event',
+                      value: eventDateTime != null
+                          ? _formatTime(eventDateTime!)
+                          : 'N/A',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _infoCard(
-                    context,
-                    icon: AssetResources.duration,
-                    title: 'Duration',
-                    value: "$duration Hours",
+                  child: GestureDetector(
+                    onTap: () => _showDurationPopup(context),
+                    child: _infoCard(
+                      context,
+                      icon: AssetResources.duration,
+                      title: 'Duration',
+                      value: "$duration Hours",
+                    ),
                   ),
                 ),
               ],
@@ -628,86 +932,390 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
               ],
             ),
             const SizedBox(height: 16),
-            // Main description.
+
+            // ========== ATTENDED SECTION (before description) ==========
+            if (isAttended) ...[
+              // 1. Congrats message (grey box)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Congrats on crushing it! 🎉 You\'ve successfully attended the event',
+                  style: TextStyle(fontSize: 14),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // 2. Position highlight (yellow/amber box - only if position available)
+              if (userPosition != null && userPosition! > 0) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8E1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '🏆 Woohoo! You nailed it! Secured an impressive ${_getOrdinalPosition(userPosition!)} position${positionLabel != null ? ' in the $positionLabel' : ''}.',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // 3. Downloads section (blue box - only if downloads available)
+              if (downloads.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '📁 Grab the files from the session here!',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      ...downloads.map((download) => InkWell(
+                            onTap: () async {
+                              final Uri url = Uri.parse(download.url);
+                              await launchUrl(url,
+                                  mode: LaunchMode.externalApplication);
+                            },
+                            child: Text(
+                              download.name.isEmpty
+                                  ? 'Download now'
+                                  : download.name,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Theme.of(context).primaryColor,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          )),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ] else ...[
+                const SizedBox(height: 4),
+              ],
+            ],
+
+            // ========== MAIN DESCRIPTION ==========
             Text(
               about ?? 'Event description not available.',
               style: const TextStyle(fontSize: 15),
             ),
             const SizedBox(height: 16),
 
+            // ========== RATE AND RATING SECTION (only for attended) ==========
+            if (isAttended) ...[
+              // Rate the Event button (only if not rated yet)
+              if (userRating == null || userRating == 0) ...[
+                OutlinedButton(
+                  onPressed: () => _showRatingDialog(context),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                    side: const BorderSide(color: Colors.black),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Rate the Event',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Rating display section (if event has ratings)
+              if (rating != null && rating! > 0) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left side: Stars and rating
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: List.generate(5, (index) {
+                            return Icon(
+                              index < (rating! ~/ 20)
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              color: Colors.amber,
+                              size: 20,
+                            );
+                          }),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${(rating! / 20).toStringAsFixed(1)} RATED',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontFamily: 'BebasNeue',
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Rated by $totalRating Participants',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    // Right side: View All Reviews link
+                    TextButton(
+                      onPressed: () {
+                        // TODO: Navigate to all reviews page
+                      },
+                      child: Text(
+                        'View All Reviews',
+                        style: TextStyle(
+                          color: Theme.of(context).primaryColor,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+            ],
+
             // Need Help.
             const Text(
               'Need Help?',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Got any questions? We\'re here to help—hit us up!',
+              style: TextStyle(fontSize: 14, color: Colors.black54),
             ),
             const SizedBox(height: 8),
             InkWell(
-              onTap: () {
-                // TODO: Implement call or contact.
+              onTap: () async {
+                if (contactPhone != null && contactPhone!.isNotEmpty) {
+                  final Uri url = Uri.parse('tel:$contactPhone');
+                  await launchUrl(url);
+                }
               },
               child: Text(
                 'Call Organizer',
                 style: TextStyle(
+                  fontSize: 14,
                   color: Theme.of(context).primaryColor,
                   decoration: TextDecoration.underline,
                 ),
               ),
             ),
-            const SizedBox(height: 50),
+            const SizedBox(height: 100),
           ],
         ),
       ),
-      // BottomSheet with countdown and button.
-      bottomSheet: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Only show the countdown container if registration is not closed.
-            if (!registrationClosed)
-              Container(
-                width: double.infinity,
-                height: 25,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFDEDD),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  regEndDate != null
-                      ? countdownText
-                      : 'Registration details not available',
-                  textAlign: TextAlign.left,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.normal,
-                    fontSize: 12,
-                    color: Color(0xFFCD0000),
-                  ),
-                ),
-              ),
-            const SizedBox(height: 16),
-            SizedBox(
+      // BottomSheet - different UI based on status
+      bottomSheet: _buildBottomSheet(context),
+    );
+  }
+
+  /// Builds the bottom sheet based on event status
+  Widget _buildBottomSheet(BuildContext context) {
+    // Priority 1: Check if user has attended (past event they attended)
+    if (isAttended) {
+      return _buildCertificateBottomSheet(context);
+    }
+
+    // Priority 2: Check if user is registered (upcoming event they registered for)
+    if (isRegistered) {
+      return _buildTicketBottomSheet(context);
+    }
+
+    // Default: Show registration UI
+    return _buildRegistrationBottomSheet(context);
+  }
+
+  /// Bottom sheet for registration state
+  Widget _buildRegistrationBottomSheet(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Only show the countdown container if registration is not closed.
+          if (!registrationClosed)
+            Container(
               width: double.infinity,
-              child: FilledButton(
-                onPressed: (isLoading || registrationClosed)
-                    ? null // Disable while loading or if registration is closed
-                    : () {
-                        context.push('/events/${id ?? 0}/register', extra: {
-                          'additionalDetails': additionalDetails,
-                        });
-                      },
-                child: Text(isLoading
-                    ? 'LOADING...'
-                    : registrationClosed
-                        ? 'REGISTRATION CLOSED'
-                        : 'REGISTER NOW'),
+              height: 25,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFDEDD),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                regEndDate != null
+                    ? countdownText
+                    : 'Registration details not available',
+                textAlign: TextAlign.left,
+                style: const TextStyle(
+                  fontWeight: FontWeight.normal,
+                  fontSize: 12,
+                  color: Color(0xFFCD0000),
+                ),
               ),
             ),
-            const SizedBox(height: 10),
-          ],
-        ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: (isLoading || registrationClosed)
+                  ? null
+                  : () {
+                      context.push('/events/${id ?? 0}/register', extra: {
+                        'additionalDetails': additionalDetails,
+                      });
+                    },
+              child: Text(isLoading
+                  ? 'LOADING...'
+                  : registrationClosed
+                      ? 'REGISTRATION CLOSED'
+                      : 'REGISTER NOW'),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+
+  /// Bottom sheet for ticket state (registered but event not over)
+  Widget _buildTicketBottomSheet(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Yellow banner - same style as countdown
+          Container(
+            width: double.infinity,
+            height: 25,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF9C4),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'Registered and Generated Ticket',
+              textAlign: TextAlign.left,
+              style: TextStyle(
+                fontWeight: FontWeight.normal,
+                fontSize: 12,
+                color: Color(0xFF5D4037),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () async {
+                if (ticketUrl != null && ticketUrl!.isNotEmpty) {
+                  final Uri url = Uri.parse(ticketUrl!);
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'Ticket is being generated. Please check back later.'),
+                    ),
+                  );
+                }
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2C333D),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text('VIEW TICKET'),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+
+  /// Bottom sheet for certificate state (attended)
+  Widget _buildCertificateBottomSheet(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Green banner - same style as countdown
+          Container(
+            width: double.infinity,
+            height: 25,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'Attended and Certificate Generated',
+              textAlign: TextAlign.left,
+              style: TextStyle(
+                fontWeight: FontWeight.normal,
+                fontSize: 12,
+                color: Color(0xFF2E7D32),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () async {
+                if (certificateUrl != null && certificateUrl!.isNotEmpty) {
+                  final Uri url = Uri.parse(certificateUrl!);
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'Certificate is being generated. Please check back later.'),
+                    ),
+                  );
+                }
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF4CAF50),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text('VIEW CERTIFICATE'),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
       ),
     );
   }

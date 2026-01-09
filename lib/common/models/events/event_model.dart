@@ -25,6 +25,16 @@ class EventInfo {
   final String contactEmail;
   final String url;
 
+  // Registration/Attendance status fields
+  final bool isRegistered;
+  final bool isAttended;
+  final String? ticketUrl;
+  final String? certificateUrl;
+  final int? userRating;
+  final int? userPosition;
+  final String? positionLabel;
+  final List<EventDownload> downloads;
+
   EventInfo({
     required this.id,
     required this.name,
@@ -51,6 +61,14 @@ class EventInfo {
     required this.contactPhone,
     required this.contactEmail,
     required this.url,
+    this.isRegistered = false,
+    this.isAttended = false,
+    this.ticketUrl,
+    this.certificateUrl,
+    this.userRating,
+    this.userPosition,
+    this.positionLabel,
+    this.downloads = const [],
   });
 
   factory EventInfo.fromJson(Map<String, dynamic> json) {
@@ -89,6 +107,43 @@ class EventInfo {
       about: json['about'] as String? ?? '',
       contactPhone: json['contact_phone'] as String? ?? '',
       contactEmail: json['contact_email'] as String? ?? '',
+      url: json['url'] as String? ?? '',
+      // New registration/attendance fields
+      isRegistered: json['is_registered'] as bool? ?? false,
+      isAttended: json['is_attended'] as bool? ?? false,
+      ticketUrl: json['ticket_url'] as String?,
+      certificateUrl: json['certificate_url'] as String?,
+      userRating: (json['user_rating'] as num?)?.toInt(),
+      userPosition: (json['user_position'] as num?)?.toInt(),
+      positionLabel: json['position_label'] as String?,
+      downloads: (json['downloads'] as List<dynamic>?)
+              ?.map((e) => EventDownload.fromJson(e))
+              .toList() ??
+          [],
+    );
+  }
+
+  /// Check if the event has ended
+  bool get isEventEnded =>
+      eventDateTime.add(Duration(hours: duration)).isBefore(DateTime.now());
+
+  /// Check if certificate is available
+  bool get hasCertificate =>
+      certificateUrl != null && certificateUrl!.isNotEmpty;
+
+  /// Check if ticket is available
+  bool get hasTicket => ticketUrl != null && ticketUrl!.isNotEmpty;
+}
+
+class EventDownload {
+  final String name;
+  final String url;
+
+  EventDownload({required this.name, required this.url});
+
+  factory EventDownload.fromJson(Map<String, dynamic> json) {
+    return EventDownload(
+      name: json['name'] as String? ?? '',
       url: json['url'] as String? ?? '',
     );
   }

@@ -190,6 +190,8 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage>
               eventId: event['id'],
               clubId: event['club']['id'],
               eventSlug: event['slug'],
+              status: EventCardStatus.registered,
+              ticketUrl: event['ticket_url'],
             );
           },
         ),

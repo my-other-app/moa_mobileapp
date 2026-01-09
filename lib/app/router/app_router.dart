@@ -132,10 +132,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: ':eventId',
                     name: 'eventDetail',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => IndividualEventPage(
+                    builder: (context, state) {
+                      final extra = state.extra as Map<String, dynamic>?;
+                      return IndividualEventPage(
                         eventId: int.tryParse(
                                 state.pathParameters['eventId'] ?? '') ??
-                            0),
+                            0,
+                        initialStatus: extra?['status'],
+                        initialTicketUrl: extra?['ticketUrl'],
+                        initialCertificateUrl: extra?['certificateUrl'],
+                      );
+                    },
                     routes: [
                       GoRoute(
                           path: 'register',
