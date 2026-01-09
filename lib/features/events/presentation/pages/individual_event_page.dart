@@ -160,6 +160,217 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
     return "$hour12:$minute $period";
   }
 
+  /// Shows date of event popup
+  void _showDatePopup(BuildContext context) {
+    final List<String> months = [
+      'JAN',
+      'FEB',
+      'MAR',
+      'APR',
+      'MAY',
+      'JUN',
+      'JUL',
+      'AUG',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DEC'
+    ];
+    String formattedDate = eventDateTime != null
+        ? "${_getOrdinal(eventDateTime!.day)} ${months[eventDateTime!.month - 1]} ${eventDateTime!.year}"
+        : 'N/A';
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('📅', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 12),
+              const Text(
+                'Date of Event',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                formattedDate,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'BebasNeue',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shows registration fee popup
+  void _showFeePopup(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('💰', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 12),
+              const Text(
+                'Registration Fee',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                hasFee == true ? '₹ $regFee' : 'Free',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'BebasNeue',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shows location popup with Open Maps button
+  void _showLocationPopup(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('📍', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 12),
+              const Text(
+                'Location',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                locationName?.toUpperCase() ?? 'N/A',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'BebasNeue',
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    if (locationLink != null && locationLink!.isNotEmpty) {
+                      final Uri url = Uri.parse(locationLink!);
+                      await launchUrl(url,
+                          mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2C333D),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'OPEN MAPS',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontFamily: 'BebasNeue',
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shows prize worth popup
+  void _showPrizePopup(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🏆', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 12),
+              const Text(
+                'Prize Worth',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                hasPrize == true ? '₹ $prizeAmount' : 'None',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'BebasNeue',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Helper to get ordinal suffix (1st, 2nd, 3rd, etc.)
+  String _getOrdinal(int day) {
+    if (day >= 11 && day <= 13) return '${day}TH';
+    switch (day % 10) {
+      case 1:
+        return '${day}ST';
+      case 2:
+        return '${day}ND';
+      case 3:
+        return '${day}RD';
+      default:
+        return '${day}TH';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Loading and error handling.
@@ -309,22 +520,28 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: _infoCard(
-                    context,
-                    icon: AssetResources.eventdate,
-                    title: 'Date of Event',
-                    value: eventDateTime != null
-                        ? "${eventDateTime!.day}-${eventDateTime!.month}-${eventDateTime!.year}"
-                        : 'N/A',
+                  child: GestureDetector(
+                    onTap: () => _showDatePopup(context),
+                    child: _infoCard(
+                      context,
+                      icon: AssetResources.eventdate,
+                      title: 'Date of Event',
+                      value: eventDateTime != null
+                          ? "${eventDateTime!.day}-${eventDateTime!.month}-${eventDateTime!.year}"
+                          : 'N/A',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _infoCard(
-                    context,
-                    icon: AssetResources.regfee,
-                    title: 'Registration Fee',
-                    value: hasFee == true ? '₹ $regFee' : 'Free',
+                  child: GestureDetector(
+                    onTap: () => _showFeePopup(context),
+                    child: _infoCard(
+                      context,
+                      icon: AssetResources.regfee,
+                      title: 'Registration Fee',
+                      value: hasFee == true ? '₹ $regFee' : 'Free',
+                    ),
                   ),
                 ),
               ],
@@ -359,20 +576,26 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: _infoCard(
-                    context,
-                    icon: AssetResources.location,
-                    title: 'Location',
-                    value: locationName ?? 'N/A',
+                  child: GestureDetector(
+                    onTap: () => _showLocationPopup(context),
+                    child: _infoCard(
+                      context,
+                      icon: AssetResources.location,
+                      title: 'Location',
+                      value: locationName ?? 'N/A',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _infoCard(
-                    context,
-                    icon: AssetResources.prize,
-                    title: 'Prize Worth',
-                    value: hasPrize == true ? '₹ $prizeAmount' : 'None',
+                  child: GestureDetector(
+                    onTap: () => _showPrizePopup(context),
+                    child: _infoCard(
+                      context,
+                      icon: AssetResources.prize,
+                      title: 'Prize Worth',
+                      value: hasPrize == true ? '₹ $prizeAmount' : 'None',
+                    ),
                   ),
                 ),
               ],
