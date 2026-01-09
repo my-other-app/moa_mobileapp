@@ -193,17 +193,22 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('📅', style: TextStyle(fontSize: 40)),
-              const SizedBox(height: 12),
+              CircleAvatar(
+                backgroundColor: const Color(0xffF3F3F3),
+                radius: 28,
+                child: Image.asset(AssetResources.eventdate,
+                    height: 28, width: 28),
+              ),
+              const SizedBox(height: 16),
               const Text(
                 'Date of Event',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
               const SizedBox(height: 8),
               Text(
                 formattedDate,
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'BebasNeue',
                 ),
@@ -230,11 +235,16 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('💰', style: TextStyle(fontSize: 40)),
-              const SizedBox(height: 12),
+              CircleAvatar(
+                backgroundColor: const Color(0xffF3F3F3),
+                radius: 28,
+                child:
+                    Image.asset(AssetResources.regfee, height: 28, width: 28),
+              ),
+              const SizedBox(height: 16),
               const Text(
                 'Registration Fee',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
               const SizedBox(height: 8),
               Text(
@@ -267,18 +277,23 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('📍', style: TextStyle(fontSize: 40)),
-              const SizedBox(height: 12),
+              CircleAvatar(
+                backgroundColor: const Color(0xffF3F3F3),
+                radius: 28,
+                child:
+                    Image.asset(AssetResources.location, height: 28, width: 28),
+              ),
+              const SizedBox(height: 16),
               const Text(
                 'Location',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
               const SizedBox(height: 8),
               Text(
                 locationName?.toUpperCase() ?? 'N/A',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 22,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'BebasNeue',
                 ),
@@ -289,11 +304,19 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 child: FilledButton(
                   onPressed: () async {
                     Navigator.pop(context);
+                    // Try locationLink first, fallback to Google Maps search
+                    String mapsUrl;
                     if (locationLink != null && locationLink!.isNotEmpty) {
-                      final Uri url = Uri.parse(locationLink!);
-                      await launchUrl(url,
-                          mode: LaunchMode.externalApplication);
+                      mapsUrl = locationLink!;
+                    } else if (locationName != null &&
+                        locationName!.isNotEmpty) {
+                      mapsUrl =
+                          'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(locationName!)}';
+                    } else {
+                      return;
                     }
+                    final Uri url = Uri.parse(mapsUrl);
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
                   },
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF2C333D),
@@ -334,11 +357,15 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('🏆', style: TextStyle(fontSize: 40)),
-              const SizedBox(height: 12),
+              CircleAvatar(
+                backgroundColor: const Color(0xffF3F3F3),
+                radius: 28,
+                child: Image.asset(AssetResources.prize, height: 28, width: 28),
+              ),
+              const SizedBox(height: 16),
               const Text(
                 'Prize Worth',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
               const SizedBox(height: 8),
               Text(
@@ -503,7 +530,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                           club?.name ?? 'Organizer',
                           style: const TextStyle(
                             fontSize: 12,
-                            color: Colors.blue,
+                            color: Colors.black,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
