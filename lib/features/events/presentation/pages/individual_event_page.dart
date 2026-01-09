@@ -1239,7 +1239,21 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             child: FilledButton(
               onPressed: () async {
                 if (ticketUrl != null && ticketUrl!.isNotEmpty) {
-                  final Uri url = Uri.parse(ticketUrl!);
+                  String finalUrl = ticketUrl!;
+
+                  // Handle old format: /api/v1/events/tickets/{id} → https://events.myotherapp.com/tickets/{id}
+                  if (ticketUrl!.startsWith('/api/v1/events/tickets/')) {
+                    final ticketId =
+                        ticketUrl!.replaceFirst('/api/v1/events/tickets/', '');
+                    finalUrl =
+                        'https://events.myotherapp.com/tickets/$ticketId';
+                  } else if (ticketUrl!.startsWith('/')) {
+                    // Other relative URLs - use API domain
+                    finalUrl = 'https://api.myotherapp.com$ticketUrl';
+                  }
+                  // else: Already a full URL, use as-is
+
+                  final Uri url = Uri.parse(finalUrl);
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -1296,7 +1310,22 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             child: FilledButton(
               onPressed: () async {
                 if (certificateUrl != null && certificateUrl!.isNotEmpty) {
-                  final Uri url = Uri.parse(certificateUrl!);
+                  String finalUrl = certificateUrl!;
+
+                  // Handle old format: /api/v1/events/certificates/{id} → https://events.myotherapp.com/certificates/{id}
+                  if (certificateUrl!
+                      .startsWith('/api/v1/events/certificates/')) {
+                    final certId = certificateUrl!
+                        .replaceFirst('/api/v1/events/certificates/', '');
+                    finalUrl =
+                        'https://events.myotherapp.com/certificates/$certId';
+                  } else if (certificateUrl!.startsWith('/')) {
+                    // Other relative URLs - use API domain
+                    finalUrl = 'https://api.myotherapp.com$certificateUrl';
+                  }
+                  // else: Already a full URL, use as-is
+
+                  final Uri url = Uri.parse(finalUrl);
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
