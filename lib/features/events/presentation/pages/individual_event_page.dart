@@ -441,16 +441,18 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: registrationClosed
-                    ? null // Disable the button if registration is closed.
+                onPressed: (isLoading || registrationClosed)
+                    ? null // Disable while loading or if registration is closed
                     : () {
                         context.push('/events/${id ?? 0}/register', extra: {
                           'additionalDetails': additionalDetails,
                         });
                       },
-                child: Text(registrationClosed
-                    ? 'REGISTRATION CLOSED'
-                    : 'REGISTER NOW'),
+                child: Text(isLoading
+                    ? 'LOADING...'
+                    : registrationClosed
+                        ? 'REGISTRATION CLOSED'
+                        : 'REGISTER NOW'),
               ),
             ),
             const SizedBox(height: 10),
