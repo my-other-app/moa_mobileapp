@@ -1,8 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/shared/widgets/event_card.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:myotherapp/shared/widgets/error_view.dart';
+import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
 
 class ForYouEventsPage extends StatefulWidget {
   const ForYouEventsPage({super.key});
@@ -11,196 +11,202 @@ class ForYouEventsPage extends StatefulWidget {
   State<ForYouEventsPage> createState() => _ForYouEventsPageState();
 }
 
-class SimmerContainer extends StatelessWidget {
-  final double height;
-  final double width;
-
-  const SimmerContainer({super.key, required this.height, required this.width});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: height,
-      width: width,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        color: Colors.grey[200],
-      ),
-    );
-  }
-}
-
 class _ForYouEventsPageState extends State<ForYouEventsPage>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
+  final List<dynamic> _events = [];
+
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  String? _errorMessage;
+  int _offset = 0;
+  static const int _limit = 10;
+
   @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    // Create a ValueNotifier to hold the events
-    final ValueNotifier<List<dynamic>> eventsNotifier = ValueNotifier([]);
-    final ValueNotifier<bool> isLoadingNotifier = ValueNotifier(true);
-    final ValueNotifier<String?> errorMessageNotifier = ValueNotifier(null);
-
-    // Fetch data when the widget is built
-    _fetchData(eventsNotifier, isLoadingNotifier, errorMessageNotifier);
-
-    return ColoredBox(
-      color: Colors.white,
-      child: ValueListenableBuilder<List<dynamic>>(
-        valueListenable: eventsNotifier,
-        builder: (context, events, child) {
-          return ValueListenableBuilder<bool>(
-            valueListenable: isLoadingNotifier,
-            builder: (context, isLoading, child) {
-              if (isLoading) {
-                // return const Center(
-                //   child: CircularProgressIndicator(
-                //     backgroundColor: Colors.white,
-                //   ),
-                // );
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    spacing: 24,
-                    children: [
-                      _buildEventCardShimmer(),
-                      _buildEventCardShimmer(),
-                    ],
-                  ),
-                );
-              }
-              return ValueListenableBuilder<String?>(
-                valueListenable: errorMessageNotifier,
-                builder: (context, errorMessage, child) {
-                  if (errorMessage != null) {
-                    return Center(child: Text('Error: $errorMessage'));
-                  }
-                  // If there are no events, show a message.
-                  if (events.isEmpty) {
-                    return const Scaffold(
-                      backgroundColor: Colors.white,
-                      body: Center(
-                        child: Text(
-                          'Nothing to show on the feed',
-                          style: TextStyle(fontSize: 18),
-                        ),
-                      ),
-                    );
-                  }
-                  return Scaffold(
-                    backgroundColor: Colors.white,
-                    body: RefreshIndicator(
-                      onRefresh: () => _fetchData(eventsNotifier,
-                          isLoadingNotifier, errorMessageNotifier),
-                      child: _buildEventCards(events),
-                    ),
-                  );
-                },
-              );
-            },
-          );
-        },
-      ),
-    );
+  void initState() {
+    super.initState();
+    _fetchData();
   }
 
-  Widget _buildEventCards(List<dynamic> events) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: events.length,
-      separatorBuilder: (context, index) => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20.0),
-        child: Divider(
-          thickness: 1,
-          color: Colors.black,
-          indent: 50,
-          endIndent: 50,
-        ),
-      ),
-      itemBuilder: (context, index) {
-        final event = events[index];
-        return EventCard(
-          clubSlug: event['club']?['slug'] ?? '',
-          orgImage: event['club']?['logo']?['thumbnail'] ?? '',
-          title: event['name'] ?? 'No Title',
-          organizer: event['club']?['name'] ?? 'Unknown Organizer',
-          tags: [
-            event['category']?['name'] ?? '',
-            event['is_online'] == true ? 'Online' : 'Offline',
-            event['has_fee'] == true ? 'Paid' : 'Free',
-            '${event['duration']} Hours'
-          ],
-          onTap: () {
-            // Handle tap event here.
-          },
-          imageUrl:
-              event['poster']?['medium'] ?? 'https://via.placeholder.com/150',
-          eventId: event['id'],
-          clubId: event['club']['id'],
-          eventSlug: event['slug'],
-        );
-      },
-    );
+  /// Handle scroll notifications for pagination
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollEndNotification) {
+      final metrics = notification.metrics;
+      if (metrics.pixels >= metrics.maxScrollExtent - 200 &&
+          !_isLoadingMore &&
+          _hasMore &&
+          !_isLoading) {
+        _loadMore();
+      }
+    }
+    return false; // Don't consume the notification
   }
 
-  Widget _buildEventCardShimmer() {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey.shade100,
-      highlightColor: Colors.grey.shade300,
-      child: Column(
-        spacing: 16,
-        children: [
-          Row(
-            spacing: 8,
-            children: [
-              SimmerContainer(
-                height: 52,
-                width: 52,
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 12,
-                children: [
-                  SimmerContainer(
-                    height: 24,
-                    width: 200,
-                  ),
-                  SimmerContainer(
-                    height: 16,
-                    width: 120,
-                  ),
-                ],
-              )
-            ],
-          ),
-          SimmerContainer(
-            height: 200,
-            width: double.infinity,
-          ),
-        ],
-      ),
-    );
-  }
+  Future<void> _fetchData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _offset = 0;
+      _events.clear();
+    });
 
-  Future<void> _fetchData(
-      ValueNotifier<List<dynamic>> eventsNotifier,
-      ValueNotifier<bool> isLoadingNotifier,
-      ValueNotifier<String?> errorMessageNotifier) async {
     try {
-      isLoadingNotifier.value = true; // Set loading to true when fetching data
-      Response<dynamic> res = await APIService.instance.request(
-        '/events/list?offset=0&limit=10',
+      final res = await APIService.instance.request(
+        '/events/list?offset=$_offset&limit=$_limit',
         DioMethod.get,
       );
       List<dynamic> fetchedEvents = res.data['items'] ?? [];
-      // Update the ValueNotifier with the fetched events
-      eventsNotifier.value = fetchedEvents;
+      if (mounted) {
+        setState(() {
+          _events.addAll(fetchedEvents);
+          _hasMore = fetchedEvents.length >= _limit;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      errorMessageNotifier.value = e.toString();
-    } finally {
-      isLoadingNotifier.value = false; // Set loading to false in the end
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+      _offset += _limit;
+    });
+
+    try {
+      final res = await APIService.instance.request(
+        '/events/list?offset=$_offset&limit=$_limit',
+        DioMethod.get,
+      );
+      List<dynamic> fetchedEvents = res.data['items'] ?? [];
+      if (mounted) {
+        setState(() {
+          _events.addAll(fetchedEvents);
+          _hasMore = fetchedEvents.length >= _limit;
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _offset -= _limit;
+          _isLoadingMore = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _refresh() async {
+    await _fetchData();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    // Loading state
+    if (_isLoading) {
+      return Container(
+        color: Colors.white,
+        child: const SingleChildScrollView(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            children: [
+              ShimmerEventCard(),
+              SizedBox(height: 32),
+              ShimmerEventCard(),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Error state
+    if (_errorMessage != null) {
+      return Container(
+        color: Colors.white,
+        child: ErrorView(
+          message: _errorMessage,
+          onRetry: _fetchData,
+        ),
+      );
+    }
+
+    // Empty state
+    if (_events.isEmpty) {
+      return Container(
+        color: Colors.white,
+        child: const Center(
+          child: Text(
+            'Nothing to show on the feed',
+            style: TextStyle(fontSize: 18),
+          ),
+        ),
+      );
+    }
+
+    // Content with NotificationListener for pagination
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onScrollNotification,
+      child: RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView.separated(
+          // Use primary: true to cooperate with NestedScrollView
+          primary: true,
+          padding: const EdgeInsets.all(16),
+          itemCount: _events.length + (_hasMore ? 1 : 0),
+          separatorBuilder: (context, index) => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20.0),
+            child: Divider(
+              thickness: 1,
+              color: Colors.black,
+              indent: 50,
+              endIndent: 50,
+            ),
+          ),
+          itemBuilder: (context, index) {
+            if (index == _events.length) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+
+            final event = _events[index];
+            return EventCard(
+              clubSlug: event['club']?['slug'] ?? '',
+              orgImage: event['club']?['logo']?['thumbnail'] ?? '',
+              title: event['name'] ?? 'No Title',
+              organizer: event['club']?['name'] ?? 'Unknown Organizer',
+              tags: [
+                event['category']?['name'] ?? '',
+                event['is_online'] == true ? 'Online' : 'Offline',
+                event['has_fee'] == true ? 'Paid' : 'Free',
+                '${event['duration']} Hours'
+              ],
+              onTap: () {},
+              imageUrl: event['poster']?['medium'] ??
+                  'https://via.placeholder.com/150',
+              eventId: event['id'],
+              clubId: event['club']['id'],
+              eventSlug: event['slug'],
+            );
+          },
+        ),
+      ),
+    );
   }
 }

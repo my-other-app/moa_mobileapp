@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/features/auth/presentation/pages/interests_selection_page.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:dio/dio.dart';
 
@@ -110,13 +110,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           param: data);
 
       if (response.statusCode == 200 && mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => InterestsSelectionPage(
-                    isOnboarding: true,
-                  )),
-        );
+        context.go('/onboarding/interests', extra: {'isOnboarding': true});
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -130,13 +124,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
       if (error is DioException &&
           error.response?.data['message'] == 'Profile already exists' &&
           mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => InterestsSelectionPage(
-                    isOnboarding: true,
-                  )),
-        );
+        context.go('/onboarding/interests', extra: {'isOnboarding': true});
         return;
       }
 

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
-import 'package:myotherapp/features/auth/presentation/pages/interests_selection_page.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_details_page.dart'
     show Organization;
 
@@ -278,12 +278,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   Widget _buildEditInterestsButton() {
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) =>
-                  InterestsSelectionPage(isOnboarding: false)),
-        );
+        context.push('/profile/interests');
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),

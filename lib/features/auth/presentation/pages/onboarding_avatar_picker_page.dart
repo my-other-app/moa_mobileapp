@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_final_page.dart';
 import 'package:myotherapp/features/auth/presentation/pages/widgest/avatar_picker_bottom_sheet.dart';
 
 Widget _buildDragIndicator() {
@@ -122,12 +122,7 @@ class OnboardingAvatarPickerPage extends ConsumerWidget {
               Spacer(),
               FilledButton(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => OnboardingFinalPage(),
-                    ),
-                  );
+                  context.go('/onboarding/complete');
                 },
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,

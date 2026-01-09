@@ -6,25 +6,30 @@ import 'package:go_router/go_router.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/features/auth/presentation/pages/profile_check_page.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_details_page.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_interests_page.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_avatar_page.dart';
-import 'package:myotherapp/features/auth/presentation/pages/success_pages.dart';
+import 'package:myotherapp/features/auth/presentation/pages/interests_selection_page.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_avatar_picker_page.dart';
+import 'package:myotherapp/features/auth/presentation/pages/onboarding_final_page.dart';
+import 'package:myotherapp/features/auth/presentation/pages/reg_successfull_page.dart';
 import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
 
 // Main screens
 import 'package:myotherapp/features/home/presentation/pages/home_page.dart';
 import 'package:myotherapp/features/events/presentation/pages/events_page.dart';
-import 'package:myotherapp/features/events/presentation/pages/event_detail_page.dart';
+import 'package:myotherapp/features/events/presentation/pages/individual_event_page.dart';
+import 'package:myotherapp/features/events/presentation/pages/event_form_page.dart';
 import 'package:myotherapp/features/clubs/presentation/pages/clubs_page.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/club_detail_page.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/explore_clubs_page.dart';
+import 'package:myotherapp/features/clubs/presentation/pages/club_individual_page.dart';
+import 'package:myotherapp/features/clubs/presentation/pages/explore_more_clubs_page.dart';
 import 'package:myotherapp/features/profile/presentation/pages/profile_page.dart';
 import 'package:myotherapp/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:myotherapp/features/profile/presentation/pages/settings_page.dart';
+import 'package:myotherapp/features/profile/presentation/pages/certificates/certificate_page.dart';
+import 'package:myotherapp/features/profile/presentation/pages/badges/my_badges_page.dart';
+import 'package:myotherapp/features/profile/presentation/pages/notifications/notifications_page.dart';
+import 'package:myotherapp/features/profile/presentation/pages/settings/terms_and_condition_page.dart';
+import 'package:myotherapp/features/profile/presentation/pages/settings/privacy_policy_page.dart';
 import 'package:myotherapp/features/main/presentation/pages/main_shell.dart';
-
-// Placeholder pages
-import 'package:myotherapp/features/common/presentation/pages/placeholder_pages.dart';
+import 'package:myotherapp/common/models/events/event_model.dart';
 
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -90,28 +95,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
-            return OnboardingInterestsPage(
+            return InterestsSelectionPage(
                 isOnboarding: extra?['isOnboarding'] ?? true);
           }),
       GoRoute(
           path: '/onboarding/avatar',
           name: 'onboardingAvatar',
           parentNavigatorKey: _rootNavigatorKey,
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>?;
-            return OnboardingAvatarPage(
-                isOnboarding: extra?['isOnboarding'] ?? true);
-          }),
+          builder: (context, state) => const OnboardingAvatarPickerPage()),
       GoRoute(
-          path: '/onboarding/final',
-          name: 'onboardingFinal',
+          path: '/onboarding/complete',
+          name: 'onboardingComplete',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const OnboardingFinalPage()),
-      GoRoute(
-          path: '/onboarding/success',
-          name: 'registrationSuccess',
-          parentNavigatorKey: _rootNavigatorKey,
-          builder: (context, state) => const RegistrationSuccessPage()),
 
       // Main shell with bottom nav
       ShellRoute(
@@ -128,13 +124,37 @@ final routerProvider = Provider<GoRouter>((ref) {
               builder: (context, state) => const EventsPage(),
               routes: [
                 GoRoute(
+                    path: 'registration-success',
+                    name: 'eventRegistrationSuccess',
+                    parentNavigatorKey: _rootNavigatorKey,
+                    builder: (context, state) => const RegSuccessfullPage()),
+                GoRoute(
                     path: ':eventId',
                     name: 'eventDetail',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => EventDetailPage(
+                    builder: (context, state) => IndividualEventPage(
                         eventId: int.tryParse(
                                 state.pathParameters['eventId'] ?? '') ??
-                            0)),
+                            0),
+                    routes: [
+                      GoRoute(
+                          path: 'register',
+                          name: 'eventRegister',
+                          parentNavigatorKey: _rootNavigatorKey,
+                          builder: (context, state) {
+                            final extra = state.extra as Map<String, dynamic>?;
+                            final additionalDetails =
+                                extra?['additionalDetails']
+                                        as List<AdditionalDetail>? ??
+                                    [];
+                            return EventFormPage(
+                              eventId: int.tryParse(
+                                      state.pathParameters['eventId'] ?? '') ??
+                                  0,
+                              additionalDetails: additionalDetails,
+                            );
+                          }),
+                    ]),
               ]),
           GoRoute(
               path: '/clubs',
@@ -145,15 +165,21 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'explore',
                     name: 'exploreClubs',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => const ExploreClubsPage()),
+                    builder: (context, state) => ExploreMoreClubsPage()),
                 GoRoute(
                     path: ':clubId',
                     name: 'clubDetail',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => ClubDetailPage(
+                    builder: (context, state) {
+                      final extra = state.extra as Map<String, dynamic>?;
+                      return ClubIndividualPage(
                         clubId: int.tryParse(
                                 state.pathParameters['clubId'] ?? '') ??
-                            0)),
+                            0,
+                        clubSlug: extra?['clubSlug'] ?? '',
+                        clubname: extra?['clubName'] ?? '',
+                      );
+                    }),
               ]),
           GoRoute(
               path: '/profile',
@@ -166,6 +192,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                     parentNavigatorKey: _rootNavigatorKey,
                     builder: (context, state) => const EditProfilePage()),
                 GoRoute(
+                    path: 'interests',
+                    name: 'profileInterests',
+                    parentNavigatorKey: _rootNavigatorKey,
+                    builder: (context, state) =>
+                        const InterestsSelectionPage(isOnboarding: false)),
+                GoRoute(
                     path: 'settings',
                     name: 'settings',
                     parentNavigatorKey: _rootNavigatorKey,
@@ -173,28 +205,30 @@ final routerProvider = Provider<GoRouter>((ref) {
                     routes: [
                       GoRoute(
                           path: 'terms',
+                          name: 'terms',
                           parentNavigatorKey: _rootNavigatorKey,
-                          builder: (context, state) => const TermsPage()),
+                          builder: (context, state) => TermsAndConditionPage()),
                       GoRoute(
                           path: 'privacy',
+                          name: 'privacy',
                           parentNavigatorKey: _rootNavigatorKey,
-                          builder: (context, state) => const PrivacyPage()),
+                          builder: (context, state) => PrivacyPolicyPage()),
                     ]),
                 GoRoute(
                     path: 'certificates',
                     name: 'certificates',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => const CertificatesPage()),
+                    builder: (context, state) => CertificatePage()),
                 GoRoute(
                     path: 'badges',
                     name: 'badges',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => const BadgesPage()),
+                    builder: (context, state) => const MyBadgesPage()),
                 GoRoute(
                     path: 'notifications',
                     name: 'notifications',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => const NotificationsPage()),
+                    builder: (context, state) => NotificationsNewPage()),
               ]),
         ],
       ),
@@ -204,7 +238,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         const Icon(Icons.error_outline, size: 64, color: Colors.red),
         const SizedBox(height: 16),
-        Text('Page not found',
+        Text('Page not found: ${state.matchedLocation}',
             style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 24),
         ElevatedButton(
@@ -221,17 +255,21 @@ class AppRoutes {
   static const String onboardingDetails = 'onboardingDetails';
   static const String onboardingAvatar = 'onboardingAvatar';
   static const String onboardingInterests = 'onboardingInterests';
-  static const String onboardingFinal = 'onboardingFinal';
-  static const String registrationSuccess = 'registrationSuccess';
+  static const String onboardingComplete = 'onboardingComplete';
   static const String home = 'home';
   static const String events = 'events';
   static const String eventDetail = 'eventDetail';
+  static const String eventRegister = 'eventRegister';
+  static const String eventRegistrationSuccess = 'eventRegistrationSuccess';
   static const String clubs = 'clubs';
   static const String exploreClubs = 'exploreClubs';
   static const String clubDetail = 'clubDetail';
   static const String profile = 'profile';
   static const String editProfile = 'editProfile';
+  static const String profileInterests = 'profileInterests';
   static const String settings = 'settings';
+  static const String terms = 'terms';
+  static const String privacy = 'privacy';
   static const String certificates = 'certificates';
   static const String badges = 'badges';
   static const String notifications = 'notifications';

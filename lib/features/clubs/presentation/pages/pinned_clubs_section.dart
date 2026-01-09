@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/club_individual_page.dart';
+import 'package:go_router/go_router.dart';
 
 class PinnedClubsSection extends StatelessWidget {
   final List<dynamic> pinnedClubs;
@@ -38,15 +38,10 @@ class PinnedClubsSection extends StatelessWidget {
               final club = pinnedClubs[index];
               return InkWell(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => ClubIndividualPage(
-                              clubId: club['id'],
-                              clubname: club['name'],
-                              clubSlug: club['slug'],
-                            )),
-                  );
+                  context.push('/clubs/${club['id']}', extra: {
+                    'clubSlug': club['slug'],
+                    'clubName': club['name'],
+                  });
                 },
                 child: Column(
                   children: [

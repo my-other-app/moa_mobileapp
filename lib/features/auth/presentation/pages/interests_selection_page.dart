@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart'
     hide ProfileState;
 import 'package:myotherapp/features/auth/data/models/profile.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_avatar_picker_page.dart';
 
 /// Interests Selection Page - migrated to Riverpod.
 class InterestsSelectionPage extends ConsumerStatefulWidget {
@@ -87,13 +87,9 @@ class _InterestsSelectionPageState
           // Navigate to the OnboardingFinalPage upon success
 
           if (widget.isOnboarding && mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const OnboardingAvatarPickerPage()),
-            );
+            context.go('/onboarding/avatar');
           } else if (mounted) {
-            Navigator.pop(context);
+            context.pop();
           }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

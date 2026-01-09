@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:myotherapp/features/clubs/presentation/providers/clubs_provider.dart';
 import 'package:myotherapp/features/clubs/domain/entities/club_entity.dart';
+import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
 
 /// Club profile/detail page.
 class ClubDetailPage extends ConsumerStatefulWidget {
@@ -33,7 +34,7 @@ class _ClubDetailPageState extends ConsumerState<ClubDetailPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: state.isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const ShimmerClubDetail()
           : state.error != null
               ? _buildErrorState(state.error!)
               : state.club != null

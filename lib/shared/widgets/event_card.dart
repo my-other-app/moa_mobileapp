@@ -1,8 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/club_individual_page.dart';
-import 'package:myotherapp/features/events/presentation/pages/individual_event_page.dart';
 import 'package:myotherapp/shared/widgets/svg_icon.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -49,15 +48,10 @@ class EventCard extends StatelessWidget {
           children: [
             InkWell(
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => ClubIndividualPage(
-                            clubId: clubId,
-                            clubSlug: clubSlug,
-                            clubname: organizer,
-                          )),
-                );
+                context.push('/clubs/$clubId', extra: {
+                  'clubSlug': clubSlug,
+                  'clubName': organizer,
+                });
               },
               child: SizedBox(
                 width: 48,
@@ -92,15 +86,10 @@ class EventCard extends StatelessWidget {
                   ),
                   InkWell(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => ClubIndividualPage(
-                                  clubId: clubId,
-                                  clubSlug: clubSlug,
-                                  clubname: organizer,
-                                )),
-                      );
+                      context.push('/clubs/$clubId', extra: {
+                        'clubSlug': clubSlug,
+                        'clubName': organizer,
+                      });
                     },
                     child: Text(
                       organizer,
@@ -130,13 +119,7 @@ class EventCard extends StatelessWidget {
         /// Event Image
         InkWell(
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => IndividualEventPage(
-                          eventId: eventId,
-                        )),
-              );
+              context.push('/events/$eventId');
             },
             child: CachedNetworkImage(
               imageUrl: imageUrl,
@@ -168,20 +151,7 @@ class EventCard extends StatelessWidget {
                         CircularProgressIndicator()), // Optional loading indicator
               ),
               errorWidget: (context, url, error) => SizedBox.shrink(),
-            )
-
-            // Container(
-            //   height: size.height * .5,
-            //   width: double.infinity,
-            //   decoration: BoxDecoration(
-            //     borderRadius: BorderRadius.circular(10.0),
-            //     image: DecorationImage(
-            //       image: NetworkImage(imageUrl),
-            //       fit: BoxFit.cover,
-            //     ),
-            //   ),
-            // ),
-            ),
+            )),
 
         /// Tags
         Row(
@@ -205,13 +175,7 @@ class EventCard extends StatelessWidget {
         ),
         FilledButton(
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => IndividualEventPage(
-                        eventId: eventId,
-                      )),
-            );
+            context.push('/events/$eventId');
           },
           child: Text('TAKE A CLOSER LOOK OF THE EVENT'),
         )

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/common/models/events/event_model.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/features/auth/presentation/pages/reg_successfull_page.dart';
 
 class EventFormPage extends StatefulWidget {
   final int eventId;
@@ -298,12 +298,7 @@ class _EventFormPageState extends State<EventFormPage> {
         );
 
         if (response.statusCode == 200 && mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const RegSuccessfullPage(),
-            ),
-          );
+          context.go('/events/registration-success');
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(

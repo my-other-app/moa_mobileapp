@@ -7,13 +7,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:myotherapp/main.dart';
+import 'package:myotherapp/app/app.dart';
 
 void main() {
   testWidgets('App builds successfully', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const ProviderScope(child: MyApp()));
 
     // Verify that app builds without errors
     expect(find.byType(MaterialApp), findsOneWidget);

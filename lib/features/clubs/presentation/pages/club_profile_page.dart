@@ -5,6 +5,8 @@ import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/core/themes/app_colors.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:myotherapp/shared/widgets/error_view.dart';
+import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
 
 class ClubProfilePage extends StatefulWidget {
   final int id;
@@ -117,15 +119,24 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: Colors.white,
-        body: const Center(child: CircularProgressIndicator()),
+        body: ShimmerClubDetail(),
       );
     }
     if (errorMessage != null) {
       return Scaffold(
         backgroundColor: Colors.white,
-        body: Center(child: Text('Error: $errorMessage')),
+        body: ErrorView(
+          message: errorMessage,
+          onRetry: () {
+            setState(() {
+              isLoading = true;
+              errorMessage = null;
+            });
+            _fetchData();
+          },
+        ),
       );
     }
     return Scaffold(

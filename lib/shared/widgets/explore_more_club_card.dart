@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/club_individual_page.dart';
 
 import '../../../core/themes/app_colors.dart';
 
@@ -44,15 +44,10 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
 
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => ClubIndividualPage(
-                    clubId: widget.id,
-                    clubSlug: widget.clubSlug,
-                    clubname: widget.name,
-                  )),
-        );
+        context.push('/clubs/${widget.id}', extra: {
+          'clubSlug': widget.clubSlug,
+          'clubName': widget.name,
+        });
       },
       child: Container(
         decoration: BoxDecoration(

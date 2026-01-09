@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/common/models/events/event_model.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/core/themes/app_colors.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:myotherapp/shared/widgets/svg_icon.dart';
-import 'package:myotherapp/features/events/presentation/pages/event_form_page.dart';
+import 'package:myotherapp/shared/widgets/error_view.dart';
+import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
 
 class IndividualEventPage extends StatefulWidget {
   final int eventId;
@@ -171,7 +173,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             style: TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
           ),
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const ShimmerEventDetail(),
       );
     }
     if (errorMessage != null) {
@@ -185,7 +187,16 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             style: TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
           ),
         ),
-        body: Center(child: Text('Error: $errorMessage')),
+        body: ErrorView(
+          message: errorMessage,
+          onRetry: () {
+            setState(() {
+              isLoading = true;
+              errorMessage = null;
+            });
+            _fetchData();
+          },
+        ),
       );
     }
 
@@ -411,15 +422,9 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 onPressed: registrationClosed
                     ? null // Disable the button if registration is closed.
                     : () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EventFormPage(
-                              eventId: id ?? 0,
-                              additionalDetails: additionalDetails,
-                            ),
-                          ),
-                        );
+                        context.push('/events/${id ?? 0}/register', extra: {
+                          'additionalDetails': additionalDetails,
+                        });
                       },
                 child: Text(registrationClosed
                     ? 'REGISTRATION CLOSED'

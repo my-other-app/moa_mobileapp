@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/themes/app_colors.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/club_individual_page.dart';
 
 class NoteCard extends StatelessWidget {
   final String logoUrl; // URL to the logo image
@@ -46,15 +46,11 @@ class NoteCard extends StatelessWidget {
                   // Network image
                   InkWell(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => ClubIndividualPage(
-                                  clubId: 1,
-                                  clubname: '',
-                                  clubSlug: '',
-                                )),
-                      );
+                      // TODO: Add clubId and clubSlug to NoteCard widget
+                      context.push('/clubs/1', extra: {
+                        'clubSlug': '',
+                        'clubName': headerTitle,
+                      });
                     },
                     child: Image.network(
                       logoUrl,

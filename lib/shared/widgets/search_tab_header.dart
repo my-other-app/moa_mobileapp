@@ -60,6 +60,7 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       // Instead of using a regular appBar, we will build it with Slivers
       body: NestedScrollView(
         // The SliverAppBar + TabBar will be the "headerSliverBuilder" part.

@@ -1,7 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/shared/widgets/event_card.dart';
+import 'package:myotherapp/shared/widgets/error_view.dart';
+import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
 import 'package:myotherapp/features/events/presentation/pages/no_registered_event_page.dart';
 
 class UpcomingEventsPage extends StatefulWidget {
@@ -11,28 +12,19 @@ class UpcomingEventsPage extends StatefulWidget {
   State<UpcomingEventsPage> createState() => _UpcomingEventsPageState();
 }
 
-class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
-  List<dynamic> events = [];
-  bool isLoading = true;
-  String? errorMessage;
+class _UpcomingEventsPageState extends State<UpcomingEventsPage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
 
-  Future<void> _fetchData() async {
-    try {
-      Response<dynamic> res = await APIService.instance.request(
-        '/events/list?is_registered=true&is_ended=false&offset=0&limit=10',
-        DioMethod.get,
-      );
-      setState(() {
-        events = res.data['items'] ?? [];
-        isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        errorMessage = e.toString();
-        isLoading = false;
-      });
-    }
-  }
+  final List<dynamic> _events = [];
+
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  String? _errorMessage;
+  int _offset = 0;
+  static const int _limit = 10;
 
   @override
   void initState() {
@@ -40,65 +32,168 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
     _fetchData();
   }
 
-  Widget _buildEventCards() {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: events.length,
-      separatorBuilder: (context, index) => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20.0),
-        child: Divider(
-          thickness: 1,
-          color: Colors.black,
-          indent: 50,
-          endIndent: 50,
-        ),
-      ),
-      itemBuilder: (context, index) {
-        final event = events[index];
-        return EventCard(
-          clubSlug: event['club']?['slug'] ?? '',
-          orgImage: event['club']?['logo']?['thumbnail'] ?? '',
-          title: event['name'] ?? 'No Title',
-          organizer: event['club']?['name'] ?? 'Unknown Organizer',
-          tags: [
-            event['category']?['name'] ?? '',
-            event['is_online'] == true ? 'Online' : 'Offline',
-            event['has_fee'] == true ? 'Paid' : 'Free',
-            '${event['duration']} Hours'
-          ],
-          onTap: () {
-            // Handle tap event here.
-          },
-          imageUrl:
-              event['poster']?['medium'] ?? 'https://via.placeholder.com/150',
-          eventId: event['id'],
-          clubId: event['club']['id'],
-          eventSlug: event['slug'],
-        );
-      },
-    );
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollEndNotification) {
+      final metrics = notification.metrics;
+      if (metrics.pixels >= metrics.maxScrollExtent - 200 &&
+          !_isLoadingMore &&
+          _hasMore &&
+          !_isLoading) {
+        _loadMore();
+      }
+    }
+    return false;
+  }
+
+  Future<void> _fetchData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _offset = 0;
+      _events.clear();
+    });
+
+    try {
+      final res = await APIService.instance.request(
+        '/events/list?is_registered=true&is_ended=false&offset=$_offset&limit=$_limit',
+        DioMethod.get,
+      );
+      if (mounted) {
+        setState(() {
+          _events.addAll(res.data['items'] ?? []);
+          _hasMore = (res.data['items'] ?? []).length >= _limit;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+      _offset += _limit;
+    });
+
+    try {
+      final res = await APIService.instance.request(
+        '/events/list?is_registered=true&is_ended=false&offset=$_offset&limit=$_limit',
+        DioMethod.get,
+      );
+      if (mounted) {
+        setState(() {
+          _events.addAll(res.data['items'] ?? []);
+          _hasMore = (res.data['items'] ?? []).length >= _limit;
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _offset -= _limit;
+          _isLoadingMore = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _refresh() async {
+    await _fetchData();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator()),
+    super.build(context);
+
+    if (_isLoading) {
+      return Container(
+        color: Colors.white,
+        child: const SingleChildScrollView(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            children: [
+              ShimmerEventCard(),
+              SizedBox(height: 32),
+              ShimmerEventCard(),
+              SizedBox(height: 32),
+              ShimmerEventCard(),
+            ],
+          ),
+        ),
       );
     }
-    if (errorMessage != null) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: Text('Error: $errorMessage')),
+
+    if (_errorMessage != null) {
+      return Container(
+        color: Colors.white,
+        child: ErrorView(
+          message: _errorMessage,
+          onRetry: _fetchData,
+        ),
       );
     }
-    if (events.isEmpty) {
+
+    if (_events.isEmpty) {
       return NoRegisteredEventPage();
     }
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: _buildEventCards(),
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onScrollNotification,
+      child: RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView.separated(
+          primary: true,
+          padding: const EdgeInsets.all(16),
+          itemCount: _events.length + (_hasMore ? 1 : 0),
+          separatorBuilder: (context, index) => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20.0),
+            child: Divider(
+              thickness: 1,
+              color: Colors.black,
+              indent: 50,
+              endIndent: 50,
+            ),
+          ),
+          itemBuilder: (context, index) {
+            if (index == _events.length) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+
+            final event = _events[index];
+            return EventCard(
+              clubSlug: event['club']?['slug'] ?? '',
+              orgImage: event['club']?['logo']?['thumbnail'] ?? '',
+              title: event['name'] ?? 'No Title',
+              organizer: event['club']?['name'] ?? 'Unknown Organizer',
+              tags: [
+                event['category']?['name'] ?? '',
+                event['is_online'] == true ? 'Online' : 'Offline',
+                event['has_fee'] == true ? 'Paid' : 'Free',
+                '${event['duration']} Hours'
+              ],
+              onTap: () {},
+              imageUrl: event['poster']?['medium'] ??
+                  'https://via.placeholder.com/150',
+              eventId: event['id'],
+              clubId: event['club']['id'],
+              eventSlug: event['slug'],
+            );
+          },
+        ),
+      ),
     );
   }
 }

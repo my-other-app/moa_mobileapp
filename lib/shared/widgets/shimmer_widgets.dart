@@ -1,0 +1,388 @@
+import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
+
+/// A generic shimmer box for creating loading placeholders.
+class ShimmerBox extends StatelessWidget {
+  final double height;
+  final double width;
+  final double borderRadius;
+
+  const ShimmerBox({
+    super.key,
+    required this.height,
+    this.width = double.infinity,
+    this.borderRadius = 8,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      width: width,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(borderRadius),
+        color: Colors.grey[300],
+      ),
+    );
+  }
+}
+
+/// Shimmer loading skeleton for event cards.
+class ShimmerEventCard extends StatelessWidget {
+  const ShimmerEventCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade200,
+      highlightColor: Colors.grey.shade100,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row with avatar and text
+          Row(
+            children: [
+              const ShimmerBox(height: 48, width: 48, borderRadius: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    ShimmerBox(height: 16, width: 180),
+                    SizedBox(height: 8),
+                    ShimmerBox(height: 12, width: 120),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Image placeholder
+          const ShimmerBox(height: 180),
+          const SizedBox(height: 12),
+          // Tags row
+          Row(
+            children: const [
+              ShimmerBox(height: 24, width: 60, borderRadius: 12),
+              SizedBox(width: 8),
+              ShimmerBox(height: 24, width: 50, borderRadius: 12),
+              SizedBox(width: 8),
+              ShimmerBox(height: 24, width: 40, borderRadius: 12),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shimmer loading skeleton for club tiles.
+class ShimmerClubTile extends StatelessWidget {
+  const ShimmerClubTile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade200,
+      highlightColor: Colors.grey.shade100,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const ShimmerBox(height: 52, width: 52, borderRadius: 26),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      ShimmerBox(height: 18, width: 200),
+                      SizedBox(height: 8),
+                      ShimmerBox(height: 14, width: 120),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const ShimmerBox(height: 14),
+            const SizedBox(height: 6),
+            const ShimmerBox(height: 14),
+            const SizedBox(height: 6),
+            const ShimmerBox(height: 14, width: 200),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shimmer loading skeleton for profile page.
+class ShimmerProfileCard extends StatelessWidget {
+  const ShimmerProfileCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade200,
+      highlightColor: Colors.grey.shade100,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const SizedBox(height: 40),
+            // Avatar and name section
+            Row(
+              children: [
+                const ShimmerBox(height: 60, width: 60, borderRadius: 30),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      ShimmerBox(height: 28, width: 180),
+                      SizedBox(height: 8),
+                      ShimmerBox(height: 16, width: 120),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Tags
+            Row(
+              children: const [
+                ShimmerBox(height: 28, width: 80, borderRadius: 14),
+                SizedBox(width: 8),
+                ShimmerBox(height: 28, width: 70, borderRadius: 14),
+                SizedBox(width: 8),
+                ShimmerBox(height: 28, width: 90, borderRadius: 14),
+              ],
+            ),
+            const SizedBox(height: 40),
+            // Menu items
+            ...List.generate(
+              5,
+              (index) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Row(
+                  children: const [
+                    ShimmerBox(height: 48, width: 48, borderRadius: 24),
+                    SizedBox(width: 16),
+                    ShimmerBox(height: 16, width: 140),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A shimmer list builder for creating multiple shimmer items.
+class ShimmerList extends StatelessWidget {
+  final int itemCount;
+  final Widget Function(BuildContext, int) itemBuilder;
+  final EdgeInsetsGeometry? padding;
+  final double separatorHeight;
+
+  const ShimmerList({
+    super.key,
+    required this.itemCount,
+    required this.itemBuilder,
+    this.padding,
+    this.separatorHeight = 24,
+  });
+
+  /// Creates a shimmer list of event cards.
+  factory ShimmerList.events({int count = 3}) {
+    return ShimmerList(
+      itemCount: count,
+      padding: const EdgeInsets.all(16),
+      itemBuilder: (_, __) => const ShimmerEventCard(),
+    );
+  }
+
+  /// Creates a shimmer list of club tiles.
+  factory ShimmerList.clubs({int count = 5}) {
+    return ShimmerList(
+      itemCount: count,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      separatorHeight: 16,
+      itemBuilder: (_, __) => const ShimmerClubTile(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: padding,
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      itemCount: itemCount,
+      separatorBuilder: (_, __) => SizedBox(height: separatorHeight),
+      itemBuilder: itemBuilder,
+    );
+  }
+}
+
+/// Shimmer loading skeleton for event detail page.
+class ShimmerEventDetail extends StatelessWidget {
+  const ShimmerEventDetail({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade200,
+      highlightColor: Colors.grey.shade100,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Event poster
+            const ShimmerBox(height: 220, borderRadius: 12),
+            const SizedBox(height: 20),
+            // Event title
+            const ShimmerBox(height: 28, width: 280),
+            const SizedBox(height: 12),
+            // Organizer
+            Row(
+              children: const [
+                ShimmerBox(height: 40, width: 40, borderRadius: 20),
+                SizedBox(width: 12),
+                ShimmerBox(height: 16, width: 150),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Tags
+            Row(
+              children: const [
+                ShimmerBox(height: 28, width: 70, borderRadius: 14),
+                SizedBox(width: 8),
+                ShimmerBox(height: 28, width: 60, borderRadius: 14),
+                SizedBox(width: 8),
+                ShimmerBox(height: 28, width: 50, borderRadius: 14),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Date/time info
+            const ShimmerBox(height: 60, borderRadius: 8),
+            const SizedBox(height: 16),
+            // Location
+            const ShimmerBox(height: 60, borderRadius: 8),
+            const SizedBox(height: 24),
+            // Description
+            const ShimmerBox(height: 16),
+            const SizedBox(height: 8),
+            const ShimmerBox(height: 16),
+            const SizedBox(height: 8),
+            const ShimmerBox(height: 16, width: 250),
+            const SizedBox(height: 32),
+            // Register button
+            const ShimmerBox(height: 50, borderRadius: 25),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shimmer loading skeleton for club detail page.
+class ShimmerClubDetail extends StatelessWidget {
+  const ShimmerClubDetail({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade200,
+      highlightColor: Colors.grey.shade100,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Cover image
+            const ShimmerBox(height: 200, borderRadius: 0),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Club logo and name
+                  Row(
+                    children: const [
+                      ShimmerBox(height: 70, width: 70, borderRadius: 35),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(height: 24, width: 180),
+                            SizedBox(height: 8),
+                            ShimmerBox(height: 14, width: 120),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // Follow button
+                  const ShimmerBox(height: 44, borderRadius: 22),
+                  const SizedBox(height: 24),
+                  // Stats row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: const [
+                      Column(
+                        children: [
+                          ShimmerBox(height: 24, width: 40),
+                          SizedBox(height: 4),
+                          ShimmerBox(height: 12, width: 60),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          ShimmerBox(height: 24, width: 40),
+                          SizedBox(height: 4),
+                          ShimmerBox(height: 12, width: 60),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          ShimmerBox(height: 24, width: 40),
+                          SizedBox(height: 4),
+                          ShimmerBox(height: 12, width: 60),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Description
+                  const ShimmerBox(height: 16),
+                  const SizedBox(height: 8),
+                  const ShimmerBox(height: 16),
+                  const SizedBox(height: 8),
+                  const ShimmerBox(height: 16, width: 200),
+                  const SizedBox(height: 32),
+                  // Events section header
+                  const ShimmerBox(height: 20, width: 150),
+                  const SizedBox(height: 16),
+                  // Event cards
+                  const ShimmerEventCard(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

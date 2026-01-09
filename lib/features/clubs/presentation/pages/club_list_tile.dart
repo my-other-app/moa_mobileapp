@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/themes/app_colors.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/club_individual_page.dart';
-
 import 'package:myotherapp/shared/widgets/clubs_option_screen.dart';
 
 class ClubListTile extends StatelessWidget {
@@ -21,15 +20,10 @@ class ClubListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => ClubIndividualPage(
-                    clubId: clubId,
-                    clubSlug: clubSlug,
-                    clubname: clubName,
-                  )),
-        );
+        context.push('/clubs/$clubId', extra: {
+          'clubSlug': clubSlug,
+          'clubName': clubName,
+        });
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),

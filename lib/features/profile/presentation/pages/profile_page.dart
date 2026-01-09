@@ -7,6 +7,8 @@ import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provi
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
+import 'package:myotherapp/shared/widgets/error_view.dart';
+import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
 
 /// Profile Page - exact same UI as original, using Riverpod for state.
 class ProfilePage extends ConsumerStatefulWidget {
@@ -83,9 +85,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
     // Show loading while fetching profile
     if (profileState.isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(child: ShimmerProfileCard()),
+      );
+    }
+
+    // Show error state with retry
+    if (profileState.error != null) {
       return Scaffold(
         backgroundColor: Colors.white,
-        body: const Center(child: CircularProgressIndicator()),
+        body: ErrorView(
+          message: profileState.error,
+          onRetry: () => ref.read(profileProvider.notifier).loadProfile(),
+        ),
       );
     }
 

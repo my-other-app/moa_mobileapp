@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
-
-import 'package:myotherapp/features/clubs/presentation/pages/explore_more_clubs_page.dart';
 
 class NoFollowingClubPage extends StatelessWidget {
   const NoFollowingClubPage({super.key});
@@ -48,12 +47,7 @@ class NoFollowingClubPage extends StatelessWidget {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ExploreMoreClubsPage(),
-                      ),
-                    );
+                    context.push('/clubs/explore');
                   },
                   child: Text('VIEW CLUBS'),
                 ),

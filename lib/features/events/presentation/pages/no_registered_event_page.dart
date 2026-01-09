@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/features/main/presentation/pages/landing_page.dart';
 
 class NoRegisteredEventPage extends StatelessWidget {
   const NoRegisteredEventPage({super.key});
@@ -47,12 +47,7 @@ class NoRegisteredEventPage extends StatelessWidget {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => LandingPage(),
-                      ),
-                    );
+                    context.go('/events');
                   },
                   child: Text('EXPLORE EVENTS'),
                 ),
