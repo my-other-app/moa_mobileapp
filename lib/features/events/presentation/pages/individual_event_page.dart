@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:myotherapp/shared/widgets/svg_icon.dart';
 import 'package:myotherapp/shared/widgets/error_view.dart';
 import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
+import 'package:myotherapp/features/events/presentation/pages/ticket_view_page.dart';
 
 class IndividualEventPage extends StatefulWidget {
   final int eventId;
@@ -1237,24 +1238,33 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: () async {
+              onPressed: () {
                 if (ticketUrl != null && ticketUrl!.isNotEmpty) {
-                  String finalUrl = ticketUrl!;
-
-                  // Handle old format: /api/v1/events/tickets/{id} → https://events.myotherapp.com/tickets/{id}
+                  // Extract ticket ID from URL
+                  String extractedTicketId = '';
                   if (ticketUrl!.startsWith('/api/v1/events/tickets/')) {
-                    final ticketId =
+                    extractedTicketId =
                         ticketUrl!.replaceFirst('/api/v1/events/tickets/', '');
-                    finalUrl =
-                        'https://events.myotherapp.com/tickets/$ticketId';
-                  } else if (ticketUrl!.startsWith('/')) {
-                    // Other relative URLs - use API domain
-                    finalUrl = 'https://api.myotherapp.com$ticketUrl';
+                  } else if (ticketUrl!.contains('/tickets/')) {
+                    extractedTicketId = ticketUrl!.split('/tickets/').last;
+                  } else {
+                    extractedTicketId = ticketUrl!;
                   }
-                  // else: Already a full URL, use as-is
 
-                  final Uri url = Uri.parse(finalUrl);
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                  // Navigate to in-app ticket viewer
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TicketViewPage(
+                        ticketId: extractedTicketId,
+                        eventName: name ?? 'Event',
+                        eventDateTime: eventDateTime,
+                        locationName: locationName,
+                        durationHours: duration,
+                        ticketUrl: ticketUrl,
+                      ),
+                    ),
+                  );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
