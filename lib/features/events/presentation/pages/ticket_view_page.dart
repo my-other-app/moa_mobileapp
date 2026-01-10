@@ -1,15 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:flutter_wallet_card/flutter_wallet_card.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-/// Native Flutter ticket view page with QR code, download, calendar, share, and wallet features.
+/// Enhanced native Flutter ticket view page matching app design.
 class TicketViewPage extends StatefulWidget {
   final String ticketId;
   final String eventName;
@@ -38,15 +39,21 @@ class TicketViewPage extends StatefulWidget {
   State<TicketViewPage> createState() => _TicketViewPageState();
 }
 
-class _TicketViewPageState extends State<TicketViewPage> {
+class _TicketViewPageState extends State<TicketViewPage>
+    with SingleTickerProviderStateMixin {
   bool _isDownloading = false;
   bool _isAddingToWallet = false;
+  late AnimationController _shimmerController;
+
+  // App theme colors
+  static const _primaryDark = Color(0xFF2C333D);
+  static const _accentYellow = Color(0xFFF9FFA1);
+  static const _backgroundDark = Color(0xFF1A1A2E);
+  static const _cardBackground = Color(0xFF0D0D14);
 
   String get _ticketWebUrl {
     if (widget.ticketUrl != null && widget.ticketUrl!.isNotEmpty) {
-      if (widget.ticketUrl!.startsWith('http')) {
-        return widget.ticketUrl!;
-      }
+      if (widget.ticketUrl!.startsWith('http')) return widget.ticketUrl!;
       if (widget.ticketUrl!.startsWith('/api/v1/events/tickets/')) {
         final id =
             widget.ticketUrl!.replaceFirst('/api/v1/events/tickets/', '');
@@ -66,6 +73,26 @@ class _TicketViewPageState extends State<TicketViewPage> {
     return DateFormat('h:mm a').format(widget.eventDateTime!);
   }
 
+  String get _formattedDay {
+    if (widget.eventDateTime == null) return '';
+    return DateFormat('EEEE').format(widget.eventDateTime!);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
+  }
+
   Future<void> _downloadTicket() async {
     setState(() => _isDownloading = true);
 
@@ -80,29 +107,33 @@ class _TicketViewPageState extends State<TicketViewPage> {
         final file = File(filePath);
         await file.writeAsBytes(response.bodyBytes);
 
-        setState(() => _isDownloading = false);
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Ticket downloaded successfully!'),
+              content: const Text('Ticket downloaded!'),
+              backgroundColor: _primaryDark,
               action: SnackBarAction(
                 label: 'Open',
+                textColor: _accentYellow,
                 onPressed: () => OpenFilex.open(filePath),
               ),
             ),
           );
         }
       } else {
-        throw Exception('Failed to download ticket');
+        throw Exception('Download failed');
       }
     } catch (e) {
-      setState(() => _isDownloading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Download failed: ${e.toString()}')),
+          SnackBar(
+            content: Text('Download failed: ${e.toString()}'),
+            backgroundColor: Colors.red.shade700,
+          ),
         );
       }
+    } finally {
+      setState(() => _isDownloading = false);
     }
   }
 
@@ -117,7 +148,7 @@ class _TicketViewPageState extends State<TicketViewPage> {
     final Event event = Event(
       title: widget.eventName,
       description:
-          'Event Ticket ID: ${widget.ticketId}\nLocation: ${widget.locationName ?? "TBA"}',
+          'Ticket ID: ${widget.ticketId}\n\nView ticket: $_ticketWebUrl',
       location: widget.locationName ?? '',
       startDate: widget.eventDateTime!,
       endDate:
@@ -128,15 +159,10 @@ class _TicketViewPageState extends State<TicketViewPage> {
 
     try {
       await Add2Calendar.addEvent2Cal(event);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Event added to calendar!')),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not add to calendar: ${e.toString()}')),
+          SnackBar(content: Text('Error: ${e.toString()}')),
         );
       }
     }
@@ -144,8 +170,11 @@ class _TicketViewPageState extends State<TicketViewPage> {
 
   Future<void> _shareTicket() async {
     await Share.share(
-      'Check out my ticket for ${widget.eventName}!\n\n$_ticketWebUrl',
-      subject: 'Ticket for ${widget.eventName}',
+      '🎟️ ${widget.eventName}\n\n'
+      '📅 $_formattedDate at $_formattedTime\n'
+      '📍 ${widget.locationName ?? "TBA"}\n\n'
+      'View my ticket: $_ticketWebUrl',
+      subject: 'My ticket for ${widget.eventName}',
     );
   }
 
@@ -153,13 +182,40 @@ class _TicketViewPageState extends State<TicketViewPage> {
     setState(() => _isAddingToWallet = true);
 
     try {
-      // For now, show a message that wallet integration requires backend setup
-      // In production, this would fetch a .pkpass file from the backend
+      // Generate Apple Wallet pass URL
+      final walletUrl = Uri.parse(
+        'https://api.myotherapp.com/api/v1/events/tickets/${widget.ticketId}/wallet',
+      );
+
+      // Try to open the wallet pass
+      if (await canLaunchUrl(walletUrl)) {
+        await launchUrl(walletUrl, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback: Copy ticket ID for manual entry
+        await Clipboard.setData(ClipboardData(text: widget.ticketId));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'Wallet pass not available yet. Ticket ID copied!',
+              ),
+              backgroundColor: _primaryDark,
+              action: SnackBarAction(
+                label: 'OK',
+                textColor: _accentYellow,
+                onPressed: () {},
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
       if (mounted) {
+        await Clipboard.setData(ClipboardData(text: widget.ticketId));
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Wallet integration coming soon!'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: const Text('Ticket ID copied to clipboard!'),
+            backgroundColor: _primaryDark,
           ),
         );
       }
@@ -168,76 +224,140 @@ class _TicketViewPageState extends State<TicketViewPage> {
     }
   }
 
+  void _copyTicketId() {
+    Clipboard.setData(ClipboardData(text: widget.ticketId));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Ticket ID copied!'),
+        backgroundColor: _primaryDark,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF00BCD4), // Teal background
+      backgroundColor: _backgroundDark,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF00BCD4),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.black38,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.arrow_back_ios_new,
+                color: Colors.white, size: 18),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'YOUR TICKET',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            letterSpacing: 1.2,
-          ),
-        ),
-        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.share, color: Colors.white),
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black38,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.share_outlined,
+                  color: Colors.white, size: 18),
+            ),
             onPressed: _shareTicket,
-            tooltip: 'Share Ticket',
           ),
+          const SizedBox(width: 8),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              // Main Ticket Card
-              _buildTicketCard(),
-              const SizedBox(height: 24),
-
-              // Action Buttons
-              _buildActionButtons(),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _backgroundDark,
+              _cardBackground,
+              Colors.black,
             ],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              child: Column(
+                children: [
+                  // Header text
+                  _buildHeader(),
+                  const SizedBox(height: 24),
+
+                  // Main Ticket Card
+                  _buildTicketCard(),
+                  const SizedBox(height: 32),
+
+                  // Action Buttons
+                  _buildActionButtons(),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
+  Widget _buildHeader() {
+    return Column(
+      children: [
+        Text(
+          'YOUR TICKET',
+          style: TextStyle(
+            fontFamily: 'BebasNeue',
+            fontSize: 28,
+            color: _accentYellow,
+            letterSpacing: 4,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Scan QR at venue for entry',
+          style: TextStyle(
+            fontFamily: 'DMSans',
+            fontSize: 13,
+            color: Colors.white.withAlpha(150),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTicketCard() {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: _accentYellow.withAlpha(30),
+            blurRadius: 30,
+            spreadRadius: -5,
+            offset: const Offset(0, 15),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         child: Column(
           children: [
-            // Top section with event details (dark background)
+            // Top section - Event Details
             _buildTicketTop(),
 
-            // Dotted divider
-            _buildDottedDivider(),
+            // Tear line with cutouts
+            _buildTearLine(),
 
-            // Bottom section with QR code (light background)
+            // Bottom section - QR Code
             _buildTicketBottom(),
           ],
         ),
@@ -247,75 +367,98 @@ class _TicketViewPageState extends State<TicketViewPage> {
 
   Widget _buildTicketTop() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
-        image: widget.posterUrl != null
-            ? DecorationImage(
-                image: NetworkImage(widget.posterUrl!),
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(
-                  Colors.black.withOpacity(0.7),
-                  BlendMode.darken,
-                ),
-              )
-            : null,
+        color: _cardBackground,
+        border: Border(
+          left: BorderSide(color: _accentYellow.withAlpha(100), width: 1),
+          right: BorderSide(color: _accentYellow.withAlpha(100), width: 1),
+          top: BorderSide(color: _accentYellow.withAlpha(100), width: 1),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Event badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: _accentYellow,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              widget.ticketType?.toUpperCase() ?? 'GENERAL ADMISSION',
+              style: const TextStyle(
+                fontFamily: 'DMSans',
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // Event Name
           Text(
-            widget.eventName.toUpperCase(),
+            widget.eventName,
             style: const TextStyle(
+              fontFamily: 'BebasNeue',
+              fontSize: 28,
               color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
+              height: 1.1,
             ),
           ),
           const SizedBox(height: 20),
 
-          // Date and Time Row
-          Row(
-            children: [
-              Expanded(
-                child: _buildInfoColumn('Date', _formattedDate),
-              ),
-              Expanded(
-                child: _buildInfoColumn('Time', _formattedTime),
-              ),
-            ],
+          // Date/Time Section with icon
+          _buildInfoRow(
+            Icons.calendar_today_outlined,
+            '$_formattedDate  •  $_formattedTime',
+            _formattedDay,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-          // Location and Ticket ID Row
-          Row(
-            children: [
-              Expanded(
-                child:
-                    _buildInfoColumn('Location', widget.locationName ?? 'TBA'),
-              ),
-              Expanded(
-                child: _buildInfoColumn('Ticket ID', widget.ticketId),
-              ),
-            ],
+          // Location with icon
+          _buildInfoRow(
+            Icons.location_on_outlined,
+            widget.locationName ?? 'To be announced',
+            null,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
-          // Ticket Holder and Type Row
+          // Divider
+          Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  _accentYellow.withAlpha(80),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Ticket holder and ID
           Row(
             children: [
               Expanded(
-                child: _buildInfoColumn(
-                  'Ticket Holder Name',
+                child: _buildDetailColumn(
+                  'TICKET HOLDER',
                   widget.ticketHolderName ?? 'Guest',
                 ),
               ),
               Expanded(
-                child: _buildInfoColumn(
-                  'Ticket Type',
-                  widget.ticketType ?? 'GENERAL',
+                child: GestureDetector(
+                  onTap: _copyTicketId,
+                  child: _buildDetailColumn(
+                    'TICKET ID',
+                    widget.ticketId,
+                    showCopyIcon: true,
+                  ),
                 ),
               ),
             ],
@@ -325,47 +468,100 @@ class _TicketViewPageState extends State<TicketViewPage> {
     );
   }
 
-  Widget _buildInfoColumn(String label, String value) {
+  Widget _buildInfoRow(IconData icon, String primary, String? secondary) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: _accentYellow.withAlpha(20),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: _accentYellow, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                primary,
+                style: const TextStyle(
+                  fontFamily: 'DMSans',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              if (secondary != null)
+                Text(
+                  secondary,
+                  style: TextStyle(
+                    fontFamily: 'DMSans',
+                    fontSize: 12,
+                    color: Colors.white.withAlpha(150),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailColumn(String label, String value,
+      {bool showCopyIcon = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.6),
-            fontSize: 11,
-            letterSpacing: 0.5,
+            fontFamily: 'DMSans',
+            fontSize: 10,
+            color: Colors.white.withAlpha(120),
+            letterSpacing: 1,
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontFamily: 'DMSans',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (showCopyIcon) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.copy, size: 12, color: _accentYellow.withAlpha(180)),
+            ],
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildDottedDivider() {
+  Widget _buildTearLine() {
     return Container(
-      color: const Color(0xFF1A1A2E),
+      color: _cardBackground,
       child: Row(
         children: [
-          // Left semicircle cutout
+          // Left cutout
           Container(
-            width: 20,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: Color(0xFF00BCD4),
-              borderRadius: BorderRadius.only(
-                topRight: Radius.circular(20),
-                bottomRight: Radius.circular(20),
+            width: 24,
+            height: 48,
+            decoration: BoxDecoration(
+              color: _backgroundDark,
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(24),
+                bottomRight: Radius.circular(24),
               ),
             ),
           ),
@@ -374,31 +570,33 @@ class _TicketViewPageState extends State<TicketViewPage> {
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                return Flex(
-                  direction: Axis.horizontal,
+                final dashCount = (constraints.maxWidth / 12).floor();
+                return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(
-                    (constraints.constrainWidth() / 10).floor(),
-                    (index) => Container(
-                      width: 5,
-                      height: 1,
-                      color: Colors.white.withOpacity(0.5),
-                    ),
-                  ),
+                  children: List.generate(dashCount, (i) {
+                    return Container(
+                      width: 6,
+                      height: 2,
+                      decoration: BoxDecoration(
+                        color: _accentYellow.withAlpha(80),
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                    );
+                  }),
                 );
               },
             ),
           ),
 
-          // Right semicircle cutout
+          // Right cutout
           Container(
-            width: 20,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: Color(0xFF00BCD4),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                bottomLeft: Radius.circular(20),
+            width: 24,
+            height: 48,
+            decoration: BoxDecoration(
+              color: _backgroundDark,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                bottomLeft: Radius.circular(24),
               ),
             ),
           ),
@@ -410,35 +608,56 @@ class _TicketViewPageState extends State<TicketViewPage> {
   Widget _buildTicketBottom() {
     return Container(
       padding: const EdgeInsets.all(24),
-      color: Colors.white,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          left: BorderSide(color: _accentYellow.withAlpha(100), width: 1),
+          right: BorderSide(color: _accentYellow.withAlpha(100), width: 1),
+          bottom: BorderSide(color: _accentYellow.withAlpha(100), width: 1),
+        ),
+      ),
       child: Column(
         children: [
-          // QR Code
+          // QR Code with glow effect
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: _primaryDark.withAlpha(30),
+                  blurRadius: 20,
+                  spreadRadius: 0,
+                ),
+              ],
             ),
             child: QrImageView(
               data: widget.ticketId,
               version: QrVersions.auto,
               size: 180,
               backgroundColor: Colors.white,
-              errorCorrectionLevel: QrErrorCorrectLevel.M,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Color(0xFF2C333D),
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Color(0xFF2C333D),
+              ),
             ),
           ),
           const SizedBox(height: 16),
 
-          // Scan instruction
+          // Scan text
           Text(
-            'Scan this QR code at the venue',
+            'SCAN FOR ENTRY',
             style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 13,
+              fontFamily: 'BebasNeue',
+              fontSize: 14,
+              color: _primaryDark,
+              letterSpacing: 2,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -452,17 +671,19 @@ class _TicketViewPageState extends State<TicketViewPage> {
         Row(
           children: [
             Expanded(
-              child: _ActionButton(
-                icon: _isDownloading ? Icons.hourglass_empty : Icons.download,
-                label: _isDownloading ? 'Downloading...' : 'Download',
+              child: _GlassButton(
+                icon: _isDownloading
+                    ? Icons.hourglass_top
+                    : Icons.download_rounded,
+                label: _isDownloading ? 'Saving...' : 'Download',
                 onPressed: _isDownloading ? null : _downloadTicket,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _ActionButton(
-                icon: Icons.calendar_today,
-                label: 'Add to Calendar',
+              child: _GlassButton(
+                icon: Icons.event_outlined,
+                label: 'Calendar',
                 onPressed: _addToCalendar,
               ),
             ),
@@ -470,26 +691,24 @@ class _TicketViewPageState extends State<TicketViewPage> {
         ),
         const SizedBox(height: 12),
 
-        // Row 2: Add to Wallet (Full Width)
-        SizedBox(
-          width: double.infinity,
-          child: _WalletButton(
-            isLoading: _isAddingToWallet,
-            onPressed: _addToWallet,
-          ),
+        // Add to Wallet Button
+        _WalletButton(
+          isLoading: _isAddingToWallet,
+          onPressed: _addToWallet,
+          accentColor: _accentYellow,
         ),
       ],
     );
   }
 }
 
-/// Action button widget
-class _ActionButton extends StatelessWidget {
+/// Glassmorphic action button
+class _GlassButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
 
-  const _ActionButton({
+  const _GlassButton({
     required this.icon,
     required this.label,
     this.onPressed,
@@ -497,63 +716,105 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18),
-      label: Text(
-        label,
-        style: const TextStyle(fontSize: 12),
-        overflow: TextOverflow.ellipsis,
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF2C333D),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withAlpha(30)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'DMSans',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
         ),
-        elevation: 2,
       ),
     );
   }
 }
 
-/// Add to Wallet button
+/// Premium wallet button with gradient
 class _WalletButton extends StatelessWidget {
   final bool isLoading;
   final VoidCallback? onPressed;
+  final Color accentColor;
 
   const _WalletButton({
     required this.isLoading,
+    required this.accentColor,
     this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: isLoading ? null : onPressed,
-      icon: isLoading
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isLoading ? null : onPressed,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                accentColor,
+                accentColor.withGreen(240),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: accentColor.withAlpha(80),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
-            )
-          : const Icon(Icons.wallet, size: 20),
-      label: Text(
-        isLoading ? 'Adding to Wallet...' : 'Add to Wallet',
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (isLoading)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.black,
+                  ),
+                )
+              else
+                const Icon(Icons.wallet, color: Colors.black, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                isLoading ? 'Adding to Wallet...' : 'Add to Wallet',
+                style: const TextStyle(
+                  fontFamily: 'BebasNeue',
+                  fontSize: 18,
+                  color: Colors.black,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
         ),
-        elevation: 4,
       ),
     );
   }
