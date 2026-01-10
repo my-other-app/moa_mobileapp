@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
@@ -10,7 +11,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Enhanced native Flutter ticket view page matching app design.
+/// Premium ticket page with stunning glow effects and Apple Wallet-like design.
 class TicketViewPage extends StatefulWidget {
   final String ticketId;
   final String eventName;
@@ -40,16 +41,18 @@ class TicketViewPage extends StatefulWidget {
 }
 
 class _TicketViewPageState extends State<TicketViewPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   bool _isDownloading = false;
   bool _isAddingToWallet = false;
-  late AnimationController _shimmerController;
+  late AnimationController _glowController;
+  late AnimationController _pulseController;
 
-  // App theme colors
-  static const _primaryDark = Color(0xFF2C333D);
+  // Design colors inspired by app theme
   static const _accentYellow = Color(0xFFF9FFA1);
-  static const _backgroundDark = Color(0xFF1A1A2E);
-  static const _cardBackground = Color(0xFF0D0D14);
+  static const _accentGreen = Color(0xFFB8FF9F);
+  static const _darkBg = Color(0xFF0A0A0F);
+  static const _cardDark = Color(0xFF141419);
+  static const _cardBorder = Color(0xFF2A2A35);
 
   String get _ticketWebUrl {
     if (widget.ticketUrl != null && widget.ticketUrl!.isNotEmpty) {
@@ -65,7 +68,9 @@ class _TicketViewPageState extends State<TicketViewPage>
 
   String get _formattedDate {
     if (widget.eventDateTime == null) return 'TBA';
-    return DateFormat('d MMM yyyy').format(widget.eventDateTime!).toUpperCase();
+    return DateFormat('MMM d, yyyy')
+        .format(widget.eventDateTime!)
+        .toUpperCase();
   }
 
   String get _formattedTime {
@@ -73,28 +78,30 @@ class _TicketViewPageState extends State<TicketViewPage>
     return DateFormat('h:mm a').format(widget.eventDateTime!);
   }
 
-  String get _formattedDay {
-    if (widget.eventDateTime == null) return '';
-    return DateFormat('EEEE').format(widget.eventDateTime!);
-  }
-
   @override
   void initState() {
     super.initState();
-    _shimmerController = AnimationController(
-      duration: const Duration(seconds: 2),
+    _glowController = AnimationController(
+      duration: const Duration(seconds: 3),
       vsync: this,
-    )..repeat();
+    )..repeat(reverse: true);
+
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
-    _shimmerController.dispose();
+    _glowController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
   Future<void> _downloadTicket() async {
     setState(() => _isDownloading = true);
+    HapticFeedback.mediumImpact();
 
     try {
       final pdfUrl =
@@ -104,51 +111,32 @@ class _TicketViewPageState extends State<TicketViewPage>
       if (response.statusCode == 200) {
         final directory = await getApplicationDocumentsDirectory();
         final filePath = '${directory.path}/ticket_${widget.ticketId}.pdf';
-        final file = File(filePath);
-        await file.writeAsBytes(response.bodyBytes);
+        await File(filePath).writeAsBytes(response.bodyBytes);
 
+        HapticFeedback.heavyImpact();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Ticket downloaded!'),
-              backgroundColor: _primaryDark,
-              action: SnackBarAction(
-                label: 'Open',
-                textColor: _accentYellow,
-                onPressed: () => OpenFilex.open(filePath),
-              ),
-            ),
-          );
+          _showSuccessSnackBar('Ticket saved!', () => OpenFilex.open(filePath));
         }
       } else {
         throw Exception('Download failed');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Download failed: ${e.toString()}'),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
-      }
+      if (mounted) _showErrorSnackBar('Download failed');
     } finally {
-      setState(() => _isDownloading = false);
+      if (mounted) setState(() => _isDownloading = false);
     }
   }
 
   Future<void> _addToCalendar() async {
+    HapticFeedback.lightImpact();
     if (widget.eventDateTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Event date not available')),
-      );
+      _showErrorSnackBar('Event date not available');
       return;
     }
 
     final Event event = Event(
       title: widget.eventName,
-      description:
-          'Ticket ID: ${widget.ticketId}\n\nView ticket: $_ticketWebUrl',
+      description: 'Ticket: ${widget.ticketId}\n$_ticketWebUrl',
       location: widget.locationName ?? '',
       startDate: widget.eventDateTime!,
       endDate:
@@ -157,80 +145,191 @@ class _TicketViewPageState extends State<TicketViewPage>
       androidParams: const AndroidParams(emailInvites: []),
     );
 
-    try {
-      await Add2Calendar.addEvent2Cal(event);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
-      }
-    }
+    await Add2Calendar.addEvent2Cal(event);
   }
 
   Future<void> _shareTicket() async {
+    HapticFeedback.lightImpact();
     await Share.share(
       '🎟️ ${widget.eventName}\n\n'
-      '📅 $_formattedDate at $_formattedTime\n'
+      '📅 $_formattedDate • $_formattedTime\n'
       '📍 ${widget.locationName ?? "TBA"}\n\n'
-      'View my ticket: $_ticketWebUrl',
-      subject: 'My ticket for ${widget.eventName}',
+      '$_ticketWebUrl',
     );
   }
 
   Future<void> _addToWallet() async {
     setState(() => _isAddingToWallet = true);
+    HapticFeedback.mediumImpact();
 
     try {
-      // Generate Apple Wallet pass URL
-      final walletUrl = Uri.parse(
-        'https://api.myotherapp.com/api/v1/events/tickets/${widget.ticketId}/wallet',
-      );
+      // Try to fetch wallet pass from backend
+      final walletPassUrl =
+          'https://api.myotherapp.com/api/v1/events/tickets/${widget.ticketId}/wallet.pkpass';
 
-      // Try to open the wallet pass
-      if (await canLaunchUrl(walletUrl)) {
-        await launchUrl(walletUrl, mode: LaunchMode.externalApplication);
-      } else {
-        // Fallback: Copy ticket ID for manual entry
-        await Clipboard.setData(ClipboardData(text: widget.ticketId));
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                'Wallet pass not available yet. Ticket ID copied!',
-              ),
-              backgroundColor: _primaryDark,
-              action: SnackBarAction(
-                label: 'OK',
-                textColor: _accentYellow,
-                onPressed: () {},
-              ),
-            ),
+      // Check if the wallet endpoint exists
+      final response = await http.head(Uri.parse(walletPassUrl)).timeout(
+            const Duration(seconds: 5),
+            onTimeout: () => http.Response('', 404),
           );
+
+      if (response.statusCode == 200) {
+        // Wallet pass exists - try to open it
+        final uri = Uri.parse(walletPassUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
         }
       }
-    } catch (e) {
+
+      // Fallback: Show info dialog
       if (mounted) {
-        await Clipboard.setData(ClipboardData(text: widget.ticketId));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Ticket ID copied to clipboard!'),
-            backgroundColor: _primaryDark,
-          ),
-        );
+        _showWalletInfoDialog();
       }
+    } catch (e) {
+      if (mounted) _showWalletInfoDialog();
     } finally {
-      setState(() => _isAddingToWallet = false);
+      if (mounted) setState(() => _isAddingToWallet = false);
     }
   }
 
-  void _copyTicketId() {
-    Clipboard.setData(ClipboardData(text: widget.ticketId));
+  void _showWalletInfoDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _cardDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _accentYellow.withAlpha(20),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.wallet, color: _accentYellow, size: 32),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Wallet Pass Coming Soon',
+              style: TextStyle(
+                fontFamily: 'BebasNeue',
+                fontSize: 24,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Apple Wallet and Google Wallet passes will be available soon. '
+              'For now, you can screenshot this ticket or use the share button.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'DMSans',
+                fontSize: 14,
+                color: Colors.white.withAlpha(180),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDialogButton(
+                    'Copy Ticket ID',
+                    Icons.copy,
+                    () {
+                      Clipboard.setData(ClipboardData(text: widget.ticketId));
+                      Navigator.pop(ctx);
+                      _showSuccessSnackBar('Ticket ID copied!', null);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildDialogButton(
+                    'Share Ticket',
+                    Icons.share,
+                    () {
+                      Navigator.pop(ctx);
+                      _shareTicket();
+                    },
+                    isPrimary: true,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDialogButton(String label, IconData icon, VoidCallback onTap,
+      {bool isPrimary = false}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isPrimary ? _accentYellow : Colors.white.withAlpha(15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                size: 18, color: isPrimary ? Colors.black : Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'DMSans',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isPrimary ? Colors.black : Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message, VoidCallback? onAction) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Ticket ID copied!'),
-        backgroundColor: _primaryDark,
-        duration: const Duration(seconds: 1),
+        content: Text(message, style: const TextStyle(fontFamily: 'DMSans')),
+        backgroundColor: _cardDark,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        action: onAction != null
+            ? SnackBarAction(
+                label: 'Open', textColor: _accentYellow, onPressed: onAction)
+            : null,
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontFamily: 'DMSans')),
+        backgroundColor: Colors.red.shade800,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -238,192 +337,217 @@ class _TicketViewPageState extends State<TicketViewPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _backgroundDark,
+      backgroundColor: _darkBg,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.black38,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.arrow_back_ios_new,
-                color: Colors.white, size: 18),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black38,
-                borderRadius: BorderRadius.circular(12),
+      appBar: _buildAppBar(),
+      body: Stack(
+        children: [
+          // Animated background glow
+          _buildAnimatedBackground(),
+
+          // Content
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    _buildTicketCard(),
+                    const SizedBox(height: 28),
+                    _buildActionButtons(),
+                  ],
+                ),
               ),
-              child: const Icon(Icons.share_outlined,
-                  color: Colors.white, size: 18),
             ),
-            onPressed: _shareTicket,
           ),
-          const SizedBox(width: 8),
         ],
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              _backgroundDark,
-              _cardBackground,
-              Colors.black,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-              child: Column(
-                children: [
-                  // Header text
-                  _buildHeader(),
-                  const SizedBox(height: 24),
-
-                  // Main Ticket Card
-                  _buildTicketCard(),
-                  const SizedBox(height: 32),
-
-                  // Action Buttons
-                  _buildActionButtons(),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        Text(
-          'YOUR TICKET',
-          style: TextStyle(
-            fontFamily: 'BebasNeue',
-            fontSize: 28,
-            color: _accentYellow,
-            letterSpacing: 4,
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      centerTitle: true,
+      leading: _buildAppBarButton(
+          Icons.arrow_back_ios_new, () => Navigator.pop(context)),
+      title: Column(
+        children: [
+          Text(
+            'E-TICKET',
+            style: TextStyle(
+              fontFamily: 'BebasNeue',
+              fontSize: 18,
+              color: _accentYellow,
+              letterSpacing: 3,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Scan QR at venue for entry',
-          style: TextStyle(
-            fontFamily: 'DMSans',
-            fontSize: 13,
-            color: Colors.white.withAlpha(150),
-          ),
-        ),
+        ],
+      ),
+      actions: [
+        _buildAppBarButton(Icons.share_outlined, _shareTicket),
+        const SizedBox(width: 8),
       ],
     );
   }
 
-  Widget _buildTicketCard() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: _accentYellow.withAlpha(30),
-            blurRadius: 30,
-            spreadRadius: -5,
-            offset: const Offset(0, 15),
-          ),
-        ],
+  Widget _buildAppBarButton(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(10),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withAlpha(20)),
+        ),
+        child: Icon(icon, color: Colors.white, size: 18),
       ),
+    );
+  }
+
+  Widget _buildAnimatedBackground() {
+    return AnimatedBuilder(
+      animation: _glowController,
+      builder: (context, child) {
+        return Positioned(
+          top: -100 + (_glowController.value * 20),
+          left: 0,
+          right: 0,
+          child: Container(
+            height: 400,
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.topCenter,
+                radius: 1.2,
+                colors: [
+                  _accentYellow
+                      .withAlpha((40 * _glowController.value).toInt() + 10),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTicketCard() {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: _accentYellow
+                    .withAlpha((20 + 15 * _pulseController.value).toInt()),
+                blurRadius: 40 + (10 * _pulseController.value),
+                spreadRadius: -10,
+                offset: const Offset(0, 20),
+              ),
+            ],
+          ),
+          child: child,
+        );
+      },
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Column(
-          children: [
-            // Top section - Event Details
-            _buildTicketTop(),
-
-            // Tear line with cutouts
-            _buildTearLine(),
-
-            // Bottom section - QR Code
-            _buildTicketBottom(),
-          ],
+        borderRadius: BorderRadius.circular(28),
+        child: Container(
+          decoration: BoxDecoration(
+            color: _cardDark,
+            border: Border.all(color: _accentYellow.withAlpha(60), width: 1.5),
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Column(
+            children: [
+              _buildTicketHeader(),
+              _buildTicketDetails(),
+              _buildPerforationLine(),
+              _buildQRSection(),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildTicketTop() {
+  Widget _buildTicketHeader() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
       decoration: BoxDecoration(
-        color: _cardBackground,
-        border: Border(
-          left: BorderSide(color: _accentYellow.withAlpha(100), width: 1),
-          right: BorderSide(color: _accentYellow.withAlpha(100), width: 1),
-          top: BorderSide(color: _accentYellow.withAlpha(100), width: 1),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _accentYellow.withAlpha(15),
+            Colors.transparent,
+          ],
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Event badge
+          // Ticket type badge
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: _accentYellow,
+              gradient: LinearGradient(
+                colors: [_accentYellow, _accentGreen],
+              ),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              widget.ticketType?.toUpperCase() ?? 'GENERAL ADMISSION',
+              widget.ticketType?.toUpperCase() ?? 'GENERAL',
               style: const TextStyle(
                 fontFamily: 'DMSans',
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
-                letterSpacing: 1,
+                letterSpacing: 1.2,
               ),
             ),
           ),
           const SizedBox(height: 16),
 
-          // Event Name
+          // Event name
           Text(
-            widget.eventName,
+            widget.eventName.toUpperCase(),
             style: const TextStyle(
               fontFamily: 'BebasNeue',
-              fontSize: 28,
+              fontSize: 32,
               color: Colors.white,
+              letterSpacing: 1,
               height: 1.1,
             ),
           ),
-          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
 
-          // Date/Time Section with icon
-          _buildInfoRow(
-            Icons.calendar_today_outlined,
+  Widget _buildTicketDetails() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      child: Column(
+        children: [
+          // Date & Time
+          _buildDetailRow(
+            Icons.event_outlined,
             '$_formattedDate  •  $_formattedTime',
-            _formattedDay,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
-          // Location with icon
-          _buildInfoRow(
+          // Location
+          _buildDetailRow(
             Icons.location_on_outlined,
-            widget.locationName ?? 'To be announced',
-            null,
+            widget.locationName ?? 'Location TBA',
           ),
           const SizedBox(height: 20),
 
@@ -434,7 +558,7 @@ class _TicketViewPageState extends State<TicketViewPage>
               gradient: LinearGradient(
                 colors: [
                   Colors.transparent,
-                  _accentYellow.withAlpha(80),
+                  _cardBorder,
                   Colors.transparent,
                 ],
               ),
@@ -442,23 +566,22 @@ class _TicketViewPageState extends State<TicketViewPage>
           ),
           const SizedBox(height: 20),
 
-          // Ticket holder and ID
+          // Ticket holder & ID
           Row(
             children: [
               Expanded(
-                child: _buildDetailColumn(
-                  'TICKET HOLDER',
-                  widget.ticketHolderName ?? 'Guest',
-                ),
-              ),
+                  child: _buildInfoBox(
+                      'ATTENDEE', widget.ticketHolderName ?? 'Guest')),
+              const SizedBox(width: 16),
               Expanded(
                 child: GestureDetector(
-                  onTap: _copyTicketId,
-                  child: _buildDetailColumn(
-                    'TICKET ID',
-                    widget.ticketId,
-                    showCopyIcon: true,
-                  ),
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: widget.ticketId));
+                    HapticFeedback.lightImpact();
+                    _showSuccessSnackBar('Ticket ID copied!', null);
+                  },
+                  child: _buildInfoBox('TICKET ID', widget.ticketId,
+                      copyable: true),
                 ),
               ),
             ],
@@ -468,136 +591,111 @@ class _TicketViewPageState extends State<TicketViewPage>
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String primary, String? secondary) {
+  Widget _buildDetailRow(IconData icon, String text) {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: _accentYellow.withAlpha(20),
-            borderRadius: BorderRadius.circular(8),
+            color: _accentYellow.withAlpha(15),
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: _accentYellow, size: 18),
+          child: Icon(icon, color: _accentYellow, size: 20),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontFamily: 'DMSans',
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoBox(String label, String value, {bool copyable = false}) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
               Text(
-                primary,
-                style: const TextStyle(
+                label,
+                style: TextStyle(
                   fontFamily: 'DMSans',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  fontSize: 10,
+                  color: Colors.white.withAlpha(120),
+                  letterSpacing: 1,
                 ),
               ),
-              if (secondary != null)
-                Text(
-                  secondary,
-                  style: TextStyle(
-                    fontFamily: 'DMSans',
-                    fontSize: 12,
-                    color: Colors.white.withAlpha(150),
-                  ),
-                ),
+              if (copyable) ...[
+                const Spacer(),
+                Icon(Icons.copy_rounded,
+                    size: 12, color: _accentYellow.withAlpha(150)),
+              ],
             ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetailColumn(String label, String value,
-      {bool showCopyIcon = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'DMSans',
-            fontSize: 10,
-            color: Colors.white.withAlpha(120),
-            letterSpacing: 1,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Flexible(
-              child: Text(
-                value,
-                style: const TextStyle(
-                  fontFamily: 'DMSans',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'DMSans',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
             ),
-            if (showCopyIcon) ...[
-              const SizedBox(width: 4),
-              Icon(Icons.copy, size: 12, color: _accentYellow.withAlpha(180)),
-            ],
-          ],
-        ),
-      ],
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildTearLine() {
-    return Container(
-      color: _cardBackground,
+  Widget _buildPerforationLine() {
+    return SizedBox(
+      height: 32,
       child: Row(
         children: [
-          // Left cutout
+          // Left notch
           Container(
-            width: 24,
-            height: 48,
+            width: 16,
+            height: 32,
             decoration: BoxDecoration(
-              color: _backgroundDark,
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
+              color: _darkBg,
+              borderRadius:
+                  const BorderRadius.horizontal(right: Radius.circular(16)),
             ),
           ),
 
-          // Dotted line
+          // Perforated line
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final dashCount = (constraints.maxWidth / 12).floor();
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(dashCount, (i) {
-                    return Container(
-                      width: 6,
-                      height: 2,
-                      decoration: BoxDecoration(
-                        color: _accentYellow.withAlpha(80),
-                        borderRadius: BorderRadius.circular(1),
-                      ),
-                    );
-                  }),
-                );
-              },
+            child: CustomPaint(
+              painter: _PerforationPainter(color: _cardBorder),
+              size: const Size(double.infinity, 1),
             ),
           ),
 
-          // Right cutout
+          // Right notch
           Container(
-            width: 24,
-            height: 48,
+            width: 16,
+            height: 32,
             decoration: BoxDecoration(
-              color: _backgroundDark,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(24),
-                bottomLeft: Radius.circular(24),
-              ),
+              color: _darkBg,
+              borderRadius:
+                  const BorderRadius.horizontal(left: Radius.circular(16)),
             ),
           ),
         ],
@@ -605,58 +703,58 @@ class _TicketViewPageState extends State<TicketViewPage>
     );
   }
 
-  Widget _buildTicketBottom() {
+  Widget _buildQRSection() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          left: BorderSide(color: _accentYellow.withAlpha(100), width: 1),
-          right: BorderSide(color: _accentYellow.withAlpha(100), width: 1),
-          bottom: BorderSide(color: _accentYellow.withAlpha(100), width: 1),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.transparent,
+            Colors.white.withAlpha(3),
+          ],
         ),
       ),
       child: Column(
         children: [
-          // QR Code with glow effect
+          // QR Code with glow
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: _primaryDark.withAlpha(30),
+                  color: Colors.white.withAlpha(30),
                   blurRadius: 20,
-                  spreadRadius: 0,
                 ),
               ],
             ),
             child: QrImageView(
               data: widget.ticketId,
               version: QrVersions.auto,
-              size: 180,
+              size: 160,
               backgroundColor: Colors.white,
               eyeStyle: const QrEyeStyle(
                 eyeShape: QrEyeShape.square,
-                color: Color(0xFF2C333D),
+                color: Color(0xFF1A1A1A),
               ),
               dataModuleStyle: const QrDataModuleStyle(
                 dataModuleShape: QrDataModuleShape.square,
-                color: Color(0xFF2C333D),
+                color: Color(0xFF1A1A1A),
               ),
             ),
           ),
           const SizedBox(height: 16),
 
-          // Scan text
           Text(
             'SCAN FOR ENTRY',
             style: TextStyle(
               fontFamily: 'BebasNeue',
               fontSize: 14,
-              color: _primaryDark,
-              letterSpacing: 2,
+              color: _accentYellow,
+              letterSpacing: 3,
             ),
           ),
         ],
@@ -667,50 +765,84 @@ class _TicketViewPageState extends State<TicketViewPage>
   Widget _buildActionButtons() {
     return Column(
       children: [
-        // Row 1: Download and Calendar
         Row(
           children: [
             Expanded(
-              child: _GlassButton(
+              child: _ActionButton(
                 icon: _isDownloading
-                    ? Icons.hourglass_top
+                    ? Icons.hourglass_top_rounded
                     : Icons.download_rounded,
                 label: _isDownloading ? 'Saving...' : 'Download',
                 onPressed: _isDownloading ? null : _downloadTicket,
+                accentColor: _accentYellow,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _GlassButton(
-                icon: Icons.event_outlined,
+              child: _ActionButton(
+                icon: Icons.calendar_month_outlined,
                 label: 'Calendar',
                 onPressed: _addToCalendar,
+                accentColor: _accentYellow,
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
 
-        // Add to Wallet Button
+        // Wallet button
         _WalletButton(
           isLoading: _isAddingToWallet,
           onPressed: _addToWallet,
-          accentColor: _accentYellow,
+          gradientColors: [_accentYellow, _accentGreen],
         ),
       ],
     );
   }
 }
 
+/// Custom painter for perforation line
+class _PerforationPainter extends CustomPainter {
+  final Color color;
+
+  _PerforationPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    const dashWidth = 8.0;
+    const dashSpace = 6.0;
+    double startX = 0;
+
+    while (startX < size.width) {
+      canvas.drawLine(
+        Offset(startX, size.height / 2),
+        Offset(math.min(startX + dashWidth, size.width), size.height / 2),
+        paint,
+      );
+      startX += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 /// Glassmorphic action button
-class _GlassButton extends StatelessWidget {
+class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
+  final Color accentColor;
 
-  const _GlassButton({
+  const _ActionButton({
     required this.icon,
     required this.label,
+    required this.accentColor,
     this.onPressed,
   });
 
@@ -719,20 +851,23 @@ class _GlassButton extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onPressed,
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onPressed?.call();
+        },
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(15),
+            color: Colors.white.withAlpha(8),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withAlpha(30)),
+            border: Border.all(color: Colors.white.withAlpha(15)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Text(
                 label,
                 style: const TextStyle(
@@ -750,15 +885,15 @@ class _GlassButton extends StatelessWidget {
   }
 }
 
-/// Premium wallet button with gradient
+/// Premium gradient wallet button
 class _WalletButton extends StatelessWidget {
   final bool isLoading;
   final VoidCallback? onPressed;
-  final Color accentColor;
+  final List<Color> gradientColors;
 
   const _WalletButton({
     required this.isLoading,
-    required this.accentColor,
+    required this.gradientColors,
     this.onPressed,
   });
 
@@ -774,16 +909,15 @@ class _WalletButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 18),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                accentColor,
-                accentColor.withGreen(240),
-              ],
+              colors: gradientColors,
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: accentColor.withAlpha(80),
-                blurRadius: 20,
+                color: gradientColors.first.withAlpha(60),
+                blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
             ],
@@ -793,23 +927,22 @@ class _WalletButton extends StatelessWidget {
             children: [
               if (isLoading)
                 const SizedBox(
-                  width: 20,
-                  height: 20,
+                  width: 22,
+                  height: 22,
                   child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.black,
-                  ),
+                      strokeWidth: 2.5, color: Colors.black),
                 )
               else
-                const Icon(Icons.wallet, color: Colors.black, size: 22),
-              const SizedBox(width: 10),
+                const Icon(Icons.account_balance_wallet_rounded,
+                    color: Colors.black, size: 22),
+              const SizedBox(width: 12),
               Text(
-                isLoading ? 'Adding to Wallet...' : 'Add to Wallet',
+                isLoading ? 'Adding...' : 'Add to Wallet',
                 style: const TextStyle(
                   fontFamily: 'BebasNeue',
                   fontSize: 18,
                   color: Colors.black,
-                  letterSpacing: 1,
+                  letterSpacing: 1.5,
                 ),
               ),
             ],
