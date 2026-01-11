@@ -4,10 +4,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myotherapp/features/auth/presentation/cubits/login_cubit.dart';
 import 'package:myotherapp/features/auth/data/services/authentication_service.dart';
+import 'package:myotherapp/features/auth/data/services/apple_auth_service.dart';
 import 'package:myotherapp/features/auth/data/services/profile_service.dart';
 import 'package:myotherapp/core/storage/secure_storage_service.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
-/// Onboarding Initial Page - migrated from Bloc to callback-based approach.
+/// Onboarding Initial Page with Google and Apple Sign In support.
 class OnboardingInitialPage extends StatefulWidget {
   const OnboardingInitialPage({super.key});
 
@@ -23,6 +25,7 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
   );
 
   late LoginCubit _loginCubit;
+  bool _isAppleSignInAvailable = false;
 
   @override
   void initState() {
@@ -33,6 +36,16 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
       secureStorage: SecureStorageService(),
     );
     _loginCubit.onStateChanged = _handleLoginStateChange;
+    _checkAppleSignInAvailability();
+  }
+
+  Future<void> _checkAppleSignInAvailability() async {
+    final isAvailable = await AppleAuthService.isAvailable();
+    if (mounted) {
+      setState(() {
+        _isAppleSignInAvailable = isAvailable;
+      });
+    }
   }
 
   void _handleLoginStateChange(LoginState state) {
@@ -62,22 +75,51 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
         final String? idToken = auth.idToken;
         if (idToken != null && mounted) {
           final String platform = Platform.isAndroid ? 'android' : 'ios';
-
-          // Trigger the login process via the cubit.
           _loginCubit.loginWithGoogle(
               idToken, platform, account.photoUrl ?? '');
-          debugPrint("User signed in: ${account.photoUrl}");
-
-          // Disconnect google account to show account selection next time.
           await _googleSignIn.disconnect();
-        } else {
-          debugPrint('No idToken received.');
         }
-      } else {
-        debugPrint('Google sign in cancelled.');
       }
     } catch (error) {
       debugPrint('Error during Google sign in: $error');
+    }
+  }
+
+  Future<void> _handleAppleSignIn() async {
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      String? userName;
+      if (credential.givenName != null || credential.familyName != null) {
+        final parts = [credential.givenName, credential.familyName]
+            .where((part) => part != null && part.isNotEmpty)
+            .toList();
+        if (parts.isNotEmpty) {
+          userName = parts.join(' ');
+        }
+      }
+
+      if (credential.identityToken != null && mounted) {
+        _loginCubit.loginWithApple(
+          credential.identityToken!,
+          credential.authorizationCode,
+          userName,
+          credential.email,
+        );
+      }
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code != AuthorizationErrorCode.canceled && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Apple Sign In failed: ${e.message}')),
+        );
+      }
+    } catch (error) {
+      debugPrint('Error during Apple sign in: $error');
     }
   }
 
@@ -99,7 +141,7 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
                       const SizedBox(height: 48),
                       _buildContent(),
                       const Spacer(),
-                      _buildLoginButton(),
+                      _buildLoginButtons(),
                       const SizedBox(height: 80),
                     ],
                   ),
@@ -107,7 +149,6 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
               ),
             ],
           ),
-          // Background grass image.
           Positioned(
             bottom: 0,
             left: 0,
@@ -187,10 +228,6 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
                     shape: StarBorder(
                       points: 8,
                       innerRadiusRatio: 0.47,
-                      pointRounding: 0,
-                      valleyRounding: 0,
-                      rotation: 0,
-                      squash: 0,
                     ),
                   ),
                 ),
@@ -211,10 +248,6 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
                     shape: StarBorder(
                       points: 8,
                       innerRadiusRatio: 0.47,
-                      pointRounding: 0,
-                      valleyRounding: 0,
-                      rotation: 0,
-                      squash: 0,
                     ),
                   ),
                 ),
@@ -227,8 +260,8 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
   }
 
   Widget _buildContent() {
-    return Column(
-      children: const [
+    return const Column(
+      children: [
         Text(
           'Explore Events\nLearn Skills\nEarn Rewards!',
           textAlign: TextAlign.center,
@@ -254,12 +287,42 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
     );
   }
 
-  Widget _buildLoginButton() {
+  Widget _buildLoginButtons() {
+    return Column(
+      children: [
+        // Google Sign In Button
+        _buildLoginButton(
+          onTap: _handleGoogleSignIn,
+          icon: Image.asset('assets/images/google_logo.png',
+              width: 32, height: 32),
+          text: 'LOGIN WITH GOOGLE',
+          backgroundColor: const Color(0xFF2C333D),
+        ),
+        // Apple Sign In Button (only shown on iOS/macOS)
+        if (_isAppleSignInAvailable) ...[
+          const SizedBox(height: 16),
+          _buildLoginButton(
+            onTap: _handleAppleSignIn,
+            icon: const Icon(Icons.apple, color: Colors.white, size: 32),
+            text: 'LOGIN WITH APPLE',
+            backgroundColor: Colors.black,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLoginButton({
+    required VoidCallback onTap,
+    required Widget icon,
+    required String text,
+    required Color backgroundColor,
+  }) {
     return Container(
       width: double.infinity,
       height: 56,
       decoration: ShapeDecoration(
-        color: const Color(0xFF2C333D),
+        color: backgroundColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -267,24 +330,17 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            debugPrint('Login button tapped');
-            _handleGoogleSignIn();
-          },
+          onTap: onTap,
           borderRadius: BorderRadius.circular(8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                'assets/images/google_logo.png',
-                width: 32,
-                height: 32,
-              ),
+              icon,
               const SizedBox(width: 16),
-              const Text(
-                'LOGIN WITH GOOGLE',
+              Text(
+                text,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
                   fontFamily: 'Bebas Neue',

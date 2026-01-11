@@ -79,4 +79,39 @@ class LoginCubit {
       onStateChanged?.call(_state);
     }
   }
+
+  Future<void> loginWithApple(
+    String identityToken,
+    String authorizationCode,
+    String? userName,
+    String? userEmail,
+  ) async {
+    _state = LoginLoading();
+    onStateChanged?.call(_state);
+
+    try {
+      final result = await authService.signInWithApple(
+        identityToken: identityToken,
+        authorizationCode: authorizationCode,
+        userName: userName,
+        userEmail: userEmail,
+      );
+
+      // Store tokens in secure storage
+      await secureStorage.saveTokens(
+        accessToken: result['access_token'],
+        refreshToken: result['refresh_token'],
+      );
+
+      _state = LoginSuccess(
+        accessToken: result['access_token'],
+        refreshToken: result['refresh_token'],
+        photoUrl: '', // Apple doesn't provide profile photo
+      );
+      onStateChanged?.call(_state);
+    } catch (e) {
+      _state = LoginFailure(error: e.toString());
+      onStateChanged?.call(_state);
+    }
+  }
 }
