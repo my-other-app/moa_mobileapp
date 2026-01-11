@@ -37,15 +37,16 @@ class SearchTabHeader extends StatefulWidget {
   /// Optional hint text for the search bar.
   final String searchHintText;
 
-  /// Optional custom `SearchDelegate`.
-  final SearchDelegate? searchDelegate;
+  /// Filter types for each tab (used for event search).
+  /// Values: 'for_you', 'following', 'registered', 'past'
+  final List<String>? tabFilterTypes;
 
   const SearchTabHeader({
     super.key,
     required this.tabTitles,
     required this.tabPages,
     this.searchHintText = 'Search for Events, Interests, Locations...',
-    this.searchDelegate,
+    this.tabFilterTypes,
   });
 
   @override
@@ -61,36 +62,32 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      // Instead of using a regular appBar, we will build it with Slivers
       body: NestedScrollView(
-        // The SliverAppBar + TabBar will be the "headerSliverBuilder" part.
         headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
           return [
             SliverAppBar(
-              // Makes the app bar float up/down as you scroll
               floating: true,
               automaticallyImplyLeading: false,
-              // Snaps the app bar into view when you scroll up
               snap: true,
-              // If pinned = true, the AppBar remains visible at the top;
-              // if pinned = false, it fully hides.
               pinned: false,
               backgroundColor: Colors.white,
               surfaceTintColor: Colors.white,
               elevation: 1,
               shadowColor: Colors.white,
               forceElevated: true,
-              // The height when fully expanded (can adjust as desired)
               expandedHeight: 150.0,
-
-              // The "title" area: put the search bar here.
-              // Alternatively, you could use flexibleSpace and
-              // FlexibleSpaceBar for more complex behavior.
               title: GestureDetector(
                 onTap: () {
+                  // Get current filter type based on tab index
+                  String filterType = 'for_you';
+                  if (widget.tabFilterTypes != null &&
+                      currentIndex < widget.tabFilterTypes!.length) {
+                    filterType = widget.tabFilterTypes![currentIndex];
+                  }
+
                   showSearch(
                     context: context,
-                    delegate: widget.searchDelegate ?? CustomSearchDelegate(),
+                    delegate: EventSearchDelegate(filterType: filterType),
                   );
                 },
                 child: Container(
@@ -99,7 +96,7 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFDFDFC), // Slightly off-white
+                    color: const Color(0xFFFDFDFC),
                     borderRadius: BorderRadius.circular(8),
                     border:
                         Border.all(color: const Color(0xFF1E1E1E), width: 0.5),
@@ -117,8 +114,6 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
                   ),
                 ),
               ),
-
-              // Put the TabBar in the bottom of the SliverAppBar
               bottom: TabBar(
                 controller: _tabController,
                 splashFactory: NoSplash.splashFactory,
@@ -135,6 +130,7 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
                 dividerColor: Colors.transparent,
                 onTap: (index) {
                   setState(() {
+                    currentIndex = index;
                     _tabController.index = index;
                   });
                 },
@@ -143,7 +139,7 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
                   final title = entry.value;
                   return CustomTab(
                     tabTitle: title,
-                    isSelected: _tabController.index == index,
+                    isSelected: currentIndex == index,
                   );
                 }).toList(),
               ),
@@ -185,7 +181,9 @@ class _SearchTabHeaderState extends State<SearchTabHeader>
     );
     _tabController.addListener(() {
       if (_tabController.index != _tabController.previousIndex) {
-        setState(() {});
+        setState(() {
+          currentIndex = _tabController.index;
+        });
       }
     });
   }

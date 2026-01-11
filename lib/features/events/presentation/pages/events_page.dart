@@ -14,6 +14,7 @@ class EventsPage extends StatelessWidget {
       tabTitles: const ['REGISTERED', 'PAST'],
       tabPages: const [UpcomingEventsPage(), PastEventsPage()],
       searchHintText: 'Search for events...',
+      tabFilterTypes: const ['registered', 'past'],
     );
   }
 }

@@ -17,6 +17,7 @@ class HomePage extends StatelessWidget {
         FollowingEventsPage(),
       ],
       searchHintText: 'Search for Events, Interests, Locations....',
+      tabFilterTypes: const ['for_you', 'following'],
     );
   }
 }

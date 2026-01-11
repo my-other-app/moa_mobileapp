@@ -1,17 +1,24 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 
-/// Custom search delegate that searches events and clubs from the API.
-class CustomSearchDelegate extends SearchDelegate<String> {
+/// Search delegate for EVENTS ONLY - used on home and events pages.
+/// Supports tab-based filtering (for_you, following, registered, past).
+class EventSearchDelegate extends SearchDelegate<String> {
   List<dynamic> _events = [];
-  List<dynamic> _clubs = [];
   String? _error;
   String _lastSearchedQuery = '';
 
+  /// Filter type based on current tab context
+  /// Values: 'for_you', 'following', 'registered', 'past'
+  final String filterType;
+
+  EventSearchDelegate({
+    this.filterType = 'for_you',
+  });
+
   @override
-  String get searchFieldLabel => 'Search events, clubs...';
+  String get searchFieldLabel => 'Search for events...';
 
   @override
   List<Widget> buildActions(BuildContext context) {
@@ -22,7 +29,6 @@ class CustomSearchDelegate extends SearchDelegate<String> {
           onPressed: () {
             query = '';
             _events = [];
-            _clubs = [];
             _lastSearchedQuery = '';
             showSuggestions(context);
           },
@@ -46,15 +52,15 @@ class CustomSearchDelegate extends SearchDelegate<String> {
   @override
   Widget buildSuggestions(BuildContext context) {
     if (query.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
+            const Icon(Icons.search, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
             Text(
-              'Search for events or clubs',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+              'Search for ${_getFilterLabel()} events',
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
           ],
         ),
@@ -63,8 +69,20 @@ class CustomSearchDelegate extends SearchDelegate<String> {
     return _buildSearchResults(context);
   }
 
+  String _getFilterLabel() {
+    switch (filterType) {
+      case 'following':
+        return 'following';
+      case 'registered':
+        return 'registered';
+      case 'past':
+        return 'past';
+      default:
+        return '';
+    }
+  }
+
   Widget _buildSearchResults(BuildContext context) {
-    // If query changed, trigger new search
     if (query != _lastSearchedQuery && query.isNotEmpty) {
       _lastSearchedQuery = query;
       return FutureBuilder(
@@ -77,8 +95,6 @@ class CustomSearchDelegate extends SearchDelegate<String> {
         },
       );
     }
-
-    // Show cached results
     return _buildResultsList(context);
   }
 
@@ -105,7 +121,7 @@ class CustomSearchDelegate extends SearchDelegate<String> {
       );
     }
 
-    if (_events.isEmpty && _clubs.isEmpty) {
+    if (_events.isEmpty && _lastSearchedQuery.isNotEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -113,7 +129,7 @@ class CustomSearchDelegate extends SearchDelegate<String> {
             const Icon(Icons.search_off, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
-              'No results found for "$query"',
+              'No events found for "$query"',
               style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
           ],
@@ -121,39 +137,9 @@ class CustomSearchDelegate extends SearchDelegate<String> {
       );
     }
 
-    return ListView(
-      children: [
-        // Events section
-        if (_events.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'EVENTS',
-              style: TextStyle(
-                fontFamily: 'BebasNeue',
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          ..._events.map((event) => _buildEventTile(context, event)),
-        ],
-        // Clubs section
-        if (_clubs.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'CLUBS',
-              style: TextStyle(
-                fontFamily: 'BebasNeue',
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          ..._clubs.map((club) => _buildClubTile(context, club)),
-        ],
-      ],
+    return ListView.builder(
+      itemCount: _events.length,
+      itemBuilder: (context, index) => _buildEventTile(context, _events[index]),
     );
   }
 
@@ -194,6 +180,159 @@ class CustomSearchDelegate extends SearchDelegate<String> {
     );
   }
 
+  Future<void> _search(String q) async {
+    if (q.isEmpty) return;
+
+    _error = null;
+
+    try {
+      // Build query params based on filter type
+      String endpoint = '/events/list?search=$q&offset=0&limit=20';
+
+      switch (filterType) {
+        case 'following':
+          endpoint += '&is_following=true';
+          break;
+        case 'registered':
+          endpoint += '&is_registered=true&is_ended=false';
+          break;
+        case 'past':
+          endpoint += '&is_registered=true&is_ended=true';
+          break;
+        // 'for_you' - no additional filter, shows all events
+      }
+
+      final response = await APIService.instance.request(
+        endpoint,
+        DioMethod.get,
+      );
+      _events = response.data['items'] ?? [];
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Event search error: $e');
+    }
+  }
+}
+
+/// Search delegate for CLUBS ONLY - used on clubs page.
+class ClubSearchDelegate extends SearchDelegate<String> {
+  List<dynamic> _clubs = [];
+  String? _error;
+  String _lastSearchedQuery = '';
+
+  @override
+  String get searchFieldLabel => 'Search for clubs...';
+
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(
+          icon: const Icon(Icons.clear),
+          onPressed: () {
+            query = '';
+            _clubs = [];
+            _lastSearchedQuery = '';
+            showSuggestions(context);
+          },
+        ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, ''),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return _buildSearchResults(context);
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    if (query.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'Search for clubs',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+    return _buildSearchResults(context);
+  }
+
+  Widget _buildSearchResults(BuildContext context) {
+    if (query != _lastSearchedQuery && query.isNotEmpty) {
+      _lastSearchedQuery = query;
+      return FutureBuilder(
+        future: _search(query),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          return _buildResultsList(context);
+        },
+      );
+    }
+    return _buildResultsList(context);
+  }
+
+  Widget _buildResultsList(BuildContext context) {
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(_error!, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                _error = null;
+                _lastSearchedQuery = '';
+                showResults(context);
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_clubs.isEmpty && _lastSearchedQuery.isNotEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.search_off, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              'No clubs found for "$query"',
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: _clubs.length,
+      itemBuilder: (context, index) => _buildClubTile(context, _clubs[index]),
+    );
+  }
+
   Widget _buildClubTile(BuildContext context, dynamic club) {
     return ListTile(
       leading: CircleAvatar(
@@ -225,22 +364,14 @@ class CustomSearchDelegate extends SearchDelegate<String> {
     _error = null;
 
     try {
-      // Search events
-      final eventsResponse = await APIService.instance.request(
-        '/events/list?search=$q&offset=0&limit=5',
+      final response = await APIService.instance.request(
+        '/clubs/list?search=$q&offset=0&limit=20',
         DioMethod.get,
       );
-      _events = eventsResponse.data['items'] ?? [];
-
-      // Search clubs
-      final clubsResponse = await APIService.instance.request(
-        '/clubs/list?search=$q&offset=0&limit=5',
-        DioMethod.get,
-      );
-      _clubs = clubsResponse.data['items'] ?? [];
+      _clubs = response.data['items'] ?? [];
     } catch (e) {
       _error = e.toString();
-      debugPrint('Search error: $e');
+      debugPrint('Club search error: $e');
     }
   }
 }

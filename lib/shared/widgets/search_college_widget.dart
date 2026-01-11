@@ -27,7 +27,7 @@ class SearchAndCollegeList extends StatelessWidget {
       onTap: () {
         showSearch(
           context: context,
-          delegate: CustomSearchDelegate(),
+          delegate: ClubSearchDelegate(),
         );
       },
       child: Container(
@@ -47,7 +47,7 @@ class SearchAndCollegeList extends StatelessWidget {
             Icon(Icons.search, color: Color(0xFF979797)),
             SizedBox(width: 8),
             Text(
-              "Search for clubs or interests",
+              "Search for clubs...",
               style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
           ],
