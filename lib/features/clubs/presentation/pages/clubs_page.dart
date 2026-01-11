@@ -59,9 +59,22 @@ class _ClubsPageState extends State<ClubsPage> {
       );
 
       if (mounted) {
+        // Get pinned club IDs for cross-reference
+        final pinnedClubIds = (resPinned.data['items'] ?? [])
+            .map<int>((c) => c['id'] as int)
+            .toSet();
+
         setState(() {
-          pinnedClubs = resPinned.data['items'] ?? [];
-          followingClubs = resFollowing.data['items'] ?? [];
+          // Mark pinned clubs with is_pinned=true
+          pinnedClubs = (resPinned.data['items'] ?? [])
+              .map((c) => {...c, 'is_pinned': true})
+              .toList();
+
+          // Mark following clubs with is_pinned based on whether they're in pinned list
+          followingClubs = (resFollowing.data['items'] ?? [])
+              .map((c) => {...c, 'is_pinned': pinnedClubIds.contains(c['id'])})
+              .toList();
+
           isLoading = false;
           errorMessage = null;
         });
