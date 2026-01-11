@@ -9,12 +9,14 @@ import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
 class ClubEventsPage extends StatefulWidget {
   final int clubId;
   final String clubName;
+  final String clubLogo;
   final bool isPastEvents;
 
   const ClubEventsPage({
     super.key,
     required this.clubId,
     required this.clubName,
+    required this.clubLogo,
     required this.isPastEvents,
   });
 
@@ -125,70 +127,87 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          widget.clubName,
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText:
-                    'Search ${widget.isPastEvents ? 'past' : 'upcoming'} events...',
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                filled: true,
-                fillColor: const Color(0xFFF5F5F5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
+      body: NestedScrollView(
+        controller: _scrollController,
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return [
+            SliverAppBar(
+              floating: true,
+              snap: true,
+              pinned: false,
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
               ),
-            ),
-          ),
-
-          // Page title
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                widget.isPastEvents ? 'Past Events' : 'Upcoming Events',
+              title: Text(
+                widget.clubName,
                 style: const TextStyle(
-                  fontSize: 24,
-                  fontFamily: 'BebasNeue',
+                  color: Colors.black,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              centerTitle: true,
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(100),
+                child: Container(
+                  color: Colors.white,
+                  child: Column(
+                    children: [
+                      // Search bar
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText:
+                                'Search ${widget.isPastEvents ? 'past' : 'upcoming'} events...',
+                            hintStyle: TextStyle(color: Colors.grey[400]),
+                            prefixIcon:
+                                const Icon(Icons.search, color: Colors.grey),
+                            filled: true,
+                            fillColor: const Color(0xFFF5F5F5),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Page title
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            widget.isPastEvents
+                                ? 'Past Events'
+                                : 'Upcoming Events',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontFamily: 'BebasNeue',
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
-
-          // Events list
-          Expanded(
-            child: _buildContent(),
-          ),
-        ],
+          ];
+        },
+        body: _buildContent(),
       ),
     );
   }
@@ -233,7 +252,6 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
     return RefreshIndicator(
       onRefresh: _refresh,
       child: ListView.separated(
-        controller: _scrollController,
         padding: const EdgeInsets.all(16),
         itemCount: _filteredEvents.length + (_hasMore && _isLoading ? 1 : 0),
         separatorBuilder: (context, index) => const Padding(
@@ -257,7 +275,8 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
           final event = _filteredEvents[index];
           return EventCard(
             clubSlug: event['club']?['slug'] ?? '',
-            orgImage: event['club']?['logo']?['thumbnail'] ?? '',
+            // Use club logo from widget if event's club logo is missing
+            orgImage: event['club']?['logo']?['thumbnail'] ?? widget.clubLogo,
             title: event['name'] ?? 'No Title',
             organizer: event['club']?['name'] ?? widget.clubName,
             tags: [

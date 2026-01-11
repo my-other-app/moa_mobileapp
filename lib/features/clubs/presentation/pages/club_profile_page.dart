@@ -134,6 +134,7 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
         builder: (context) => ClubEventsPage(
           clubId: widget.id,
           clubName: name ?? 'Club',
+          clubLogo: logo?['thumbnail'] ?? '',
           isPastEvents: isPast,
         ),
       ),

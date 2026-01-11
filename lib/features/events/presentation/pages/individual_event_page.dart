@@ -253,7 +253,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                backgroundColor: const Color(0xffF3F3F3),
+                backgroundColor: Colors.white,
                 radius: 28,
                 child: Image.asset(AssetResources.eventdate,
                     height: 28, width: 28),
@@ -295,7 +295,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                backgroundColor: const Color(0xffF3F3F3),
+                backgroundColor: Colors.white,
                 radius: 28,
                 child:
                     Image.asset(AssetResources.regfee, height: 28, width: 28),
@@ -337,7 +337,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                backgroundColor: const Color(0xffF3F3F3),
+                backgroundColor: Colors.white,
                 radius: 28,
                 child:
                     Image.asset(AssetResources.location, height: 28, width: 28),
@@ -417,7 +417,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                backgroundColor: const Color(0xffF3F3F3),
+                backgroundColor: Colors.white,
                 radius: 28,
                 child: Image.asset(AssetResources.prize, height: 28, width: 28),
               ),
@@ -461,7 +461,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                backgroundColor: const Color(0xffF3F3F3),
+                backgroundColor: Colors.white,
                 radius: 28,
                 child: Image.asset(AssetResources.eventtime,
                     height: 28, width: 28),
@@ -503,7 +503,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                backgroundColor: const Color(0xffF3F3F3),
+                backgroundColor: Colors.white,
                 radius: 28,
                 child:
                     Image.asset(AssetResources.duration, height: 28, width: 28),
@@ -1413,7 +1413,7 @@ Widget _infoCard(BuildContext context,
       children: [
         const SizedBox(height: 4),
         CircleAvatar(
-          backgroundColor: Color(0xffF3F3F3),
+          backgroundColor: Colors.white,
           radius: 24,
           child: Image.asset(
             icon,
