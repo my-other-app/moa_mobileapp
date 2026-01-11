@@ -829,7 +829,6 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                   },
                   child: CircleAvatar(
                     radius: 24,
-                    backgroundColor: const Color(0xFFF3F3F3),
                     backgroundImage: NetworkImage(
                       club != null && club!.logo.isNotEmpty
                           ? club!.logo['thumbnail'] ??

@@ -236,7 +236,14 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
         controller: _scrollController,
         padding: const EdgeInsets.all(16),
         itemCount: _filteredEvents.length + (_hasMore && _isLoading ? 1 : 0),
-        separatorBuilder: (context, index) => const SizedBox(height: 24),
+        separatorBuilder: (context, index) => const Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: Divider(
+            color: Colors.black,
+            indent: 50,
+            endIndent: 50,
+          ),
+        ),
         itemBuilder: (context, index) {
           if (index == _filteredEvents.length) {
             return const Center(
