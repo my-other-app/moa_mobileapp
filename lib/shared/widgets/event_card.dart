@@ -26,6 +26,7 @@ class EventCard extends StatelessWidget {
   final EventCardStatus status;
   final String? ticketUrl;
   final String? certificateUrl;
+  final bool showShareIcon;
 
   const EventCard({
     super.key,
@@ -42,6 +43,7 @@ class EventCard extends StatelessWidget {
     this.status = EventCardStatus.none,
     this.ticketUrl,
     this.certificateUrl,
+    this.showShareIcon = true,
   });
 
   @override
@@ -131,17 +133,18 @@ class EventCard extends StatelessWidget {
                 ],
               ),
             ),
-            GestureDetector(
-              onTap: () async {
-                final Uri url =
-                    Uri.parse("https://events.myotherapp.com/$eventSlug");
-                await launchUrl(url, mode: LaunchMode.externalApplication);
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(8.0).copyWith(right: 0),
-                child: SvgIcon(svgIconPath: AssetResources.share),
-              ),
-            )
+            if (showShareIcon)
+              GestureDetector(
+                onTap: () async {
+                  final Uri url =
+                      Uri.parse("https://events.myotherapp.com/$eventSlug");
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0).copyWith(right: 0),
+                  child: SvgIcon(svgIconPath: AssetResources.share),
+                ),
+              )
           ],
         ),
 
@@ -278,7 +281,7 @@ class EventCard extends StatelessWidget {
             }
           },
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF4CAF50),
+            backgroundColor: const Color(0xFF2C333D),
           ),
           child: const Text('VIEW CERTIFICATE'),
         );

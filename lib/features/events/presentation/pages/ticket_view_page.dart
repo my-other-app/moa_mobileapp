@@ -163,28 +163,16 @@ class _TicketViewPageState extends State<TicketViewPage>
     HapticFeedback.mediumImpact();
 
     try {
-      // Try to fetch wallet pass from backend
-      final walletPassUrl =
-          'https://api.myotherapp.com/api/v1/events/tickets/${widget.ticketId}/wallet.pkpass';
+      // Launch wallet pass URL - iOS will automatically open in Wallet
+      final walletPassUrl = Uri.parse(
+        'https://api.myotherapp.com/api/v1/events/tickets/${widget.ticketId}/wallet.pkpass',
+      );
 
-      // Check if the wallet endpoint exists
-      final response = await http.head(Uri.parse(walletPassUrl)).timeout(
-            const Duration(seconds: 5),
-            onTimeout: () => http.Response('', 404),
-          );
-
-      if (response.statusCode == 200) {
-        // Wallet pass exists - try to open it
-        final uri = Uri.parse(walletPassUrl);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-          return;
-        }
-      }
-
-      // Fallback: Show info dialog
-      if (mounted) {
-        _showWalletInfoDialog();
+      if (await canLaunchUrl(walletPassUrl)) {
+        await launchUrl(walletPassUrl, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback for devices that can't open the URL
+        if (mounted) _showWalletInfoDialog();
       }
     } catch (e) {
       if (mounted) _showWalletInfoDialog();

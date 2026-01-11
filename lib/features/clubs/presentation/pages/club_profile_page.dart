@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/core/themes/app_colors.dart';
+import 'package:myotherapp/features/clubs/presentation/pages/club_events_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:myotherapp/shared/widgets/error_view.dart';
 import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
@@ -34,7 +35,7 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
   String? locationName;
   String? locationLink;
   String? about;
-  int? rating;
+  double? rating;
   int? totalRatings;
   Map<String, dynamic>? socials;
   List<Interest> interests = [];
@@ -50,20 +51,31 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
   Future<void> _toggleFollow() async {
     if (clubInfo == null) return;
 
-    final isCurrentlyFollowing = clubInfo!.userData['is_following'];
+    final isCurrentlyFollowing = clubInfo!.userData['is_following'] ?? false;
     final endpoint = isCurrentlyFollowing
         ? '/clubs/unfollow/${clubInfo!.id}'
         : '/clubs/follow/${clubInfo!.id}';
+
+    // Optimistically update UI
+    setState(() {
+      userData?['is_following'] = !isCurrentlyFollowing;
+      followersCount = (followersCount ?? 0) + (isCurrentlyFollowing ? -1 : 1);
+    });
 
     try {
       await APIService.instance.request(
         endpoint,
         DioMethod.post,
       );
-
-      // Refetch updated data to refresh UI
-      await _fetchData();
+      // Update clubInfo as well
+      clubInfo!.userData['is_following'] = !isCurrentlyFollowing;
     } catch (e) {
+      // Revert on error
+      setState(() {
+        userData?['is_following'] = isCurrentlyFollowing;
+        followersCount =
+            (followersCount ?? 0) + (isCurrentlyFollowing ? 1 : -1);
+      });
       debugPrint('Follow/Unfollow failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -113,6 +125,19 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
   void initState() {
     super.initState();
     _fetchData();
+  }
+
+  void _navigateToClubEvents(BuildContext context, {required bool isPast}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ClubEventsPage(
+          clubId: widget.id,
+          clubName: name ?? 'Club',
+          isPastEvents: isPast,
+        ),
+      ),
+    );
   }
 
   // Build UI using stored values.
@@ -256,24 +281,30 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
             // Description section with Read More/Show Less.
             _buildDescriptionSection(context),
             const SizedBox(height: 16),
-            // Info cards for College (Organisation) and Location.
+            // Info cards for College (Organisation) and Location - tappable with popups.
             Row(
               children: [
                 Expanded(
-                  child: _infoCard(
-                    context,
-                    icon: AssetResources.college,
-                    title: 'College',
-                    value: org?.name ?? 'N/A',
+                  child: GestureDetector(
+                    onTap: () => _showOrganizationPopup(context),
+                    child: _infoCard(
+                      context,
+                      icon: AssetResources.college,
+                      title: 'College',
+                      value: org?.name ?? 'N/A',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _infoCard(
-                    context,
-                    icon: AssetResources.location,
-                    title: 'Location',
-                    value: locationName ?? 'N/A',
+                  child: GestureDetector(
+                    onTap: () => _showLocationPopup(context),
+                    child: _infoCard(
+                      context,
+                      icon: AssetResources.location,
+                      title: 'Location',
+                      value: locationName ?? 'N/A',
+                    ),
                   ),
                 ),
               ],
@@ -283,11 +314,18 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
             Row(
               children: [
                 Expanded(
-                  child: _eventRedirectCard(context, value: "PAST EVENTS"),
+                  child: GestureDetector(
+                    onTap: () => _navigateToClubEvents(context, isPast: true),
+                    child: _eventRedirectCard(context, value: "PAST EVENTS"),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _eventRedirectCard(context, value: "UPCOMING EVENTS"),
+                  child: GestureDetector(
+                    onTap: () => _navigateToClubEvents(context, isPast: false),
+                    child:
+                        _eventRedirectCard(context, value: "UPCOMING EVENTS"),
+                  ),
                 ),
               ],
             ),
@@ -314,9 +352,13 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
             ),
 
             const SizedBox(height: 24),
-            // // Rating section.
-            // _buildRatingSection(context),
-            // const SizedBox(height: 24),
+
+            // Rating section - shows average rating of all club events
+            if (rating != null && rating! > 0) ...[
+              _buildRatingSection(context),
+              const SizedBox(height: 24),
+            ],
+
             // // Achievements section.
             // Text(
             //   'ACHIEVEMENTS',
@@ -399,13 +441,8 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
   }
 
   Widget _buildDescriptionSection(BuildContext context) {
-    const description = """Welcome to TinkerHub CET, a community of 
-passionate innovators, creators, and tech enthusiasts driven by 
-the mission to learn, build, and grow together! 💡✨
-We’re all about cultivating a culture of curiosity and empowering 
-students with skills for the future. Through hands-on workshops, 
-hackathons, boot camps, and peer-to-peer learning, we aim to 
-bridge the gap between academics and real-world applications...""";
+    // Use dynamic 'about' field from API
+    final description = about ?? 'No description available.';
     final maxLines = _expanded ? null : 7;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,22 +453,219 @@ bridge the gap between academics and real-world applications...""";
           overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
           style: const TextStyle(height: 1.4, fontSize: 14),
         ),
-        InkWell(
-          onTap: () {
-            setState(() {
-              _expanded = !_expanded;
-            });
-          },
-          child: Text(
-            _expanded ? 'Show Less' : 'Read More',
-            style: const TextStyle(
-              color: Color(0xFF17A58F),
-              fontWeight: FontWeight.bold,
-              decoration: TextDecoration.underline,
-              fontSize: 14,
+        if (description.length > 200)
+          InkWell(
+            onTap: () {
+              setState(() {
+                _expanded = !_expanded;
+              });
+            },
+            child: Text(
+              _expanded ? 'Show Less' : 'Read More',
+              style: const TextStyle(
+                color: Color(0xFF17A58F),
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+                fontSize: 14,
+              ),
             ),
+          )
+      ],
+    );
+  }
+
+  /// Show organization details popup (matching event page style)
+  void _showOrganizationPopup(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
           ),
-        )
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                backgroundColor: const Color(0xffF3F3F3),
+                radius: 28,
+                child:
+                    Image.asset(AssetResources.college, height: 28, width: 28),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Organization',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                (org?.name ?? 'N/A').toUpperCase(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'BebasNeue',
+                ),
+              ),
+              if (org?.type != null && org!.type.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  org!.type,
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ],
+              if (org?.address != null && org!.address.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  org!.address,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2C333D),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'CLOSE',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontFamily: 'BebasNeue',
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Show location details popup (matching event page style)
+  void _showLocationPopup(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                backgroundColor: const Color(0xffF3F3F3),
+                radius: 28,
+                child:
+                    Image.asset(AssetResources.location, height: 28, width: 28),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Location',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                locationName?.toUpperCase() ?? 'N/A',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'BebasNeue',
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    // Try locationLink first, fallback to Google Maps search
+                    String mapsUrl;
+                    if (locationLink != null && locationLink!.isNotEmpty) {
+                      mapsUrl = locationLink!;
+                    } else if (locationName != null &&
+                        locationName!.isNotEmpty) {
+                      mapsUrl =
+                          'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(locationName!)}';
+                    } else {
+                      return;
+                    }
+                    final Uri url = Uri.parse(mapsUrl);
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2C333D),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'OPEN MAPS',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontFamily: 'BebasNeue',
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Build rating section showing average rating of all club events
+  Widget _buildRatingSection(BuildContext context) {
+    // Rating is 0-5 scale
+    double avgRating = rating ?? 0.0;
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(5, (index) {
+            return Icon(
+              index < avgRating.round() ? Icons.star : Icons.star_border,
+              color: Colors.amber,
+              size: 28,
+            );
+          }),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${avgRating.toStringAsFixed(1)} RATED',
+          style: const TextStyle(
+            fontSize: 28,
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          'Rated by ${totalRatings ?? 0} Participants',
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.grey,
+          ),
+        ),
       ],
     );
   }
@@ -566,7 +800,7 @@ class ClubInfo {
   final String locationName;
   final String locationLink;
   final String about;
-  final int rating;
+  final double rating;
   final int totalRatings;
   final Map<String, dynamic> socials;
   final List<Interest> interests;
@@ -604,7 +838,7 @@ class ClubInfo {
       locationName: json['location_name'] ?? '',
       locationLink: json['location_link'] ?? '',
       about: json['about'] ?? '',
-      rating: (json['rating'] as num?)?.toInt() ?? 0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       totalRatings: (json['total_ratings'] as num?)?.toInt() ?? 0,
       socials: json['socials'] ?? {},
       interests: (json['interests'] as List<dynamic>?)

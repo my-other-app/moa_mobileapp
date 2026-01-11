@@ -7,7 +7,6 @@ import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/core/themes/app_colors.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:myotherapp/shared/widgets/svg_icon.dart';
 import 'package:myotherapp/shared/widgets/error_view.dart';
 import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
 import 'package:myotherapp/features/events/presentation/pages/ticket_view_page.dart';
@@ -560,104 +559,145 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
     }
   }
 
-  /// Shows rating dialog
+  /// Shows rating bottom sheet
   void _showRatingDialog(BuildContext context) {
     int selectedRating = 0;
+    final reviewController = TextEditingController();
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Rate this Event',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+        builder: (context, setDialogState) => Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Title
+              const Text(
+                'RATE YOUR EXPERIENCE',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Description with club name
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.black87,
+                    height: 1.5,
                   ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'How was your experience?',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(5, (index) {
-                    return GestureDetector(
-                      onTap: () {
-                        setDialogState(() {
-                          selectedRating = index + 1;
-                        });
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Icon(
-                          index < selectedRating
-                              ? Icons.star
-                              : Icons.star_border,
-                          color: Colors.amber,
-                          size: 40,
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 24),
-                Row(
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: const BorderSide(color: Colors.grey),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
+                    const TextSpan(text: 'How '),
+                    TextSpan(
+                      text: club?.name ?? 'the organizer',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: selectedRating > 0
-                            ? () async {
-                                Navigator.pop(context);
-                                await _submitRating(selectedRating);
-                              }
-                            : null,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text('Submit'),
-                      ),
+                    const TextSpan(
+                      text:
+                          ' do? Let them know your thoughts and help them improve for future events. Your feedback means everything! 💬✨',
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 24),
+
+              // Cat Emoji Rating
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(5, (index) {
+                  final ratingEmojis = ['😾', '😿', '🐱', '😸', '😻'];
+                  return GestureDetector(
+                    onTap: () {
+                      setDialogState(() {
+                        selectedRating = index + 1;
+                      });
+                    },
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: selectedRating == index + 1
+                            ? const Color(0xFFE8F5E9)
+                            : Colors.transparent,
+                      ),
+                      child: Center(
+                        child: Text(
+                          ratingEmojis[index],
+                          style: const TextStyle(fontSize: 30),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 24),
+
+              // Review Text Field
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TextField(
+                  controller: reviewController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    hintText: 'Write Your Review',
+                    hintStyle: TextStyle(color: Colors.grey),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Submit Button
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: selectedRating > 0
+                      ? () async {
+                          Navigator.pop(context);
+                          await _submitRating(
+                              selectedRating, reviewController.text);
+                        }
+                      : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2C333D),
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'SUBMIT',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -665,12 +705,15 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
   }
 
   /// Submit rating to API
-  Future<void> _submitRating(int ratingValue) async {
+  Future<void> _submitRating(int ratingValue, String? review) async {
     try {
       await APIService.instance.request(
         '/events/rate/${widget.eventId}',
         DioMethod.post,
-        param: {'rating': ratingValue},
+        param: {
+          'rating': ratingValue,
+          if (review != null && review.isNotEmpty) 'review': review,
+        },
       );
 
       setState(() {
@@ -747,15 +790,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
           category?.name ?? 'Event Details',
           style: const TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
         ),
-        actions: [
-          IconButton(
-            icon: SvgIcon(svgIconPath: AssetResources.share),
-            onPressed: () async {
-              final Uri url = Uri.parse("https://events.myotherapp.com/$slug");
-              await launchUrl(url, mode: LaunchMode.externalApplication);
-            },
-          ),
-        ],
+        // Share button removed - event page doesn't need it since users can share from bottom sheet or event card
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0).copyWith(
@@ -794,6 +829,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                   },
                   child: CircleAvatar(
                     radius: 24,
+                    backgroundColor: const Color(0xFFF3F3F3),
                     backgroundImage: NetworkImage(
                       club != null && club!.logo.isNotEmpty
                           ? club!.logo['thumbnail'] ??
@@ -1054,8 +1090,9 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                       children: [
                         Row(
                           children: List.generate(5, (index) {
+                            // Rating is 0-5 scale, compare directly with index+1
                             return Icon(
-                              index < (rating! ~/ 20)
+                              index < rating!.round()
                                   ? Icons.star
                                   : Icons.star_border,
                               color: Colors.amber,
@@ -1065,7 +1102,8 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${(rating! / 20).toStringAsFixed(1)} RATED',
+                          // Rating is already 0-5 scale, display directly
+                          '${rating!.toStringAsFixed(1)} RATED',
                           style: const TextStyle(
                             fontSize: 20,
                             fontFamily: 'BebasNeue',
@@ -1347,7 +1385,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 }
               },
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF4CAF50),
+                backgroundColor: const Color(0xFF2C333D),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               child: const Text('VIEW CERTIFICATE'),

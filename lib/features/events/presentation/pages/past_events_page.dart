@@ -192,6 +192,7 @@ class _PastEventsPageState extends State<PastEventsPage>
               eventSlug: event['slug'],
               status: EventCardStatus.attended,
               certificateUrl: event['certificate_url'],
+              showShareIcon: false,
             );
           },
         ),
