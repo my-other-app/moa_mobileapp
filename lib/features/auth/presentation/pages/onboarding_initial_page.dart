@@ -305,7 +305,7 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
             onTap: _handleAppleSignIn,
             icon: const Icon(Icons.apple, color: Colors.white, size: 32),
             text: 'LOGIN WITH APPLE',
-            backgroundColor: Colors.black,
+            backgroundColor: const Color(0xFF2C333D), // Same as Google button
           ),
         ],
       ],

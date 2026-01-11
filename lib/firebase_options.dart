@@ -53,23 +53,27 @@ class DefaultFirebaseOptions {
   }
 
   // TODO: Replace placeholder values with actual Firebase config from Firebase Console
-  // or run: flutterfire configure --project=myotherapp-com
+
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR_ANDROID_API_KEY',
-    appId: 'YOUR_ANDROID_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
+    apiKey: 'AIzaSyAwwXeUkVuKGohaPNg-0pV-Kj9K4hgWiSo',
+    appId: '1:444091936624:android:8eaffa590c9b9de6c569b5',
+    messagingSenderId: '444091936624',
     projectId: 'myotherapp-com',
-    storageBucket: 'myotherapp-com.appspot.com',
+    storageBucket: 'myotherapp-com.firebasestorage.app',
   );
 
-  // TODO: Replace placeholder values with actual Firebase config from Firebase Console
   // or run: flutterfire configure --project=myotherapp-com
+
+  // TODO: Replace placeholder values with actual Firebase config from Firebase Console
+
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR_IOS_API_KEY',
-    appId: 'YOUR_IOS_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
+    apiKey: 'AIzaSyAITon1MoEsrf0kTQTyQu2PTVshkylOxCs',
+    appId: '1:444091936624:ios:5acc8757c1ad3a5bc569b5',
+    messagingSenderId: '444091936624',
     projectId: 'myotherapp-com',
-    storageBucket: 'myotherapp-com.appspot.com',
+    storageBucket: 'myotherapp-com.firebasestorage.app',
     iosBundleId: 'app.myotherapp.com',
   );
+
+  // or run: flutterfire configure --project=myotherapp-com
 }
