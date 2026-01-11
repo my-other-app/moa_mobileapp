@@ -168,7 +168,10 @@ class _ClubsPageState extends State<ClubsPage> {
                     height: MediaQuery.of(context).size.height * 0.5,
                     child: NoClubsFollowingPage(),
                   )
-                : ClubsYouFollowSection(clubs: followingClubs),
+                : ClubsYouFollowSection(
+                    clubs: followingClubs,
+                    onActionCompleted: _refresh,
+                  ),
           ],
         ),
       ),

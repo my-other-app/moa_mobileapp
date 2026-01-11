@@ -47,6 +47,7 @@ class PinnedClubsSection extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 24,
+                      backgroundColor: Colors.white,
                       backgroundImage:
                           NetworkImage(club['logo']['thumbnail'] ?? ''),
                     ),
