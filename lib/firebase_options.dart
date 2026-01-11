@@ -15,8 +15,8 @@ import 'package:flutter/foundation.dart'
 /// );
 /// ```
 ///
-/// TODO: Replace these placeholder values with your actual Firebase project configuration.
-/// Run `flutterfire configure` to generate this file with your Firebase project.
+/// TODO: Run `flutterfire configure` to regenerate this file with complete Firebase config.
+/// For now, this contains placeholder values that need to be updated.
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -52,22 +52,24 @@ class DefaultFirebaseOptions {
     }
   }
 
-  // TODO: Replace with your actual Firebase Android configuration
+  // TODO: Replace placeholder values with actual Firebase config from Firebase Console
+  // or run: flutterfire configure --project=myotherapp-com
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'YOUR_ANDROID_API_KEY',
     appId: 'YOUR_ANDROID_APP_ID',
     messagingSenderId: 'YOUR_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
+    projectId: 'myotherapp-com',
+    storageBucket: 'myotherapp-com.appspot.com',
   );
 
-  // TODO: Replace with your actual Firebase iOS configuration
+  // TODO: Replace placeholder values with actual Firebase config from Firebase Console
+  // or run: flutterfire configure --project=myotherapp-com
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'YOUR_IOS_API_KEY',
     appId: 'YOUR_IOS_APP_ID',
     messagingSenderId: 'YOUR_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
-    iosBundleId: 'com.myotherapp.app',
+    projectId: 'myotherapp-com',
+    storageBucket: 'myotherapp-com.appspot.com',
+    iosBundleId: 'app.myotherapp.com',
   );
 }
