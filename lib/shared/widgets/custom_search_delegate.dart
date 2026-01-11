@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
@@ -6,8 +7,8 @@ import 'package:myotherapp/core/api/api_helper.dart';
 class CustomSearchDelegate extends SearchDelegate<String> {
   List<dynamic> _events = [];
   List<dynamic> _clubs = [];
-  bool _isLoading = false;
   String? _error;
+  String _lastSearchedQuery = '';
 
   @override
   String get searchFieldLabel => 'Search events, clubs...';
@@ -22,6 +23,7 @@ class CustomSearchDelegate extends SearchDelegate<String> {
             query = '';
             _events = [];
             _clubs = [];
+            _lastSearchedQuery = '';
             showSuggestions(context);
           },
         ),
@@ -62,85 +64,96 @@ class CustomSearchDelegate extends SearchDelegate<String> {
   }
 
   Widget _buildSearchResults(BuildContext context) {
-    return FutureBuilder(
-      future: _search(query),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    // If query changed, trigger new search
+    if (query != _lastSearchedQuery && query.isNotEmpty) {
+      _lastSearchedQuery = query;
+      return FutureBuilder(
+        future: _search(query),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          return _buildResultsList(context);
+        },
+      );
+    }
 
-        if (_error != null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                Text(_error!, textAlign: TextAlign.center),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    _error = null;
-                    showResults(context);
-                  },
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
-        }
+    // Show cached results
+    return _buildResultsList(context);
+  }
 
-        if (_events.isEmpty && _clubs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.search_off, size: 64, color: Colors.grey),
-                const SizedBox(height: 16),
-                Text(
-                  'No results found for "$query"',
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView(
+  Widget _buildResultsList(BuildContext context) {
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Events section
-            if (_events.isNotEmpty) ...[
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'EVENTS',
-                  style: TextStyle(
-                    fontFamily: 'BebasNeue',
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              ..._events.map((event) => _buildEventTile(context, event)),
-            ],
-            // Clubs section
-            if (_clubs.isNotEmpty) ...[
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'CLUBS',
-                  style: TextStyle(
-                    fontFamily: 'BebasNeue',
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              ..._clubs.map((club) => _buildClubTile(context, club)),
-            ],
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(_error!, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                _error = null;
+                _lastSearchedQuery = '';
+                showResults(context);
+              },
+              child: const Text('Retry'),
+            ),
           ],
-        );
-      },
+        ),
+      );
+    }
+
+    if (_events.isEmpty && _clubs.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.search_off, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              'No results found for "$query"',
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      children: [
+        // Events section
+        if (_events.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              'EVENTS',
+              style: TextStyle(
+                fontFamily: 'BebasNeue',
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ..._events.map((event) => _buildEventTile(context, event)),
+        ],
+        // Clubs section
+        if (_clubs.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              'CLUBS',
+              style: TextStyle(
+                fontFamily: 'BebasNeue',
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ..._clubs.map((club) => _buildClubTile(context, club)),
+        ],
+      ],
     );
   }
 
@@ -184,6 +197,7 @@ class CustomSearchDelegate extends SearchDelegate<String> {
   Widget _buildClubTile(BuildContext context, dynamic club) {
     return ListTile(
       leading: CircleAvatar(
+        backgroundColor: const Color(0xFFF3F3F3),
         backgroundImage: NetworkImage(
           club['logo']?['thumbnail'] ?? 'https://via.placeholder.com/50',
         ),
@@ -206,9 +220,8 @@ class CustomSearchDelegate extends SearchDelegate<String> {
   }
 
   Future<void> _search(String q) async {
-    if (q.isEmpty || _isLoading) return;
+    if (q.isEmpty) return;
 
-    _isLoading = true;
     _error = null;
 
     try {
@@ -227,8 +240,7 @@ class CustomSearchDelegate extends SearchDelegate<String> {
       _clubs = clubsResponse.data['items'] ?? [];
     } catch (e) {
       _error = e.toString();
-    } finally {
-      _isLoading = false;
+      debugPrint('Search error: $e');
     }
   }
 }
