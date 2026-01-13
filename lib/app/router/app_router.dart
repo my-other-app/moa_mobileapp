@@ -127,7 +127,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'registration-success',
                     name: 'eventRegistrationSuccess',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => const RegSuccessfullPage()),
+                    builder: (context, state) {
+                      final extra = state.extra as Map<String, dynamic>?;
+                      return RegSuccessfullPage(
+                        ticketId: extra?['ticketId'],
+                        eventName: extra?['eventName'],
+                        eventId: extra?['eventId'],
+                        eventDateTime: extra?['eventDateTime'],
+                        fullName: extra?['fullName'],
+                      );
+                    }),
                 GoRoute(
                     path: ':eventId',
                     name: 'eventDetail',

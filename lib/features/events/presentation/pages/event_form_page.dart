@@ -298,7 +298,15 @@ class _EventFormPageState extends State<EventFormPage> {
         );
 
         if (response.statusCode == 200 && mounted) {
-          context.go('/events/registration-success');
+          // Extract ticket data from response
+          final data = response.data as Map<String, dynamic>;
+          context.go('/events/registration-success', extra: {
+            'ticketId': data['ticket_id'],
+            'eventName': data['event_name'],
+            'eventId': data['event_id'],
+            'eventDateTime': data['event_datetime'],
+            'fullName': data['full_name'],
+          });
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
