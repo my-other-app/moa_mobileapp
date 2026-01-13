@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/core/storage/secure_storage_service.dart';
 import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
+import 'package:myotherapp/core/services/notification_service.dart';
 
 /// Authentication state for the application.
 class AuthState extends Equatable {
@@ -78,6 +79,8 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
             refreshToken: refreshToken,
             isInitialized: true);
         debugPrint('AuthStateNotifier: Restored session from storage');
+        // Register FCM token now that we have session
+        NotificationService().registerToken();
       } else {
         state = state.copyWith(isInitialized: true);
         debugPrint('AuthStateNotifier: No saved session found');
@@ -114,6 +117,8 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
         isLoading: false,
         isInitialized: true);
     debugPrint('AuthStateNotifier: User authenticated');
+    // Register FCM token after login
+    NotificationService().registerToken();
   }
 
   /// Update user profile.

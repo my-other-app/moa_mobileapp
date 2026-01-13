@@ -29,6 +29,15 @@ class NotificationService {
   /// Get the current FCM token
   String? get fcmToken => _fcmToken;
 
+  /// Force register FCM token with backend (e.g. after login)
+  Future<void> registerToken() async {
+    if (_fcmToken != null) {
+      await _sendTokenToServer(_fcmToken!);
+    } else {
+      await _getToken();
+    }
+  }
+
   /// Initialize the notification service.
   /// Call this in main() after Firebase.initializeApp()
   Future<void> initialize() async {
