@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:myotherapp/core/storage/secure_storage_service.dart';
 
 /// Premium ticket page with stunning glow effects and Apple Wallet-like design.
 class TicketViewPage extends StatefulWidget {
@@ -163,19 +163,49 @@ class _TicketViewPageState extends State<TicketViewPage>
     HapticFeedback.mediumImpact();
 
     try {
-      // Launch wallet pass URL - iOS will automatically open in Wallet
-      final walletPassUrl = Uri.parse(
-        'https://api.myotherapp.com/api/v1/events/tickets/${widget.ticketId}/wallet.pkpass',
+      // Get auth token from secure storage
+      final storage = SecureStorageService();
+      final token = await storage.getAccessToken();
+
+      if (token == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please login to add to wallet')),
+          );
+        }
+        return;
+      }
+
+      // Download .pkpass file with authentication
+      final response = await http.get(
+        Uri.parse(
+          'https://api.myotherapp.com/api/v1/events/tickets/${widget.ticketId}/wallet.pkpass',
+        ),
+        headers: {'Authorization': 'Bearer $token'},
       );
 
-      if (await canLaunchUrl(walletPassUrl)) {
-        await launchUrl(walletPassUrl, mode: LaunchMode.externalApplication);
-      } else {
-        // Fallback for devices that can't open the URL
+      if (response.statusCode != 200) {
+        throw Exception('Failed to download wallet pass');
+      }
+
+      // Save to temporary directory
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/ticket-${widget.ticketId}.pkpass');
+      await file.writeAsBytes(response.bodyBytes);
+
+      // Open the file - iOS will automatically prompt to add to Wallet
+      final result = await OpenFilex.open(file.path);
+
+      if (result.type != ResultType.done) {
+        // Fallback if open fails
         if (mounted) _showWalletInfoDialog();
       }
     } catch (e) {
-      if (mounted) _showWalletInfoDialog();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add to wallet: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isAddingToWallet = false);
     }
