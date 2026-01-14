@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
@@ -10,6 +11,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:myotherapp/core/storage/secure_storage_service.dart';
+import 'package:apple_passkit/apple_passkit.dart';
 
 /// Premium ticket page with stunning glow effects and Apple Wallet-like design.
 class TicketViewPage extends StatefulWidget {
@@ -163,6 +165,17 @@ class _TicketViewPageState extends State<TicketViewPage>
     HapticFeedback.mediumImpact();
 
     try {
+      // Check if Apple Wallet is available (iOS only)
+      if (!Platform.isIOS) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Apple Wallet is only available on iOS')),
+          );
+        }
+        return;
+      }
+
       // Get auth token from secure storage
       final storage = SecureStorageService();
       final token = await storage.getAccessToken();
@@ -188,17 +201,24 @@ class _TicketViewPageState extends State<TicketViewPage>
         throw Exception('Failed to download wallet pass');
       }
 
-      // Save to temporary directory
-      final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/ticket-${widget.ticketId}.pkpass');
-      await file.writeAsBytes(response.bodyBytes);
+      // Use ApplePassKit to add to wallet natively
+      final passKit = ApplePassKit();
 
-      // Open the file - iOS will automatically prompt to add to Wallet
-      final result = await OpenFilex.open(file.path);
-
-      if (result.type != ResultType.done) {
-        // Fallback if open fails
+      // Check if PassKit is available
+      final isAvailable = await passKit.isPassLibraryAvailable();
+      if (!isAvailable) {
         if (mounted) _showWalletInfoDialog();
+        return;
+      }
+
+      // Add pass to wallet using the native PKAddPassesViewController
+      final Uint8List passData = Uint8List.fromList(response.bodyBytes);
+      await passKit.addPass(passData);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pass added to Apple Wallet!')),
+        );
       }
     } catch (e) {
       if (mounted) {
