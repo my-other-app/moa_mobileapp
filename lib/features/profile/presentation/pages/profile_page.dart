@@ -9,6 +9,7 @@ import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_p
 import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/shared/widgets/error_view.dart';
 import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
+import 'package:myotherapp/shared/widgets/confirmation_dialog.dart';
 
 /// Profile Page - exact same UI as original, using Riverpod for state.
 class ProfilePage extends ConsumerStatefulWidget {
@@ -50,13 +51,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           context.push('/profile/certificates');
         },
       },
-      {
-        'label': 'My Badges',
-        'icon': AssetResources.mybadges,
-        'onTap': (BuildContext context) {
-          context.push('/profile/badges');
-        },
-      },
+      // TODO: Temporarily hidden - re-enable when badges feature is complete
+      // {
+      //   'label': 'My Badges',
+      //   'icon': AssetResources.mybadges,
+      //   'onTap': (BuildContext context) {
+      //     context.push('/profile/badges');
+      //   },
+      // },
       {
         'label': 'Notifications',
         'icon': AssetResources.notifications,
@@ -227,41 +229,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   static void _showLogoutDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
+    ConfirmationDialog.showLogout(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Confirm Logout'),
-          content: const Text('Are you sure you want to log out?'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-            TextButton(
-              child: const Text('Logout'),
-              onPressed: () async {
-                Navigator.of(dialogContext).pop();
+      onConfirm: () async {
+        // Clear profile and auth state using Riverpod
+        ref.read(profileProvider.notifier).clearProfile();
+        await ref.read(authStateProvider.notifier).logout();
+        ref.read(bottomNavIndexProvider.notifier).resetToHome();
 
-                // Clear profile and auth state using Riverpod
-                ref.read(profileProvider.notifier).clearProfile();
-                await ref.read(authStateProvider.notifier).logout();
-                ref.read(bottomNavIndexProvider.notifier).resetToHome();
-
-                if (context.mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (context) => OnboardingInitialPage(),
-                    ),
-                    (route) => false,
-                  );
-                }
-              },
+        if (context.mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => OnboardingInitialPage(),
             ),
-          ],
-        );
+            (route) => false,
+          );
+        }
       },
     );
   }

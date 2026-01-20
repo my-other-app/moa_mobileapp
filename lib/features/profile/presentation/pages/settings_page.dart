@@ -8,6 +8,7 @@ import 'package:myotherapp/features/auth/presentation/providers/auth_provider.da
 import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
+import 'package:myotherapp/shared/widgets/confirmation_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Settings page - fully migrated to Riverpod (no Bloc).
@@ -125,62 +126,43 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
+    ConfirmationDialog.showDeleteAccount(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Confirm Delete'),
-          content: const Text('Are you sure you want to delete your account?'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-            TextButton(
-              child: const Text('Delete'),
-              onPressed: () async {
-                Navigator.of(dialogContext).pop();
+      onConfirm: () async {
+        try {
+          final res = await APIService.instance.request(
+            '/api/v1/user/delete',
+            DioMethod.delete,
+          );
 
-                try {
-                  final res = await APIService.instance.request(
-                    '/api/v1/user/delete',
-                    DioMethod.delete,
-                  );
+          if (res.statusCode == 200 || res.data['success'] == true) {
+            // Use Riverpod for logout
+            ref.read(profileProvider.notifier).clearProfile();
+            await ref.read(authStateProvider.notifier).logout();
+            ref.read(bottomNavIndexProvider.notifier).resetToHome();
 
-                  if (res.statusCode == 200 || res.data['success'] == true) {
-                    // Use Riverpod for logout
-                    ref.read(profileProvider.notifier).clearProfile();
-                    await ref.read(authStateProvider.notifier).logout();
-                    ref.read(bottomNavIndexProvider.notifier).resetToHome();
-
-                    if (context.mounted) {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (context) => OnboardingInitialPage(),
-                        ),
-                        (route) => false,
-                      );
-                    }
-                  } else {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to delete account.')),
-                      );
-                    }
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $e')),
-                    );
-                  }
-                }
-              },
-            ),
-          ],
-        );
+            if (context.mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (context) => OnboardingInitialPage(),
+                ),
+                (route) => false,
+              );
+            }
+          } else {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Failed to delete account.')),
+              );
+            }
+          }
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error: $e')),
+            );
+          }
+        }
       },
     );
   }
