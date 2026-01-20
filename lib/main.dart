@@ -1,30 +1,52 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/app/app.dart';
+import 'package:myotherapp/core/services/analytics_service.dart';
 import 'package:myotherapp/core/services/notification_service.dart';
 import 'package:myotherapp/firebase_options.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // Wrap app in zone to catch all async errors
+  await runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase (optional - will skip if not configured)
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+    // Initialize Firebase
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+
+      // Initialize Crashlytics and Analytics
+      await AnalyticsService.instance.initialize();
+
+      // Initialize push notifications
+      await NotificationService().initialize();
+
+      debugPrint('Firebase and Analytics initialized successfully');
+    } catch (e, stack) {
+      debugPrint('Firebase initialization error: $e');
+      // Still record error if Crashlytics is available
+      try {
+        await FirebaseCrashlytics.instance.recordError(e, stack);
+      } catch (_) {}
+    }
+
+    runApp(
+      const ProviderScope(
+        child: MyApp(),
+      ),
     );
-    // Initialize push notifications only if Firebase initialized successfully
-    await NotificationService().initialize();
-  } catch (e) {
-    debugPrint('Firebase initialization skipped: $e');
-    debugPrint(
-        'Push notifications will not be available until Firebase is configured.');
-  }
-
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+  }, (error, stack) {
+    // Catch all uncaught async errors
+    debugPrint('Uncaught async error: $error');
+    try {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    } catch (_) {
+      // Crashlytics not initialized
+    }
+  });
 }

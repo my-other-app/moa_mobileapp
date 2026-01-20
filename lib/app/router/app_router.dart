@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+// Analytics
+import 'package:myotherapp/core/services/analytics_service.dart';
+
 // Auth pages
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/features/auth/presentation/pages/profile_check_page.dart';
@@ -42,6 +45,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
     debugLogDiagnostics: true,
+    // Add analytics observer for automatic screen tracking
+    observers: [AnalyticsService.instance.observer],
     redirect: (context, state) {
       final isLoggedIn = authState.isAuthenticated;
       final isOnAuthRoute = state.matchedLocation.startsWith('/auth');

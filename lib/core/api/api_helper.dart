@@ -5,6 +5,7 @@ import 'package:myotherapp/core/config/env/env.dart';
 import 'package:myotherapp/core/network/dio_client.dart';
 import 'package:myotherapp/core/network/api_exception.dart';
 import 'package:myotherapp/core/secure_storage/secure_storage.dart';
+import 'package:myotherapp/core/services/analytics_service.dart';
 
 export 'package:myotherapp/core/network/api_exception.dart';
 export 'package:myotherapp/core/network/dio_client.dart' show ApiResult;
@@ -61,6 +62,15 @@ class APIService {
           }
         }
         handler.next(options);
+      },
+      onError: (error, handler) async {
+        // Log API errors to analytics
+        await AnalyticsService.instance.logApiError(
+          error.requestOptions.path,
+          error.response?.statusCode,
+          error.message,
+        );
+        handler.next(error);
       },
     ));
 
