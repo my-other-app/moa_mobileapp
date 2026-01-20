@@ -61,5 +61,7 @@
 		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
+	<key>NSCalendarsUsageDescription</key>
+	<string>This app needs access to your calendar to add event reminders so you never miss an event.</string>
 </dict>
 </plist>
