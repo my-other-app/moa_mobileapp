@@ -1,32 +1,51 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:myotherapp/common/models/clubs/club_model.dart';
-
-part 'notification_model.freezed.dart';
-part 'notification_model.g.dart';
-
 /// Brief event info included in notifications
-@freezed
-class NotificationEventBrief with _$NotificationEventBrief {
-  const factory NotificationEventBrief({
-    required int id,
-    required String name,
-  }) = _NotificationEventBrief;
+class NotificationEventBrief {
+  final int id;
+  final String name;
 
-  factory NotificationEventBrief.fromJson(Map<String, dynamic> json) =>
-      _$NotificationEventBriefFromJson(json);
+  const NotificationEventBrief({
+    required this.id,
+    required this.name,
+  });
+
+  factory NotificationEventBrief.fromJson(Map<String, dynamic> json) {
+    return NotificationEventBrief(
+      id: json['id'] as int,
+      name: json['name'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+      };
 }
 
 /// Brief club info included in notifications
-@freezed
-class NotificationClubBrief with _$NotificationClubBrief {
-  const factory NotificationClubBrief({
-    required int id,
-    required String name,
-    String? logo,
-  }) = _NotificationClubBrief;
+class NotificationClubBrief {
+  final int id;
+  final String name;
+  final String? logo;
 
-  factory NotificationClubBrief.fromJson(Map<String, dynamic> json) =>
-      _$NotificationClubBriefFromJson(json);
+  const NotificationClubBrief({
+    required this.id,
+    required this.name,
+    this.logo,
+  });
+
+  factory NotificationClubBrief.fromJson(Map<String, dynamic> json) {
+    return NotificationClubBrief(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      logo: json['logo'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'logo': logo,
+      };
 }
 
 /// Notification status enum
@@ -37,65 +56,99 @@ enum NotificationStatus {
 
 /// Notification type enum matching backend types
 enum NotificationType {
-  @JsonValue('certificate_generated')
-  certificateGenerated,
-  @JsonValue('event_started')
-  eventStarted,
-  @JsonValue('event_invited')
-  eventInvited,
-  @JsonValue('event_checkin')
-  eventCheckin,
-  @JsonValue('event_registered')
-  eventRegistered,
-  @JsonValue('event_reminder')
-  eventReminder,
-  @JsonValue('new_event')
-  newEvent,
-  @JsonValue('nearby_event')
-  nearbyEvent,
-  @JsonValue('club_announcement')
-  clubAnnouncement,
-  @JsonValue('volunteer_added')
-  volunteerAdded,
-  @JsonValue('volunteer_removed')
-  volunteerRemoved,
+  certificateGenerated('certificate_generated'),
+  eventStarted('event_started'),
+  eventInvited('event_invited'),
+  eventCheckin('event_checkin'),
+  eventRegistered('event_registered'),
+  eventReminder('event_reminder'),
+  newEvent('new_event'),
+  nearbyEvent('nearby_event'),
+  clubAnnouncement('club_announcement'),
+  volunteerAdded('volunteer_added'),
+  volunteerRemoved('volunteer_removed');
+
+  final String value;
+  const NotificationType(this.value);
+
+  static NotificationType? fromValue(String value) {
+    try {
+      return NotificationType.values.firstWhere((t) => t.value == value);
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 /// In-app notification model
-@freezed
-class NotificationModel with _$NotificationModel {
-  const NotificationModel._();
+class NotificationModel {
+  final String id;
+  final int userId;
+  final String title;
+  final String description;
+  final String type;
+  final String status;
+  final NotificationClubBrief? fromClub;
+  final NotificationEventBrief? event;
+  final Map<String, dynamic>? data;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  const factory NotificationModel({
-    required String id,
-    @JsonKey(name: 'user_id') required int userId,
-    required String title,
-    required String description,
-    required String type,
-    required String status,
-    @JsonKey(name: 'from_club') NotificationClubBrief? fromClub,
-    NotificationEventBrief? event,
-    Map<String, dynamic>? data,
-    @JsonKey(name: 'created_at') required DateTime createdAt,
-    @JsonKey(name: 'updated_at') required DateTime updatedAt,
-  }) = _NotificationModel;
+  const NotificationModel({
+    required this.id,
+    required this.userId,
+    required this.title,
+    required this.description,
+    required this.type,
+    required this.status,
+    this.fromClub,
+    this.event,
+    this.data,
+    required this.createdAt,
+    required this.updatedAt,
+  });
 
-  factory NotificationModel.fromJson(Map<String, dynamic> json) =>
-      _$NotificationModelFromJson(json);
+  factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    return NotificationModel(
+      id: json['id'] as String,
+      userId: json['user_id'] as int,
+      title: json['title'] as String,
+      description: json['description'] as String? ?? '',
+      type: json['type'] as String,
+      status: json['status'] as String,
+      fromClub: json['from_club'] != null
+          ? NotificationClubBrief.fromJson(
+              json['from_club'] as Map<String, dynamic>)
+          : null,
+      event: json['event'] != null
+          ? NotificationEventBrief.fromJson(
+              json['event'] as Map<String, dynamic>)
+          : null,
+      data: json['data'] as Map<String, dynamic>?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'user_id': userId,
+        'title': title,
+        'description': description,
+        'type': type,
+        'status': status,
+        'from_club': fromClub?.toJson(),
+        'event': event?.toJson(),
+        'data': data,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+      };
 
   /// Check if notification is unread
   bool get isUnread => status == 'unread';
 
   /// Get the notification type as enum
-  NotificationType? get notificationType {
-    try {
-      return NotificationType.values.firstWhere(
-        (t) => t.name == type || _typeToJsonValue(t) == type,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
+  NotificationType? get notificationType => NotificationType.fromValue(type);
 
   /// Get display icon based on notification type
   String get iconEmoji {
@@ -136,31 +189,33 @@ class NotificationModel with _$NotificationModel {
       return '${(diff.inDays / 7).floor()}w ago';
     }
   }
-}
 
-String _typeToJsonValue(NotificationType type) {
-  switch (type) {
-    case NotificationType.certificateGenerated:
-      return 'certificate_generated';
-    case NotificationType.eventStarted:
-      return 'event_started';
-    case NotificationType.eventInvited:
-      return 'event_invited';
-    case NotificationType.eventCheckin:
-      return 'event_checkin';
-    case NotificationType.eventRegistered:
-      return 'event_registered';
-    case NotificationType.eventReminder:
-      return 'event_reminder';
-    case NotificationType.newEvent:
-      return 'new_event';
-    case NotificationType.nearbyEvent:
-      return 'nearby_event';
-    case NotificationType.clubAnnouncement:
-      return 'club_announcement';
-    case NotificationType.volunteerAdded:
-      return 'volunteer_added';
-    case NotificationType.volunteerRemoved:
-      return 'volunteer_removed';
+  /// Create a copy with updated status
+  NotificationModel copyWith({
+    String? id,
+    int? userId,
+    String? title,
+    String? description,
+    String? type,
+    String? status,
+    NotificationClubBrief? fromClub,
+    NotificationEventBrief? event,
+    Map<String, dynamic>? data,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return NotificationModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      type: type ?? this.type,
+      status: status ?? this.status,
+      fromClub: fromClub ?? this.fromClub,
+      event: event ?? this.event,
+      data: data ?? this.data,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 }

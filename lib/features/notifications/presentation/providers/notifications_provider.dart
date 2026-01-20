@@ -59,7 +59,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
       final response = await APIService.instance.request(
         '/api/v1/notifications/list',
         DioMethod.get,
-        params: {
+        param: {
           'limit': _pageSize,
           'offset': 0,
         },
@@ -105,7 +105,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
       final response = await APIService.instance.request(
         '/api/v1/notifications/list',
         DioMethod.get,
-        params: {
+        param: {
           'limit': _pageSize,
           'offset': state.currentOffset,
         },
