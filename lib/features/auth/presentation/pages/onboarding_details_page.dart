@@ -69,12 +69,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
 
   // Function to create the user profile by calling the POST API.
   Future<void> _createUserProfile() async {
-    if (_selectedOrganization == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an organization.')),
-      );
-      return;
-    }
+    // Organization is now optional - no validation needed
 
     setState(() {
       _isLoading = true;
@@ -95,12 +90,20 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
       //   ),
       // );
 
-      // // Prepare the form data.
-      final data = {
+      // // Prepare the form data - optional fields only included if provided
+      final data = <String, String>{
         'full_name': _nameController.text.trim(),
-        'whatsapp': _whatsappController.text.trim(),
-        'org_id': _selectedOrganization!.id.toString(),
       };
+
+      // Only add whatsapp if provided
+      if (_whatsappController.text.trim().isNotEmpty) {
+        data['whatsapp'] = _whatsappController.text.trim();
+      }
+
+      // Only add org_id if organization is selected
+      if (_selectedOrganization != null) {
+        data['org_id'] = _selectedOrganization!.id.toString();
+      }
 
       // final response = await dio.post('/user/profile/create', data: data);
       final response = await APIService.instance.request(
@@ -338,7 +341,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Organization (if you are a student)',
+          'Organization (Optional)',
           style: TextStyle(
             color: Color(0xFF2C333D),
             fontSize: 12,
@@ -446,7 +449,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Whatsapp Number',
+          'WhatsApp Number (Optional)',
           style: TextStyle(
             color: Color(0xFF2C333D),
             fontSize: 12,
@@ -491,10 +494,10 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
               ),
             ),
             validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter your WhatsApp number';
-              }
-              if (value.length != 10) {
+              // WhatsApp is optional, only validate if provided
+              if (value != null &&
+                  value.trim().isNotEmpty &&
+                  value.length != 10) {
                 return 'Please enter a valid 10-digit number';
               }
               return null;
