@@ -1,184 +1,395 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:myotherapp/features/notifications/data/models/notification_model.dart';
+import 'package:myotherapp/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:myotherapp/features/profile/presentation/pages/notifications/no_notification_page.dart';
 
-class NotificationsNewPage extends StatelessWidget {
+/// Notifications page showing in-app notification history.
+class NotificationsNewPage extends ConsumerStatefulWidget {
   const NotificationsNewPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: const Text(
-            'NOTIFICATIONS',
-            style: TextStyle(
-              fontSize: 24,
-              fontFamily: "BebasNeue",
-            ),
-          ),
-          centerTitle: true,
-          backgroundColor: Colors.white,
-          elevation: 0,
-        ),
-        body: NoNotificationPage()
-        // Padding(
-        //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        //   child: Column(
-        //     crossAxisAlignment: CrossAxisAlignment.start,
-        //     children: [
-        //       Text(
-        //         'Today',
-        //         style: TextStyle(
-        //           color: Colors.black,
-        //           fontSize: 16,
-        //           fontFamily: 'Bebas Neue',
-        //           fontWeight: FontWeight.w400,
-        //         ),
-        //       ),
-        //       const SizedBox(height: 8),
-        //       _buildNotificationItem(
-        //         image:
-        //             "https://avatars.githubusercontent.com/u/98015594?s=280&v=4",
-        //         isHighlighted: true,
-        //         title: 'Your Certificate for the event, ',
-        //         boldText: 'Ideatank 4.0',
-        //         subtitle: ' is generated',
-        //         time: '2 hour ago',
-        //       ),
-        //       const SizedBox(height: 16),
-        //       _buildNotificationItem(
-        //         image:
-        //             "https://avatars.githubusercontent.com/u/98015594?s=280&v=4",
-        //         title: '',
-        //         boldText: 'Oasis Hackathon ',
-        //         subtitle: 'starts in 1 hour',
-        //         time: '2 hour ago',
-        //       ),
-        //       const SizedBox(height: 43),
-        //       // This Week's Notifications
-        //       Text(
-        //         'This Week',
-        //         style: TextStyle(
-        //           color: Colors.black,
-        //           fontSize: 16,
-        //           fontFamily: 'Bebas Neue',
-        //           fontWeight: FontWeight.w400,
-        //         ),
-        //       ),
-        //       const SizedBox(height: 8),
-        //       _buildNotificationItem(
-        //         image:
-        //             "https://avatars.githubusercontent.com/u/98015594?s=280&v=4",
-        //         title: '',
-        //         boldText: 'Oasis Hackathon ',
-        //         subtitle: 'starts in 24 hours',
-        //         time: '2 hour ago',
-        //       ),
-        //       const SizedBox(height: 16),
-        //       _buildNotificationItem(
-        //         image:
-        //             "https://avatars.githubusercontent.com/u/98015594?s=280&v=4",
-        //         title: 'You are invited for an event by RoboCET. ',
-        //         boldText: 'View Details',
-        //         subtitle: '',
-        //         time: '2 hour ago',
-        //         isViewDetails: true,
-        //       ),
-        //     ],
-        //   ),
-        // ),
-        );
+  ConsumerState<NotificationsNewPage> createState() =>
+      _NotificationsNewPageState();
+}
+
+class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Load notifications on page init
+    Future.microtask(() {
+      ref.read(notificationsProvider.notifier).loadNotifications();
+    });
+
+    // Setup scroll listener for pagination
+    _scrollController.addListener(_onScroll);
   }
 
-//   Widget _buildNotificationItem({
-//     required String image,
-//     required String title,
-//     required String boldText,
-//     required String subtitle,
-//     required String time,
-//     bool isHighlighted = false,
-//     bool isViewDetails = false,
-//   }) {
-//     return Container(
-//       width: double.infinity,
-//       padding: const EdgeInsets.all(8),
-//       decoration: ShapeDecoration(
-//         color: isHighlighted ? Color(0xFFF8FFA0) : null,
-//         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-//       ),
-//       child: Row(
-//         mainAxisSize: MainAxisSize.min,
-//         mainAxisAlignment: MainAxisAlignment.start,
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Container(
-//             width: 48,
-//             height: 48,
-//             decoration: ShapeDecoration(
-//               image: DecorationImage(
-//                 image: NetworkImage(image),
-//                 fit: BoxFit.fill,
-//               ),
-//               shape: OvalBorder(),
-//             ),
-//           ),
-//           const SizedBox(width: 8),
-//           Expanded(
-//             child: Column(
-//               mainAxisSize: MainAxisSize.min,
-//               mainAxisAlignment: MainAxisAlignment.center,
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 Text.rich(
-//                   TextSpan(
-//                     children: [
-//                       TextSpan(
-//                         text: title,
-//                         style: TextStyle(
-//                           color: Colors.black,
-//                           fontSize: 14,
-//                           fontFamily: 'DM Sans',
-//                           fontWeight: FontWeight.w300,
-//                         ),
-//                       ),
-//                       TextSpan(
-//                         text: boldText,
-//                         style: TextStyle(
-//                           color: Colors.black,
-//                           fontSize: 14,
-//                           fontFamily: 'DM Sans',
-//                           fontWeight: FontWeight.w600,
-//                           decoration:
-//                               isViewDetails ? TextDecoration.underline : null,
-//                         ),
-//                       ),
-//                       TextSpan(
-//                         text: subtitle,
-//                         style: TextStyle(
-//                           color: Colors.black,
-//                           fontSize: 14,
-//                           fontFamily: 'DM Sans',
-//                           fontWeight: FontWeight.w300,
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//                 const SizedBox(height: 4),
-//                 Text(
-//                   time,
-//                   style: TextStyle(
-//                     color: Color(0xFF979797),
-//                     fontSize: 12,
-//                     fontFamily: 'DM Sans',
-//                     fontWeight: FontWeight.w300,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(notificationsProvider.notifier).loadMore();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(notificationsProvider);
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text(
+          'NOTIFICATIONS',
+          style: TextStyle(
+            fontSize: 24,
+            fontFamily: "BebasNeue",
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          if (state.unreadCount > 0)
+            TextButton(
+              onPressed: () {
+                ref.read(notificationsProvider.notifier).markAllAsRead();
+              },
+              child: const Text(
+                'Mark all read',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+            ),
+        ],
+      ),
+      body: _buildBody(state),
+    );
+  }
+
+  Widget _buildBody(NotificationsState state) {
+    if (state.isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF1A1A2E),
+        ),
+      );
+    }
+
+    if (state.error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Error loading notifications',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                ref.read(notificationsProvider.notifier).loadNotifications();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1A1A2E),
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (state.notifications.isEmpty) {
+      return const NoNotificationPage();
+    }
+
+    // Group notifications by date
+    final grouped = _groupNotifications(state.notifications);
+
+    return RefreshIndicator(
+      onRefresh: () => ref.read(notificationsProvider.notifier).refresh(),
+      color: const Color(0xFF1A1A2E),
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: grouped.length + (state.isLoadingMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == grouped.length) {
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+            );
+          }
+
+          final group = grouped[index];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Section header
+              Padding(
+                padding: const EdgeInsets.only(top: 24, bottom: 12),
+                child: Text(
+                  group.title,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontFamily: 'BebasNeue',
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+              // Notification items
+              ...group.notifications.map((notification) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildNotificationItem(notification),
+                  )),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildNotificationItem(NotificationModel notification) {
+    final isUnread = notification.isUnread;
+
+    return GestureDetector(
+      onTap: () => _handleNotificationTap(notification),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: ShapeDecoration(
+          color: isUnread ? const Color(0xFFF8FFA0) : Colors.grey[50],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Avatar/Icon
+            _buildNotificationAvatar(notification),
+            const SizedBox(width: 12),
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title with rich text
+                  Text(
+                    notification.title,
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 14,
+                      fontFamily: 'DM Sans',
+                      fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // Description
+                  Text(
+                    notification.description,
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontSize: 13,
+                      fontFamily: 'DM Sans',
+                      fontWeight: FontWeight.w300,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  // Time
+                  Text(
+                    notification.timeAgo,
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 12,
+                      fontFamily: 'DM Sans',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Unread indicator
+            if (isUnread)
+              Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.only(top: 6),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1A1A2E),
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationAvatar(NotificationModel notification) {
+    // If there's a club logo, show it
+    if (notification.fromClub?.logo != null &&
+        notification.fromClub!.logo!.isNotEmpty) {
+      return Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.grey[200],
+        ),
+        child: ClipOval(
+          child: Image.network(
+            notification.fromClub!.logo!,
+            width: 48,
+            height: 48,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildIconAvatar(notification),
+          ),
+        ),
+      );
+    }
+
+    return _buildIconAvatar(notification);
+  }
+
+  Widget _buildIconAvatar(NotificationModel notification) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: _getColorForType(notification.type),
+      ),
+      child: Center(
+        child: Text(
+          notification.iconEmoji,
+          style: const TextStyle(fontSize: 20),
+        ),
+      ),
+    );
+  }
+
+  Color _getColorForType(String type) {
+    switch (type) {
+      case 'certificate_generated':
+        return const Color(0xFFFFE082); // Gold
+      case 'event_checkin':
+        return const Color(0xFFA5D6A7); // Green
+      case 'new_event':
+        return const Color(0xFFCE93D8); // Purple
+      case 'nearby_event':
+        return const Color(0xFF90CAF9); // Blue
+      case 'volunteer_added':
+        return const Color(0xFFFFCC80); // Orange
+      case 'club_announcement':
+        return const Color(0xFFEF9A9A); // Red
+      default:
+        return Colors.grey[200]!;
+    }
+  }
+
+  void _handleNotificationTap(NotificationModel notification) {
+    // Mark as read
+    if (notification.isUnread) {
+      ref.read(notificationsProvider.notifier).markAsRead(notification.id);
+    }
+
+    // Navigate based on notification type
+    final eventId = notification.event?.id;
+
+    switch (notification.type) {
+      case 'certificate_generated':
+        context.push('/profile/certificates');
+        break;
+      case 'event_checkin':
+      case 'new_event':
+      case 'nearby_event':
+      case 'volunteer_added':
+      case 'club_announcement':
+      case 'event_reminder':
+        if (eventId != null) {
+          context.push('/event/$eventId');
+        }
+        break;
+      default:
+        // No navigation for unknown types
+        break;
+    }
+  }
+
+  List<_NotificationGroup> _groupNotifications(
+      List<NotificationModel> notifications) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final weekAgo = today.subtract(const Duration(days: 7));
+
+    final List<NotificationModel> todayList = [];
+    final List<NotificationModel> yesterdayList = [];
+    final List<NotificationModel> thisWeekList = [];
+    final List<NotificationModel> earlierList = [];
+
+    for (final n in notifications) {
+      final date =
+          DateTime(n.createdAt.year, n.createdAt.month, n.createdAt.day);
+
+      if (date == today) {
+        todayList.add(n);
+      } else if (date == yesterday) {
+        yesterdayList.add(n);
+      } else if (date.isAfter(weekAgo)) {
+        thisWeekList.add(n);
+      } else {
+        earlierList.add(n);
+      }
+    }
+
+    final groups = <_NotificationGroup>[];
+
+    if (todayList.isNotEmpty) {
+      groups.add(_NotificationGroup(title: 'Today', notifications: todayList));
+    }
+    if (yesterdayList.isNotEmpty) {
+      groups.add(
+          _NotificationGroup(title: 'Yesterday', notifications: yesterdayList));
+    }
+    if (thisWeekList.isNotEmpty) {
+      groups.add(
+          _NotificationGroup(title: 'This Week', notifications: thisWeekList));
+    }
+    if (earlierList.isNotEmpty) {
+      groups.add(
+          _NotificationGroup(title: 'Earlier', notifications: earlierList));
+    }
+
+    return groups;
+  }
+}
+
+class _NotificationGroup {
+  final String title;
+  final List<NotificationModel> notifications;
+
+  _NotificationGroup({required this.title, required this.notifications});
 }
