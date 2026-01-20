@@ -57,7 +57,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 
     try {
       final response = await APIService.instance.request(
-        '/api/v1/notifications/list',
+        '/notifications/list',
         DioMethod.get,
         param: {
           'limit': _pageSize,
@@ -103,7 +103,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 
     try {
       final response = await APIService.instance.request(
-        '/api/v1/notifications/list',
+        '/notifications/list',
         DioMethod.get,
         param: {
           'limit': _pageSize,
@@ -136,7 +136,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
   Future<void> fetchUnreadCount() async {
     try {
       final response = await APIService.instance.request(
-        '/api/v1/notifications/unread-count',
+        '/notifications/unread-count',
         DioMethod.get,
       );
 
@@ -153,7 +153,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
   Future<void> markAsRead(String notificationId) async {
     try {
       final response = await APIService.instance.request(
-        '/api/v1/notifications/read/$notificationId',
+        '/notifications/read/$notificationId',
         DioMethod.post,
       );
 
@@ -192,7 +192,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
   Future<void> markAllAsRead() async {
     try {
       final response = await APIService.instance.request(
-        '/api/v1/notifications/read-all',
+        '/notifications/read-all',
         DioMethod.post,
       );
 
