@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/services/analytics_service.dart';
 
 // Auth pages
+import 'package:myotherapp/features/auth/presentation/pages/splash_screen.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:myotherapp/features/auth/presentation/pages/profile_check_page.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_details_page.dart';
@@ -43,7 +44,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/',
+    initialLocation: '/splash',
     debugLogDiagnostics: true,
     // Add analytics observer for automatic screen tracking
     observers: [AnalyticsService.instance.observer],
@@ -51,9 +52,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = authState.isAuthenticated;
       final isOnAuthRoute = state.matchedLocation.startsWith('/auth');
       final isOnOnboarding = state.matchedLocation.startsWith('/onboarding');
+      final isOnSplash = state.matchedLocation == '/splash';
+
+      // Let splash screen handle its own navigation
+      if (isOnSplash) {
+        return null;
+      }
 
       if (!authState.isInitialized) {
-        return null;
+        return '/splash';
       }
       if (!isLoggedIn && !isOnAuthRoute && !isOnOnboarding) {
         return '/auth/onboarding';
@@ -64,6 +71,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      // Splash screen route
+      GoRoute(
+          path: '/splash',
+          name: 'splash',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) => const SplashScreen()),
       // Auth routes
       GoRoute(
           path: '/auth/onboarding',
