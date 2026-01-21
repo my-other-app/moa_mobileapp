@@ -84,24 +84,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFFFFA0), // Yellow matching native splash
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1A1A2E), // Dark blue
-              Color(0xFF16213E), // Darker blue
-            ],
-          ),
-        ),
+        color: const Color(0xFFFFFFA0), // Solid yellow like onboarding
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Spacer(flex: 2),
-            // Animated Logo
+            // Animated Logo - use actual app icon
             AnimatedBuilder(
               animation: _logoController,
               builder: (context, child) {
@@ -130,7 +122,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Color(0xFF2C333D), // Dark text on yellow background
                   fontFamily: 'Bebas Neue',
                   letterSpacing: 2,
                 ),
@@ -146,11 +138,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   child: child,
                 );
               },
-              child: Text(
+              child: const Text(
                 'Discover. Connect. Engage.',
                 style: TextStyle(
                   fontSize: 14,
-                  color: const Color.fromRGBO(255, 255, 255, 0.7),
+                  color: Color(0xFF5A5A5A), // Gray text
                   fontFamily: 'DM Sans',
                   letterSpacing: 1,
                 ),
@@ -176,29 +168,49 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Widget _buildLogo() {
+    // Use the actual app icon from assets
     return Container(
       width: 120,
       height: 120,
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFFA0), // Yellow like onboarding
         borderRadius: BorderRadius.circular(30),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: const Color.fromRGBO(255, 255, 160, 0.3),
-            blurRadius: 30,
-            spreadRadius: 5,
+            color: Color.fromRGBO(0, 0, 0, 0.1),
+            blurRadius: 20,
+            spreadRadius: 2,
           ),
         ],
       ),
-      child: const Center(
-        child: Text(
-          'M',
-          style: TextStyle(
-            fontSize: 64,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1A1A2E),
-            fontFamily: 'Bebas Neue',
-          ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: Image.asset(
+          'assets/icons/app_icon.png', // Replace with your actual app icon path
+          width: 120,
+          height: 120,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            // Fallback to styled container if icon not found
+            return Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: const Color(0xFF17A58F), // Teal/green accent
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: const Center(
+                child: Text(
+                  'M',
+                  style: TextStyle(
+                    fontSize: 64,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontFamily: 'Bebas Neue',
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -217,7 +229,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: Color.fromRGBO(255, 255, 255, 0.5 + (value * 0.5)),
+                color: Color.fromRGBO(
+                    44, 51, 61, 0.3 + (value * 0.5)), // Dark dots on yellow
                 shape: BoxShape.circle,
               ),
             );
