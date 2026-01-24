@@ -74,6 +74,18 @@ class APIService {
       },
     ));
 
+    // Add logging interceptor for debugging
+    if (kDebugMode) {
+      dio.interceptors.add(LogInterceptor(
+        request: true,
+        requestHeader: true,
+        requestBody: true,
+        responseBody: true,
+        responseHeader: false,
+        error: true,
+      ));
+    }
+
     return dio;
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -57,13 +58,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _initializeAndNavigate() async {
-    // Wait for animations and auth initialization
+    // Wait for animations
     await Future.delayed(const Duration(milliseconds: 1500));
+
+    if (!mounted) return;
+
+    // Wait for auth to be initialized (with timeout)
+    int attempts = 0;
+    const maxAttempts = 20; // 10 seconds max wait
+    while (attempts < maxAttempts) {
+      final authState = ref.read(authStateProvider);
+      if (authState.isInitialized) {
+        break;
+      }
+      await Future.delayed(const Duration(milliseconds: 500));
+      attempts++;
+      debugPrint('Splash: Waiting for auth... attempt $attempts');
+    }
 
     if (!mounted) return;
 
     // Check auth state and navigate
     final authState = ref.read(authStateProvider);
+    debugPrint(
+        'Splash: Auth initialized=${authState.isInitialized}, authenticated=${authState.isAuthenticated}');
 
     if (authState.isAuthenticated) {
       // User is logged in, go to home

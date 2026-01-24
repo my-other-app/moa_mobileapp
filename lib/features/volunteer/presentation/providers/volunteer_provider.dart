@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 
@@ -90,26 +91,36 @@ class VolunteerNotifier extends StateNotifier<VolunteerState> {
   /// Fetch events user is volunteering for
   Future<void> fetchVolunteerEvents() async {
     state = state.copyWith(isLoading: true, error: null);
+    debugPrint('🔍 [Volunteer] Fetching volunteer events...');
 
     try {
       final response = await APIService.instance.request(
-        '/api/v1/events/volunteer/my-events',
+        '/events/volunteer/my-events',
         DioMethod.get,
       );
 
+      debugPrint('🔍 [Volunteer] Response status: ${response.statusCode}');
+      debugPrint('🔍 [Volunteer] Response data: ${response.data}');
+
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data as List<dynamic>;
+        debugPrint('🔍 [Volunteer] Found ${data.length} volunteer events');
         final events = data
             .map((e) => VolunteerEvent.fromJson(e as Map<String, dynamic>))
             .toList();
         state = state.copyWith(isLoading: false, events: events);
+        debugPrint(
+            '🔍 [Volunteer] Events loaded successfully: ${events.length}');
       } else {
+        debugPrint('🔍 [Volunteer] Non-200 response');
         state = state.copyWith(
           isLoading: false,
           error: 'Failed to fetch volunteer events',
         );
       }
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('🔍 [Volunteer] Error: $e');
+      debugPrint('🔍 [Volunteer] Stack: $stack');
       state = state.copyWith(
         isLoading: false,
         error: 'Error: ${e.toString()}',
@@ -121,7 +132,7 @@ class VolunteerNotifier extends StateNotifier<VolunteerState> {
   Future<CheckinResult> checkinParticipant(int eventId, String ticketId) async {
     try {
       final response = await APIService.instance.request(
-        '/api/v1/events/volunteer/checkin/$eventId',
+        '/events/volunteer/checkin/$eventId',
         DioMethod.post,
         param: {'ticket_id': ticketId},
       );
