@@ -180,14 +180,8 @@ class VolunteerNotifier extends StateNotifier<VolunteerState> {
         );
       }
     } on ApiException catch (e) {
-      // Parse the error message from the API response
-      String errorMessage = e.userMessage;
-
-      // Try to extract message from response body if available
-      if (e.responseBody != null && e.responseBody is Map) {
-        errorMessage =
-            (e.responseBody as Map)['message'] as String? ?? e.userMessage;
-      }
+      // Use the userMessage from ApiException or try to parse from message
+      String errorMessage = e.message;
 
       return CheckinResult(
         success: false,
