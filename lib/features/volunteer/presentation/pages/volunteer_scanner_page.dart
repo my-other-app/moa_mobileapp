@@ -29,7 +29,6 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
   late MobileScannerController _scannerController;
   bool _isProcessing = false;
   bool _showResult = false;
-  CheckinResult? _result;
 
   @override
   void initState() {
@@ -77,9 +76,10 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
       _isProcessing = true;
     });
 
+    // Validate ticket only - don't mark as attended yet
     final result = await ref
         .read(volunteerProvider.notifier)
-        .checkinParticipant(widget.eventId, ticketId);
+        .validateTicket(widget.eventId, ticketId);
 
     if (!mounted) return;
 
@@ -93,14 +93,13 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
     setState(() {
       _isProcessing = false;
       _showResult = true;
-      _result = result;
     });
 
     // Show bottom sheet with result
-    _showResultBottomSheet(result);
+    _showResultBottomSheet(result, ticketId);
   }
 
-  void _showResultBottomSheet(CheckinResult result) {
+  void _showResultBottomSheet(CheckinResult result, String ticketId) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -114,22 +113,37 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
           Navigator.pop(context);
           setState(() {
             _showResult = false;
-            _result = null;
           });
         },
         onGrantEntry: result.success
-            ? () {
+            ? () async {
+                // Actually check in the user now
                 Navigator.pop(context);
+
                 setState(() {
-                  _showResult = false;
-                  _result = null;
+                  _isProcessing = true;
                 });
-                // Show success confirmation briefly
+
+                final checkinResult = await ref
+                    .read(volunteerProvider.notifier)
+                    .checkinParticipant(widget.eventId, ticketId);
+
+                if (!mounted) return;
+
+                setState(() {
+                  _isProcessing = false;
+                  _showResult = false;
+                });
+
+                // Show success confirmation
                 ScaffoldMessenger.of(this.context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Entry granted successfully!'),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 2),
+                  SnackBar(
+                    content: Text(checkinResult.success
+                        ? 'Entry granted successfully!'
+                        : 'Failed to check in: ${checkinResult.message}'),
+                    backgroundColor:
+                        checkinResult.success ? Colors.green : Colors.red,
+                    duration: const Duration(seconds: 2),
                   ),
                 );
               }
@@ -138,7 +152,6 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
     ).whenComplete(() {
       setState(() {
         _showResult = false;
-        _result = null;
       });
     });
   }
@@ -364,6 +377,8 @@ class _ResultBottomSheet extends StatelessWidget {
         return _buildAlreadyScannedContent();
       case CheckinResultType.unpaid:
         return _buildUnpaidContent();
+      case CheckinResultType.incorrectEvent:
+        return _buildIncorrectEventContent();
     }
   }
 
@@ -585,6 +600,57 @@ class _ResultBottomSheet extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           'The user has not paid the fee.\nPlease verify the payment details.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildCloseButton(),
+      ],
+    );
+  }
+
+  /// Incorrect Event - Ticket belongs to different event
+  Widget _buildIncorrectEventContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Error icon with exclamation marks
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.red[50],
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              '!!',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.red[400],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'INCORRECT EVENT',
+          style: TextStyle(
+            fontSize: 20,
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          result.message.contains(':')
+              ? result.message.split(':').last.trim()
+              : 'This ticket belongs to a\ndifferent event.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 14,

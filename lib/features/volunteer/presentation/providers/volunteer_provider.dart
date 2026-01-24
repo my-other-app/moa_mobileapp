@@ -79,9 +79,8 @@ enum CheckinResultType {
   notFound, // Ticket not found
   alreadyScanned, // Already checked in
   unpaid, // User hasn't paid
-  // Note: Backend doesn't currently distinguish these but we include for future support
-  // incorrectEvent, // Wrong event
-  // expired,        // Expired ticket
+  incorrectEvent, // Ticket belongs to a different event
+  // expired,        // Expired ticket (not yet supported by backend)
 }
 
 /// Check-in result state with detailed ticket info
@@ -150,6 +149,95 @@ class VolunteerNotifier extends StateNotifier<VolunteerState> {
       state = state.copyWith(
         isLoading: false,
         error: 'Error: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Validate a ticket without marking attendance (for scan preview)
+  Future<CheckinResult> validateTicket(int eventId, String ticketId) async {
+    try {
+      final response = await APIService.instance.request(
+        '/events/volunteer/validate/$eventId',
+        DioMethod.post,
+        param: {'ticket_id': ticketId},
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data as Map<String, dynamic>;
+
+        // Parse event datetime
+        DateTime? eventDate;
+        String? eventTime;
+        if (data['event_datetime'] != null) {
+          final dt = DateTime.tryParse(data['event_datetime'] as String);
+          if (dt != null) {
+            eventDate = dt;
+            eventTime =
+                '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+          }
+        }
+
+        return CheckinResult(
+          success: true,
+          type: CheckinResultType.success,
+          message: 'Valid ticket',
+          ticketId: ticketId,
+          ticketHolderName: data['ticket_holder_name'] as String?,
+          eventDate: eventDate,
+          eventTime: eventTime,
+          location: data['location'] as String?,
+        );
+      } else {
+        final message =
+            response.data['message'] as String? ?? 'Validation failed';
+        return CheckinResult(
+          success: false,
+          type: _getResultTypeFromMessage(message),
+          message: message,
+        );
+      }
+    } on ApiException catch (e) {
+      String errorMessage = e.message;
+      return CheckinResult(
+        success: false,
+        type: _getResultTypeFromMessage(errorMessage),
+        message: errorMessage,
+      );
+    } catch (e) {
+      String errorMessage = 'Validation failed';
+      final errorString = e.toString();
+
+      if (errorString.contains('Incorrect event') ||
+          errorString.contains('belongs to')) {
+        return CheckinResult(
+          success: false,
+          type: CheckinResultType.incorrectEvent,
+          message: 'This ticket belongs to a different event',
+        );
+      } else if (errorString.contains('Registration not found')) {
+        return CheckinResult(
+          success: false,
+          type: CheckinResultType.notFound,
+          message: 'Registration not found',
+        );
+      } else if (errorString.contains('already checked-in')) {
+        return CheckinResult(
+          success: false,
+          type: CheckinResultType.alreadyScanned,
+          message: 'User already checked-in',
+        );
+      } else if (errorString.contains('not paid')) {
+        return CheckinResult(
+          success: false,
+          type: CheckinResultType.unpaid,
+          message: 'Payment not verified',
+        );
+      }
+
+      return CheckinResult(
+        success: false,
+        type: CheckinResultType.notFound,
+        message: errorMessage,
       );
     }
   }
@@ -225,9 +313,10 @@ class VolunteerNotifier extends StateNotifier<VolunteerState> {
   CheckinResultType _getResultTypeFromMessage(String message) {
     final lowerMessage = message.toLowerCase();
 
-    if (lowerMessage.contains('not found') ||
-        lowerMessage.contains('registration')) {
-      return CheckinResultType.notFound;
+    // Check for incorrect event first (most specific)
+    if (lowerMessage.contains('incorrect event') ||
+        lowerMessage.contains('belongs to')) {
+      return CheckinResultType.incorrectEvent;
     } else if (lowerMessage.contains('already') ||
         lowerMessage.contains('checked-in') ||
         lowerMessage.contains('checked in')) {
@@ -236,6 +325,9 @@ class VolunteerNotifier extends StateNotifier<VolunteerState> {
         lowerMessage.contains('payment') ||
         lowerMessage.contains('fee')) {
       return CheckinResultType.unpaid;
+    } else if (lowerMessage.contains('not found') ||
+        lowerMessage.contains('registration')) {
+      return CheckinResultType.notFound;
     }
 
     return CheckinResultType.notFound;
