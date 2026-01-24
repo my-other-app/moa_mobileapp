@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -27,10 +28,8 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
     with WidgetsBindingObserver {
   late MobileScannerController _scannerController;
   bool _isProcessing = false;
-  bool _showSuccess = false;
-  String? _successMessage;
-  bool _showError = false;
-  String? _errorMessage;
+  bool _showResult = false;
+  CheckinResult? _result;
 
   @override
   void initState() {
@@ -60,7 +59,7 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
   }
 
   void _onDetect(BarcodeCapture capture) {
-    if (_isProcessing || _showSuccess) return;
+    if (_isProcessing || _showResult) return;
 
     final List<Barcode> barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
@@ -76,8 +75,6 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
 
     setState(() {
       _isProcessing = true;
-      _showError = false;
-      _errorMessage = null;
     });
 
     final result = await ref
@@ -86,39 +83,64 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
 
     if (!mounted) return;
 
+    // Provide haptic feedback
     if (result.success) {
-      setState(() {
-        _isProcessing = false;
-        _showSuccess = true;
-        _successMessage = result.message;
-      });
-
-      // Reset after showing success
-      Timer(const Duration(seconds: 2), () {
-        if (mounted) {
-          setState(() {
-            _showSuccess = false;
-            _successMessage = null;
-          });
-        }
-      });
+      HapticFeedback.heavyImpact();
     } else {
-      setState(() {
-        _isProcessing = false;
-        _showError = true;
-        _errorMessage = result.message;
-      });
-
-      // Reset error after a delay
-      Timer(const Duration(seconds: 3), () {
-        if (mounted) {
-          setState(() {
-            _showError = false;
-            _errorMessage = null;
-          });
-        }
-      });
+      HapticFeedback.lightImpact();
     }
+
+    setState(() {
+      _isProcessing = false;
+      _showResult = true;
+      _result = result;
+    });
+
+    // Show bottom sheet with result
+    _showResultBottomSheet(result);
+  }
+
+  void _showResultBottomSheet(CheckinResult result) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,
+      enableDrag: true,
+      builder: (context) => _ResultBottomSheet(
+        result: result,
+        eventName: widget.eventName,
+        onClose: () {
+          Navigator.pop(context);
+          setState(() {
+            _showResult = false;
+            _result = null;
+          });
+        },
+        onGrantEntry: result.success
+            ? () {
+                Navigator.pop(context);
+                setState(() {
+                  _showResult = false;
+                  _result = null;
+                });
+                // Show success confirmation briefly
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Entry granted successfully!'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            : null,
+      ),
+    ).whenComplete(() {
+      setState(() {
+        _showResult = false;
+        _result = null;
+      });
+    });
   }
 
   @override
@@ -172,14 +194,15 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
                       const SizedBox(width: 16),
                       Expanded(
                         child: Text(
-                          '${widget.eventName.toUpperCase()}: SEAMLESS ENTRY, ZERO HASSLE',
+                          widget.eventName.toUpperCase(),
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 18,
                             fontFamily: 'BebasNeue',
                             fontWeight: FontWeight.bold,
                           ),
-                          maxLines: 2,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -228,65 +251,6 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
               ),
             ),
           ),
-
-          // Success overlay
-          if (_showSuccess)
-            Positioned.fill(
-              child: Container(
-                color: Colors.green.withAlpha(200),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.check_circle,
-                        color: Colors.white,
-                        size: 80,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _successMessage ?? 'Check-in successful!',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // Error overlay
-          if (_showError)
-            Positioned(
-              bottom: 120,
-              left: 16,
-              right: 16,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error, color: Colors.white),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _errorMessage ?? 'Check-in failed',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
 
           // Loading overlay
           if (_isProcessing)
@@ -341,6 +305,319 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Bottom sheet widget for displaying check-in results
+class _ResultBottomSheet extends StatelessWidget {
+  final CheckinResult result;
+  final String eventName;
+  final VoidCallback onClose;
+  final VoidCallback? onGrantEntry;
+
+  const _ResultBottomSheet({
+    required this.result,
+    required this.eventName,
+    required this.onClose,
+    this.onGrantEntry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: _buildContent(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    switch (result.type) {
+      case CheckinResultType.success:
+        return _buildSuccessContent(context);
+      case CheckinResultType.notFound:
+        return _buildNotFoundContent();
+      case CheckinResultType.alreadyScanned:
+        return _buildAlreadyScannedContent();
+      case CheckinResultType.unpaid:
+        return _buildUnpaidContent();
+    }
+  }
+
+  /// Success - Valid ticket with details
+  Widget _buildSuccessContent(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Success icon
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.green[50],
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.check_circle,
+            color: Colors.green,
+            size: 40,
+          ),
+        ),
+        const SizedBox(height: 24),
+        // Ticket details grid
+        Row(
+          children: [
+            Expanded(
+              child: _buildDetailItem('Date', 'TODAY'),
+            ),
+            Expanded(
+              child: _buildDetailItem('Time', 'NOW'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _buildDetailItem('Event', eventName),
+            ),
+            Expanded(
+              child: _buildDetailItem('Ticket ID', result.ticketId ?? 'N/A'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        // Grant Entry button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: onGrantEntry,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2C333D),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'GRANT ENTRY',
+              style: TextStyle(
+                fontSize: 16,
+                fontFamily: 'BebasNeue',
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'BebasNeue',
+            color: Colors.black87,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  /// Ticket Not Found
+  Widget _buildNotFoundContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Error icon
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.red[50],
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.close,
+            color: Colors.red[300],
+            size: 32,
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'TICKET NOT FOUND',
+          style: TextStyle(
+            fontSize: 20,
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'The QR code does not match\nany registered ticket.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildCloseButton(),
+      ],
+    );
+  }
+
+  /// Already Scanned
+  Widget _buildAlreadyScannedContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Already scanned icon
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.blue[50],
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.sync,
+            color: Colors.blue[300],
+            size: 32,
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'THIS TICKET HAS ALREADY BEEN SCANNED',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 18,
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'This ticket has already been scanned.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildCloseButton(),
+      ],
+    );
+  }
+
+  /// Unpaid ticket
+  Widget _buildUnpaidContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Warning icon
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.orange[50],
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange[400],
+            size: 32,
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'PAYMENT REQUIRED',
+          style: TextStyle(
+            fontSize: 20,
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'The user has not paid the fee.\nPlease verify the payment details.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildCloseButton(),
+      ],
+    );
+  }
+
+  Widget _buildCloseButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: onClose,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.black87,
+          side: const BorderSide(color: Colors.grey),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text(
+          'SCAN ANOTHER',
+          style: TextStyle(
+            fontSize: 14,
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
