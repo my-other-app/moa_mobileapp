@@ -8,6 +8,7 @@ import 'package:myotherapp/features/auth/presentation/providers/auth_provider.da
 import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
 import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
+import 'package:myotherapp/features/volunteer/presentation/providers/volunteer_provider.dart';
 import 'package:myotherapp/shared/widgets/confirmation_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -25,7 +26,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _clubUpdates = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Fetch volunteer events to check if user is a volunteer
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(volunteerProvider.notifier).fetchVolunteerEvents();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final volunteerState = ref.watch(volunteerProvider);
+    final hasVolunteerEvents = volunteerState.events.isNotEmpty;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -44,6 +57,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       body: ListView(
         padding: EdgeInsets.all(16),
         children: [
+          // Volunteer section (only show if user has volunteer events)
+          if (hasVolunteerEvents) ...[
+            CustomOptionTile(
+              verticalSpacing: 16,
+              leadingIcon: Icons.qr_code_scanner,
+              leadingIconColor: const Color(0xFF17A58F),
+              title: const Text(
+                'Volunteer Check-in',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'Scan tickets for your assigned events',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              onTap: () {
+                context.push('/volunteer/events');
+              },
+              trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+            ),
+            const Divider(height: 0),
+            const SizedBox(height: 8),
+          ],
+
           CustomOptionTile(
             verticalSpacing: 16,
             leadingImageName: AssetResources.eventnotification,

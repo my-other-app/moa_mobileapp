@@ -35,6 +35,11 @@ import 'package:myotherapp/features/profile/presentation/pages/settings/privacy_
 import 'package:myotherapp/features/main/presentation/pages/main_shell.dart';
 import 'package:myotherapp/common/models/events/event_model.dart';
 
+// Volunteer pages
+import 'package:myotherapp/features/volunteer/presentation/pages/volunteer_events_page.dart';
+import 'package:myotherapp/features/volunteer/presentation/pages/volunteer_scanner_page.dart';
+import 'package:myotherapp/features/volunteer/presentation/pages/manual_ticket_entry_page.dart';
+
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -126,6 +131,37 @@ final routerProvider = Provider<GoRouter>((ref) {
           name: 'onboardingComplete',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const OnboardingFinalPage()),
+
+      // Volunteer routes
+      GoRoute(
+          path: '/volunteer/events',
+          name: 'volunteerEvents',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) => const VolunteerEventsPage()),
+      GoRoute(
+          path: '/volunteer/scanner/:eventId',
+          name: 'volunteerScanner',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return VolunteerScannerPage(
+              eventId: int.tryParse(state.pathParameters['eventId'] ?? '') ?? 0,
+              eventName: extra['eventName'] as String? ?? 'Event',
+              clubName: extra['clubName'] as String? ?? '',
+            );
+          }),
+      GoRoute(
+          path: '/volunteer/manual-entry/:eventId',
+          name: 'volunteerManualEntry',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return ManualTicketEntryPage(
+              eventId: int.tryParse(state.pathParameters['eventId'] ?? '') ?? 0,
+              eventName: extra['eventName'] as String? ?? 'Event',
+              clubName: extra['clubName'] as String? ?? '',
+            );
+          }),
 
       // Main shell with bottom nav
       ShellRoute(
