@@ -108,9 +108,14 @@ class _TicketViewPageState extends State<TicketViewPage>
     HapticFeedback.mediumImpact();
 
     try {
-      final pdfUrl =
-          'https://api.myotherapp.com/api/v1/events/tickets/${widget.ticketId}/pdf';
-      final response = await http.get(Uri.parse(pdfUrl));
+      final storage = SecureStorageService();
+      final token = await storage.getAccessToken();
+
+      final pdfUrl = '${Env.apiBaseUrl}/events/tickets/${widget.ticketId}/pdf';
+      final response = await http.get(
+        Uri.parse(pdfUrl),
+        headers: token != null ? {'Authorization': 'Bearer $token'} : {},
+      );
 
       if (response.statusCode == 200) {
         final directory = await getApplicationDocumentsDirectory();
@@ -122,9 +127,10 @@ class _TicketViewPageState extends State<TicketViewPage>
           _showSuccessSnackBar('Ticket saved!', () => OpenFilex.open(filePath));
         }
       } else {
-        throw Exception('Download failed');
+        throw Exception('Download failed: ${response.statusCode}');
       }
     } catch (e) {
+      debugPrint('Download error: $e');
       if (mounted) _showErrorSnackBar('Download failed');
     } finally {
       if (mounted) setState(() => _isDownloading = false);
@@ -154,12 +160,53 @@ class _TicketViewPageState extends State<TicketViewPage>
 
   Future<void> _shareTicket() async {
     HapticFeedback.lightImpact();
-    await Share.share(
-      '🎟️ ${widget.eventName}\n\n'
-      '📅 $_formattedDate • $_formattedTime\n'
-      '📍 ${widget.locationName ?? "TBA"}\n\n'
-      '$_ticketWebUrl',
-    );
+
+    // Show loading indicator if needed, but for sharing we usually just wait
+    // We can use a local loading state if we want to show a spinner
+    setState(() => _isDownloading = true);
+
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final filePath = '${directory.path}/ticket_${widget.ticketId}.pdf';
+      final file = File(filePath);
+
+      // Check if file exists, if not download it
+      if (!await file.exists()) {
+        final storage = SecureStorageService();
+        final token = await storage.getAccessToken();
+        final pdfUrl =
+            '${Env.apiBaseUrl}/events/tickets/${widget.ticketId}/pdf';
+
+        final response = await http.get(
+          Uri.parse(pdfUrl),
+          headers: token != null ? {'Authorization': 'Bearer $token'} : {},
+        );
+
+        if (response.statusCode == 200) {
+          await file.writeAsBytes(response.bodyBytes);
+        } else {
+          // If download fails, fall back to text sharing
+          throw Exception('Failed to download ticket for sharing');
+        }
+      }
+
+      // Share the PDF file
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        text: '🎟️ Here is my ticket for ${widget.eventName}!',
+      );
+    } catch (e) {
+      debugPrint('Share error: $e');
+      // Fallback to text sharing
+      await Share.share(
+        '🎟️ ${widget.eventName}\n\n'
+        '📅 $_formattedDate • $_formattedTime\n'
+        '📍 ${widget.locationName ?? "TBA"}\n\n'
+        '$_ticketWebUrl',
+      );
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
   }
 
   Future<void> _addToWallet() async {
