@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
@@ -198,12 +199,31 @@ class VolunteerNotifier extends StateNotifier<VolunteerState> {
       }
     } on ApiException catch (e) {
       String errorMessage = e.message;
+      debugPrint('🔍 [Validate] ApiException: $errorMessage');
+      return CheckinResult(
+        success: false,
+        type: _getResultTypeFromMessage(errorMessage),
+        message: errorMessage,
+      );
+    } on DioException catch (e) {
+      // Extract error message from response body
+      String errorMessage = 'Validation failed';
+
+      if (e.response?.data != null && e.response?.data is Map) {
+        final responseData = e.response?.data as Map<String, dynamic>;
+        errorMessage = responseData['message'] as String? ?? errorMessage;
+      }
+
+      debugPrint('🔍 [Validate] DioException: $errorMessage');
+      debugPrint('🔍 [Validate] Response: ${e.response?.data}');
+
       return CheckinResult(
         success: false,
         type: _getResultTypeFromMessage(errorMessage),
         message: errorMessage,
       );
     } catch (e) {
+      debugPrint('🔍 [Validate] Generic error: $e');
       String errorMessage = 'Validation failed';
       final errorString = e.toString();
 
@@ -268,8 +288,24 @@ class VolunteerNotifier extends StateNotifier<VolunteerState> {
         );
       }
     } on ApiException catch (e) {
-      // Use the userMessage from ApiException or try to parse from message
       String errorMessage = e.message;
+      debugPrint('🔍 [Checkin] ApiException: $errorMessage');
+      return CheckinResult(
+        success: false,
+        type: _getResultTypeFromMessage(errorMessage),
+        message: errorMessage,
+      );
+    } on DioException catch (e) {
+      // Extract error message from response body
+      String errorMessage = 'Check-in failed';
+
+      if (e.response?.data != null && e.response?.data is Map) {
+        final responseData = e.response?.data as Map<String, dynamic>;
+        errorMessage = responseData['message'] as String? ?? errorMessage;
+      }
+
+      debugPrint('🔍 [Checkin] DioException: $errorMessage');
+      debugPrint('🔍 [Checkin] Response: ${e.response?.data}');
 
       return CheckinResult(
         success: false,
@@ -277,7 +313,7 @@ class VolunteerNotifier extends StateNotifier<VolunteerState> {
         message: errorMessage,
       );
     } catch (e) {
-      // Try to parse error message from DioException
+      debugPrint('🔍 [Checkin] Generic error: $e');
       String errorMessage = 'Check-in failed';
       final errorString = e.toString();
 

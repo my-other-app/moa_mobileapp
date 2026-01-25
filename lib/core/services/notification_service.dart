@@ -75,6 +75,8 @@ class NotificationService {
   }
 
   Future<void> _requestPermission() async {
+    debugPrint('🔔 [Notifications] Requesting permission...');
+
     NotificationSettings settings = await _messaging.requestPermission(
       alert: true,
       announcement: false,
@@ -85,12 +87,29 @@ class NotificationService {
       sound: true,
     );
 
-    debugPrint('Notification permission: ${settings.authorizationStatus}');
+    debugPrint(
+        '🔔 [Notifications] Permission status: ${settings.authorizationStatus}');
+    debugPrint('🔔 [Notifications] Alert: ${settings.alert}');
+    debugPrint('🔔 [Notifications] Badge: ${settings.badge}');
+    debugPrint('🔔 [Notifications] Sound: ${settings.sound}');
 
-    // For iOS, get APNs token
+    // For iOS, we MUST wait for APNs token before getting FCM token
     if (Platform.isIOS) {
+      debugPrint('🔔 [Notifications] iOS - Waiting for APNs token...');
+
+      // Wait a bit for APNs to register
+      await Future.delayed(const Duration(seconds: 2));
+
       String? apnsToken = await _messaging.getAPNSToken();
-      debugPrint('APNs token: $apnsToken');
+      debugPrint(
+          '🔔 [Notifications] APNs token: ${apnsToken ?? "NULL - THIS IS THE PROBLEM!"}');
+
+      if (apnsToken == null) {
+        debugPrint(
+            '🔔 [Notifications] ⚠️ APNs token is NULL! Push notifications will NOT work.');
+        debugPrint(
+            '🔔 [Notifications] Check: 1) Push capability in Xcode, 2) APNs key in Firebase, 3) Bundle ID matches');
+      }
     }
   }
 
@@ -132,15 +151,24 @@ class NotificationService {
   }
 
   Future<void> _getToken() async {
+    debugPrint('🔔 [Notifications] Getting FCM token...');
     try {
       _fcmToken = await _messaging.getToken();
-      debugPrint('FCM Token: $_fcmToken');
+      debugPrint('🔔 [Notifications] FCM Token: ${_fcmToken ?? "NULL"}');
 
       if (_fcmToken != null) {
+        debugPrint(
+            '🔔 [Notifications] ✅ FCM token obtained, sending to server...');
         await _sendTokenToServer(_fcmToken!);
+      } else {
+        debugPrint(
+            '🔔 [Notifications] ❌ FCM token is NULL - cannot register for push notifications');
+        debugPrint(
+            '🔔 [Notifications] This usually means APNs is not properly configured');
       }
-    } catch (e) {
-      debugPrint('Error getting FCM token: $e');
+    } catch (e, stackTrace) {
+      debugPrint('🔔 [Notifications] ❌ Error getting FCM token: $e');
+      debugPrint('🔔 [Notifications] Stack trace: $stackTrace');
     }
   }
 
@@ -153,7 +181,7 @@ class NotificationService {
   Future<void> _sendTokenToServer(String token) async {
     try {
       await APIService.instance.request(
-        '/users/fcm-token',
+        '/user/fcm-token',
         DioMethod.post,
         param: {
           'fcm_token': token,

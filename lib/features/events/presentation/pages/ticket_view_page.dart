@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
@@ -11,6 +12,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:myotherapp/core/storage/secure_storage_service.dart';
+import 'package:myotherapp/core/config/env/env.dart';
 import 'package:apple_passkit/apple_passkit.dart';
 
 /// Premium ticket page with stunning glow effects and Apple Wallet-like design.
@@ -189,16 +191,36 @@ class _TicketViewPageState extends State<TicketViewPage>
         return;
       }
 
+      // Use the configured base URL from environment
+      final walletUrl =
+          '${Env.apiBaseUrl}/events/tickets/${widget.ticketId}/wallet.pkpass';
+      debugPrint('🎫 [Wallet] Fetching pass from: $walletUrl');
+
       // Download .pkpass file with authentication
       final response = await http.get(
-        Uri.parse(
-          'https://api.myotherapp.com/api/v1/events/tickets/${widget.ticketId}/wallet.pkpass',
-        ),
+        Uri.parse(walletUrl),
         headers: {'Authorization': 'Bearer $token'},
       );
 
+      debugPrint('🎫 [Wallet] Response status: ${response.statusCode}');
+      debugPrint(
+          '🎫 [Wallet] Response content-type: ${response.headers['content-type']}');
+      debugPrint(
+          '🎫 [Wallet] Response body length: ${response.bodyBytes.length}');
+
       if (response.statusCode != 200) {
-        throw Exception('Failed to download wallet pass');
+        final errorBody = response.body;
+        debugPrint('🎫 [Wallet] Error response: $errorBody');
+        throw Exception(
+            'Failed to download wallet pass: ${response.statusCode} - $errorBody');
+      }
+
+      // Verify it's actually a pkpass file
+      final contentType = response.headers['content-type'];
+      if (contentType != null && !contentType.contains('pkpass')) {
+        debugPrint('🎫 [Wallet] Unexpected content type: $contentType');
+        debugPrint(
+            '🎫 [Wallet] Response body: ${response.body.substring(0, 200)}');
       }
 
       // Use ApplePassKit to add to wallet natively
@@ -206,6 +228,8 @@ class _TicketViewPageState extends State<TicketViewPage>
 
       // Check if PassKit is available
       final isAvailable = await passKit.isPassLibraryAvailable();
+      debugPrint('🎫 [Wallet] PassKit available: $isAvailable');
+
       if (!isAvailable) {
         if (mounted) _showWalletInfoDialog();
         return;
@@ -213,6 +237,8 @@ class _TicketViewPageState extends State<TicketViewPage>
 
       // Add pass to wallet using the native PKAddPassesViewController
       final Uint8List passData = Uint8List.fromList(response.bodyBytes);
+      debugPrint('🎫 [Wallet] Adding pass with ${passData.length} bytes');
+
       await passKit.addPass(passData);
 
       if (mounted) {
@@ -220,7 +246,9 @@ class _TicketViewPageState extends State<TicketViewPage>
           const SnackBar(content: Text('Pass added to Apple Wallet!')),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('🎫 [Wallet] Error: $e');
+      debugPrint('🎫 [Wallet] Stack trace: $stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to add to wallet: $e')),

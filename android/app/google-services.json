@@ -12,7 +12,16 @@
           "package_name": "app.myotherapp.com"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "444091936624-4rtq56mv1acorvb23s2le1n9tujl8cp5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.myotherapp.com",
+            "certificate_hash": "448b8f5e17c7079839481448868d98dfb1cfb43a"
+          }
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAwwXeUkVuKGohaPNg-0pV-Kj9K4hgWiSo"
