@@ -94,17 +94,15 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Error loading notifications',
-              style: TextStyle(color: Colors.grey[600]),
+              'Error: ${state.error}',
+              style: TextStyle(color: Colors.red),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
                 ref.read(notificationsProvider.notifier).loadNotifications();
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A1A2E),
-              ),
               child: const Text('Retry'),
             ),
           ],
@@ -249,6 +247,7 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
 
   Widget _buildNotificationAvatar(NotificationModel notification) {
     // If there's a club logo, show it
+    // Also show club logo for volunteer_added notifications if available
     if (notification.fromClub?.logo != null &&
         notification.fromClub!.logo!.isNotEmpty) {
       return Container(
@@ -322,14 +321,24 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
       case 'certificate_generated':
         context.push('/profile/certificates');
         break;
+      case 'volunteer_added':
+        if (eventId != null) {
+          context.push(
+            '/volunteer/scanner/$eventId',
+            extra: {
+              'eventName': notification.event?.name ?? 'Event',
+              'clubName': notification.fromClub?.name ?? '',
+            },
+          );
+        }
+        break;
       case 'event_checkin':
       case 'new_event':
       case 'nearby_event':
-      case 'volunteer_added':
       case 'club_announcement':
       case 'event_reminder':
         if (eventId != null) {
-          context.push('/event/$eventId');
+          context.push('/events/$eventId');
         }
         break;
       default:

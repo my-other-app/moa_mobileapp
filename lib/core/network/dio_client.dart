@@ -31,7 +31,7 @@ final dioProvider = Provider<Dio>((ref) {
 
   // Add interceptors - order matters!
   dio.interceptors.addAll([
-    CertPinningInterceptor(), // Security first
+    // CertPinningInterceptor(), // Security first
     AuthInterceptor(ref, dio), // Pass dio for refresh API calls
     ErrorInterceptor(),
     if (kDebugMode) LoggingInterceptor(),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+
 import 'package:myotherapp/features/volunteer/presentation/providers/volunteer_provider.dart';
 
 /// Manual ticket entry page for volunteer check-in
@@ -85,21 +85,15 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => context.pop(),
-        ),
+        foregroundColor: Colors.black,
         title: const Text(
           'ACCESS EVENT USING TICKET ID',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 24,
             fontFamily: 'BebasNeue',
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
           ),
         ),
-        centerTitle: false,
-        titleSpacing: 0,
+        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24),
@@ -178,9 +172,8 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
                       : const Text(
                           'CONTINUE',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 24,
                             fontFamily: 'BebasNeue',
-                            fontWeight: FontWeight.bold,
                           ),
                         ),
                 ),

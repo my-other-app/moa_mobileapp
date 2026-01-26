@@ -33,17 +33,12 @@ class _VolunteerEventsPageState extends ConsumerState<VolunteerEventsPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => context.pop(),
-        ),
+        foregroundColor: Colors.black,
         title: const Text(
           "MY VOLUNTEER EVENTS",
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 24,
             fontFamily: 'BebasNeue',
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
           ),
         ),
         centerTitle: true,

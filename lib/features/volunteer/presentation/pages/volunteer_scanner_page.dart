@@ -210,9 +210,8 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
                           widget.eventName.toUpperCase(),
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 18,
+                            fontSize: 24,
                             fontFamily: 'BebasNeue',
-                            fontWeight: FontWeight.bold,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -309,9 +308,8 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
                 child: const Text(
                   'ENTER TICKET CODE MANUALLY',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 24,
                     fontFamily: 'BebasNeue',
-                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),

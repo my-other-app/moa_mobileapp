@@ -51,13 +51,16 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 
   /// Load initial notifications
   Future<void> loadNotifications() async {
-    if (state.isLoading) return;
+    // Force load, ignore isLoading
+    // if (state.isLoading) return;
 
+    print('DEBUG: loadNotifications called');
     state = state.copyWith(isLoading: true, error: null);
 
     try {
+      print('DEBUG: Making API request to /notifications/fetch-list');
       final response = await APIService.instance.request(
-        '/notifications/list',
+        '/notifications/fetch-list',
         DioMethod.get,
         param: {
           'limit': _pageSize,
@@ -67,7 +70,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        final List<dynamic> items = data['data'] ?? [];
+        final List<dynamic> items = data['items'] ?? [];
         final notifications = items
             .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
             .toList();
@@ -113,7 +116,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        final List<dynamic> items = data['data'] ?? [];
+        final List<dynamic> items = data['items'] ?? [];
         final newNotifications = items
             .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
             .toList();

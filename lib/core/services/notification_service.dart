@@ -4,6 +4,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 
 /// Background message handler - must be a top-level function
@@ -194,10 +196,20 @@ class NotificationService {
     }
   }
 
+  Future<String> _downloadAndSaveFile(String url, String fileName) async {
+    final Directory directory = await getApplicationDocumentsDirectory();
+    final String filePath = '${directory.path}/$fileName';
+    final http.Response response = await http.get(Uri.parse(url));
+    final File file = File(filePath);
+    await file.writeAsBytes(response.bodyBytes);
+    return filePath;
+  }
+
   void _handleForegroundMessage(RemoteMessage message) {
     debugPrint('Received foreground message: ${message.messageId}');
 
     RemoteNotification? notification = message.notification;
+    AndroidNotification? android = message.notification?.android;
 
     // Show local notification for foreground messages
     if (notification != null) {
@@ -206,6 +218,7 @@ class NotificationService {
         title: notification.title ?? 'Notification',
         body: notification.body ?? '',
         payload: jsonEncode(message.data),
+        imageUrl: android?.imageUrl ?? message.data['image_url'],
       );
     }
   }
@@ -229,24 +242,89 @@ class NotificationService {
     required String title,
     required String body,
     String? payload,
+    String? imageUrl,
   }) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'high_importance_channel',
-      'High Importance Notifications',
-      channelDescription: 'This channel is used for important notifications.',
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-    );
+    // Android Style
+    AndroidNotificationDetails androidDetails;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      try {
+        final String bigPicturePath = await _downloadAndSaveFile(
+            imageUrl, 'bigPicture-${DateTime.now().millisecondsSinceEpoch}');
 
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
+        final BigPictureStyleInformation bigPictureStyleInformation =
+            BigPictureStyleInformation(
+          FilePathAndroidBitmap(bigPicturePath),
+          hideExpandedLargeIcon: true,
+          contentTitle: title,
+          htmlFormatContentTitle: true,
+          summaryText: body,
+          htmlFormatSummaryText: true,
+        );
 
-    const NotificationDetails details = NotificationDetails(
+        androidDetails = AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription:
+              'This channel is used for important notifications.',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+          styleInformation: bigPictureStyleInformation,
+        );
+      } catch (e) {
+        debugPrint('Error downloading image for notification: $e');
+        // Fallback to text only
+        androidDetails = const AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription:
+              'This channel is used for important notifications.',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        );
+      }
+    } else {
+      androidDetails = const AndroidNotificationDetails(
+        'high_importance_channel',
+        'High Importance Notifications',
+        channelDescription: 'This channel is used for important notifications.',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+      );
+    }
+
+    // iOS Style
+    DarwinNotificationDetails iosDetails;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      try {
+        final String bigPicturePath = await _downloadAndSaveFile(imageUrl,
+            'bigPicture-${DateTime.now().millisecondsSinceEpoch}.jpg');
+
+        iosDetails = DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          attachments: [DarwinNotificationAttachment(bigPicturePath)],
+        );
+      } catch (e) {
+        debugPrint('Error downloading image for iOS notification: $e');
+        iosDetails = const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        );
+      }
+    } else {
+      iosDetails = const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+    }
+
+    NotificationDetails details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );

@@ -1,0 +1,49 @@
+version: "3.8"
+
+networks:
+  doth_network:
+    ipam:
+      config:
+        - subnet: 192.168.5.0/24
+
+services:
+  postgres:
+    image: postgres:17.4
+    container_name: doth-live-postgres
+    restart: on-failure
+    env_file:
+      - .env
+    ports:
+      - "6432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d mydatabase"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    networks:
+      doth_network:
+        ipv4_address: 192.168.5.101
+
+  backend:
+    build: backend/
+    container_name: doth-live-backend
+    volumes:
+      - ./backend:/backend
+      - ./wallet_certs:/wallet_certs
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    command: >
+      python main.py
+    restart: on-failure
+    ports:
+      - "8001:8000"
+    networks:
+      doth_network:
+        ipv4_address: 192.168.5.100
+
+volumes:
+  postgres_data:

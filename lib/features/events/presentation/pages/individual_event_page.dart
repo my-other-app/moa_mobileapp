@@ -878,6 +878,10 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
 
             const SizedBox(height: 16),
             // Info Grid.
+            // Info Grid.
+            // Row 1: Date | (Fee or Location)
+            // Info Grid.
+            // Row 1: Date | Fee
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -909,6 +913,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
               ],
             ),
             const SizedBox(height: 16),
+            // Row 2: Time | Duration
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -940,34 +945,82 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _showLocationPopup(context),
-                    child: _infoCard(
-                      context,
-                      icon: AssetResources.location,
-                      title: 'Location',
-                      value: locationName ?? 'N/A',
+            // Row 3: Location | Prize (or Location Full Width)
+            if (hasPrize == true)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _showLocationPopup(context),
+                      child: _infoCard(
+                        context,
+                        icon: AssetResources.location,
+                        title: 'Location',
+                        value: locationName ?? 'N/A',
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _showPrizePopup(context),
-                    child: _infoCard(
-                      context,
-                      icon: AssetResources.prize,
-                      title: 'Prize Worth',
-                      value: hasPrize == true ? '₹ $prizeAmount' : 'None',
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _showPrizePopup(context),
+                      child: _infoCard(
+                        context,
+                        icon: AssetResources.prize,
+                        title: 'Prize Worth',
+                        value: '₹ $prizeAmount',
+                      ),
                     ),
                   ),
+                ],
+              )
+            else
+              GestureDetector(
+                onTap: () => _showLocationPopup(context),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(7.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white,
+                    border: Border.all(color: AppColors.border, width: 0.5),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 4),
+                      CircleAvatar(
+                        backgroundColor: Colors.white,
+                        radius: 24,
+                        child: Image.asset(
+                          AssetResources.location,
+                          height: 25,
+                          width: 25,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Location',
+                        style: TextStyle(
+                          fontSize: 16,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        locationName?.toUpperCase() ?? 'N/A',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontFamily: 'BebasNeue',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
             const SizedBox(height: 16),
 
             // ========== ATTENDED SECTION (before description) ==========

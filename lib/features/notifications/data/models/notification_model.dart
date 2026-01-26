@@ -34,10 +34,20 @@ class NotificationClubBrief {
   });
 
   factory NotificationClubBrief.fromJson(Map<String, dynamic> json) {
+    String? logoUrl;
+    final logoData = json['logo'];
+
+    if (logoData is Map) {
+      logoUrl =
+          logoData['thumbnail'] ?? logoData['original'] ?? logoData['medium'];
+    } else if (logoData is String) {
+      logoUrl = logoData;
+    }
+
     return NotificationClubBrief(
       id: json['id'] as int,
       name: json['name'] as String,
-      logo: json['logo'] as String?,
+      logo: logoUrl,
     );
   }
 
