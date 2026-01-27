@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/core/storage/secure_storage_service.dart';
 import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
 import 'package:myotherapp/core/services/notification_service.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:flutter/material.dart';
 
 /// Authentication state for the application.
 class AuthState extends Equatable {
@@ -81,6 +83,14 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
         debugPrint('AuthStateNotifier: Restored session from storage');
         // Register FCM token now that we have session
         NotificationService().registerToken();
+        if (state.user != null) {
+          Fluttertoast.showToast(
+            msg: "Logged in as User ID: ${state.user!.id}",
+            backgroundColor: Colors.blue,
+            textColor: Colors.white,
+            toastLength: Toast.LENGTH_LONG,
+          );
+        }
       } else {
         state = state.copyWith(isInitialized: true);
         debugPrint('AuthStateNotifier: No saved session found');
@@ -119,6 +129,14 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     debugPrint('AuthStateNotifier: User authenticated');
     // Register FCM token after login
     NotificationService().registerToken();
+    if (user != null) {
+      Fluttertoast.showToast(
+        msg: "Logged in as User ID: ${user.id}",
+        backgroundColor: Colors.blue,
+        textColor: Colors.white,
+        toastLength: Toast.LENGTH_LONG,
+      );
+    }
   }
 
   /// Update user profile.

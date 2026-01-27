@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 
 /// Background message handler - must be a top-level function
@@ -115,6 +117,17 @@ class NotificationService {
     }
   }
 
+  void _showToast(String message) {
+    Fluttertoast.showToast(
+      msg: message,
+      toastLength: Toast.LENGTH_LONG,
+      gravity: ToastGravity.BOTTOM,
+      backgroundColor: Colors.black87,
+      textColor: Colors.white,
+      fontSize: 16.0,
+    );
+  }
+
   Future<void> _initializeLocalNotifications() async {
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -171,6 +184,7 @@ class NotificationService {
     } catch (e, stackTrace) {
       debugPrint('🔔 [Notifications] ❌ Error getting FCM token: $e');
       debugPrint('🔔 [Notifications] Stack trace: $stackTrace');
+      _showToast("Error getting FCM token: $e");
     }
   }
 
@@ -182,6 +196,7 @@ class NotificationService {
 
   Future<void> _sendTokenToServer(String token) async {
     try {
+      _showToast("Registering push token...");
       await APIService.instance.request(
         '/user/fcm-token',
         DioMethod.post,
@@ -191,8 +206,10 @@ class NotificationService {
         },
       );
       debugPrint('FCM token sent to server');
+      _showToast("Push notifications enabled! ✅");
     } catch (e) {
       debugPrint('Error sending FCM token to server: $e');
+      _showToast("Failed to register push token: $e");
     }
   }
 
