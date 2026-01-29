@@ -101,10 +101,16 @@ class NotificationService {
     if (Platform.isIOS) {
       debugPrint('🔔 [Notifications] iOS - Waiting for APNs token...');
 
-      // Wait a bit for APNs to register
-      await Future.delayed(const Duration(seconds: 2));
+      // Retry getting APNs token a few times
+      String? apnsToken;
+      for (int i = 0; i < 5; i++) {
+        apnsToken = await _messaging.getAPNSToken();
+        if (apnsToken != null) break;
+        await Future.delayed(const Duration(seconds: 2));
+        debugPrint(
+            '🔔 [Notifications] Retry ${i + 1}/5 waiting for APNs token...');
+      }
 
-      String? apnsToken = await _messaging.getAPNSToken();
       debugPrint(
           '🔔 [Notifications] APNs token: ${apnsToken ?? "NULL - THIS IS THE PROBLEM!"}');
 
@@ -113,6 +119,7 @@ class NotificationService {
             '🔔 [Notifications] ⚠️ APNs token is NULL! Push notifications will NOT work.');
         debugPrint(
             '🔔 [Notifications] Check: 1) Push capability in Xcode, 2) APNs key in Firebase, 3) Bundle ID matches');
+        // Don't return here, try to get FCM token anyway, sometimes it works if APNs was cached
       }
     }
   }

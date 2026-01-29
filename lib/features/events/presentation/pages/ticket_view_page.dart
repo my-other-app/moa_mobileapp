@@ -161,48 +161,87 @@ class _TicketViewPageState extends State<TicketViewPage>
   Future<void> _shareTicket() async {
     HapticFeedback.lightImpact();
 
-    // Show loading indicator if needed, but for sharing we usually just wait
-    // We can use a local loading state if we want to show a spinner
     setState(() => _isDownloading = true);
 
     try {
       final directory = await getApplicationDocumentsDirectory();
-      final filePath = '${directory.path}/ticket_${widget.ticketId}.pdf';
+      // Sanitize filename
+      final safeId = widget.ticketId.replaceAll(RegExp(r'[^\w\s-]'), '');
+      final filePath = '${directory.path}/ticket_$safeId.pdf';
       final file = File(filePath);
 
-      // Check if file exists, if not download it
-      if (!await file.exists()) {
-        final storage = SecureStorageService();
-        final token = await storage.getAccessToken();
-        final pdfUrl =
-            '${Env.apiBaseUrl}/events/tickets/${widget.ticketId}/pdf';
+      // Always download fresh copy to ensure it's valid
+      if (await file.exists()) {
+        await file.delete();
+      }
 
-        final response = await http.get(
-          Uri.parse(pdfUrl),
-          headers: token != null ? {'Authorization': 'Bearer $token'} : {},
-        );
+      final storage = SecureStorageService();
+      final token = await storage.getAccessToken();
+      final pdfUrl = '${Env.apiBaseUrl}/events/tickets/${widget.ticketId}/pdf';
 
-        if (response.statusCode == 200) {
-          await file.writeAsBytes(response.bodyBytes);
-        } else {
-          // If download fails, fall back to text sharing
-          throw Exception('Failed to download ticket for sharing');
+      debugPrint('Downloading ticket from: $pdfUrl');
+
+      final response = await http.get(
+        Uri.parse(pdfUrl),
+        headers: token != null ? {'Authorization': 'Bearer $token'} : {},
+      );
+
+      if (response.statusCode == 200) {
+        if (response.bodyBytes.isEmpty) {
+          throw Exception('Downloaded file is empty');
+        }
+        await file.writeAsBytes(response.bodyBytes);
+        debugPrint(
+            'Ticket saved to: $filePath (${response.bodyBytes.length} bytes)');
+      } else {
+        debugPrint('Download failed with status: ${response.statusCode}');
+        debugPrint('Response body: ${response.body}');
+        throw Exception(
+            'Failed to download ticket (Status: ${response.statusCode})');
+      }
+
+      // Calculate share position origin (required for iPad, good practice for iOS)
+      final box = context.findRenderObject() as RenderBox?;
+      final shareOrigin = box != null
+          ? box.localToGlobal(Offset.zero) & box.size
+          : const Rect.fromLTWH(0, 0, 100, 100); // Fallback
+
+      // Share the PDF file
+      final result = await Share.shareXFiles(
+        [XFile(filePath, mimeType: 'application/pdf')],
+        text: '🎟️ Here is my ticket for ${widget.eventName}!',
+        sharePositionOrigin: shareOrigin,
+      );
+
+      if (result.status == ShareResultStatus.dismissed) {
+        debugPrint('Share dismissed');
+      }
+    } catch (e, stack) {
+      debugPrint('Share error: $e');
+      debugPrint('Stack trace: $stack');
+
+      // Only show error if it's NOT that weird rect error (which might actually be a success/dismiss on some versions)
+      // or if we really failed.
+      // The error "{{0, 0}, ...}" is likely a PlatformException with the rect as message.
+      final errorStr = e.toString();
+      if (!errorStr.contains('{{0, 0}')) {
+        if (mounted) {
+          _showErrorSnackBar(
+              'Could not share PDF: ${errorStr.split(':').last.trim()}');
         }
       }
 
-      // Share the PDF file
-      await Share.shareXFiles(
-        [XFile(filePath)],
-        text: '🎟️ Here is my ticket for ${widget.eventName}!',
-      );
-    } catch (e) {
-      debugPrint('Share error: $e');
       // Fallback to text sharing
       await Share.share(
         '🎟️ ${widget.eventName}\n\n'
         '📅 $_formattedDate • $_formattedTime\n'
         '📍 ${widget.locationName ?? "TBA"}\n\n'
         '$_ticketWebUrl',
+        sharePositionOrigin: context.findRenderObject() is RenderBox
+            ? (context.findRenderObject() as RenderBox)
+                    .localToGlobal(Offset.zero) &
+                (context.findRenderObject() as RenderBox).size
+            : null,
       );
     } finally {
       if (mounted) setState(() => _isDownloading = false);
