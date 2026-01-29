@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myotherapp/common/models/events/event_model.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
+import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
 
-class EventFormPage extends StatefulWidget {
+class EventFormPage extends ConsumerStatefulWidget {
   final int eventId;
   final List<AdditionalDetail> additionalDetails;
 
@@ -16,10 +19,10 @@ class EventFormPage extends StatefulWidget {
   });
 
   @override
-  State<EventFormPage> createState() => _EventFormPageState();
+  ConsumerState<EventFormPage> createState() => _EventFormPageState();
 }
 
-class _EventFormPageState extends State<EventFormPage> {
+class _EventFormPageState extends ConsumerState<EventFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -29,7 +32,13 @@ class _EventFormPageState extends State<EventFormPage> {
   final Map<String, TextEditingController> _additionalTextControllers = {};
   final Map<String, String?> _additionalSelectValues = {};
 
+  // Organization selection
+  Organization? _selectedOrganization;
+  bool _isOtherOrganization = false;
+  final _otherOrgController = TextEditingController();
+
   bool _isSubmitting = false;
+  bool _hasPrefilledData = false;
 
   @override
   void initState() {
@@ -47,10 +56,29 @@ class _EventFormPageState extends State<EventFormPage> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _otherOrgController.dispose();
     for (final controller in _additionalTextControllers.values) {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  /// Pre-fill form data from user profile
+  void _prefillFromProfile(UserProfile profile) {
+    if (_hasPrefilledData) return;
+    _hasPrefilledData = true;
+
+    _nameController.text = profile.fullName;
+    _emailController.text = profile.email;
+    if (profile.phone != null && profile.phone!.isNotEmpty) {
+      _phoneController.text = profile.phone!;
+    } else if (profile.whatsapp != null && profile.whatsapp!.isNotEmpty) {
+      _phoneController.text = profile.whatsapp!;
+    }
+
+    if (profile.organization != null) {
+      _selectedOrganization = profile.organization;
+    }
   }
 
   Widget _buildInputField({
@@ -260,6 +288,164 @@ class _EventFormPageState extends State<EventFormPage> {
     return SizedBox.shrink();
   }
 
+  Widget _buildOrganizationField(List<Organization> organizations) {
+    // Build list with "Other" option
+    final orgOptions = [...organizations];
+
+    return _buildInputField(
+      label: 'Organization/College',
+      isRequired: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField2<Organization?>(
+            value: _isOtherOrganization ? null : _selectedOrganization,
+            isExpanded: true,
+            buttonStyleData: ButtonStyleData(
+              height: 44,
+              padding: EdgeInsets.zero,
+            ),
+            iconStyleData: IconStyleData(
+              icon: Icon(Icons.keyboard_arrow_down, color: Color(0xFF2C333D)),
+            ),
+            dropdownStyleData: DropdownStyleData(
+              maxHeight: 300,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFF2C333D).withValues(alpha: 0.1),
+                    spreadRadius: 1,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              offset: const Offset(0, -4),
+              scrollbarTheme: ScrollbarThemeData(
+                radius: const Radius.circular(40),
+                thickness: WidgetStateProperty.all(6),
+                thumbVisibility: WidgetStateProperty.all(true),
+              ),
+            ),
+            menuItemStyleData: MenuItemStyleData(
+              height: 40,
+              padding: EdgeInsets.symmetric(horizontal: 16),
+            ),
+            style: TextStyle(
+              color: Color(0xFF1E1E1E),
+              fontSize: 16,
+              fontFamily: 'DM Sans',
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Select your organization',
+              hintStyle: TextStyle(
+                color: Color(0xFFB4B4B4),
+                fontSize: 16,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w500,
+              ),
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Color(0xFF2C333D), width: 1),
+              ),
+            ),
+            items: [
+              ...orgOptions.map((org) {
+                return DropdownMenuItem<Organization?>(
+                  value: org,
+                  child: Text(
+                    org.name,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: Color(0xFF1E1E1E),
+                      fontSize: 16,
+                      fontFamily: 'DM Sans',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                );
+              }),
+              // Add "Other" option
+              DropdownMenuItem<Organization?>(
+                value: null,
+                child: Text(
+                  'Other (specify below)',
+                  style: TextStyle(
+                    color: Color(0xFF1E1E1E),
+                    fontSize: 16,
+                    fontFamily: 'DM Sans',
+                    fontWeight: FontWeight.w500,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+            onChanged: (Organization? newValue) {
+              setState(() {
+                if (newValue == null) {
+                  _isOtherOrganization = true;
+                  _selectedOrganization = null;
+                } else {
+                  _isOtherOrganization = false;
+                  _selectedOrganization = newValue;
+                  _otherOrgController.clear();
+                }
+              });
+            },
+          ),
+          if (_isOtherOrganization) ...[
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _otherOrgController,
+              style: TextStyle(
+                color: Color(0xFF1E1E1E),
+                fontSize: 16,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Enter your organization name',
+                hintStyle: TextStyle(
+                  color: Color(0xFFB4B4B4),
+                  fontSize: 16,
+                  fontFamily: 'DM Sans',
+                  fontWeight: FontWeight.w500,
+                ),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Color(0xFF2C333D), width: 0.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Color(0xFF2C333D), width: 1),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -284,11 +470,20 @@ class _EventFormPageState extends State<EventFormPage> {
           }
         });
 
+        // Determine organization name to send
+        String? organizationName;
+        if (_isOtherOrganization && _otherOrgController.text.isNotEmpty) {
+          organizationName = _otherOrgController.text.trim();
+        } else if (_selectedOrganization != null) {
+          organizationName = _selectedOrganization!.name;
+        }
+
         final requestData = {
           'full_name': _nameController.text.trim(),
           'email': _emailController.text.trim(),
           'phone': _phoneController.text.trim(),
           'additional_details': additionalDetailsMap,
+          if (organizationName != null) 'organization': organizationName,
         };
 
         final response = await APIService.instance.request(
@@ -336,6 +531,15 @@ class _EventFormPageState extends State<EventFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Get profile data for pre-filling
+    final profileState = ref.watch(profileProvider);
+    final organizationsAsync = ref.watch(organizationsProvider);
+
+    // Pre-fill data if profile is available
+    if (profileState.profile != null) {
+      _prefillFromProfile(profileState.profile!);
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -427,15 +631,16 @@ class _EventFormPageState extends State<EventFormPage> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Email field
+                      // Email field (read-only, pre-filled)
                       _buildInputField(
                         label: 'Email',
                         isRequired: true,
                         child: TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
+                          readOnly: true, // Make email non-editable
                           style: TextStyle(
-                            color: Color(0xFF1E1E1E),
+                            color: Color(0xFF6B7280), // Greyed out color
                             fontSize: 16,
                             fontFamily: 'DM Sans',
                             fontWeight: FontWeight.w500,
@@ -448,22 +653,30 @@ class _EventFormPageState extends State<EventFormPage> {
                               fontFamily: 'DM Sans',
                               fontWeight: FontWeight.w500,
                             ),
+                            filled: true,
+                            fillColor:
+                                Color(0xFFF3F4F6), // Light grey background
                             contentPadding: EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 6),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide(
-                                  color: Color(0xFF2C333D), width: 0.5),
+                                  color: Color(0xFFD1D5DB), width: 0.5),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide(
-                                  color: Color(0xFF2C333D), width: 0.5),
+                                  color: Color(0xFFD1D5DB), width: 0.5),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide(
-                                  color: Color(0xFF2C333D), width: 1),
+                                  color: Color(0xFFD1D5DB), width: 0.5),
+                            ),
+                            suffixIcon: Icon(
+                              Icons.lock_outline,
+                              color: Color(0xFF9CA3AF),
+                              size: 18,
                             ),
                           ),
                           validator: (value) {
@@ -532,6 +745,74 @@ class _EventFormPageState extends State<EventFormPage> {
                             }
                             return null;
                           },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Organization field
+                      organizationsAsync.when(
+                        data: (organizations) =>
+                            _buildOrganizationField(organizations),
+                        loading: () => _buildInputField(
+                          label: 'Organization/College',
+                          isRequired: false,
+                          child: Container(
+                            height: 44,
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                  color: Color(0xFF2C333D), width: 0.5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFF2C333D),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        error: (_, __) => _buildInputField(
+                          label: 'Organization/College',
+                          isRequired: false,
+                          child: TextFormField(
+                            controller: _otherOrgController,
+                            style: TextStyle(
+                              color: Color(0xFF1E1E1E),
+                              fontSize: 16,
+                              fontFamily: 'DM Sans',
+                              fontWeight: FontWeight.w500,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Enter your organization name',
+                              hintStyle: TextStyle(
+                                color: Color(0xFFB4B4B4),
+                                fontSize: 16,
+                                fontFamily: 'DM Sans',
+                                fontWeight: FontWeight.w500,
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 6),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                    color: Color(0xFF2C333D), width: 0.5),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                    color: Color(0xFF2C333D), width: 0.5),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                    color: Color(0xFF2C333D), width: 1),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
 

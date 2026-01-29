@@ -12,6 +12,9 @@ class ClubsState {
   final String? error;
   final int currentPage;
   final bool hasMore;
+  // Filter state
+  final int? organizationId;
+  final List<int>? interestIds;
 
   const ClubsState({
     this.clubs = const [],
@@ -20,6 +23,8 @@ class ClubsState {
     this.error,
     this.currentPage = 1,
     this.hasMore = true,
+    this.organizationId,
+    this.interestIds,
   });
 
   ClubsState copyWith({
@@ -29,6 +34,10 @@ class ClubsState {
     String? error,
     int? currentPage,
     bool? hasMore,
+    int? organizationId,
+    List<int>? interestIds,
+    bool clearOrganization = false,
+    bool clearInterests = false,
   }) {
     return ClubsState(
       clubs: clubs ?? this.clubs,
@@ -37,8 +46,15 @@ class ClubsState {
       error: error,
       currentPage: currentPage ?? this.currentPage,
       hasMore: hasMore ?? this.hasMore,
+      organizationId:
+          clearOrganization ? null : (organizationId ?? this.organizationId),
+      interestIds: clearInterests ? null : (interestIds ?? this.interestIds),
     );
   }
+
+  bool get hasFilters =>
+      organizationId != null ||
+      (interestIds != null && interestIds!.isNotEmpty);
 }
 
 /// Provider for clubs the user follows.
@@ -188,10 +204,54 @@ class ClubsNotifier extends StateNotifier<ClubsState> {
       case ClubsType.following:
         return _repository.getFollowingClubs(page: page, limit: _pageSize);
       case ClubsType.all:
-        return _repository.getClubs(page: page, limit: _pageSize);
+        return _repository.getClubs(
+          page: page,
+          limit: _pageSize,
+          organizationId: state.organizationId,
+          interestIds: state.interestIds,
+        );
       case ClubsType.pinned:
         return _repository.getPinnedClubs();
     }
+  }
+
+  /// Apply filters and reload clubs.
+  Future<void> applyFilters({
+    int? organizationId,
+    List<int>? interestIds,
+  }) async {
+    state = state.copyWith(
+      organizationId: organizationId,
+      interestIds: interestIds,
+      clearOrganization: organizationId == null,
+      clearInterests: interestIds == null || interestIds.isEmpty,
+    );
+    await loadClubs();
+  }
+
+  /// Clear all filters and reload.
+  Future<void> clearFilters() async {
+    state = state.copyWith(
+      clearOrganization: true,
+      clearInterests: true,
+    );
+    await loadClubs();
+  }
+
+  /// Set organization filter.
+  void setOrganizationFilter(int? orgId) {
+    state = state.copyWith(
+      organizationId: orgId,
+      clearOrganization: orgId == null,
+    );
+  }
+
+  /// Set interests filter.
+  void setInterestsFilter(List<int>? ids) {
+    state = state.copyWith(
+      interestIds: ids,
+      clearInterests: ids == null || ids.isEmpty,
+    );
   }
 }
 
