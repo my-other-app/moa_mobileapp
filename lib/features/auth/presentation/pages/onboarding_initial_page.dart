@@ -308,8 +308,131 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
             backgroundColor: const Color(0xFF2C333D), // Same as Google button
           ),
         ],
+        // Email Sign In Button
+        const SizedBox(height: 16),
+        _buildLoginButton(
+          onTap: _showEmailSignInSheet,
+          icon: const Icon(Icons.email_outlined, color: Colors.white, size: 32),
+          text: 'LOGIN WITH EMAIL',
+          backgroundColor: const Color(0xFF17A58F),
+        ),
       ],
     );
+  }
+
+  void _showEmailSignInSheet() {
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 24,
+          right: 24,
+          top: 24,
+        ),
+        child: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Sign In with Email',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontFamily: 'Bebas Neue',
+                  fontWeight: FontWeight.w400,
+                  color: Color(0xFF2C333D),
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  prefixIcon: const Icon(Icons.lock_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your password';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState!.validate()) {
+                      Navigator.pop(context);
+                      _handleEmailSignIn(
+                        emailController.text.trim(),
+                        passwordController.text,
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF17A58F),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'SIGN IN',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontFamily: 'Bebas Neue',
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleEmailSignIn(String email, String password) {
+    _loginCubit.loginWithEmail(email, password);
   }
 
   Widget _buildLoginButton({

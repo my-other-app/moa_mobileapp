@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/features/notifications/data/models/notification_model.dart';
@@ -54,11 +55,11 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
     // Force load, ignore isLoading
     // if (state.isLoading) return;
 
-    print('DEBUG: loadNotifications called');
+    debugPrint('DEBUG: loadNotifications called');
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      print('DEBUG: Making API request to /notifications/fetch-list');
+      debugPrint('DEBUG: Making API request to /notifications/fetch-list');
       final response = await APIService.instance.request(
         '/notifications/fetch-list',
         DioMethod.get,

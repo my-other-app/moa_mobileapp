@@ -200,6 +200,9 @@ class _TicketViewPageState extends State<TicketViewPage>
             'Failed to download ticket (Status: ${response.statusCode})');
       }
 
+      // Check mounted before accessing context after async gap
+      if (!mounted) return;
+
       // Calculate share position origin (required for iPad, good practice for iOS)
       final box = context.findRenderObject() as RenderBox?;
       final shareOrigin = box != null
@@ -231,17 +234,20 @@ class _TicketViewPageState extends State<TicketViewPage>
         }
       }
 
-      // Fallback to text sharing
+      // Fallback to text sharing if mounted
+      if (!mounted) return;
+
+      final fallbackBox = context.findRenderObject() as RenderBox?;
+      final fallbackOrigin = fallbackBox != null
+          ? fallbackBox.localToGlobal(Offset.zero) & fallbackBox.size
+          : null;
+
       await Share.share(
         '🎟️ ${widget.eventName}\n\n'
         '📅 $_formattedDate • $_formattedTime\n'
         '📍 ${widget.locationName ?? "TBA"}\n\n'
         '$_ticketWebUrl',
-        sharePositionOrigin: context.findRenderObject() is RenderBox
-            ? (context.findRenderObject() as RenderBox)
-                    .localToGlobal(Offset.zero) &
-                (context.findRenderObject() as RenderBox).size
-            : null,
+        sharePositionOrigin: fallbackOrigin,
       );
     } finally {
       if (mounted) setState(() => _isDownloading = false);

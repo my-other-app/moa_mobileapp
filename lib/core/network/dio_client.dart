@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/core/config/env/env.dart';
 import 'package:myotherapp/core/network/interceptors/auth_interceptor.dart';
-import 'package:myotherapp/core/network/interceptors/cert_pinning_interceptor.dart';
 import 'package:myotherapp/core/network/interceptors/error_interceptor.dart';
 import 'package:myotherapp/core/network/interceptors/logging_interceptor.dart';
 

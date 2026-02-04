@@ -114,4 +114,32 @@ class LoginCubit {
       onStateChanged?.call(_state);
     }
   }
+
+  Future<void> loginWithEmail(String email, String password) async {
+    _state = LoginLoading();
+    onStateChanged?.call(_state);
+
+    try {
+      final result = await authService.signInWithEmail(
+        email: email,
+        password: password,
+      );
+
+      // Store tokens in secure storage
+      await secureStorage.saveTokens(
+        accessToken: result['access_token'],
+        refreshToken: result['refresh_token'],
+      );
+
+      _state = LoginSuccess(
+        accessToken: result['access_token'],
+        refreshToken: result['refresh_token'],
+        photoUrl: '', // Email login doesn't provide profile photo
+      );
+      onStateChanged?.call(_state);
+    } catch (e) {
+      _state = LoginFailure(error: e.toString());
+      onStateChanged?.call(_state);
+    }
+  }
 }
