@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:myotherapp/common/widgets/custom_option_tile.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
+import 'package:myotherapp/core/utils/error_utils.dart';
 
 class ClubsOptionScreen extends StatefulWidget {
   final String clubName;
@@ -58,7 +59,7 @@ class _ClubsOptionScreenState extends State<ClubsOptionScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to unfollow: ${e.toString()}'),
+            content: Text('Failed to unfollow: ${extractErrorMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -94,7 +95,7 @@ class _ClubsOptionScreenState extends State<ClubsOptionScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to hide events: ${e.toString()}'),
+            content: Text('Failed to hide events: ${extractErrorMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -130,7 +131,7 @@ class _ClubsOptionScreenState extends State<ClubsOptionScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to pin: ${e.toString()}'),
+            content: Text('Failed to pin: ${extractErrorMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );

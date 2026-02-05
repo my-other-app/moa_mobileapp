@@ -6,6 +6,7 @@ import 'package:myotherapp/common/models/events/event_model.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
 import 'package:myotherapp/core/themes/app_colors.dart';
+import 'package:myotherapp/core/utils/error_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:myotherapp/shared/widgets/error_view.dart';
 import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
@@ -732,7 +733,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to submit rating: ${e.toString()}'),
+            content: Text('Failed to submit rating: ${extractErrorMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );

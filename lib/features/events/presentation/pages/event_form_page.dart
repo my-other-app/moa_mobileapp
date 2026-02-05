@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myotherapp/common/models/events/event_model.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:myotherapp/core/utils/error_utils.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
 import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
 
@@ -515,7 +516,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error: ${e.toString()}'),
+              content: Text(extractErrorMessage(e,
+                  defaultMessage: 'Registration failed')),
             ),
           );
         }

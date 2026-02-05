@@ -13,6 +13,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:myotherapp/core/storage/secure_storage_service.dart';
 import 'package:myotherapp/core/config/env/env.dart';
+import 'package:myotherapp/core/utils/error_utils.dart';
 import 'package:apple_passkit/apple_passkit.dart';
 
 /// Premium ticket page with stunning glow effects and Apple Wallet-like design.
@@ -343,7 +344,9 @@ class _TicketViewPageState extends State<TicketViewPage>
       debugPrint('🎫 [Wallet] Stack trace: $stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add to wallet: $e')),
+          SnackBar(
+              content:
+                  Text('Failed to add to wallet: ${extractErrorMessage(e)}')),
         );
       }
     } finally {

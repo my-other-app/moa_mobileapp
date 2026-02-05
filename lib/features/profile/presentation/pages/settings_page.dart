@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:myotherapp/common/widgets/custom_option_tile.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
+import 'package:myotherapp/core/utils/error_utils.dart';
 import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
 import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
@@ -195,7 +196,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         } catch (e) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error: $e')),
+              SnackBar(
+                  content: Text(extractErrorMessage(e,
+                      defaultMessage: 'Failed to delete account'))),
             );
           }
         }

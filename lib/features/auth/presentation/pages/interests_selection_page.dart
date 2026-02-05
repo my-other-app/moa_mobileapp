@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:myotherapp/core/utils/error_utils.dart';
 import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart'
     hide ProfileState;
 import 'package:myotherapp/features/auth/data/models/profile.dart';
@@ -102,7 +103,9 @@ class _InterestsSelectionPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting interests: $e')),
+          SnackBar(
+              content: Text(extractErrorMessage(e,
+                  defaultMessage: 'Failed to save interests'))),
         );
       }
     } finally {
