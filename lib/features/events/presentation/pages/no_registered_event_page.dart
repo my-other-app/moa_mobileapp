@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
+import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
 
-class NoRegisteredEventPage extends StatelessWidget {
+class NoRegisteredEventPage extends ConsumerWidget {
   const NoRegisteredEventPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -47,7 +48,8 @@ class NoRegisteredEventPage extends StatelessWidget {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () {
-                    context.go('/events');
+                    // Navigate to home page (For You section)
+                    ref.read(bottomNavIndexProvider.notifier).resetToHome();
                   },
                   child: Text('EXPLORE EVENTS'),
                 ),
