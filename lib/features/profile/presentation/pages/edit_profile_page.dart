@@ -39,7 +39,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
       if (initialProfile != null) {
         _nameController.text = initialProfile.fullName;
-        _whatsappController.text = initialProfile.phone ?? '1234567890';
+        _whatsappController.text = initialProfile.whatsapp ?? '';
       }
 
       await fetchOrgDetails();
