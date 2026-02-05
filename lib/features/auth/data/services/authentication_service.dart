@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 
 class AuthenticationService {
@@ -6,14 +5,16 @@ class AuthenticationService {
     required String email,
     required String password,
   }) async {
+    // OAuth2 token endpoint requires application/x-www-form-urlencoded
+    // Dio's FormData sends multipart/form-data, so we need to send as encoded string
+    final encodedData =
+        'username=${Uri.encodeComponent(email)}&password=${Uri.encodeComponent(password)}';
+
     final response = await APIService.instance.request(
       '/auth/token',
       DioMethod.post,
       contentType: 'application/x-www-form-urlencoded',
-      formData: FormData.fromMap({
-        'username': email,
-        'password': password,
-      }),
+      formData: encodedData,
       skipAuth: true,
     );
     if (response.statusCode == 200) return response.data;
