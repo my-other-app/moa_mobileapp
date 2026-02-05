@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:myotherapp/core/api/api_helper.dart';
 
 class AuthenticationService {
@@ -9,10 +10,10 @@ class AuthenticationService {
       '/auth/token',
       DioMethod.post,
       contentType: 'application/x-www-form-urlencoded',
-      param: {
+      formData: FormData.fromMap({
         'username': email,
         'password': password,
-      },
+      }),
       skipAuth: true,
     );
     if (response.statusCode == 200) return response.data;
