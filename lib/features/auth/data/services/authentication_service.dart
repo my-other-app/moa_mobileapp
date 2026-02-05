@@ -22,6 +22,26 @@ class AuthenticationService {
     throw Exception('Login failed: ${response.data}');
   }
 
+  Future<Map<String, dynamic>> signUpWithEmail({
+    required String fullName,
+    required String email,
+    required String password,
+  }) async {
+    final response = await APIService.instance.request(
+      '/user/register',
+      DioMethod.post,
+      param: {
+        'full_name': fullName,
+        'email': email,
+        'password': password,
+      },
+      skipAuth: true,
+    );
+    if (response.statusCode == 200) return response.data;
+
+    throw Exception('Registration failed: ${response.data}');
+  }
+
   Future<Map<String, dynamic>> signInWithGoogle({
     required String idToken,
     required String platform,

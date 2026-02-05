@@ -323,7 +323,9 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
   void _showEmailSignInSheet() {
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
+    final nameController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    bool isSignUp = false;
 
     showModalBottomSheet(
       context: context,
@@ -332,99 +334,153 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 24,
-          right: 24,
-          top: 24,
-        ),
-        child: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Sign In with Email',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontFamily: 'Bebas Neue',
-                  fontWeight: FontWeight.w400,
-                  color: Color(0xFF2C333D),
-                ),
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 24,
+            right: 24,
+            top: 24,
+          ),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isSignUp ? 'Create Account' : 'Sign In with Email',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontFamily: 'Bebas Neue',
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF2C333D),
                   ),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 24),
+                // Name field (only for sign-up)
+                if (isSignUp) ...[
+                  TextFormField(
+                    controller: nameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      labelText: 'Full Name',
+                      prefixIcon: const Icon(Icons.person_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (isSignUp && (value == null || value.isEmpty)) {
+                        return 'Please enter your name';
+                      }
+                      return null;
+                    },
                   ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your password';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (formKey.currentState!.validate()) {
-                      Navigator.pop(context);
-                      _handleEmailSignIn(
-                        emailController.text.trim(),
-                        passwordController.text,
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF17A58F),
-                    shape: RoundedRectangleBorder(
+                  const SizedBox(height: 16),
+                ],
+                TextFormField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'SIGN IN',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontFamily: 'Bebas Neue',
-                      color: Colors.white,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your email';
+                    }
+                    if (!value.contains('@')) {
+                      return 'Please enter a valid email';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your password';
+                    }
+                    if (isSignUp && value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (formKey.currentState!.validate()) {
+                        Navigator.pop(context);
+                        if (isSignUp) {
+                          _handleEmailSignUp(
+                            nameController.text.trim(),
+                            emailController.text.trim(),
+                            passwordController.text,
+                          );
+                        } else {
+                          _handleEmailSignIn(
+                            emailController.text.trim(),
+                            passwordController.text,
+                          );
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF17A58F),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontFamily: 'Bebas Neue',
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 16),
+                // Toggle between sign-in and sign-up
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      setSheetState(() {
+                        isSignUp = !isSignUp;
+                      });
+                    },
+                    child: Text(
+                      isSignUp
+                          ? 'Already have an account? Sign In'
+                          : "Don't have an account? Create one",
+                      style: const TextStyle(
+                        color: Color(0xFF17A58F),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       ),
@@ -433,6 +489,10 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
 
   void _handleEmailSignIn(String email, String password) {
     _loginCubit.loginWithEmail(email, password);
+  }
+
+  void _handleEmailSignUp(String name, String email, String password) {
+    _loginCubit.signUpWithEmail(name, email, password);
   }
 
   Widget _buildLoginButton({
