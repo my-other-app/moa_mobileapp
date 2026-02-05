@@ -353,6 +353,26 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             Navigator.of(context).pop();
           }
         }
+      } on DioException catch (e) {
+        if (mounted) {
+          // Extract actual error message from response
+          String errorMessage = 'Failed to update profile';
+          if (e.response?.data != null) {
+            final data = e.response!.data;
+            if (data is Map && data['message'] != null) {
+              errorMessage = data['message'];
+            } else if (data is Map && data['detail'] != null) {
+              errorMessage = data['detail'].toString();
+            } else if (data is String) {
+              errorMessage = data;
+            }
+          } else {
+            errorMessage = e.message ?? 'Network error occurred';
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMessage)),
+          );
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
