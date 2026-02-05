@@ -107,7 +107,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 
     try {
       final response = await APIService.instance.request(
-        '/notifications/list',
+        '/notifications/fetch-list',
         DioMethod.get,
         param: {
           'limit': _pageSize,

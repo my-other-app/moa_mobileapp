@@ -382,6 +382,17 @@ class _ResultBottomSheet extends StatelessWidget {
 
   /// Success - Valid ticket with details
   Widget _buildSuccessContent(BuildContext context) {
+    // Format date and time from result
+    String dateStr = 'N/A';
+    String timeStr = 'N/A';
+    if (result.eventDate != null) {
+      dateStr =
+          '${result.eventDate!.day}/${result.eventDate!.month}/${result.eventDate!.year}';
+    }
+    if (result.eventTime != null) {
+      timeStr = result.eventTime!;
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -400,14 +411,36 @@ class _ResultBottomSheet extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
+        // Ticket holder name prominently displayed
+        Text(
+          result.ticketHolderName?.toUpperCase() ?? 'UNKNOWN',
+          style: const TextStyle(
+            fontSize: 20,
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        // Email
+        Text(
+          result.ticketHolderEmail ?? 'No email',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 20),
         // Ticket details grid
         Row(
           children: [
             Expanded(
-              child: _buildDetailItem('Date', 'TODAY'),
+              child: _buildDetailItem('Date', dateStr),
             ),
             Expanded(
-              child: _buildDetailItem('Time', 'NOW'),
+              child: _buildDetailItem('Time', timeStr),
             ),
           ],
         ),

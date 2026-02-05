@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
+import 'package:myotherapp/features/main/presentation/pages/main_shell.dart';
 
 class NoRegisteredEventPage extends ConsumerWidget {
   const NoRegisteredEventPage({super.key});
@@ -48,8 +49,10 @@ class NoRegisteredEventPage extends ConsumerWidget {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () {
-                    // Navigate to home page (For You section)
-                    ref.read(bottomNavIndexProvider.notifier).resetToHome();
+                    // Update bottom nav index to sync UI
+                    ref.read(navigationIndexProvider.notifier).state = 0;
+                    // Navigate to home page
+                    context.go('/');
                   },
                   child: Text('EXPLORE EVENTS'),
                 ),

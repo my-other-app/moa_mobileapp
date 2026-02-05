@@ -89,9 +89,10 @@ class CheckinResult {
   final bool success;
   final CheckinResultType type;
   final String message;
-  // Ticket details for success case (can be extended when backend returns them)
+  // Ticket details for success case
   final String? ticketId;
   final String? ticketHolderName;
+  final String? ticketHolderEmail;
   final String? ticketType;
   final DateTime? eventDate;
   final String? eventTime;
@@ -103,6 +104,7 @@ class CheckinResult {
     required this.message,
     this.ticketId,
     this.ticketHolderName,
+    this.ticketHolderEmail,
     this.ticketType,
     this.eventDate,
     this.eventTime,
@@ -184,6 +186,7 @@ class VolunteerNotifier extends StateNotifier<VolunteerState> {
           message: 'Valid ticket',
           ticketId: ticketId,
           ticketHolderName: data['ticket_holder_name'] as String?,
+          ticketHolderEmail: data['ticket_holder_email'] as String?,
           eventDate: eventDate,
           eventTime: eventTime,
           location: data['location'] as String?,

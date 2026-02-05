@@ -6,7 +6,14 @@ import 'package:myotherapp/shared/widgets/search_college_widget.dart';
 import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
 
 class ExploreMoreClubsPage extends StatefulWidget {
-  const ExploreMoreClubsPage({super.key});
+  final int? initialOrganizationId;
+  final List<int>? initialInterestIds;
+
+  const ExploreMoreClubsPage({
+    super.key,
+    this.initialOrganizationId,
+    this.initialInterestIds,
+  });
 
   @override
   State<ExploreMoreClubsPage> createState() => _ExploreMoreClubsPageState();
@@ -108,13 +115,26 @@ class _ExploreMoreClubsPageState extends State<ExploreMoreClubsPage> {
 
   Future<void> _fetchData() async {
     try {
+      // Build query parameters with optional filters
+      final Map<String, dynamic> params = {};
+
+      if (widget.initialOrganizationId != null) {
+        params['organization_id'] = widget.initialOrganizationId;
+      }
+
+      if (widget.initialInterestIds != null &&
+          widget.initialInterestIds!.isNotEmpty) {
+        params['interest_ids'] = widget.initialInterestIds!.join(',');
+      }
+
       Response<dynamic> res = await APIService.instance.request(
         '/clubs/list',
         DioMethod.get,
+        param: params.isNotEmpty ? params : null,
       );
       setState(() {
         clubs = res.data['items'] ?? [];
-        debugPrint("Clubs: $clubs");
+        debugPrint("Clubs: $clubs with filters: $params");
         isLoading = false;
       });
     } catch (e) {

@@ -235,7 +235,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'explore',
                     name: 'exploreClubs',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => ExploreMoreClubsPage()),
+                    builder: (context, state) {
+                      final extra = state.extra as Map<String, dynamic>?;
+                      return ExploreMoreClubsPage(
+                        initialOrganizationId: extra?['organizationId'] as int?,
+                        initialInterestIds: extra?['interestIds'] != null
+                            ? (extra!['interestIds'] as Set<int>).toList()
+                            : null,
+                      );
+                    }),
                 GoRoute(
                     path: ':clubId',
                     name: 'clubDetail',
