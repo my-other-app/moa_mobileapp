@@ -68,7 +68,8 @@ class ClubRemoteDataSourceImpl implements ClubRemoteDataSource {
       queryParams['interest_ids'] = interestIds.join(',');
     }
 
-    final response = await _dio.get('/clubs', queryParameters: queryParams);
+    final response =
+        await _dio.get('/clubs/list', queryParameters: queryParams);
     final List<dynamic> data = response.data['results'] as List<dynamic>? ??
         response.data as List<dynamic>? ??
         [];

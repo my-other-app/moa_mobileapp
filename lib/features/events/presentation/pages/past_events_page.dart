@@ -192,7 +192,7 @@ class _PastEventsPageState extends State<PastEventsPage>
               eventSlug: event['slug'],
               status: event['is_attended'] == true
                   ? EventCardStatus.attended
-                  : EventCardStatus.none,
+                  : EventCardStatus.notAttended,
               certificateUrl: event['certificate_url'],
               showShareIcon: false,
             );

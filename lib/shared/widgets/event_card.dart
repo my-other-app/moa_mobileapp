@@ -10,6 +10,7 @@ enum EventCardStatus {
   none, // Default - show "TAKE A CLOSER LOOK"
   registered, // Registered but event not over - show "VIEW TICKET"
   attended, // Event over and attended - show "VIEW CERTIFICATE"
+  notAttended, // Event over but not attended - show "Not Attended" badge
 }
 
 class EventCard extends StatelessWidget {
@@ -189,34 +190,24 @@ class EventCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: status == EventCardStatus.attended
-                        ? const Color(0xFF4CAF50)
-                        : const Color(0xFFFFD600),
+                    color: _getStatusColor(status),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        status == EventCardStatus.attended
-                            ? Icons.verified
-                            : Icons.confirmation_number,
+                        _getStatusIcon(status),
                         size: 16,
-                        color: status == EventCardStatus.attended
-                            ? Colors.white
-                            : Colors.black87,
+                        color: _getStatusTextColor(status),
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        status == EventCardStatus.attended
-                            ? 'Attended'
-                            : 'Registered',
+                        _getStatusText(status),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: status == EventCardStatus.attended
-                              ? Colors.white
-                              : Colors.black87,
+                          color: _getStatusTextColor(status),
                         ),
                       ),
                     ],
@@ -285,6 +276,16 @@ class EventCard extends StatelessWidget {
           ),
           child: const Text('VIEW CERTIFICATE'),
         );
+      case EventCardStatus.notAttended:
+        return FilledButton(
+          onPressed: () {
+            context.push('/events/$eventId', extra: _getNavigationExtras());
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF2C333D),
+          ),
+          child: const Text('VIEW EVENT'),
+        );
       case EventCardStatus.none:
         return FilledButton(
           onPressed: () {
@@ -302,5 +303,60 @@ class EventCard extends StatelessWidget {
       'ticketUrl': ticketUrl,
       'certificateUrl': certificateUrl,
     };
+  }
+
+  /// Get color for status badge
+  Color _getStatusColor(EventCardStatus status) {
+    switch (status) {
+      case EventCardStatus.attended:
+        return const Color(0xFF4CAF50); // Green
+      case EventCardStatus.registered:
+        return const Color(0xFFFFD600); // Yellow
+      case EventCardStatus.notAttended:
+        return const Color(0xFFF44336); // Red
+      case EventCardStatus.none:
+        return Colors.transparent;
+    }
+  }
+
+  /// Get icon for status badge
+  IconData _getStatusIcon(EventCardStatus status) {
+    switch (status) {
+      case EventCardStatus.attended:
+        return Icons.verified;
+      case EventCardStatus.registered:
+        return Icons.confirmation_number;
+      case EventCardStatus.notAttended:
+        return Icons.cancel_outlined;
+      case EventCardStatus.none:
+        return Icons.circle;
+    }
+  }
+
+  /// Get text color for status badge
+  Color _getStatusTextColor(EventCardStatus status) {
+    switch (status) {
+      case EventCardStatus.attended:
+      case EventCardStatus.notAttended:
+        return Colors.white;
+      case EventCardStatus.registered:
+        return Colors.black87;
+      case EventCardStatus.none:
+        return Colors.transparent;
+    }
+  }
+
+  /// Get text for status badge
+  String _getStatusText(EventCardStatus status) {
+    switch (status) {
+      case EventCardStatus.attended:
+        return 'Attended';
+      case EventCardStatus.registered:
+        return 'Registered';
+      case EventCardStatus.notAttended:
+        return 'Not Attended';
+      case EventCardStatus.none:
+        return '';
+    }
   }
 }
