@@ -70,18 +70,34 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
   Future<void> _handleGoogleSignIn() async {
     try {
       final account = await _googleSignIn.signIn();
-      if (account != null) {
-        final auth = await account.authentication;
-        final String? idToken = auth.idToken;
-        if (idToken != null && mounted) {
-          final String platform = Platform.isAndroid ? 'android' : 'ios';
-          _loginCubit.loginWithGoogle(
-              idToken, platform, account.photoUrl ?? '');
-          await _googleSignIn.disconnect();
+      if (account == null) {
+        debugPrint('Google Sign In: user cancelled');
+        return;
+      }
+      final auth = await account.authentication;
+      final String? idToken = auth.idToken;
+      if (idToken == null) {
+        debugPrint('Google Sign In: idToken is null');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Sign in failed: could not get ID token')),
+          );
         }
+        return;
+      }
+      if (mounted) {
+        final String platform = Platform.isAndroid ? 'android' : 'ios';
+        _loginCubit.loginWithGoogle(idToken, platform, account.photoUrl ?? '');
+        await _googleSignIn.disconnect();
       }
     } catch (error) {
       debugPrint('Error during Google sign in: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Google Sign In error: $error')),
+        );
+      }
     }
   }
 

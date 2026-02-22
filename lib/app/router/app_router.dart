@@ -240,7 +240,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       return ExploreMoreClubsPage(
                         initialOrganizationId: extra?['organizationId'] as int?,
                         initialInterestIds: extra?['interestIds'] != null
-                            ? (extra!['interestIds'] as Set<int>).toList()
+                            ? List<int>.from(extra!['interestIds'] as List)
                             : null,
                       );
                     }),

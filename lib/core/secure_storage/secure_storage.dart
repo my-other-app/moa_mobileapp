@@ -1,8 +1,15 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'
-    show FlutterSecureStorage;
+    show
+        FlutterSecureStorage,
+        AndroidOptions,
+        IOSOptions,
+        KeychainAccessibility;
 import 'package:myotherapp/core/secure_storage/token_model.dart';
 
-const FlutterSecureStorage storage = FlutterSecureStorage();
+const FlutterSecureStorage storage = FlutterSecureStorage(
+  aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+);
 
 class SecureStorage {
   // Private static instance variable

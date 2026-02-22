@@ -45,7 +45,7 @@
       <!-- Google Sign-In Client ID -->
       <meta-data
           android:name="com.google.android.gms.client_id"
-          android:value="497245325238-i4i2rujvo6dvrq40plqv6aotddaous4n.apps.googleusercontent.com" />
+          android:value="497245325238-ceiht9g22u4eh9a3mdkmfbssa0fkevt1.apps.googleusercontent.com" />
       
       <activity
           android:name=".MainActivity"
