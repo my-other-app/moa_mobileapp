@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:myotherapp/shared/widgets/error_view.dart';
 import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
 import 'package:myotherapp/features/events/presentation/pages/ticket_view_page.dart';
+import 'package:myotherapp/features/events/presentation/pages/networking_page.dart';
 
 class IndividualEventPage extends StatefulWidget {
   final int eventId;
@@ -560,6 +561,15 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
     }
   }
 
+  /// Check if current time is within the networking window (event start → end + 1hr).
+  bool _isWithinNetworkingWindow() {
+    if (eventDateTime == null || duration == null) return false;
+    final now = DateTime.now();
+    final eventEnd = eventDateTime!.add(Duration(hours: duration!));
+    final windowEnd = eventEnd.add(const Duration(hours: 1));
+    return now.isAfter(eventDateTime!) && now.isBefore(windowEnd);
+  }
+
   /// Shows rating bottom sheet
   void _showRatingDialog(BuildContext context) {
     int selectedRating = 0;
@@ -1098,6 +1108,45 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 const SizedBox(height: 16),
               ] else ...[
                 const SizedBox(height: 4),
+              ],
+
+              // 4. "People Like You" networking button (only during event + 1hr)
+              if (_isWithinNetworkingWindow()) ...[
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NetworkingPage(
+                          eventId: widget.eventId,
+                          eventName: name ?? 'Event',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Text('🤝', style: TextStyle(fontSize: 18)),
+                  label: const Text(
+                    'People Like You',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                    backgroundColor: const Color(0xFF2E7D32),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Discover attendees who share your interests',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                ),
+                const SizedBox(height: 12),
               ],
             ],
 
