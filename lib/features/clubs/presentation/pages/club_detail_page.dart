@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:myotherapp/features/clubs/presentation/providers/clubs_provider.dart';
-import 'package:myotherapp/features/clubs/domain/entities/club_entity.dart';
-import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/features/clubs/presentation/providers/clubs_provider.dart';
+import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
+import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 
 /// Club profile/detail page.
 class ClubDetailPage extends ConsumerStatefulWidget {

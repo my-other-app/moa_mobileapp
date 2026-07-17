@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/core/themes/app_colors.dart';
-import 'package:myotherapp/shared/widgets/clubs_option_screen.dart';
+import 'package:finnet/core/themes/app_colors.dart';
+import 'package:finnet/shared/widgets/clubs_option_screen.dart';
 
 class ClubListTile extends StatelessWidget {
   final int clubId;

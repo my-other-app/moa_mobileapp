@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/features/profile/presentation/pages/certificates/all_certificate_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/certificates/pinned_certificate_page.dart';
-import 'package:myotherapp/shared/widgets/certificate_tab_header.dart';
+import 'package:finnet/features/profile/presentation/pages/certificates/all_certificate_page.dart';
+import 'package:finnet/features/profile/presentation/pages/certificates/pinned_certificate_page.dart';
+import 'package:finnet/shared/widgets/certificate_tab_header.dart';
 
 class CertificatePage extends StatelessWidget {
   const CertificatePage({super.key});

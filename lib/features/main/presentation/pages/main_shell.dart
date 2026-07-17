@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/core/resources/asset_resources.dart';
+import 'package:finnet/core/resources/asset_resources.dart';
 
 /// Provider for tracking the current navigation index.
 final navigationIndexProvider = StateProvider<int>((ref) => 0);

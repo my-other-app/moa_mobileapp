@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/core/storage/secure_storage_service.dart';
-import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
-import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart'
+import 'package:finnet/core/storage/secure_storage_service.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart'
     hide ProfileState;
-import 'package:myotherapp/features/auth/presentation/cubits/profile_cubit.dart';
-import 'package:myotherapp/features/auth/data/models/profile.dart';
-import 'package:myotherapp/features/auth/data/services/profile_service.dart';
+import 'package:finnet/features/auth/presentation/cubits/profile_cubit.dart';
+import 'package:finnet/features/auth/data/models/profile.dart';
+import 'package:finnet/features/auth/data/services/profile_service.dart';
 
 /// Profile Check Page - fully migrated to Riverpod and GoRouter.
 class ProfileCheckPage extends ConsumerStatefulWidget {

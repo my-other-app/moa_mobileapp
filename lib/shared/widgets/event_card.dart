@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/shared/widgets/svg_icon.dart';
+import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/shared/widgets/svg_icon.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Status type for event cards
@@ -138,7 +138,7 @@ class EventCard extends StatelessWidget {
               GestureDetector(
                 onTap: () async {
                   final Uri url =
-                      Uri.parse("https://events.myotherapp.com/$eventSlug");
+                      Uri.parse("https://events.finnet.app/$eventSlug");
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 },
                 child: Padding(

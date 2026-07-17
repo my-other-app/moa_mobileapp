@@ -1,7 +1,7 @@
-import 'package:myotherapp/common/models/user/user_model.dart';
-import 'package:myotherapp/features/auth/data/services/authentication_service.dart';
-import 'package:myotherapp/core/storage/secure_storage_service.dart';
-import 'package:myotherapp/features/auth/data/services/profile_service.dart';
+import 'package:finnet/common/models/user/user_model.dart';
+import 'package:finnet/features/auth/data/services/authentication_service.dart';
+import 'package:finnet/core/storage/secure_storage_service.dart';
+import 'package:finnet/features/auth/data/services/profile_service.dart';
 
 /// Login States
 abstract class LoginState {}

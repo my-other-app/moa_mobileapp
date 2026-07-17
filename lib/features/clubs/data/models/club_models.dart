@@ -1,5 +1,5 @@
-import 'package:myotherapp/features/clubs/domain/entities/club_entity.dart';
-import 'package:myotherapp/features/profile/data/models/profile_models.dart';
+import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
+import 'package:finnet/features/profile/data/models/profile_models.dart';
 
 /// Data model for club from API.
 class ClubModel {

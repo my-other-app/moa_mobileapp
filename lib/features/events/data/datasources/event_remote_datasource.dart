@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/network/dio_client.dart';
-import 'package:myotherapp/features/events/data/models/event_models.dart';
+import 'package:finnet/core/network/dio_client.dart';
+import 'package:finnet/features/events/data/models/event_models.dart';
 
 /// Provider for the event remote data source.
 final eventRemoteDataSourceProvider = Provider<EventRemoteDataSource>((ref) {

@@ -1,28 +1,31 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/config/env/env.dart';
-import 'package:myotherapp/core/network/dio_client.dart';
-import 'package:myotherapp/core/network/api_exception.dart';
-import 'package:myotherapp/core/secure_storage/secure_storage.dart';
-import 'package:myotherapp/core/services/analytics_service.dart';
+import 'package:finnet/core/network/dio_client.dart';
+import 'package:finnet/core/network/api_exception.dart';
+import 'package:finnet/core/services/analytics_service.dart';
 
-export 'package:myotherapp/core/network/api_exception.dart';
-export 'package:myotherapp/core/network/dio_client.dart' show ApiResult;
+export 'package:finnet/core/network/api_exception.dart';
+export 'package:finnet/core/network/dio_client.dart' show ApiResult;
 
 enum DioMethod { post, get, put, delete, patch }
 
-/// APIService - uses singleton Dio client with proper interceptors.
+/// APIService - uses the single app-wide Dio client with the full
+/// interceptor stack.
 ///
 /// All requests automatically include:
-/// - Auth token injection (via AuthInterceptor)
-/// - Certificate pinning (via CertPinningInterceptor)
-/// - Error handling (via ErrorInterceptor)
+/// - Auth token injection + refresh-on-401 (via AuthInterceptor)
+/// - Certificate pinning (via CertPinningInterceptor, production only)
+/// - Error handling (via ErrorInterceptor), with API errors also logged
+///   to analytics
 /// - Logging in debug mode (via LoggingInterceptor)
 class APIService {
   final Dio _dio;
 
   APIService._(this._dio);
+
+  /// The one real Dio instance used app-wide.
+  Dio get dio => _dio;
 
   /// Get APIService instance from Riverpod ref.
   /// Preferred way to access the service.
@@ -30,41 +33,16 @@ class APIService {
     return APIService._(ref.read(dioProvider));
   }
 
-  /// Legacy singleton access - uses Env.apiBaseUrl with manual token handling.
-  static final APIService instance = APIService._(_createLegacyDio());
+  /// Singleton access — same underlying Dio as [fromRef]/[dioProvider],
+  /// for call sites without access to a Riverpod [Ref].
+  static final APIService instance = APIService._(_buildDio());
 
-  static Dio _createLegacyDio() {
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: Env.apiBaseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        sendTimeout: const Duration(seconds: 30),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ),
-    );
+  static Dio _buildDio() {
+    final dio = buildAppDio();
 
-    // Add interceptor for manual token injection in legacy mode
+    // Log API errors to analytics, in addition to the shared ErrorInterceptor
     dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final skipAuth = options.extra['skipAuth'] == true;
-        if (!skipAuth) {
-          try {
-            final token = await SecureStorage.instance.getAccessToken();
-            if (token.accessToken.isNotEmpty) {
-              options.headers['Authorization'] = 'Bearer ${token.accessToken}';
-            }
-          } catch (e) {
-            debugPrint('Legacy Dio: Error getting token: $e');
-          }
-        }
-        handler.next(options);
-      },
       onError: (error, handler) async {
-        // Log API errors to analytics
         await AnalyticsService.instance.logApiError(
           error.requestOptions.path,
           error.response?.statusCode,
@@ -73,18 +51,6 @@ class APIService {
         handler.next(error);
       },
     ));
-
-    // Add logging interceptor for debugging
-    if (kDebugMode) {
-      dio.interceptors.add(LogInterceptor(
-        request: true,
-        requestHeader: true,
-        requestBody: true,
-        responseBody: true,
-        responseHeader: false,
-        error: true,
-      ));
-    }
 
     return dio;
   }

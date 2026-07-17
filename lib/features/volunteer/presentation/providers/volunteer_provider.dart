@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:finnet/core/api/api_helper.dart';
 
 /// Model for volunteer event
 class VolunteerEvent {

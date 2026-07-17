@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:finnet/core/api/api_helper.dart';
 
 /// Service for handling Apple Sign In authentication.
 class AppleAuthService {

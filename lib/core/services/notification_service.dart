@@ -8,7 +8,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:finnet/core/api/api_helper.dart';
 
 /// Background message handler - must be a top-level function
 @pragma('vm:entry-point')

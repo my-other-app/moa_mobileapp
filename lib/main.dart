@@ -4,10 +4,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/app/app.dart';
-import 'package:myotherapp/core/services/analytics_service.dart';
-import 'package:myotherapp/core/services/notification_service.dart';
-import 'package:myotherapp/firebase_options.dart';
+import 'package:finnet/app/app.dart';
+import 'package:finnet/core/services/analytics_service.dart';
+import 'package:finnet/core/services/notification_service.dart';
+import 'package:finnet/firebase_options.dart';
 
 void main() async {
   // Wrap app in zone to catch all async errors

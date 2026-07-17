@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:finnet/core/api/api_helper.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:dio/dio.dart';
 
@@ -76,21 +76,6 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
     });
 
     try {
-      // Retrieve the access token from your bloc.
-      // final accessToken = context.read<AppBloc>().state.accessToken;
-
-      // Dio dio = Dio(
-      //   BaseOptions(
-      //     baseUrl: 'https://api.staging.myotherapp.com/api/v1',
-      //     headers: {
-      //       'accept': 'application/json',
-      //       'Content-Type': 'application/x-www-form-urlencoded',
-      //       'Authorization': 'Bearer $accessToken',
-      //     },
-      //   ),
-      // );
-
-      // // Prepare the form data - optional fields only included if provided
       final data = <String, String>{
         'full_name': _nameController.text.trim(),
       };
@@ -105,7 +90,6 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
         data['org_id'] = _selectedOrganization!.id.toString();
       }
 
-      // final response = await dio.post('/user/profile/create', data: data);
       final response = await APIService.instance.request(
           '/user/profile/create',
           contentType: Headers.formUrlEncodedContentType,

@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:myotherapp/app/app.dart';
+import 'package:finnet/app/app.dart';
 
 void main() {
   testWidgets('App builds successfully', (WidgetTester tester) async {

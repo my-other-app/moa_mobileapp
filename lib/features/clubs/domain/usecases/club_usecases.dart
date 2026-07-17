@@ -1,7 +1,7 @@
-import 'package:myotherapp/core/error/either.dart';
-import 'package:myotherapp/core/usecases/usecase.dart';
-import 'package:myotherapp/features/clubs/domain/entities/club_entity.dart';
-import 'package:myotherapp/features/clubs/domain/repositories/club_repository.dart';
+import 'package:finnet/core/error/either.dart';
+import 'package:finnet/core/usecases/usecase.dart';
+import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
+import 'package:finnet/features/clubs/domain/repositories/club_repository.dart';
 
 /// Parameters for getting clubs list.
 class GetClubsParams {

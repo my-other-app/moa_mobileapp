@@ -2,16 +2,16 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
-import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
-import 'package:myotherapp/shared/widgets/custom_search_delegate.dart';
-import 'package:myotherapp/shared/widgets/error_view.dart';
-import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/no_clubs_following_page.dart';
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/shared/widgets/custom_search_delegate.dart';
+import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/features/clubs/presentation/pages/no_clubs_following_page.dart';
 
-import 'package:myotherapp/features/clubs/presentation/pages/clubs_you_follow_section.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/pinned_clubs_section.dart';
+import 'package:finnet/features/clubs/presentation/pages/clubs_you_follow_section.dart';
+import 'package:finnet/features/clubs/presentation/pages/pinned_clubs_section.dart';
 
 /// Clubs Page with dynamic filter chips.
 class ClubsPage extends ConsumerStatefulWidget {

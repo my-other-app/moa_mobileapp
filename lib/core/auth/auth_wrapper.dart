@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
-import 'package:myotherapp/features/main/presentation/pages/landing_page.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/auth/presentation/pages/onboarding_initial_page.dart';
+import 'package:finnet/features/main/presentation/pages/landing_page.dart';
 
 ///
 /// Auth Wrapper - migrated to Riverpod

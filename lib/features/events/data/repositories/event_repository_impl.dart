@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/error/either.dart';
-import 'package:myotherapp/core/error/failures.dart';
-import 'package:myotherapp/core/network/api_exception.dart';
-import 'package:myotherapp/features/events/data/datasources/event_remote_datasource.dart';
-import 'package:myotherapp/features/events/domain/entities/event_entity.dart'
+import 'package:finnet/core/error/either.dart';
+import 'package:finnet/core/error/failures.dart';
+import 'package:finnet/core/network/api_exception.dart';
+import 'package:finnet/features/events/data/datasources/event_remote_datasource.dart';
+import 'package:finnet/features/events/domain/entities/event_entity.dart'
     as domain;
-import 'package:myotherapp/features/events/domain/repositories/event_repository.dart';
+import 'package:finnet/features/events/domain/repositories/event_repository.dart';
 
 /// Provider for the event repository.
 final eventRepositoryProvider = Provider<EventRepository>((ref) {

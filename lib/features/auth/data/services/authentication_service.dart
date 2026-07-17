@@ -1,4 +1,4 @@
-import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:finnet/core/api/api_helper.dart';
 
 class AuthenticationService {
   Future<Map<String, dynamic>> signInWithEmail({

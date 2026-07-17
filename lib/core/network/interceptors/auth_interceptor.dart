@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/storage/secure_storage_service.dart';
+import 'package:finnet/core/storage/secure_storage_service.dart';
 
 /// Interceptor that automatically adds authentication token to requests.
 ///
@@ -10,14 +9,14 @@ import 'package:myotherapp/core/storage/secure_storage_service.dart';
 /// - Skipping auth for specific requests (using 'skipAuth' extra)
 /// - Token refresh on 401 errors with request retry
 class AuthInterceptor extends Interceptor {
-  final Ref _ref;
+  final SecureStorageService _secureStorage;
   final Dio _dio;
 
   // Lock to prevent concurrent refresh attempts
   bool _isRefreshing = false;
   final List<void Function()> _refreshQueue = [];
 
-  AuthInterceptor(this._ref, this._dio);
+  AuthInterceptor(this._secureStorage, this._dio);
 
   @override
   void onRequest(
@@ -29,8 +28,7 @@ class AuthInterceptor extends Interceptor {
 
     if (!skipAuth) {
       try {
-        final secureStorage = _ref.read(secureStorageServiceProvider);
-        final token = await secureStorage.getAccessToken();
+        final token = await _secureStorage.getAccessToken();
 
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
@@ -64,8 +62,7 @@ class AuthInterceptor extends Interceptor {
         // Start refresh process
         _isRefreshing = true;
 
-        final secureStorage = _ref.read(secureStorageServiceProvider);
-        final refreshToken = await secureStorage.getRefreshToken();
+        final refreshToken = await _secureStorage.getRefreshToken();
 
         if (refreshToken == null || refreshToken.isEmpty) {
           debugPrint('AuthInterceptor: No refresh token available');
@@ -75,10 +72,13 @@ class AuthInterceptor extends Interceptor {
           return;
         }
 
-        // Call refresh token endpoint
+        // Call refresh token endpoint. The backend expects this as
+        // multipart/form-data with a `token` field (FastAPI `Form(...)`),
+        // not a JSON body — sending JSON here would silently 422 and break
+        // every refresh attempt.
         final response = await _dio.post(
           '/auth/refresh',
-          data: {'refresh_token': refreshToken},
+          data: FormData.fromMap({'token': refreshToken}),
           options: Options(
             extra: {'skipAuth': true}, // Skip auth for refresh call
           ),
@@ -90,8 +90,8 @@ class AuthInterceptor extends Interceptor {
           final newRefreshToken = response.data['refresh_token'] as String?;
 
           if (newAccessToken != null && newRefreshToken != null) {
-            await secureStorage.saveAccessToken(newAccessToken);
-            await secureStorage.saveRefreshToken(newRefreshToken);
+            await _secureStorage.saveAccessToken(newAccessToken);
+            await _secureStorage.saveRefreshToken(newRefreshToken);
 
             debugPrint('AuthInterceptor: Token refresh successful');
 
@@ -132,8 +132,7 @@ class AuthInterceptor extends Interceptor {
     ErrorInterceptorHandler handler,
   ) async {
     try {
-      final secureStorage = _ref.read(secureStorageServiceProvider);
-      final token = await secureStorage.getAccessToken();
+      final token = await _secureStorage.getAccessToken();
 
       // Update request with new token
       requestOptions.headers['Authorization'] = 'Bearer $token';
@@ -184,9 +183,8 @@ class AuthInterceptor extends Interceptor {
     debugPrint('AuthInterceptor: Handling logout due to auth failure');
 
     try {
-      final secureStorage = _ref.read(secureStorageServiceProvider);
-      await secureStorage.delete(key: 'access_token');
-      await secureStorage.delete(key: 'refresh_token');
+      await _secureStorage.delete(key: 'access_token');
+      await _secureStorage.delete(key: 'refresh_token');
 
       // Note: Navigation to login should be handled by the app's auth state listener
       // The auth provider will detect missing tokens and navigate appropriately

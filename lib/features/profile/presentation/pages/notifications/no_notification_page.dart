@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/core/resources/asset_resources.dart';
+import 'package:finnet/core/resources/asset_resources.dart';
 
 class NoNotificationPage extends StatelessWidget {
   const NoNotificationPage({super.key});

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:finnet/core/api/api_helper.dart';
 
 /// Search delegate for EVENTS ONLY - used on home and events pages.
 /// Supports tab-based filtering (for_you, following, registered, past).

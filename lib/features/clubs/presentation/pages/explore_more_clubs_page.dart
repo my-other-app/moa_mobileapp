@@ -2,11 +2,11 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
-import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
-import 'package:myotherapp/shared/widgets/explore_more_club_card.dart';
-import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/shared/widgets/explore_more_club_card.dart';
+import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 
 class ExploreMoreClubsPage extends ConsumerStatefulWidget {
   final int? initialOrganizationId;

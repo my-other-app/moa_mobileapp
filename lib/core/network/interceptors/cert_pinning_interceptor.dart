@@ -1,71 +1,88 @@
 import 'dart:io';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
+import 'package:finnet/core/services/analytics_service.dart';
 
-/// Certificate pinning interceptor for enhanced security.
+/// SHA-256 fingerprints (hex, uppercase) of the trusted server's leaf TLS
+/// certificate(s). Pinned at the leaf (not the public key/SPKI) for
+/// simplicity — this means the pin must be updated on every certificate
+/// renewal, not just on a key-pair change, but avoids needing an ASN.1
+/// parser to extract just the SubjectPublicKeyInfo.
 ///
-/// This prevents MITM attacks by validating the server's SSL certificate
-/// against known certificate fingerprints.
-class CertPinningInterceptor extends Interceptor {
-  /// SHA-256 fingerprints of trusted certificates
-  /// TODO: Replace with actual production certificate fingerprints
-  static const List<String> _trustedFingerprints = [
-    // Add your server certificate SHA-256 fingerprints here
-    // Example: 'B6:...'
-  ];
+/// To obtain the value once production TLS is confirmed live:
+///   openssl s_client -connect api.finnet.app:443 -servername api.finnet.app `</dev/null` 2>/dev/null \
+///     | openssl x509 -noout -fingerprint -sha256
+///
+/// Include both the current and next certificate's fingerprint during a
+/// planned rotation window to avoid an outage.
+const List<String> _trustedFingerprints = [
+  // Add production certificate SHA-256 fingerprints here, e.g.:
+  // 'B6:2F:...',
+];
 
-  @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    // In debug mode, skip certificate pinning for easier development
-    if (kDebugMode) {
-      handler.next(options);
-      return;
-    }
+bool _hasWarnedMissingPins = false;
 
-    // For production, certificate validation happens at the HTTP client level
-    // This interceptor logs any certificate-related issues
-    handler.next(options);
-  }
-
-  @override
-  void onError(DioException err, ErrorInterceptorHandler handler) {
-    // Check if error is related to SSL/TLS
-    if (err.error is HandshakeException ||
-        err.error is SocketException ||
-        err.message?.contains('certificate') == true) {
-      debugPrint('CertPinning: SSL/TLS error detected - ${err.message}');
-
-      // In production, this could indicate a MITM attack
-      if (!kDebugMode) {
-        handler.reject(DioException(
-          requestOptions: err.requestOptions,
-          error:
-              'SSL Certificate validation failed. Connection rejected for security.',
-          type: DioExceptionType.badCertificate,
-        ));
-        return;
+/// Wires certificate pinning into [dio] at the TLS handshake layer via a
+/// `badCertificateCallback`, so an untrusted certificate is rejected before
+/// any request/response is exchanged (not just reacted to afterward).
+///
+/// If [_trustedFingerprints] is empty, this **fails open** (does not
+/// enforce pinning) rather than failing closed — an empty list blocking all
+/// production traffic because someone forgot to fill in a constant would be
+/// worse than the absence of pinning. A loud one-time warning is logged
+/// instead so this doesn't go unnoticed.
+void configureCertPinning(Dio dio) {
+  if (_trustedFingerprints.isEmpty) {
+    if (!_hasWarnedMissingPins) {
+      _hasWarnedMissingPins = true;
+      debugPrint(
+        'CertPinning: no trusted fingerprints configured for a production '
+        'build — connections are NOT pinned. Fill in _trustedFingerprints '
+        'in cert_pinning_interceptor.dart before shipping.',
+      );
+      // Best-effort only: a failure to log this warning (e.g. Firebase not
+      // yet initialized) must not itself break the fail-open path below —
+      // guard both the synchronous call and the returned future.
+      try {
+        AnalyticsService.instance
+            .logError(
+              'cert_pinning_not_configured',
+              parameters: const {'severity': 'high'},
+            )
+            .catchError(
+              (e) => debugPrint('CertPinning: failed to report missing-pins warning: $e'),
+            );
+      } catch (e) {
+        debugPrint('CertPinning: failed to report missing-pins warning: $e');
       }
     }
-
-    handler.next(err);
+    return;
   }
 
-  /// Validates a certificate fingerprint against trusted fingerprints.
-  ///
-  /// Returns true if the fingerprint is in the trusted list.
-  static bool isValidFingerprint(String fingerprint) {
-    if (_trustedFingerprints.isEmpty) {
-      // If no fingerprints configured, allow all (dev mode)
-      return true;
-    }
-    return _trustedFingerprints.contains(fingerprint.toUpperCase());
+  final adapter = dio.httpClientAdapter;
+  if (adapter is IOHttpClientAdapter) {
+    adapter.createHttpClient = () {
+      final client = HttpClient();
+      client.badCertificateCallback = (cert, host, port) {
+        final fingerprint = _sha256Fingerprint(cert);
+        final trusted = _trustedFingerprints.contains(fingerprint);
+        if (!trusted) {
+          debugPrint(
+            'CertPinning: rejected untrusted certificate for $host:$port ($fingerprint)',
+          );
+        }
+        return trusted;
+      };
+      return client;
+    };
   }
 }
 
-/// Extension to configure Dio with certificate pinning.
-extension DioCertPinning on Dio {
-  /// Adds certificate pinning interceptor to this Dio instance.
-  void addCertPinning() {
-    interceptors.add(CertPinningInterceptor());
-  }
+String _sha256Fingerprint(X509Certificate cert) {
+  final digest = sha256.convert(cert.der);
+  return digest.bytes
+      .map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase())
+      .join(':');
 }

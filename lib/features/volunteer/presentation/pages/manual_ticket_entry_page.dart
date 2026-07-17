@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:myotherapp/features/volunteer/presentation/providers/volunteer_provider.dart';
+import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
 
 /// Manual ticket entry page for volunteer check-in
 class ManualTicketEntryPage extends ConsumerStatefulWidget {

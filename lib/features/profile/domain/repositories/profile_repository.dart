@@ -1,5 +1,5 @@
-import 'package:myotherapp/core/error/either.dart';
-import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/core/error/either.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 
 /// Repository interface for user profile operations.
 abstract class ProfileRepository {

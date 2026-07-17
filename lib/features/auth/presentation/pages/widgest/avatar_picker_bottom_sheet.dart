@@ -1,9 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
-import 'package:myotherapp/features/auth/data/models/profile.dart';
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/auth/data/models/profile.dart';
 
 /// Avatar Picker Bottom Sheet - migrated to Riverpod.
 class AvatarPickerBottomSheet extends ConsumerWidget {

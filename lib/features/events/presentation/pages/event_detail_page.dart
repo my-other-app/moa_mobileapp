@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:myotherapp/features/events/presentation/providers/events_provider.dart';
-import 'package:myotherapp/features/events/domain/entities/event_entity.dart';
+import 'package:finnet/features/events/presentation/providers/events_provider.dart';
+import 'package:finnet/features/events/domain/entities/event_entity.dart';
 
 /// Event detail page showing full event information.
 class EventDetailPage extends ConsumerStatefulWidget {

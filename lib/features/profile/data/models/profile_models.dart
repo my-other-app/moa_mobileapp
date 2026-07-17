@@ -1,4 +1,4 @@
-import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 
 /// Data model for user profile from API.
 class UserProfileModel {

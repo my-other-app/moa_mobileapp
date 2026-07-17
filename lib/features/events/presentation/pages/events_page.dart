@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/features/events/presentation/pages/past_events_page.dart';
-import 'package:myotherapp/features/events/presentation/pages/upcoming_events_page.dart';
+import 'package:finnet/features/events/presentation/pages/past_events_page.dart';
+import 'package:finnet/features/events/presentation/pages/upcoming_events_page.dart';
 
-import 'package:myotherapp/shared/widgets/search_tab_header.dart';
+import 'package:finnet/shared/widgets/search_tab_header.dart';
 
 /// Events Page - exact same UI as original.
 class EventsPage extends StatelessWidget {

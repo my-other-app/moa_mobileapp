@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/core/network/api_exception.dart';
+import 'package:finnet/core/network/api_exception.dart';
 
 /// A reusable error view widget that displays an error message with a retry button.
 ///

@@ -1,4 +1,4 @@
-import 'package:myotherapp/core/error/failures.dart';
+import 'package:finnet/core/error/failures.dart';
 
 /// A value that represents either a success or a failure.
 ///

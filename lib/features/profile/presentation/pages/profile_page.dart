@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/common/widgets/custom_option_tile.dart';
-import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
-import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
-import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
-import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/shared/widgets/error_view.dart';
-import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
-import 'package:myotherapp/shared/widgets/confirmation_dialog.dart';
+import 'package:finnet/common/widgets/custom_option_tile.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/home/presentation/providers/bottom_nav_provider.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/auth/presentation/pages/onboarding_initial_page.dart';
+import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/confirmation_dialog.dart';
 
 /// Profile Page - exact same UI as original, using Riverpod for state.
 class ProfilePage extends ConsumerStatefulWidget {

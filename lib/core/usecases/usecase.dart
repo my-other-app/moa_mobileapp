@@ -1,4 +1,4 @@
-import 'package:myotherapp/core/error/either.dart';
+import 'package:finnet/core/error/either.dart';
 
 /// Base class for all use cases.
 ///

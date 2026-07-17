@@ -7,13 +7,12 @@ import 'package:flutter/services.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:myotherapp/core/storage/secure_storage_service.dart';
-import 'package:myotherapp/core/config/env/env.dart';
-import 'package:myotherapp/core/utils/error_utils.dart';
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 import 'package:apple_passkit/apple_passkit.dart';
 
 /// Premium ticket page with stunning glow effects and Apple Wallet-like design.
@@ -65,10 +64,10 @@ class _TicketViewPageState extends State<TicketViewPage>
       if (widget.ticketUrl!.startsWith('/api/v1/events/tickets/')) {
         final id =
             widget.ticketUrl!.replaceFirst('/api/v1/events/tickets/', '');
-        return 'https://events.myotherapp.com/tickets/$id';
+        return 'https://events.finnet.app/tickets/$id';
       }
     }
-    return 'https://events.myotherapp.com/tickets/${widget.ticketId}';
+    return 'https://events.finnet.app/tickets/${widget.ticketId}';
   }
 
   String get _formattedDate {
@@ -109,19 +108,15 @@ class _TicketViewPageState extends State<TicketViewPage>
     HapticFeedback.mediumImpact();
 
     try {
-      final storage = SecureStorageService();
-      final token = await storage.getAccessToken();
-
-      final pdfUrl = '${Env.apiBaseUrl}/events/tickets/${widget.ticketId}/pdf';
-      final response = await http.get(
-        Uri.parse(pdfUrl),
-        headers: token != null ? {'Authorization': 'Bearer $token'} : {},
+      final response = await APIService.instance.dio.get(
+        '/events/tickets/${widget.ticketId}/pdf',
+        options: Options(responseType: ResponseType.bytes),
       );
 
       if (response.statusCode == 200) {
         final directory = await getApplicationDocumentsDirectory();
         final filePath = '${directory.path}/ticket_${widget.ticketId}.pdf';
-        await File(filePath).writeAsBytes(response.bodyBytes);
+        await File(filePath).writeAsBytes(response.data as List<int>);
 
         HapticFeedback.heavyImpact();
         if (mounted) {
@@ -176,27 +171,23 @@ class _TicketViewPageState extends State<TicketViewPage>
         await file.delete();
       }
 
-      final storage = SecureStorageService();
-      final token = await storage.getAccessToken();
-      final pdfUrl = '${Env.apiBaseUrl}/events/tickets/${widget.ticketId}/pdf';
+      final pdfPath = '/events/tickets/${widget.ticketId}/pdf';
+      debugPrint('Downloading ticket from: $pdfPath');
 
-      debugPrint('Downloading ticket from: $pdfUrl');
-
-      final response = await http.get(
-        Uri.parse(pdfUrl),
-        headers: token != null ? {'Authorization': 'Bearer $token'} : {},
+      final response = await APIService.instance.dio.get(
+        pdfPath,
+        options: Options(responseType: ResponseType.bytes),
       );
 
       if (response.statusCode == 200) {
-        if (response.bodyBytes.isEmpty) {
+        final bytes = response.data as List<int>;
+        if (bytes.isEmpty) {
           throw Exception('Downloaded file is empty');
         }
-        await file.writeAsBytes(response.bodyBytes);
-        debugPrint(
-            'Ticket saved to: $filePath (${response.bodyBytes.length} bytes)');
+        await file.writeAsBytes(bytes);
+        debugPrint('Ticket saved to: $filePath (${bytes.length} bytes)');
       } else {
         debugPrint('Download failed with status: ${response.statusCode}');
-        debugPrint('Response body: ${response.body}');
         throw Exception(
             'Failed to download ticket (Status: ${response.statusCode})');
       }
@@ -271,49 +262,29 @@ class _TicketViewPageState extends State<TicketViewPage>
         return;
       }
 
-      // Get auth token from secure storage
-      final storage = SecureStorageService();
-      final token = await storage.getAccessToken();
+      final walletPath = '/events/tickets/${widget.ticketId}/wallet.pkpass';
+      debugPrint('🎫 [Wallet] Fetching pass from: $walletPath');
 
-      if (token == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please login to add to wallet')),
-          );
-        }
-        return;
-      }
-
-      // Use the configured base URL from environment
-      final walletUrl =
-          '${Env.apiBaseUrl}/events/tickets/${widget.ticketId}/wallet.pkpass';
-      debugPrint('🎫 [Wallet] Fetching pass from: $walletUrl');
-
-      // Download .pkpass file with authentication
-      final response = await http.get(
-        Uri.parse(walletUrl),
-        headers: {'Authorization': 'Bearer $token'},
+      // Download .pkpass file (auth header attached automatically)
+      final response = await APIService.instance.dio.get(
+        walletPath,
+        options: Options(responseType: ResponseType.bytes),
       );
 
       debugPrint('🎫 [Wallet] Response status: ${response.statusCode}');
-      debugPrint(
-          '🎫 [Wallet] Response content-type: ${response.headers['content-type']}');
-      debugPrint(
-          '🎫 [Wallet] Response body length: ${response.bodyBytes.length}');
+      final contentType = response.headers.value('content-type');
+      debugPrint('🎫 [Wallet] Response content-type: $contentType');
+      final bodyBytes = response.data as List<int>;
+      debugPrint('🎫 [Wallet] Response body length: ${bodyBytes.length}');
 
       if (response.statusCode != 200) {
-        final errorBody = response.body;
-        debugPrint('🎫 [Wallet] Error response: $errorBody');
         throw Exception(
-            'Failed to download wallet pass: ${response.statusCode} - $errorBody');
+            'Failed to download wallet pass: ${response.statusCode}');
       }
 
       // Verify it's actually a pkpass file
-      final contentType = response.headers['content-type'];
       if (contentType != null && !contentType.contains('pkpass')) {
         debugPrint('🎫 [Wallet] Unexpected content type: $contentType');
-        debugPrint(
-            '🎫 [Wallet] Response body: ${response.body.substring(0, 200)}');
       }
 
       // Use ApplePassKit to add to wallet natively
@@ -329,7 +300,7 @@ class _TicketViewPageState extends State<TicketViewPage>
       }
 
       // Add pass to wallet using the native PKAddPassesViewController
-      final Uint8List passData = Uint8List.fromList(response.bodyBytes);
+      final Uint8List passData = Uint8List.fromList(bodyBytes);
       debugPrint('🎫 [Wallet] Adding pass with ${passData.length} bytes');
 
       await passKit.addPass(passData);

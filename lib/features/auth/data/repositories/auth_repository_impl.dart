@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/error/either.dart';
-import 'package:myotherapp/core/error/failures.dart';
-import 'package:myotherapp/core/network/api_exception.dart';
-import 'package:myotherapp/features/auth/data/datasources/auth_local_datasource.dart';
-import 'package:myotherapp/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:myotherapp/features/auth/data/models/auth_models.dart';
-import 'package:myotherapp/features/auth/domain/entities/user_entity.dart';
-import 'package:myotherapp/features/auth/domain/repositories/auth_repository.dart';
+import 'package:finnet/core/error/either.dart';
+import 'package:finnet/core/error/failures.dart';
+import 'package:finnet/core/network/api_exception.dart';
+import 'package:finnet/features/auth/data/datasources/auth_local_datasource.dart';
+import 'package:finnet/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:finnet/features/auth/data/models/auth_models.dart';
+import 'package:finnet/features/auth/domain/entities/user_entity.dart';
+import 'package:finnet/features/auth/domain/repositories/auth_repository.dart';
 
 /// Provider for the auth repository.
 final authRepositoryProvider = Provider<AuthRepository>((ref) {

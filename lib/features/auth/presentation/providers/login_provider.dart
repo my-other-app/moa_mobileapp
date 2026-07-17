@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:myotherapp/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:myotherapp/features/auth/domain/entities/user_entity.dart';
-import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
-import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:finnet/features/auth/domain/entities/user_entity.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 
 /// State for login operations.
 class LoginState {
@@ -73,11 +73,20 @@ class LoginNotifier extends StateNotifier<LoginState> {
       // Store photo URL
       state = state.copyWith(photoUrl: googleUser.photoUrl);
 
+      String platformStr = 'web';
+      if (!kIsWeb) {
+        if (defaultTargetPlatform == TargetPlatform.iOS) {
+          platformStr = 'ios';
+        } else if (defaultTargetPlatform == TargetPlatform.android) {
+          platformStr = 'android';
+        }
+      }
+
       // Call our API with the token
       final authRepository = _ref.read(authRepositoryProvider);
       final credentials = GoogleCredentials(
         idToken: idToken,
-        platform: 'google',
+        platform: platformStr,
         photoUrl: googleUser.photoUrl,
       );
 

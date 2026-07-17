@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/clubs_page.dart';
-import 'package:myotherapp/features/events/presentation/pages/events_page.dart';
-import 'package:myotherapp/features/home/presentation/pages/home_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/profile_page.dart';
+import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/features/home/presentation/providers/bottom_nav_provider.dart';
+import 'package:finnet/features/clubs/presentation/pages/clubs_page.dart';
+import 'package:finnet/features/events/presentation/pages/events_page.dart';
+import 'package:finnet/features/home/presentation/pages/home_page.dart';
+import 'package:finnet/features/profile/presentation/pages/profile_page.dart';
 
 BottomNavigationBarItem getBottomNavBarItem({
   required String image,

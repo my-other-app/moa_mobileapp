@@ -1,7 +1,7 @@
-import 'package:myotherapp/core/error/either.dart';
-import 'package:myotherapp/core/usecases/usecase.dart';
-import 'package:myotherapp/features/auth/domain/entities/user_entity.dart';
-import 'package:myotherapp/features/auth/domain/repositories/auth_repository.dart';
+import 'package:finnet/core/error/either.dart';
+import 'package:finnet/core/usecases/usecase.dart';
+import 'package:finnet/features/auth/domain/entities/user_entity.dart';
+import 'package:finnet/features/auth/domain/repositories/auth_repository.dart';
 
 /// Use case for signing in with Google.
 class SignInWithGoogleUseCase extends UseCase<AuthTokens, GoogleCredentials> {

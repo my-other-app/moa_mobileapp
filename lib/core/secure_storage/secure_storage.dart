@@ -4,7 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart'
         AndroidOptions,
         IOSOptions,
         KeychainAccessibility;
-import 'package:myotherapp/core/secure_storage/token_model.dart';
+import 'package:finnet/core/secure_storage/token_model.dart';
 
 const FlutterSecureStorage storage = FlutterSecureStorage(
   aOptions: AndroidOptions(encryptedSharedPreferences: true),

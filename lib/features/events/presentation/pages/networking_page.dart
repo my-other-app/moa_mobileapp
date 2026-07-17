@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/utils/error_utils.dart';
-import 'package:myotherapp/shared/widgets/error_view.dart';
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/shared/widgets/error_view.dart';
 
 /// Model for a networking attendee.
 class NetworkingAttendee {

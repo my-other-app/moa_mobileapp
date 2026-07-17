@@ -2,16 +2,16 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/common/models/events/event_model.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/core/themes/app_colors.dart';
-import 'package:myotherapp/core/utils/error_utils.dart';
+import 'package:finnet/common/models/events/event_model.dart';
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/core/themes/app_colors.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:myotherapp/shared/widgets/error_view.dart';
-import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
-import 'package:myotherapp/features/events/presentation/pages/ticket_view_page.dart';
-import 'package:myotherapp/features/events/presentation/pages/networking_page.dart';
+import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
+import 'package:finnet/features/events/presentation/pages/networking_page.dart';
 
 class IndividualEventPage extends StatefulWidget {
   final int eventId;
@@ -1463,16 +1463,16 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 if (certificateUrl != null && certificateUrl!.isNotEmpty) {
                   String finalUrl = certificateUrl!;
 
-                  // Handle old format: /api/v1/events/certificates/{id} → https://events.myotherapp.com/certificates/{id}
+                  // Handle old format: /api/v1/events/certificates/{id} → https://events.finnet.app/certificates/{id}
                   if (certificateUrl!
                       .startsWith('/api/v1/events/certificates/')) {
                     final certId = certificateUrl!
                         .replaceFirst('/api/v1/events/certificates/', '');
                     finalUrl =
-                        'https://events.myotherapp.com/certificates/$certId';
+                        'https://events.finnet.app/certificates/$certId';
                   } else if (certificateUrl!.startsWith('/')) {
                     // Other relative URLs - use API domain
-                    finalUrl = 'https://api.myotherapp.com$certificateUrl';
+                    finalUrl = 'https://api.finnet.app$certificateUrl';
                   }
                   // else: Already a full URL, use as-is
 

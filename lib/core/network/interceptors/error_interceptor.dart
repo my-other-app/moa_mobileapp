@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:myotherapp/core/network/api_exception.dart';
+import 'package:finnet/core/network/api_exception.dart';
 
 /// Interceptor for consistent error handling across all API requests.
 ///

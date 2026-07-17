@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/common/widgets/custom_option_tile.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/core/utils/error_utils.dart';
-import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
-import 'package:myotherapp/features/home/presentation/providers/bottom_nav_provider.dart';
-import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
-import 'package:myotherapp/features/volunteer/presentation/providers/volunteer_provider.dart';
-import 'package:myotherapp/shared/widgets/confirmation_dialog.dart';
+import 'package:finnet/common/widgets/custom_option_tile.dart';
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/home/presentation/providers/bottom_nav_provider.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/auth/presentation/pages/onboarding_initial_page.dart';
+import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
+import 'package:finnet/shared/widgets/confirmation_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Settings page - fully migrated to Riverpod (no Bloc).

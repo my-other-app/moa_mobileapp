@@ -3,42 +3,42 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 // Analytics
-import 'package:myotherapp/core/services/analytics_service.dart';
+import 'package:finnet/core/services/analytics_service.dart';
 
 // Auth pages
-import 'package:myotherapp/features/auth/presentation/pages/splash_screen.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_initial_page.dart';
-import 'package:myotherapp/features/auth/presentation/pages/profile_check_page.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_details_page.dart';
-import 'package:myotherapp/features/auth/presentation/pages/interests_selection_page.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_avatar_picker_page.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_final_page.dart';
-import 'package:myotherapp/features/auth/presentation/pages/reg_successfull_page.dart';
-import 'package:myotherapp/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/auth/presentation/pages/splash_screen.dart';
+import 'package:finnet/features/auth/presentation/pages/onboarding_initial_page.dart';
+import 'package:finnet/features/auth/presentation/pages/profile_check_page.dart';
+import 'package:finnet/features/auth/presentation/pages/onboarding_details_page.dart';
+import 'package:finnet/features/auth/presentation/pages/interests_selection_page.dart';
+import 'package:finnet/features/auth/presentation/pages/onboarding_avatar_picker_page.dart';
+import 'package:finnet/features/auth/presentation/pages/onboarding_final_page.dart';
+import 'package:finnet/features/auth/presentation/pages/reg_successfull_page.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 
 // Main screens
-import 'package:myotherapp/features/home/presentation/pages/home_page.dart';
-import 'package:myotherapp/features/events/presentation/pages/events_page.dart';
-import 'package:myotherapp/features/events/presentation/pages/individual_event_page.dart';
-import 'package:myotherapp/features/events/presentation/pages/event_form_page.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/clubs_page.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/club_individual_page.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/explore_more_clubs_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/profile_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/edit_profile_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/settings_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/certificates/certificate_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/badges/my_badges_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/notifications/notifications_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/settings/terms_and_condition_page.dart';
-import 'package:myotherapp/features/profile/presentation/pages/settings/privacy_policy_page.dart';
-import 'package:myotherapp/features/main/presentation/pages/main_shell.dart';
-import 'package:myotherapp/common/models/events/event_model.dart';
+import 'package:finnet/features/home/presentation/pages/home_page.dart';
+import 'package:finnet/features/events/presentation/pages/events_page.dart';
+import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
+import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
+import 'package:finnet/features/clubs/presentation/pages/clubs_page.dart';
+import 'package:finnet/features/clubs/presentation/pages/club_individual_page.dart';
+import 'package:finnet/features/clubs/presentation/pages/explore_more_clubs_page.dart';
+import 'package:finnet/features/profile/presentation/pages/profile_page.dart';
+import 'package:finnet/features/profile/presentation/pages/edit_profile_page.dart';
+import 'package:finnet/features/profile/presentation/pages/settings_page.dart';
+import 'package:finnet/features/profile/presentation/pages/certificates/certificate_page.dart';
+import 'package:finnet/features/profile/presentation/pages/badges/my_badges_page.dart';
+import 'package:finnet/features/profile/presentation/pages/notifications/notifications_page.dart';
+import 'package:finnet/features/profile/presentation/pages/settings/terms_and_condition_page.dart';
+import 'package:finnet/features/profile/presentation/pages/settings/privacy_policy_page.dart';
+import 'package:finnet/features/main/presentation/pages/main_shell.dart';
+import 'package:finnet/common/models/events/event_model.dart';
 
 // Volunteer pages
-import 'package:myotherapp/features/volunteer/presentation/pages/volunteer_events_page.dart';
-import 'package:myotherapp/features/volunteer/presentation/pages/volunteer_scanner_page.dart';
-import 'package:myotherapp/features/volunteer/presentation/pages/manual_ticket_entry_page.dart';
+import 'package:finnet/features/volunteer/presentation/pages/volunteer_events_page.dart';
+import 'package:finnet/features/volunteer/presentation/pages/volunteer_scanner_page.dart';
+import 'package:finnet/features/volunteer/presentation/pages/manual_ticket_entry_page.dart';
 
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 final _rootNavigatorKey = GlobalKey<NavigatorState>();

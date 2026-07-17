@@ -1,13 +1,13 @@
 import 'dart:math' show Random;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/core/themes/app_colors.dart';
-import 'package:myotherapp/features/clubs/presentation/pages/club_events_page.dart';
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/core/themes/app_colors.dart';
+import 'package:finnet/features/clubs/presentation/pages/club_events_page.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:myotherapp/shared/widgets/error_view.dart';
-import 'package:myotherapp/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 
 class ClubProfilePage extends StatefulWidget {
   final int id;

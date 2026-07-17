@@ -1,4 +1,4 @@
-name: myotherapp
+name: finnet
 description: "A community managemnt platform."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -44,6 +44,7 @@ dependencies:
   
   # Networking
   dio: ^5.8.0+1
+  crypto: ^3.0.6
   
   # UI Components
   flutter_svg: ^2.0.17
@@ -87,6 +88,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  mocktail: ^1.0.4
 
   # Lints
   flutter_lints: ^5.0.0

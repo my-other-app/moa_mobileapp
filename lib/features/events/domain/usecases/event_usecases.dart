@@ -1,7 +1,7 @@
-import 'package:myotherapp/core/error/either.dart';
-import 'package:myotherapp/core/usecases/usecase.dart';
-import 'package:myotherapp/features/events/domain/entities/event_entity.dart';
-import 'package:myotherapp/features/events/domain/repositories/event_repository.dart';
+import 'package:finnet/core/error/either.dart';
+import 'package:finnet/core/usecases/usecase.dart';
+import 'package:finnet/features/events/domain/entities/event_entity.dart';
+import 'package:finnet/features/events/domain/repositories/event_repository.dart';
 
 /// Parameters for getting events list.
 class GetEventsParams {

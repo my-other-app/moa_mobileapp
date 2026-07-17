@@ -1,5 +1,5 @@
-import 'package:myotherapp/core/error/either.dart';
-import 'package:myotherapp/features/clubs/domain/entities/club_entity.dart';
+import 'package:finnet/core/error/either.dart';
+import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
 
 /// Repository interface for club operations.
 abstract class ClubRepository {

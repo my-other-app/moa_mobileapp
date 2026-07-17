@@ -1,4 +1,4 @@
-import 'package:myotherapp/features/auth/domain/entities/user_entity.dart';
+import 'package:finnet/features/auth/domain/entities/user_entity.dart';
 
 /// Data model for authentication tokens from API.
 class AuthTokensModel {

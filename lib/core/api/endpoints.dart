@@ -1,4 +1,4 @@
-import 'package:myotherapp/core/api/api_helper.dart';
+import 'package:finnet/core/api/api_helper.dart';
 
 class Endpoints {
   //TODO: move all integrated endpoints here to keep in track

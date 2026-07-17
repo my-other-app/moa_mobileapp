@@ -1,5 +1,5 @@
-import 'package:myotherapp/core/error/either.dart';
-import 'package:myotherapp/features/events/domain/entities/event_entity.dart';
+import 'package:finnet/core/error/either.dart';
+import 'package:finnet/features/events/domain/entities/event_entity.dart';
 
 /// Repository interface for event operations.
 abstract class EventRepository {

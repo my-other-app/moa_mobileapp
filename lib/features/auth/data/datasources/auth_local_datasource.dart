@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/storage/secure_storage_service.dart';
-import 'package:myotherapp/features/auth/data/models/auth_models.dart';
+import 'package:finnet/core/storage/secure_storage_service.dart';
+import 'package:finnet/features/auth/data/models/auth_models.dart';
 
 /// Provider for the auth local data source.
 final authLocalDataSourceProvider = Provider<AuthLocalDataSource>((ref) {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
-import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 
 /// Interests selection page for onboarding.
 ///

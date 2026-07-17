@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/common/models/events/event_model.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/utils/error_utils.dart';
-import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
-import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/common/models/events/event_model.dart';
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 
 class EventFormPage extends ConsumerStatefulWidget {
   final int eventId;

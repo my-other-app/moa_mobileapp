@@ -1,12 +1,11 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/features/auth/presentation/cubits/login_cubit.dart';
-import 'package:myotherapp/features/auth/data/services/authentication_service.dart';
-import 'package:myotherapp/features/auth/data/services/apple_auth_service.dart';
-import 'package:myotherapp/features/auth/data/services/profile_service.dart';
-import 'package:myotherapp/core/storage/secure_storage_service.dart';
+import 'package:finnet/features/auth/presentation/cubits/login_cubit.dart';
+import 'package:finnet/features/auth/data/services/authentication_service.dart';
+import 'package:finnet/features/auth/data/services/apple_auth_service.dart';
+import 'package:finnet/features/auth/data/services/profile_service.dart';
+import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 /// Onboarding Initial Page with Google and Apple Sign In support.
@@ -87,7 +86,8 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
         return;
       }
       if (mounted) {
-        final String platform = Platform.isAndroid ? 'android' : 'ios';
+        // Mints token against serverClientId which is the Web Client ID
+        final String platform = 'web';
         _loginCubit.loginWithGoogle(idToken, platform, account.photoUrl ?? '');
         await _googleSignIn.disconnect();
       }

@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 
 /// Event entity representing an event in the system.
 class Event extends Equatable {

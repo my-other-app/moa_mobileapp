@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/network/dio_client.dart';
-import 'package:myotherapp/features/auth/data/models/auth_models.dart';
+import 'package:finnet/core/network/dio_client.dart';
+import 'package:finnet/features/auth/data/models/auth_models.dart';
 
 /// Provider for the auth remote data source.
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {

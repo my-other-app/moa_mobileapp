@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:myotherapp/features/events/presentation/pages/ticket_view_page.dart';
+import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 
 class RegSuccessfullPage extends StatefulWidget {
   final String? ticketId;

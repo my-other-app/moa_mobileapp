@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/shared/widgets/custom_search_delegate.dart';
+import 'package:finnet/shared/widgets/custom_search_delegate.dart';
 
 class SearchAndCollegeList extends StatelessWidget {
   final List<String> colleges;

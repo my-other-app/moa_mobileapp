@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/features/profile/data/repositories/profile_repository_impl.dart';
-import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
-import 'package:myotherapp/features/profile/domain/repositories/profile_repository.dart';
+import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/features/profile/domain/repositories/profile_repository.dart';
 
 /// State for user profile.
 class ProfileState {

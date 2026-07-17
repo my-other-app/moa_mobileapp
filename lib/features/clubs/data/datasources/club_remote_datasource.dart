@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/network/dio_client.dart';
-import 'package:myotherapp/features/clubs/data/models/club_models.dart';
+import 'package:finnet/core/network/dio_client.dart';
+import 'package:finnet/features/clubs/data/models/club_models.dart';
 
 /// Provider for the club remote data source.
 final clubRemoteDataSourceProvider = Provider<ClubRemoteDataSource>((ref) {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/common/widgets/custom_option_tile.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/resources/asset_resources.dart';
-import 'package:myotherapp/core/utils/error_utils.dart';
+import 'package:finnet/common/widgets/custom_option_tile.dart';
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 
 class ClubsOptionScreen extends StatefulWidget {
   final String clubName;

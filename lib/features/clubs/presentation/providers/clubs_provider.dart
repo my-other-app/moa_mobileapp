@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/features/clubs/data/repositories/club_repository_impl.dart';
-import 'package:myotherapp/features/clubs/domain/entities/club_entity.dart';
-import 'package:myotherapp/features/clubs/domain/repositories/club_repository.dart';
+import 'package:finnet/features/clubs/data/repositories/club_repository_impl.dart';
+import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
+import 'package:finnet/features/clubs/domain/repositories/club_repository.dart';
 
 /// State for clubs list.
 class ClubsState {

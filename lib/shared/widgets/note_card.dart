@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/core/themes/app_colors.dart';
+import 'package:finnet/core/themes/app_colors.dart';
 
 class NoteCard extends StatelessWidget {
   final String logoUrl; // URL to the logo image

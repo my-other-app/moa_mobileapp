@@ -1,5 +1,5 @@
-import 'package:myotherapp/core/error/either.dart';
-import 'package:myotherapp/features/auth/domain/entities/user_entity.dart';
+import 'package:finnet/core/error/either.dart';
+import 'package:finnet/features/auth/domain/entities/user_entity.dart';
 
 /// Repository interface for authentication operations.
 ///

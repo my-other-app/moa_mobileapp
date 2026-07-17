@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:myotherapp/shared/widgets/note_card.dart';
+import 'package:finnet/shared/widgets/note_card.dart';
 
 class ClubNotesPage extends StatelessWidget {
   const ClubNotesPage({super.key});

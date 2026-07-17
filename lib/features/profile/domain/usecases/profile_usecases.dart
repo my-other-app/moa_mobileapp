@@ -1,7 +1,7 @@
-import 'package:myotherapp/core/error/either.dart';
-import 'package:myotherapp/core/usecases/usecase.dart';
-import 'package:myotherapp/features/profile/domain/entities/profile_entity.dart';
-import 'package:myotherapp/features/profile/domain/repositories/profile_repository.dart';
+import 'package:finnet/core/error/either.dart';
+import 'package:finnet/core/usecases/usecase.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/features/profile/domain/repositories/profile_repository.dart';
 
 /// Use case for getting the current user's profile.
 class GetMyProfileUseCase extends NoParamsUseCase<UserProfile> {

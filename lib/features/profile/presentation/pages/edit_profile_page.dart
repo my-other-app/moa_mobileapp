@@ -4,9 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart';
-import 'package:myotherapp/features/auth/presentation/pages/onboarding_details_page.dart'
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/auth/presentation/pages/onboarding_details_page.dart'
     show Organization;
 
 /// Edit Profile Page - fully migrated to Riverpod.

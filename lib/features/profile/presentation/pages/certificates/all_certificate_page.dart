@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/features/profile/presentation/pages/certificates/no_certificate_page.dart';
+import 'package:finnet/features/profile/presentation/pages/certificates/no_certificate_page.dart';
 
 class AllCertificatePage extends StatelessWidget {
   const AllCertificatePage({super.key});

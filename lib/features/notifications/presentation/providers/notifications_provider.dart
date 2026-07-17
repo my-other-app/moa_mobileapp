@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/features/notifications/data/models/notification_model.dart';
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/features/notifications/data/models/notification_model.dart';
 
 /// State for notification list
 class NotificationsState {

@@ -1,5 +1,5 @@
-import 'package:myotherapp/features/events/domain/entities/event_entity.dart';
-import 'package:myotherapp/features/profile/data/models/profile_models.dart';
+import 'package:finnet/features/events/domain/entities/event_entity.dart';
+import 'package:finnet/features/profile/data/models/profile_models.dart';
 
 /// Data model for event from API.
 class EventModel {

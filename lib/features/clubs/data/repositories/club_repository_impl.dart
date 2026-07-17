@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/core/error/either.dart';
-import 'package:myotherapp/core/error/failures.dart';
-import 'package:myotherapp/core/network/api_exception.dart';
-import 'package:myotherapp/features/clubs/data/datasources/club_remote_datasource.dart';
-import 'package:myotherapp/features/clubs/domain/entities/club_entity.dart';
-import 'package:myotherapp/features/clubs/domain/repositories/club_repository.dart';
+import 'package:finnet/core/error/either.dart';
+import 'package:finnet/core/error/failures.dart';
+import 'package:finnet/core/network/api_exception.dart';
+import 'package:finnet/features/clubs/data/datasources/club_remote_datasource.dart';
+import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
+import 'package:finnet/features/clubs/domain/repositories/club_repository.dart';
 
 /// Provider for the club repository.
 final clubRepositoryProvider = Provider<ClubRepository>((ref) {

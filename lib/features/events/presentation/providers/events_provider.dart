@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myotherapp/features/events/data/repositories/event_repository_impl.dart';
-import 'package:myotherapp/features/events/domain/entities/event_entity.dart';
-import 'package:myotherapp/features/events/domain/repositories/event_repository.dart';
+import 'package:finnet/features/events/data/repositories/event_repository_impl.dart';
+import 'package:finnet/features/events/domain/entities/event_entity.dart';
+import 'package:finnet/features/events/domain/repositories/event_repository.dart';
 
 /// State for events list.
 class EventsState {

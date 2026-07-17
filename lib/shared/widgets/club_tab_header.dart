@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myotherapp/core/themes/app_colors.dart';
+import 'package:finnet/core/themes/app_colors.dart';
 
 import '../../../core/resources/asset_resources.dart';
 import 'svg_icon.dart';

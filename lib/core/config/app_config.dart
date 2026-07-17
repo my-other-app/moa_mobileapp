@@ -1,5 +1,5 @@
-import 'package:myotherapp/core/config/env/env.dart';
-import 'package:myotherapp/core/config/env/environment.dart';
+import 'package:finnet/core/config/env/env.dart';
+import 'package:finnet/core/config/env/environment.dart';
 
 /// Application configuration class that holds all app-wide settings.
 class AppConfig {

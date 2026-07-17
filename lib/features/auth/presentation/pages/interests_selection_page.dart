@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myotherapp/core/api/api_helper.dart';
-import 'package:myotherapp/core/utils/error_utils.dart';
-import 'package:myotherapp/features/profile/presentation/providers/profile_provider.dart'
+import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart'
     hide ProfileState;
-import 'package:myotherapp/features/auth/data/models/profile.dart';
+import 'package:finnet/features/auth/data/models/profile.dart';
 
 /// Interests Selection Page - migrated to Riverpod.
 class InterestsSelectionPage extends ConsumerStatefulWidget {

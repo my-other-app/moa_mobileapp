@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:myotherapp/features/volunteer/presentation/providers/volunteer_provider.dart';
+import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
 
 /// Page showing events the user is volunteering for
 class VolunteerEventsPage extends ConsumerStatefulWidget {

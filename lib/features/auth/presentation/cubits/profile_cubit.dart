@@ -1,5 +1,5 @@
-import 'package:myotherapp/features/auth/data/models/profile.dart';
-import 'package:myotherapp/features/auth/data/services/profile_service.dart';
+import 'package:finnet/features/auth/data/models/profile.dart';
+import 'package:finnet/features/auth/data/services/profile_service.dart';
 
 /// Profile state classes (no longer using Bloc).
 abstract class ProfileState {}
