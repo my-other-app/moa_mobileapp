@@ -64,10 +64,10 @@ class _TicketViewPageState extends State<TicketViewPage>
       if (widget.ticketUrl!.startsWith('/api/v1/events/tickets/')) {
         final id =
             widget.ticketUrl!.replaceFirst('/api/v1/events/tickets/', '');
-        return 'https://events.finnet.app/tickets/$id';
+        return 'https://events.myotherapp.in/tickets/$id';
       }
     }
-    return 'https://events.finnet.app/tickets/${widget.ticketId}';
+    return 'https://events.myotherapp.in/tickets/${widget.ticketId}';
   }
 
   String get _formattedDate {

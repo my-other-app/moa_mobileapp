@@ -12,7 +12,7 @@ import 'package:finnet/core/services/analytics_service.dart';
 /// parser to extract just the SubjectPublicKeyInfo.
 ///
 /// To obtain the value once production TLS is confirmed live:
-///   openssl s_client -connect api.finnet.app:443 -servername api.finnet.app `</dev/null` 2>/dev/null \
+///   openssl s_client -connect api.myotherapp.in:443 -servername api.myotherapp.in `</dev/null` 2>/dev/null \
 ///     | openssl x509 -noout -fingerprint -sha256
 ///
 /// Include both the current and next certificate's fingerprint during a

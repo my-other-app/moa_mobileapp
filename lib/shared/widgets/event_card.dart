@@ -138,7 +138,7 @@ class EventCard extends StatelessWidget {
               GestureDetector(
                 onTap: () async {
                   final Uri url =
-                      Uri.parse("https://events.finnet.app/$eventSlug");
+                      Uri.parse("https://events.myotherapp.in/$eventSlug");
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 },
                 child: Padding(

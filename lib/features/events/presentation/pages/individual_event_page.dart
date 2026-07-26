@@ -1463,16 +1463,16 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 if (certificateUrl != null && certificateUrl!.isNotEmpty) {
                   String finalUrl = certificateUrl!;
 
-                  // Handle old format: /api/v1/events/certificates/{id} → https://events.finnet.app/certificates/{id}
+                  // Handle old format: /api/v1/events/certificates/{id} → https://events.myotherapp.in/certificates/{id}
                   if (certificateUrl!
                       .startsWith('/api/v1/events/certificates/')) {
                     final certId = certificateUrl!
                         .replaceFirst('/api/v1/events/certificates/', '');
                     finalUrl =
-                        'https://events.finnet.app/certificates/$certId';
+                        'https://events.myotherapp.in/certificates/$certId';
                   } else if (certificateUrl!.startsWith('/')) {
                     // Other relative URLs - use API domain
-                    finalUrl = 'https://api.finnet.app$certificateUrl';
+                    finalUrl = 'https://api.myotherapp.in$certificateUrl';
                   }
                   // else: Already a full URL, use as-is
 
