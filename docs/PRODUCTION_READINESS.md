@@ -22,9 +22,9 @@ The five things that matter, in order:
    seconds. What exists: a cron backup for a *different* project (`/var/www/pulsetap-live/backup.sh` → Google Drive)
    and two one-off dumps sitting on the same disk as the database, `myotherapp_dump.sql` from **Oct 2025** and
    `doth_backup_pre_migration_...dump` from **Jul 2026**. One disk failure loses everything.
-3. **The deployed code is over two months old.** The newest source file on the server is dated **2026-07-25**, and
-   deploys are `rsync` (no `.git`, so there is no commit to point to). Roughly two months of merged work — including
-   the myotherapp.in domain migration — is sitting unreleased.
+3. **Releases are untraceable from the server.** Deploys are `rsync` with no `.git` directory, so nothing on the box
+   records which commit is running — you have to checksum the tree against the repo to find out (which is what was
+   done here; see the corrections table). The code itself *is* current.
 4. **The host has not been rebooted in 587 days**, `/var/run/reboot-required` is present, and **100 packages are
    upgradable**. The running kernel is `6.8.0-1021-aws`.
 5. **Nothing is watching.** No health endpoint, no backend error tracking, no uptime monitoring.
@@ -37,6 +37,7 @@ The five things that matter, in order:
 |---|---|
 | "1 uvicorn worker" (from `config.py`'s default) | **`APP_WORKERS=3`.** So `slowapi`'s in-memory rate limiter is **already wrong today** — three processes keep three independent counters, making `/auth/token`'s 5/min effectively up to 15/min. Not a future scaling problem. |
 | Hardcoded `@finnet.app` senders meant emails were failing silently | **Wrong.** `APP_SES_DEFAULT_SENDER` is itself on `finnet.app`, and nginx still serves `api.finnet.app` beside `api.myotherapp.in`. The hardcoded addresses matched the verified identity; **no emails were broken.** The change on `fix/email-sender-domain` is therefore config hygiene, not a bug fix, and it *does* change the From address — see that branch's commit message. |
+| "The deployed code is over two months old — ~2 months of merged work unreleased" | **Wrong, and the most important correction here.** Inferred from file mtimes (newest `2026-07-25`), which `rsync -a` preserves from the source and which therefore say nothing about the deployed version. Checksumming the real thing: all **104** `app/**/*.py` files are byte-identical to `origin/master` (`14badec`), as are all 33 migration/template/config files (only `__pycache__/*.pyc` differ). Production carries `14badec`'s change (`subject=f"Ticket: ... - Finnet"`). Alembic is at head. Every installed package matches `requirements.txt` exactly, including the July CVE bumps (fastapi 0.139.2, starlette 1.3.1, pillow 12.3.0, cryptography 49.0.0). **Production is fully up to date.** |
 | "Postgres publishes 6432 on the host" | **The repo's `docker-compose.prod.yml` is not what runs.** It defines `doth-live-postgres`/`6432:5432` and `doth-live-backend`/`8001:8000`. The live stack is from the plain `docker-compose.yml`: `doth-postgres`/**`5432:5432`** and `doth-backend`/`8000:8000`. The prod compose file is misleading dead config. |
 | `restart: on-failure` means services won't survive reboot | Still true in both compose files, and with 587 days of uptime **this has never been tested**. |
 
@@ -217,7 +218,7 @@ Revised after seeing production. Items 1–4 are about a day of work in total.
 | 3 | `/health` + uptime monitor + Sentry (backend and web) | You cannot currently tell whether prod is broken | ~1 day |
 | 4 | Triage the 1 critical + 5 high dependabot alerts | Known, published, and the count is rising | ~0.5 day |
 | 5 | Schedule a patch-and-reboot window (100 packages, reboot required) | Also the first real test of `restart:` policy — do it deliberately, not via a crash | ~1 hr + window |
-| 6 | Deploy the two months of unreleased work, deliberately | Long-lived divergence makes every future deploy riskier | ~0.5 day |
+| 6 | Make releases identifiable — stamp the deployed commit (build arg / `VERSION` file / image tag) | Nothing on the box says what is running; this assessment had to checksum the tree to find out | ~2 hrs |
 | 7 | Add swap (or resize); 1.0 GiB available with no swap | Removes the OOM cliff | ~15 min |
 | 8 | Move rate limiting to Redis, or set `WORKERS=1` | Current limits are ~3x their documented values | ~0.5 day |
 | 9 | Delete or fix the unused `docker-compose.prod.yml` | It describes a stack that isn't running — a trap for the next deploy | ~15 min |
