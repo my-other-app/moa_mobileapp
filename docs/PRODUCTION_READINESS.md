@@ -72,6 +72,51 @@ revocation and the refund endpoint. `APP_DEBUG=False`. nginx terminates TLS for 
 
 ---
 
+## Server inventory — what else is on this box
+
+**Three separate products share this one 3.8 GiB host**, each with a production and a dev/staging directory:
+
+| Product | Directories | Running containers | Live upstream | Disk |
+|---|---|---|---|---|
+| **myotherapp / finnet** (this one) | `myotherapp-production`, `myotherapp-dev` | `doth-backend`, `doth-postgres` | `:8000` | 5.3 MB + 1.7 MB |
+| **letmegoo** | `letmego-production`, `letmego-dev` | `letmego-backend-prod`, `letmego-postgres-prod` (postgis) | `:6002` | 48 MB + 33 MB |
+| **pulsetap** | `pulsetap-live`, `pulsetap-dev` | `bcards-backend`, `bcards-nginx`, `bcards-mongo` — **all three unhealthy for months** | `:7001` | 2.8 MB + 2.5 MB |
+
+The `bcards-*` containers are built from `pulsetap-live-*` images, so despite the name they are the pulsetap
+project, not a fourth product. Only production stacks run; every dev stack is stopped, though their data volumes
+remain (65 MB + 64 MB + 412 MB).
+
+### Your "staging" API is production
+
+Verified by request, not by reading config:
+
+| Hostname | Result | Routes to |
+|---|---|---|
+| `api.myotherapp.in` | HTTP 200 | `:8000` — production |
+| **`api.staging.myotherapp.in`** | **HTTP 200** | **`:8000` — the same production backend** |
+| `api.finnet.app` | HTTP 200 | `:8000` — production (old domain still live) |
+| `api.staging.finnet.app` | connection failure | `:8000`, but no usable cert |
+| `api.myotherapp.com` | HTTP 403 | `:8001` — **nothing listens there** |
+
+**Every staging hostname resolves to the production backend and production database.** There is no running staging
+environment, even though `myotherapp-dev` and its `myotherapp-dev_postgres_data` volume exist. Anyone who believes
+they are testing against staging is reading and writing live user, event and payment data. This supersedes the
+earlier note that "a staging path exists — verify parity": there is no parity to verify, because there is no staging.
+
+### Dead nginx vhosts
+
+Four vhosts proxy to ports where nothing listens: `api.myotherapp.com` → 8001, `dev-api.letmegoo.com` and
+`dev-location.letmegoo.com` → 6001, and the four `*.dev.pulsetap.in` names → 7002.
+
+### Reclaimable space
+
+Disk is 70% full with 8.7 GB free. `docker system df` reports **4.18 GB reclaimable images** (47% of 8.88 GB) and
+585 MB reclaimable volumes, plus the 541 MB of stopped-dev volumes above — roughly 5 GB recoverable without
+touching anything live.
+
+
+---
+
 ## Security
 
 Already done (earlier hardening, confirmed deployed): IDOR fixes, webhook idempotency, order/payment confusion
