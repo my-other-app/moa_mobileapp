@@ -117,6 +117,73 @@ touching anything live.
 
 ---
 
+## Server spec, and why it is the bottleneck
+
+**AWS EC2 `t2.medium`** — `i-09ee9bd54aec1788d`, **us-east-1b** (N. Virginia), AMI `ami-04b4f1a9cf54c11d0`.
+
+| | |
+|---|---|
+| vCPU | 2 (Intel Xeon E5-2686 v4 @ 2.30 GHz, Broadwell) |
+| Hypervisor | **Xen** — pre-Nitro generation |
+| RAM | 3.8 GiB usable, **no swap** |
+| Disk | 30 GB EBS root (`xvda`), 29 GB usable, 70% used, 8.7 GB free |
+| OS | Ubuntu 24.04.2 LTS, kernel 6.8.0-1021-aws, uptime 587 days |
+
+### It is being CPU-throttled right now
+
+`vmstat` over four samples shows **steal time of 37%, 71%, 71%, 76%**, with idle at 0–11% and a run queue of 7–17
+on 2 cores. Load average 2.82 and rising.
+
+Steal time that high means the hypervisor is withholding the CPU: **the t2.medium has burned through its CPU credits
+and is pinned near its 40% baseline.** The instance is effectively running on well under one vCPU. This is not a
+future capacity concern — it is the current state, and it is the most likely explanation for any slowness users
+report. A `journalctl` scan during this assessment was slow enough that the SSH connection was reset.
+
+Top CPU consumers are three `containerd-shim` processes (32.8%, 32.6%, 22.1%) and — notably —
+**`bcards-mongo` at 20.15%**, an *unhealthy container belonging to a different product*, which is burning the CPU
+credits that the myotherapp API needs.
+
+### Memory
+
+| Container | Memory | % of host |
+|---|---|---|
+| `doth-backend` (3 workers) | 692 MiB | 17.7% |
+| `letmego-backend-prod` | 577 MiB | 14.8% |
+| `bcards-backend` | 242 MiB | 6.2% |
+| `bcards-mongo` | 137 MiB | 3.5% |
+| `letmego-postgres-prod` | 62 MiB | 1.6% |
+| `doth-postgres` | 40 MiB | 1.0% |
+
+~1.75 GiB in containers, 2.8 GiB used overall, **1.0 GiB available with zero swap**. No OOM events in the current
+`dmesg` buffer, but there is no cushion — and `APP_WORKERS=3` on 2 throttled vCPUs is itself part of the problem.
+
+### Wrong region for the user base
+
+The server is in **us-east-1 (Virginia)** while the product is Indian: the domain is `myotherapp.in`, payments go
+through Razorpay, and the application's own SES client is hard-coded to **`ap-south-1` (Mumbai)**. So every API call
+from a user in India crosses to Virginia and back (~200 ms+ RTT before any processing), and the backend's outbound
+email hops back to Mumbai. Moving to `ap-south-1` would cut a large constant off every request.
+
+### Sizing recommendation
+
+Cheap, immediate (no migration):
+1. **Stop the unhealthy pulsetap/`bcards` stack** — it is consuming ~20% CPU and ~380 MiB for a product whose
+   containers have been unhealthy for months. Biggest single win available.
+2. **Add swap** (2–4 GB) — removes the OOM cliff on a no-swap box.
+3. **Reclaim ~5 GB** of docker images and stopped-dev volumes.
+4. **Reconsider `APP_WORKERS=3`** on 2 throttled vCPUs; it also makes the rate limiter inaccurate.
+
+Then, properly:
+5. **Move off `t2`.** `t3.medium` is Nitro-based, cheaper than `t2.medium`, and supports `unlimited` mode so credit
+   exhaustion degrades cost instead of performance. Given current memory pressure, **`t3.large` (2 vCPU / 8 GiB)**
+   is the more honest size for three production stacks.
+6. **Separate the databases** from the app host — managed RDS, or at minimum their own instance. This also solves the
+   public-5432 problem structurally rather than by firewall rule.
+7. **Relocate to `ap-south-1`** when you next have a maintenance window, for latency.
+
+
+---
+
 ## Security
 
 Already done (earlier hardening, confirmed deployed): IDOR fixes, webhook idempotency, order/payment confusion
