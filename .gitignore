@@ -58,3 +58,9 @@ app.*.map.json
 
 # Generated files
 *.g.dart
+
+# Shared web UI package — its own repo (github.com/my-other-app/moa_ui).
+# Checked out here only for local cross-app work; slated to move into the
+# moa_web Turborepo as packages/ui. Ignored so it can't be committed into
+# the Flutter repo by accident.
+/moa-ui/
