@@ -64,3 +64,6 @@ app.*.map.json
 # moa_web Turborepo as packages/ui. Ignored so it can't be committed into
 # the Flutter repo by accident.
 /moa-ui/
+
+# New web monorepo (own repo: apps/admin, apps/clubs, packages/*).
+/moa_web/

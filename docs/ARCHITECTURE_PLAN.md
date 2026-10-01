@@ -23,7 +23,14 @@ Every claim below was verified against the code; file:line references are given 
 | `.env.example` pointed at `api.myotherapp.in` | **done** |
 | `moa_clubs` dead-token bugs (4 files) | **done** — `tsc --noEmit` clean, 5/5 tests, production build passes, no new lint findings |
 | Backend hardcoded `@finnet.app` senders removed | **done** — ruff clean, 31/31 tests pass |
-| Phase 2 onward | not started |
+| Phase 2: moa_web Turborepo + packages/{ui,api,auth,app-kit} | **done** |
+| Phase 3: @moa/api generated from OpenAPI + drift gate | **done** |
+| Phase 4: BFF gateway + cookie session helpers | **done** |
+| Phase 5: apps/events (public site) | not started |
+| Phase 6: apps/admin | **done** — all six resource features |
+| Phase 7: apps/clubs | **done** — events, workspace, templates, announcements, profile |
+| Phase 8-10: Flutter restack | not started |
+| Phase 12: backend service splitting | not started (two outage fixes landed instead) |
 
 Phase 0 and 1 are complete and verified. Both CI gates that were structurally incapable of passing — mobile
 (`flutter analyze`/`test`) — now pass locally through the exact CI steps. Nothing is committed; all changes sit in

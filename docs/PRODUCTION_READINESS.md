@@ -1,5 +1,43 @@
 # Production readiness assessment
 
+## Status as of 2026-10-02
+
+Re-checked live. What has changed since this document was written, and what has not.
+
+**Fixed and deployed:**
+- `GET /events/info/{id}` 500'd for every signed-in user (the mobile app's event page).
+  Cause: a commit expiring the auth dependency's Users instance under
+  `expire_on_commit=True`. Fixed, deployed, verified 200 on five events.
+- `GET /events/registration/{id}/export` 500'd for every club. Cause: the router
+  used attribute access on rows the service returns as dicts. Fixed, deployed,
+  verified — returns a valid workbook including the custom-question columns,
+  which had never been populated.
+- The admin dashboard's deep links (`/login`, `/users`) 404'd for want of a
+  `vercel.json` rewrite. Merged and live.
+
+Both backend outages were found by exercising endpoints while building against
+them. Nothing alerted. That is the point of items 1-3 below.
+
+**Still open, unchanged:**
+
+| | |
+|---|---|
+| Production Postgres reachable from the internet (5432) | **open** |
+| MongoDB reachable from the internet (27017) | **open** |
+| Database backups | **none scheduled** |
+| Health endpoint / error tracking / uptime monitoring | **none** |
+| `api.staging.myotherapp.in` | **still serves production** |
+| Swap | **none** |
+| CPU steal | **78%** — still credit-throttled |
+| Host uptime | **588 days**, reboot still pending |
+
+A deploy also drops traffic for roughly 20 seconds: there is one backend
+instance and no health-gated rollout. nginx returned 502 throughout the restart
+during the 2026-10-02 deploy.
+
+---
+
+
 Assessed 2026-10-01, then **verified against the live server on 2026-10-02** (`ubuntu@44.208.217.219`,
 `/var/www/myotherapp-production`). Everything below is observed, not inferred. Where the first pass was wrong —
 because it reasoned from the repo instead of production — the correction is called out explicitly.
