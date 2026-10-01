@@ -1,22 +1,40 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:finnet/app/app.dart';
+import 'package:finnet/app/router/app_router.dart';
 
 void main() {
-  testWidgets('App builds successfully', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const ProviderScope(child: MyApp()));
+  testWidgets('MyApp builds a MaterialApp wired to the injected router',
+      (WidgetTester tester) async {
+    // routerProvider is overridden on purpose. The real one attaches
+    // AnalyticsService's FirebaseAnalyticsObserver, and merely touching
+    // AnalyticsService throws [core/no-app] unless Firebase.initializeApp()
+    // has run — which it does in main(), but a widget test cannot do.
+    // Pumping the un-overridden app therefore failed with a FirebaseException
+    // rather than testing anything, which kept `flutter test` (and so the CI
+    // gate) permanently red. Overriding the router keeps this a test of MyApp's
+    // own wiring instead of a Firebase harness.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          routerProvider.overrideWithValue(
+            GoRouter(
+              routes: [
+                GoRoute(
+                  path: '/',
+                  builder: (_, __) => const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ),
+        ],
+        child: const MyApp(),
+      ),
+    );
 
-    // Verify that app builds without errors
     expect(find.byType(MaterialApp), findsOneWidget);
   });
 }
