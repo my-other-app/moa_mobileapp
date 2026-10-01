@@ -1,140 +1,117 @@
 # Production readiness assessment
 
-Assessed 2026-10-01. Every claim here was checked against the deploy workflows, `docker-compose.prod.yml`,
-`main.py`, `app/config.py` and the repos' CI — not inferred.
+Assessed 2026-10-01, then **verified against the live server on 2026-10-02** (`ubuntu@44.208.217.219`,
+`/var/www/myotherapp-production`). Everything below is observed, not inferred. Where the first pass was wrong —
+because it reasoned from the repo instead of production — the correction is called out explicitly.
 
 ## Verdict
 
-**The system is production-*running*, not production-*ready*.** The code is in reasonable shape: auth has been
-hardened, there are 31 backend tests, every repo has a CI gate, and the mobile gate actually works now. The weak
-half is **operations**. Specifically, three things would each be a bad day:
+**Production-*running*, not production-*ready*.** The application code is in good shape, and the live server confirms
+the July security hardening is actually deployed (cookie auth, token revocation, refund flow all present).
+The gaps are operational, and the live server turned out to be in worse shape than the repo suggested.
 
-1. **There are no database backups at all.** Postgres runs in a Docker volume on one host. A disk failure or a bad
-   migration loses every user, club, event, ticket and payment record, with no recovery path.
-2. **Nothing is watching.** No health endpoint, no error tracking on the backend, no uptime monitoring. If the API
-   starts 500ing at 2am you find out from a user.
-3. **Migrations are a separate manual checkbox from deploys**, so code can ship without the schema change it needs.
+The five things that matter, in order:
 
-None of these are hard to fix, and none require the architecture work in `ARCHITECTURE_PLAN.md`. They are also the
-difference between "it works" and "it keeps working".
+1. **The production Postgres is reachable from the public internet.** `doth-postgres` publishes `0.0.0.0:5432`, the
+   host firewall is **inactive** (`ufw status` → inactive), and the AWS security group permits it — confirmed by
+   connecting to `44.208.217.219:5432` from outside. It is password-protected (`pg_hba.conf` ends with
+   `host all all all scram-sha-256`), so this is serious but not instantly fatal: it exposes the DB to brute force
+   and means any credential leak is a full data breach. **MongoDB on `0.0.0.0:27017` is also publicly open** (the
+   `bcards` project on the same box).
+2. **There are still no real backups.** The whole database is **11 MB** (669 users, 42 events) — a `pg_dump` takes
+   seconds. What exists: a cron backup for a *different* project (`/var/www/pulsetap-live/backup.sh` → Google Drive)
+   and two one-off dumps sitting on the same disk as the database, `myotherapp_dump.sql` from **Oct 2025** and
+   `doth_backup_pre_migration_...dump` from **Jul 2026**. One disk failure loses everything.
+3. **The deployed code is over two months old.** The newest source file on the server is dated **2026-07-25**, and
+   deploys are `rsync` (no `.git`, so there is no commit to point to). Roughly two months of merged work — including
+   the myotherapp.in domain migration — is sitting unreleased.
+4. **The host has not been rebooted in 587 days**, `/var/run/reboot-required` is present, and **100 packages are
+   upgradable**. The running kernel is `6.8.0-1021-aws`.
+5. **Nothing is watching.** No health endpoint, no backend error tracking, no uptime monitoring.
 
 ---
 
-## Area by area
+## Corrections to the first pass
 
-| Area | State | Verdict |
+| First pass said | Production reality |
+|---|---|
+| "1 uvicorn worker" (from `config.py`'s default) | **`APP_WORKERS=3`.** So `slowapi`'s in-memory rate limiter is **already wrong today** — three processes keep three independent counters, making `/auth/token`'s 5/min effectively up to 15/min. Not a future scaling problem. |
+| Hardcoded `@finnet.app` senders meant emails were failing silently | **Wrong.** `APP_SES_DEFAULT_SENDER` is itself on `finnet.app`, and nginx still serves `api.finnet.app` beside `api.myotherapp.in`. The hardcoded addresses matched the verified identity; **no emails were broken.** The change on `fix/email-sender-domain` is therefore config hygiene, not a bug fix, and it *does* change the From address — see that branch's commit message. |
+| "Postgres publishes 6432 on the host" | **The repo's `docker-compose.prod.yml` is not what runs.** It defines `doth-live-postgres`/`6432:5432` and `doth-live-backend`/`8001:8000`. The live stack is from the plain `docker-compose.yml`: `doth-postgres`/**`5432:5432`** and `doth-backend`/`8000:8000`. The prod compose file is misleading dead config. |
+| `restart: on-failure` means services won't survive reboot | Still true in both compose files, and with 587 days of uptime **this has never been tested**. |
+
+---
+
+## Live server inventory
+
+**Host**: Ubuntu 24.04.2 LTS, kernel 6.8.0-1021-aws, 3.8 GiB RAM, 29 GB disk (70% used, 8.7 GB free),
+**no swap**, load ~1.1–1.5, uptime 587 days.
+
+**Memory is the tight constraint**: 2.8 GiB used, **1.0 GiB available, zero swap** — an OOM kill is plausible under
+load, and with no swap there is no cushion.
+
+**This is a shared box running four unrelated projects**, which multiplies the blast radius of any one of them:
+
+| Container | Status | Published |
 |---|---|---|
-| Correctness / tests | 31 backend, 7 mobile, 5 clubs, 2 admin, 2 events tests; CI in all 6 repos | **good**, coverage thin |
-| Security (app-level) | IDOR fixes, token revocation, bcrypt, security headers, auth rate limits, cert pinning | **good**, gaps below |
-| Dependencies | GitHub reports **7 vulns on backend default branch — 1 critical, 4 high, 2 moderate** | **needs work** |
-| Deploy / release | Manual `workflow_dispatch`, 10 independent toggles, `rsync --delete` | **weak** |
-| Data safety | **No backups. No tested restore.** | **critical gap** |
-| Observability | No `/health`, no Sentry, no uptime check, no log shipping | **critical gap** |
-| Capacity / resilience | 1 uvicorn worker, single container, single DB, in-memory rate limiter | **fragile** |
-| Environments | dev-deploy workflow + `nginx_staging.conf` exist | **ok**, verify parity |
+| `doth-backend` | Up 2 months | `0.0.0.0:8000` |
+| `doth-postgres` | Up 2 months (healthy) | **`0.0.0.0:5432`** |
+| `letmego-backend-prod` | Up 7 months (healthy) | `0.0.0.0:6002` |
+| `letmego-postgres-prod` | Up 7 months (healthy) | `0.0.0.0:7433` |
+| `bcards-backend` | Up 3 months (**unhealthy**) | — |
+| `bcards-nginx` | Up 7 months (**unhealthy**) | `0.0.0.0:7001` |
+| `bcards-mongo` | Up 7 months (**unhealthy**) | **`0.0.0.0:27017`** |
 
-### 1. Deploy and release — weak
+Externally reachable (tested from off-host): **5432 open, 27017 open**; 6432/8000/7433/6002 filtered. So the AWS
+security group is doing the firewalling, inconsistently, and `ufw` is off entirely.
 
-`live-deploy.yml` is `workflow_dispatch` only, with ten independent booleans (`sync_code`, `migrate`,
-`install_requirements`, `restart_all`, …). Concretely:
+**What is healthy**: Alembic is at `add_order_status_refunded (head)`, matching the repo — **no pending migrations**.
+The deployed backend does contain `_set_auth_cookies`, the cookie fallback in `dependencies.py`, `token_version`
+revocation and the refund endpoint. `APP_DEBUG=False`. nginx terminates TLS for `api.finnet.app`,
+`api.myotherapp.in` and both staging equivalents, and certbot is in `/etc/cron.d`.
 
-- **Deploy is `rsync -avz --delete` of a git checkout**, then a container restart. There is no versioned artifact, so
-  **there is no rollback** — reverting means re-running the workflow from an older commit and hoping.
-- **`migrate` is a toggle an operator must remember.** Code and schema can diverge in production. This is the most
-  dangerous property of the current pipeline.
-- **`install_requirements` pip-installs inside the running container.** That is not baked into the image, so it
-  silently vanishes on the next `up --build` — guaranteed prod drift between restarts.
-- **Nothing deploys on merge, and no deploy is tied to a green CI run.** The gates exist but don't gate releases.
-- The web apps' CI never deploys, so those releases happen manually / on Vercel's side, outside this pipeline.
+---
 
-**Fix**: build a tagged image in CI → push to a registry → deploy by tag. Run `alembic upgrade head` as a mandatory
-release step, not a checkbox. Keep the previous tag so rollback is one command.
+## Security
 
-### 2. Data safety — critical gap
-
-- **No `pg_dump`, no WAL archiving, no snapshot schedule anywhere in the repos.**
-- `restart: on-failure` on both services means **they do not come back after a host reboot** (use `unless-stopped`).
-- Postgres publishes **`6432:5432` on the host** — reachable from anywhere the host firewall permits.
-- `backend` has no healthcheck, and `depends_on: postgres` has no `condition: service_healthy`, so the API can start
-  against a DB that isn't accepting connections yet.
-
-**Fix, in order**: nightly `pg_dump` to off-host storage (S3/R2) with retention → **perform a real restore into a
-scratch DB and confirm row counts** (an untested backup is not a backup) → `restart: unless-stopped` → stop
-publishing 6432 publicly → add a backend healthcheck and gate startup on Postgres being healthy.
-
-### 3. Observability — critical gap
-
-- **No health endpoint** (`grep -rn "health" app` → nothing).
-- **No Sentry / error tracking / tracing** in the backend (`grep -rniE "sentry|rollbar|opentelemetry"` → nothing).
-- No uptime monitoring and no log shipping; logs stay in the container.
-- Mobile is the exception and is done properly: Crashlytics + Analytics, with `runZonedGuarded` catching async errors.
-
-**Fix**: `/health` returning liveness + a DB ping, wired into the compose healthcheck and an external uptime check;
-Sentry in the backend and all three web apps; decide who gets notified and how.
-
-### 4. Capacity and resilience — fragile
-
-- `WORKERS: int = 1` — the API is a single process. Fine for current load, but one slow request blocks others.
-- `uvicorn.run(..., workers=settings.WORKERS, reload=settings.DEBUG)`: **`reload` and `workers` are mutually
-  exclusive in uvicorn**, so if `DEBUG` is ever true in production you silently get the dev reloader and lose
-  multi-worker behaviour. `DEBUG` defaults to `False`, so this is a latent trap, not a current bug.
-- `slowapi` rate limiting uses an **in-memory store** — correct at 1 worker, silently wrong the moment you scale to
-  multiple workers or instances, because each process keeps its own counters.
-- Single DB container, no replica, no connection pooler beyond SQLAlchemy's pool.
-
-**Fix**: raise workers once there's a healthcheck to prove readiness; move rate limiting to Redis **before** scaling,
-not after; keep `DEBUG=False` enforced in prod config.
-
-### 5. Security — good, with specific outstanding items
-
-Already done (earlier hardening passes): volunteer/ticket IDOR fixes, webhook idempotency, order/payment
-confusion check, soft-deleted users blocked from login, token revocation on password change, advisory lock against
-double-charge, money as `Numeric(10,2)`, security headers, auth endpoint rate limits, JS disabled in PDF rendering.
+Already done (earlier hardening, confirmed deployed): IDOR fixes, webhook idempotency, order/payment confusion
+check, soft-deleted users blocked from login, token revocation, advisory lock against double-charge, money as
+`Numeric(10,2)`, security headers, auth rate limits, JS disabled in PDF rendering.
 
 Outstanding:
 
-- **7 dependabot alerts on the backend's default branch (1 critical, 4 high)** — new since the July CVE sweep.
-  Triage these; `gh auth` is currently expired on this machine so I could not read the details.
-- **No CSRF protection**, and cookie auth is now a first-class path. `SameSite=Lax` blocks the classic cross-site
-  form POST, so this is not urgent — but any XSS on a sibling subdomain can forge authenticated requests. The BFF
-  proxy in `ARCHITECTURE_PLAN.md` phase 4 is where this gets solved properly.
-- **The Apple Wallet private key is still in git history and has never been rotated** (needs your Apple Developer
-  account). Carried over from the July audit and still open.
-- Admin dashboard keeps its JWT in `localStorage`, so any XSS there reads an admin token. Resolved by moving admin
-  onto cookie auth in the restack.
-- Certificate endpoints have no auth — a deliberate, documented decision, because the mobile app opens them in an
-  external browser with no way to attach a token. Revisit if that flow changes.
+- **Public Postgres (5432) and public MongoDB (27017)**, with `ufw` inactive. Highest-priority item.
+- **Dependabot: 9 alerts on the backend's default branch — 1 critical, 5 high, 3 moderate.** This was 7 earlier the
+  same day, so it is growing. `gh auth` is expired locally, so the details need reading in the GitHub UI.
+- **587 days without a reboot, 100 upgradable packages, reboot flagged as required.** Unpatched kernel and libraries.
+- **No CSRF protection** while cookie auth is a first-class path. `SameSite=Lax` blocks the classic cross-site POST;
+  an XSS on any sibling subdomain can still forge requests. Solved properly by the BFF proxy in the restack plan.
+- **Rate limiting is per-process with 3 workers** — the documented limits are not the effective limits.
+- **The Apple Wallet private key is still in git history and has never been rotated** (needs the Apple Developer
+  account). Carried over from the July audit, still open.
+- Admin dashboard keeps its JWT in `localStorage`; resolved by moving it to cookie auth in the restack.
+- Certificate endpoints have no auth — a deliberate, documented trade-off for the mobile external-browser flow.
 
 ---
 
-## How to manage it — operating rhythm
+## Priority order
 
-**Per change**
-1. Branch → PR → CI green → merge. No direct pushes to default branches.
-2. Deploy by image tag, with migrations as part of the release, not a toggle.
-3. Smoke-check the money path (register → pay → ticket) and watch errors for 15 minutes.
+Revised after seeing production. Items 1–4 are about a day of work in total.
 
-**Weekly** — triage dependabot alerts; skim error-tracker volume for new recurring failures.
-
-**Monthly** — restore a backup into a scratch database and verify it. Review who has prod SSH and GitHub access.
-
-**Per release of the mobile app** — confirm `env.g.dart` regenerates in CI (it does now) and that the store build
-points at the right API host.
-
----
-
-## Priority order — the next two weeks
-
-| # | Task | Why first | Size |
+| # | Task | Why | Size |
 |---|---|---|---|
-| 1 | Nightly `pg_dump` off-host **+ a tested restore** | Nothing else matters if the data is gone | ~0.5 day |
-| 2 | `/health` + uptime monitor + Sentry (backend + web) | You currently cannot tell if prod is broken | ~1 day |
-| 3 | Triage the 1 critical + 4 high dependabot alerts | Known, published, exploitable | ~0.5 day |
-| 4 | Make `alembic upgrade head` part of deploy, not a toggle | Removes the schema/code divergence risk | ~0.5 day |
-| 5 | `restart: unless-stopped`, unpublish 6432, backend healthcheck | Survives a reboot; shrinks attack surface | ~0.5 day |
-| 6 | Image-tag deploys + documented rollback | Makes releases reversible | ~1–2 days |
-| 7 | Rotate the Apple Wallet key | Needs your Apple account | ~1 hour |
+| 1 | Close 5432 and 27017 to the internet (security group + enable `ufw`); bind DB ports to `127.0.0.1` in compose | An authenticated-but-exposed production database is the single largest risk | ~1 hr |
+| 2 | Nightly `pg_dump` to off-host storage **+ one tested restore** | 11 MB database; this is minutes of work and currently a total-loss risk | ~2 hrs |
+| 3 | `/health` + uptime monitor + Sentry (backend and web) | You cannot currently tell whether prod is broken | ~1 day |
+| 4 | Triage the 1 critical + 5 high dependabot alerts | Known, published, and the count is rising | ~0.5 day |
+| 5 | Schedule a patch-and-reboot window (100 packages, reboot required) | Also the first real test of `restart:` policy — do it deliberately, not via a crash | ~1 hr + window |
+| 6 | Deploy the two months of unreleased work, deliberately | Long-lived divergence makes every future deploy riskier | ~0.5 day |
+| 7 | Add swap (or resize); 1.0 GiB available with no swap | Removes the OOM cliff | ~15 min |
+| 8 | Move rate limiting to Redis, or set `WORKERS=1` | Current limits are ~3x their documented values | ~0.5 day |
+| 9 | Delete or fix the unused `docker-compose.prod.yml` | It describes a stack that isn't running — a trap for the next deploy | ~15 min |
+| 10 | Image-tag deploys + documented rollback; migrations as a release step | Makes releases reversible and repeatable | ~1–2 days |
+| 11 | Rotate the Apple Wallet key | Needs your Apple account | ~1 hr |
+| 12 | Clean up / isolate the three unhealthy `bcards` containers | They consume RAM on a 3.8 GiB box and expose Mongo | ~1 hr |
 
-Items 1–5 are roughly three days of work and move this from "production-running" to "production-ready". The
-architecture restack is worth doing, but **none of it is a prerequisite for any of the above** — and if you only ever
-do one thing from this document, do item 1.
+Items 1 and 2 are roughly three hours together and remove the two risks that could end the product. Nothing in the
+architecture restack is a prerequisite for any of this.
