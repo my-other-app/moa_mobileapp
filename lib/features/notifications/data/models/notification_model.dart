@@ -118,6 +118,25 @@ class NotificationModel {
     required this.updatedAt,
   });
 
+  /// The same notification with a new status.
+  ///
+  /// The provider used to rebuild all twelve fields by hand at each of the
+  /// two call sites that mark something read. Twenty-four chances to drop a
+  /// field, and dropping one would silently blank it in the list.
+  NotificationModel copyWithStatus(String newStatus) => NotificationModel(
+        id: id,
+        userId: userId,
+        title: title,
+        description: description,
+        type: type,
+        status: newStatus,
+        fromClub: fromClub,
+        event: event,
+        data: data,
+        createdAt: createdAt,
+        updatedAt: DateTime.now(),
+      );
+
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
       id: json['id'] as String,
