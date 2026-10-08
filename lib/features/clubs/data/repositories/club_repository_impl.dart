@@ -103,23 +103,21 @@ class ClubRepositoryImpl implements ClubRepository {
   }
 
   @override
-  Future<Result<void>> pinClub(int clubId) async {
+  Future<Result<bool>> togglePin(int clubId) async {
     try {
-      await remoteDataSource.pinClub(clubId);
-      return Either.right(null);
+      return Either.right(await remoteDataSource.togglePin(clubId));
     } catch (e) {
-      debugPrint('ClubRepository.pinClub error: $e');
+      debugPrint('ClubRepository.togglePin error: $e');
       return Either.left(mapErrorToFailure(e));
     }
   }
 
   @override
-  Future<Result<void>> unpinClub(int clubId) async {
+  Future<Result<bool>> toggleHide(int clubId) async {
     try {
-      await remoteDataSource.unpinClub(clubId);
-      return Either.right(null);
+      return Either.right(await remoteDataSource.toggleHide(clubId));
     } catch (e) {
-      debugPrint('ClubRepository.unpinClub error: $e');
+      debugPrint('ClubRepository.toggleHide error: $e');
       return Either.left(mapErrorToFailure(e));
     }
   }

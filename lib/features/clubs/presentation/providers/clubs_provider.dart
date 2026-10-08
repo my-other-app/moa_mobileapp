@@ -183,9 +183,7 @@ class ClubsNotifier extends StateNotifier<ClubsState> {
     updatedClubs[clubIndex] = club.copyWith(isPinned: !isCurrentlyPinned);
     state = state.copyWith(clubs: updatedClubs);
 
-    final result = isCurrentlyPinned
-        ? await _repository.unpinClub(clubId)
-        : await _repository.pinClub(clubId);
+    final result = await _repository.togglePin(clubId);
 
     return result.fold(
       (failure) {
@@ -195,7 +193,15 @@ class ClubsNotifier extends StateNotifier<ClubsState> {
         state = state.copyWith(clubs: revertedClubs, error: failure.message);
         return false;
       },
-      (_) => true,
+      (isPinned) {
+        // Settle on what the server says it is now, not on the guess made
+        // above. The optimistic flip is right almost always, and wrong
+        // exactly when it matters -- when the local copy was already stale.
+        final settled = List<ClubListItem>.from(state.clubs);
+        settled[clubIndex] = club.copyWith(isPinned: isPinned);
+        state = state.copyWith(clubs: settled);
+        return true;
+      },
     );
   }
 
@@ -368,9 +374,7 @@ class ClubDetailNotifier extends StateNotifier<ClubDetailState> {
     final club = state.club;
     if (club == null) return false;
 
-    final result = club.isPinned
-        ? await _repository.unpinClub(_clubId)
-        : await _repository.pinClub(_clubId);
+    final result = await _repository.togglePin(_clubId);
 
     return result.fold(
       (failure) {
@@ -378,7 +382,9 @@ class ClubDetailNotifier extends StateNotifier<ClubDetailState> {
         return false;
       },
       (_) {
-        // Reload details to get updated state
+        // Refetched rather than patched: the detail entity has no copyWith,
+        // and the toggle's own answer is already reflected in what comes
+        // back.
         loadClubDetails();
         return true;
       },
