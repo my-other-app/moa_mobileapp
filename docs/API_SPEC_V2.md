@@ -90,10 +90,35 @@ Two keys the design asks for are **absent on purpose**:
 
 Ordered by what unblocks the most screens.
 
-### 4.1 Subscriptions and plans — **the largest new domain**
+### 4.1 Subscriptions and plans — ✅ **SHIPPED 2026-10-08**
 
 *Needed by: Admin → Subscriptions (3 tabs), Clubs → Plan & billing, and every
 Pro-gated feature in the Clubs app.*
+
+**Built and live.** Migration `add_subscriptions` is applied in production and
+all twelve endpoints answer. What is described below is what exists, with
+three behaviours worth knowing before building on it:
+
+- **With no plans configured, every club is unlimited** and
+  `GET /clubs/entitlements` returns `configured: false`. That is deliberate:
+  before this domain existed every club could do everything, so a strict
+  default would have locked the entire user base out on deploy. Nothing is
+  gated until plans are seeded — and seeding them *will* restrict every club
+  that has no subscription, so it is a product decision, not a deployment
+  step.
+- **`past_due` still entitles.** Razorpay retries for days; cutting a club off
+  at the first failure takes a paying customer's event offline over an expired
+  card.
+- **MRR counts a yearly subscription at a twelfth.** Summing yearly prices
+  overstates it twelvefold, in the flattering direction.
+
+Not yet done: no plans are seeded, and no Razorpay plans have been created.
+The Razorpay account is in **live** mode, so `POST /admin/plans/{id}/sync`
+creates real billable plans and `POST /clubs/subscription/start` creates a
+real subscription. The webhook URL
+(`/api/v1/payments/webhook`) still needs the `subscription.*` events
+subscribed in the Razorpay dashboard, or charges will succeed at Razorpay and
+never reach our mirror.
 
 This is the keystone. Plan **limits and feature flags drive gating across the
 entire Clubs app**, so until it exists every "NEW API" feature below is
@@ -346,8 +371,7 @@ answers. Treat as a research spike, not a spec'd endpoint.
 
 ## 5. Suggested order
 
-1. **§4.1 Subscriptions and plans** — gates everything else; the admin screen
-   is self-contained and shippable on its own.
+1. ~~**§4.1 Subscriptions and plans**~~ — ✅ shipped 2026-10-08.
 2. **§4.11 Club roles** and **§4.12 club security** — the biggest live risk, and
    §4.12 is mostly reuse.
 3. **§4.3 Ticket types** — blocks merch, coupons and finance; the schema change
@@ -362,8 +386,14 @@ answers. Treat as a research spike, not a spec'd endpoint.
 ## 6. Decisions needed before building
 
 1. **Realtime transport** for §4.7 — changes those endpoints fundamentally.
-2. **Payments provider for subscriptions.** Razorpay handles one-off payments
-   today. Recurring billing, proration and dunning are a different integration.
+2. ~~**Payments provider for subscriptions.**~~ ✅ **Decided: Razorpay
+   Subscriptions**, implemented 2026-10-08 in
+   `app/api/subscriptions/billing.py`. Proration is not handled: a plan change
+   takes effect at the next renewal, and an admin moving a club with
+   `PUT /admin/subscriptions/club/{id}/plan` grants the plan without touching
+   Razorpay, so an existing Razorpay subscription keeps billing at the old
+   price until somebody cancels it there. Dunning is Razorpay's own retry
+   schedule plus the manual `/retry` button.
 3. **`users.city`** — migrate and backfill, or drop the chart.
 4. **Custom domains** — who provisions certificates.
 5. **Storage limits** are a plan limit with no enforcement point today; uploads
