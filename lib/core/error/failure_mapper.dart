@@ -75,5 +75,11 @@ Failure mapErrorToFailure(Object error) {
     }
   }
 
+  // A response that did not parse is the server breaking its contract, not an
+  // unknown condition -- and it reads as one to whoever sees the message.
+  if (error is FormatException) {
+    return ServerFailure(message: error.message);
+  }
+
   return UnknownFailure(message: error.toString());
 }
