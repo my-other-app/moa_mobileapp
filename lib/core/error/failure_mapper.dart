@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:finnet/core/error/failures.dart';
 import 'package:finnet/core/network/api_exception.dart';
 
@@ -31,4 +32,48 @@ Failure mapApiExceptionToFailure(ApiException e) {
     case ApiExceptionType.unknown:
       return UnknownFailure(message: e.message);
   }
+}
+
+/// Turn anything a data source can throw into a [Failure].
+///
+/// Prefer this over calling [mapApiExceptionToFailure] from a `on ApiException`
+/// clause. Only [APIService.request] unwraps the exception: [ErrorInterceptor]
+/// builds an [ApiException] and then hands it to `handler.next` inside a *new*
+/// [DioException], because that is the only thing an error handler may pass
+/// along. So a data source that calls `dio.get` directly -- which is all of
+/// them -- throws a [DioException] carrying the [ApiException] in `.error`,
+/// and a `on ApiException` clause above it never runs.
+///
+/// That was live in every repository: each one caught [ApiException] after a
+/// raw-Dio data source call, so every real error fell through to the bare
+/// `catch` and became an [UnknownFailure]. An expired session looked the same
+/// as a parse bug, which is why nothing ever prompted a re-login.
+Failure mapErrorToFailure(Object error) {
+  if (error is ApiException) return mapApiExceptionToFailure(error);
+
+  if (error is DioException) {
+    final inner = error.error;
+    if (inner is ApiException) return mapApiExceptionToFailure(inner);
+
+    // A DioException that never reached ErrorInterceptor -- a cancellation,
+    // or one built by AuthInterceptor when a retry threw. Classify from the
+    // transport type rather than reporting it as unknown.
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.connectionError:
+        return NetworkFailure(message: error.message ?? 'Connection failed');
+      case DioExceptionType.badCertificate:
+        return NetworkFailure(
+          message: error.message ?? 'Certificate could not be verified',
+        );
+      case DioExceptionType.badResponse:
+      case DioExceptionType.cancel:
+      case DioExceptionType.unknown:
+        return UnknownFailure(message: error.message ?? error.toString());
+    }
+  }
+
+  return UnknownFailure(message: error.toString());
 }

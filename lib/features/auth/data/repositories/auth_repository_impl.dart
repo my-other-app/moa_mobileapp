@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/error/either.dart';
+import 'package:finnet/core/error/failure_mapper.dart';
 import 'package:finnet/core/error/failures.dart';
-import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/features/auth/data/datasources/auth_local_datasource.dart';
 import 'package:finnet/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:finnet/features/auth/data/models/auth_models.dart';
@@ -48,11 +48,9 @@ class AuthRepositoryImpl implements AuthRepository {
       await localDataSource.saveTokens(tokensModel);
 
       return Either.right(tokens);
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('AuthRepository.signInWithGoogle error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -117,40 +115,14 @@ class AuthRepositoryImpl implements AuthRepository {
       await localDataSource.saveTokens(response);
 
       return Either.right(tokens);
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('AuthRepository.refreshToken error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
   @override
   Future<bool> isAuthenticated() async {
     return await localDataSource.isAuthenticated();
-  }
-
-  /// Map API exceptions to domain failures.
-  Failure _mapApiExceptionToFailure(ApiException e) {
-    switch (e.type) {
-      case ApiExceptionType.network:
-        return NetworkFailure(message: e.message);
-      case ApiExceptionType.unauthorized:
-        return AuthFailure(message: e.message);
-      case ApiExceptionType.forbidden:
-        return AuthFailure(message: e.message);
-      case ApiExceptionType.badRequest:
-        return ValidationFailure(message: e.message);
-      case ApiExceptionType.notFound:
-        return ServerFailure(message: e.message, code: '404');
-      case ApiExceptionType.server:
-        return ServerFailure(message: e.message);
-      case ApiExceptionType.timeout:
-        return NetworkFailure(message: e.message);
-      case ApiExceptionType.cancelled:
-        return UnknownFailure(message: e.message);
-      case ApiExceptionType.unknown:
-        return UnknownFailure(message: e.message);
-    }
   }
 }

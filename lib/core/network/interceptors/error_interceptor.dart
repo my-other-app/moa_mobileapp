@@ -63,13 +63,19 @@ class ErrorInterceptor extends Interceptor {
 
   ApiException _handleBadResponse(Response? response) {
     final statusCode = response?.statusCode;
-    String message = 'An error occurred';
 
-    // Try to extract error message from response
+    // What the server said, kept apart from what we show. The friendly copy
+    // below replaces the server's words for most statuses; `serverMessage`
+    // carries the original through so a caller that needs the real reason --
+    // check-in classifying a refusal at the door, say -- can still read it.
+    String? serverMessage;
+    String? errorCode;
     if (response?.data is Map<String, dynamic>) {
       final data = response!.data as Map<String, dynamic>;
-      message = data['message'] ?? data['error'] ?? message;
+      serverMessage = (data['message'] ?? data['error']) as String?;
+      errorCode = data['error_code'] as String?;
     }
+    final message = serverMessage ?? 'An error occurred';
 
     switch (statusCode) {
       case 400:
@@ -77,24 +83,32 @@ class ErrorInterceptor extends Interceptor {
           message: message,
           statusCode: 400,
           type: ApiExceptionType.badRequest,
+          serverMessage: serverMessage,
+          errorCode: errorCode,
         );
       case 401:
         return ApiException(
           message: 'Unauthorized. Please log in again.',
           statusCode: 401,
           type: ApiExceptionType.unauthorized,
+          serverMessage: serverMessage,
+          errorCode: errorCode,
         );
       case 403:
         return ApiException(
           message: 'You do not have permission to access this resource.',
           statusCode: 403,
           type: ApiExceptionType.forbidden,
+          serverMessage: serverMessage,
+          errorCode: errorCode,
         );
       case 404:
         return ApiException(
           message: 'Resource not found.',
           statusCode: 404,
           type: ApiExceptionType.notFound,
+          serverMessage: serverMessage,
+          errorCode: errorCode,
         );
       case 500:
       case 502:
@@ -103,12 +117,16 @@ class ErrorInterceptor extends Interceptor {
           message: 'Server error. Please try again later.',
           statusCode: statusCode,
           type: ApiExceptionType.server,
+          serverMessage: serverMessage,
+          errorCode: errorCode,
         );
       default:
         return ApiException(
           message: message,
           statusCode: statusCode,
           type: ApiExceptionType.unknown,
+          serverMessage: serverMessage,
+          errorCode: errorCode,
         );
     }
   }

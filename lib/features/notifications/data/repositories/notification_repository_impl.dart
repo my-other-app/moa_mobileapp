@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/error/failure_mapper.dart';
-import 'package:finnet/core/error/failures.dart';
-import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/features/notifications/data/datasources/notification_remote_datasource.dart';
 import 'package:finnet/features/notifications/domain/repositories/notification_repository.dart';
 
@@ -51,11 +49,9 @@ class NotificationRepositoryImpl implements NotificationRepository {
   ) async {
     try {
       return Either.right(await call());
-    } on ApiException catch (e) {
-      return Either.left(mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('NotificationRepository.$label error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 }

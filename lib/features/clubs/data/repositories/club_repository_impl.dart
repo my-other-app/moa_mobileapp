@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/error/either.dart';
-import 'package:finnet/core/error/failures.dart';
-import 'package:finnet/core/network/api_exception.dart';
+import 'package:finnet/core/error/failure_mapper.dart';
 import 'package:finnet/features/clubs/data/datasources/club_remote_datasource.dart';
 import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
 import 'package:finnet/features/clubs/domain/repositories/club_repository.dart';
@@ -36,11 +35,9 @@ class ClubRepositoryImpl implements ClubRepository {
         interestIds: interestIds,
       );
       return Either.right(response.map((e) => e.toListItem()).toList());
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('ClubRepository.getClubs error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -55,11 +52,9 @@ class ClubRepositoryImpl implements ClubRepository {
         limit: limit,
       );
       return Either.right(response.map((e) => e.toListItem()).toList());
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('ClubRepository.getFollowingClubs error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -68,11 +63,9 @@ class ClubRepositoryImpl implements ClubRepository {
     try {
       final response = await remoteDataSource.getPinnedClubs();
       return Either.right(response.map((e) => e.toListItem()).toList());
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('ClubRepository.getPinnedClubs error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -81,11 +74,9 @@ class ClubRepositoryImpl implements ClubRepository {
     try {
       final response = await remoteDataSource.getClubDetails(clubId);
       return Either.right(response.toEntity());
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('ClubRepository.getClubDetails error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -94,11 +85,9 @@ class ClubRepositoryImpl implements ClubRepository {
     try {
       await remoteDataSource.followClub(clubId);
       return Either.right(null);
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('ClubRepository.followClub error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -107,11 +96,9 @@ class ClubRepositoryImpl implements ClubRepository {
     try {
       await remoteDataSource.unfollowClub(clubId);
       return Either.right(null);
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('ClubRepository.unfollowClub error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -120,11 +107,9 @@ class ClubRepositoryImpl implements ClubRepository {
     try {
       await remoteDataSource.pinClub(clubId);
       return Either.right(null);
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('ClubRepository.pinClub error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -133,11 +118,9 @@ class ClubRepositoryImpl implements ClubRepository {
     try {
       await remoteDataSource.unpinClub(clubId);
       return Either.right(null);
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('ClubRepository.unpinClub error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -146,35 +129,9 @@ class ClubRepositoryImpl implements ClubRepository {
     try {
       final response = await remoteDataSource.searchClubs(query);
       return Either.right(response.map((e) => e.toListItem()).toList());
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('ClubRepository.searchClubs error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
-    }
-  }
-
-  /// Map API exceptions to domain failures.
-  Failure _mapApiExceptionToFailure(ApiException e) {
-    switch (e.type) {
-      case ApiExceptionType.network:
-        return NetworkFailure(message: e.message);
-      case ApiExceptionType.unauthorized:
-        return AuthFailure(message: e.message);
-      case ApiExceptionType.forbidden:
-        return AuthFailure(message: e.message);
-      case ApiExceptionType.badRequest:
-        return ValidationFailure(message: e.message);
-      case ApiExceptionType.notFound:
-        return ServerFailure(message: e.message, code: '404');
-      case ApiExceptionType.server:
-        return ServerFailure(message: e.message);
-      case ApiExceptionType.timeout:
-        return NetworkFailure(message: e.message);
-      case ApiExceptionType.cancelled:
-        return UnknownFailure(message: e.message);
-      case ApiExceptionType.unknown:
-        return UnknownFailure(message: e.message);
+      return Either.left(mapErrorToFailure(e));
     }
   }
 }
