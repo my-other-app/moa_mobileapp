@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:finnet/shared/widgets/rating_stars.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/core/api/api_helper.dart';
@@ -52,7 +53,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
   Category? category;
   List<Interest> interests = [];
   List<AdditionalDetail> additionalDetails = [];
-  int? rating;
+  double? rating;
   int? totalRating;
   String? about;
   String? contactPhone;
@@ -64,7 +65,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
   bool isAttended = false;
   String? ticketUrl;
   String? certificateUrl;
-  int? userRating;
+  double? userRating;
   int? userPosition;
   String? positionLabel;
   List<EventDownload> downloads = [];
@@ -728,7 +729,9 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
       );
 
       setState(() {
-        userRating = ratingValue;
+        // The picker offers whole stars; the field holds the
+        // server's float, so widen rather than narrow.
+        userRating = ratingValue.toDouble();
       });
 
       if (mounted) {
@@ -1191,17 +1194,10 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: List.generate(5, (index) {
-                            // Rating is 0-5 scale, compare directly with index+1
-                            return Icon(
-                              index < rating!.round()
-                                  ? Icons.star
-                                  : Icons.star_border,
-                              color: Colors.amber,
-                              size: 20,
-                            );
-                          }),
+                        RatingStars(
+                          rating: rating!,
+                          size: 20,
+                          alignment: MainAxisAlignment.start,
                         ),
                         const SizedBox(height: 4),
                         Text(

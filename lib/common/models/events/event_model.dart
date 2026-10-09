@@ -18,7 +18,7 @@ class EventInfo {
   final Category category;
   final List<Interest> interests;
   final List<AdditionalDetail> additionalDetails;
-  final int rating;
+  final double rating;
   final int totalRating;
   final String about;
   final String contactPhone;
@@ -30,7 +30,7 @@ class EventInfo {
   final bool isAttended;
   final String? ticketUrl;
   final String? certificateUrl;
-  final int? userRating;
+  final double? userRating;
   final int? userPosition;
   final String? positionLabel;
   final List<EventDownload> downloads;
@@ -102,7 +102,10 @@ class EventInfo {
               ?.map((e) => AdditionalDetail.fromJson(e))
               .toList() ??
           [],
-      rating: (json['rating'] as num?)?.toInt() ?? 0,
+      // The server sends a float (app/api/events/schemas.py). Reading it
+      // as an int silently truncated 4.5 to 4, so half a star went missing
+      // before anything got as far as drawing it.
+      rating: (json['rating'] as num?)?.toDouble() ?? 0,
       totalRating: (json['total_rating'] as num?)?.toInt() ?? 0,
       about: json['about'] as String? ?? '',
       contactPhone: json['contact_phone'] as String? ?? '',
@@ -113,7 +116,7 @@ class EventInfo {
       isAttended: json['is_attended'] as bool? ?? false,
       ticketUrl: json['ticket_url'] as String?,
       certificateUrl: json['certificate_url'] as String?,
-      userRating: (json['user_rating'] as num?)?.toInt(),
+      userRating: (json['user_rating'] as num?)?.toDouble(),
       userPosition: (json['user_position'] as num?)?.toInt(),
       positionLabel: json['position_label'] as String?,
       downloads: (json['downloads'] as List<dynamic>?)
