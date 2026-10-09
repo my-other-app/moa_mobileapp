@@ -1,6 +1,7 @@
 import 'dart:math' show Random;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:finnet/shared/widgets/rating_stars.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/themes/app_colors.dart';
@@ -418,29 +419,6 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
     );
   }
 
-  Widget buildRatingStars(double rating) {
-    // Calculate full stars.
-    int fullStars = rating.floor();
-    // Check for half star (if the fractional part is 0.5 or more).
-    bool hasHalfStar = (rating - fullStars) >= 0.5;
-    // Build the star widgets.
-    List<Widget> stars = [];
-    for (int i = 0; i < fullStars; i++) {
-      stars.add(const Icon(Icons.star, color: Colors.amber, size: 32));
-    }
-    if (hasHalfStar) {
-      stars.add(const Icon(Icons.star_half, color: Colors.amber, size: 32));
-    }
-    // Add empty stars until there are 5 in total.
-    while (stars.length < 5) {
-      stars.add(const Icon(Icons.star_border, color: Colors.amber, size: 32));
-    }
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: stars,
-    );
-  }
-
   Widget _buildDescriptionSection(BuildContext context) {
     // Use dynamic 'about' field from API
     final description = about ?? 'No description available.';
@@ -641,16 +619,7 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
     double avgRating = rating ?? 0.0;
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(5, (index) {
-            return Icon(
-              index < avgRating.round() ? Icons.star : Icons.star_border,
-              color: Colors.amber,
-              size: 28,
-            );
-          }),
-        ),
+        RatingStars(rating: avgRating, size: 28),
         const SizedBox(height: 8),
         Text(
           '${avgRating.toStringAsFixed(1)} RATED',
