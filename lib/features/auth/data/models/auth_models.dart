@@ -1,5 +1,26 @@
 import 'package:finnet/features/auth/domain/entities/user_entity.dart';
 
+/// Read a token the server must have sent.
+///
+/// The fallback here used to be `?? ''`, which turned a response missing its
+/// token into a sign-in that *succeeded* with an empty credential: the empty
+/// string went into secure storage, the app navigated to the home screen,
+/// and every request from then on sent `Authorization: Bearer ` and 401'd.
+/// The user saw an app that had logged them in and then refused to do
+/// anything, with no way to tell what was wrong.
+///
+/// Both the social sign-in and refresh endpoints always put access_token and
+/// refresh_token in the body on success (app/api/auth/router.py returns a
+/// `Token`, alongside setting cookies), so an absent or blank one is a
+/// broken response, not a variant to absorb.
+String _requiredToken(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value is String && value.trim().isNotEmpty) return value;
+  throw FormatException(
+    'Auth response is missing "$key"; refusing to treat it as a sign-in',
+  );
+}
+
 /// Data model for authentication tokens from API.
 class AuthTokensModel {
   final String accessToken;
@@ -14,8 +35,8 @@ class AuthTokensModel {
 
   factory AuthTokensModel.fromJson(Map<String, dynamic> json) {
     return AuthTokensModel(
-      accessToken: json['access_token'] as String? ?? '',
-      refreshToken: json['refresh_token'] as String? ?? '',
+      accessToken: _requiredToken(json, 'access_token'),
+      refreshToken: _requiredToken(json, 'refresh_token'),
       expiresIn: json['expires_in'] as int?,
     );
   }
@@ -82,8 +103,8 @@ class GoogleSignInResponse {
 
   factory GoogleSignInResponse.fromJson(Map<String, dynamic> json) {
     return GoogleSignInResponse(
-      accessToken: json['access_token'] as String? ?? '',
-      refreshToken: json['refresh_token'] as String? ?? '',
+      accessToken: _requiredToken(json, 'access_token'),
+      refreshToken: _requiredToken(json, 'refresh_token'),
       expiresIn: json['expires_in'] as int?,
       user: json['user'] != null
           ? UserModel.fromJson(json['user'] as Map<String, dynamic>)

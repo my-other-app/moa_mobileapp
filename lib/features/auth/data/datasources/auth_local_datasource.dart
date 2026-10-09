@@ -34,7 +34,12 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
     final accessToken = await _storageService.getAccessToken();
     final refreshToken = await _storageService.getRefreshToken();
 
-    if (accessToken == null) {
+    // Blank counts as absent, which is what isAuthenticated() below already
+    // says. They disagreed: this returned a session holding an empty token
+    // while isAuthenticated() reported not-signed-in for the same storage.
+    // Builds before the token parse was made strict could persist an empty
+    // string, so devices in that state exist.
+    if (accessToken == null || accessToken.isEmpty) {
       return null;
     }
 

@@ -30,11 +30,17 @@ abstract class ClubRepository {
   /// Unfollow a club.
   Future<Result<void>> unfollowClub(int clubId);
 
-  /// Pin a club.
-  Future<Result<void>> pinClub(int clubId);
+  /// Flip the club's pinned state, answering with what it became.
+  ///
+  /// Not `pinClub`/`unpinClub`: the server endpoint is a toggle, so neither
+  /// intent can be expressed and the result has to be read rather than
+  /// assumed. A caller that flipped its own boolean instead got it wrong
+  /// whenever its copy was stale -- a double tap, or a pin set on another
+  /// device, and "pin" unpinned.
+  Future<Result<bool>> togglePin(int clubId);
 
-  /// Unpin a club.
-  Future<Result<void>> unpinClub(int clubId);
+  /// Flip whether this club's events are hidden, answering with the result.
+  Future<Result<bool>> toggleHide(int clubId);
 
   /// Search clubs by name.
   Future<Result<List<ClubListItem>>> searchClubs(String query);

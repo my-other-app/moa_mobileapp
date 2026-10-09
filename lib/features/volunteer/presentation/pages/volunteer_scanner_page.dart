@@ -377,7 +377,69 @@ class _ResultBottomSheet extends StatelessWidget {
         return _buildUnpaidContent();
       case CheckinResultType.incorrectEvent:
         return _buildIncorrectEventContent();
+      case CheckinResultType.notPermitted:
+        // Not the attendee's problem: this volunteer has no permission for
+        // this event. Say so, rather than blaming their ticket.
+        return _buildRefusalContent(
+          icon: Icons.lock_outline,
+          tint: Colors.orange,
+          title: 'NOT YOUR EVENT',
+          body: result.message,
+        );
+      case CheckinResultType.unreachable:
+        // The scan never reached the server, so nothing is known about the
+        // ticket. The close button already reads "SCAN ANOTHER".
+        return _buildRefusalContent(
+          icon: Icons.wifi_off,
+          tint: Colors.blueGrey,
+          title: 'NO ANSWER',
+          body: result.message,
+        );
     }
+  }
+
+  /// One refusal screen, parameterised.
+  ///
+  /// The four screens above predate this and are left as they are rather
+  /// than folded in, so their pixels do not move.
+  Widget _buildRefusalContent({
+    required IconData icon,
+    required MaterialColor tint,
+    required String title,
+    required String body,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: tint[50],
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: tint[400], size: 32),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          body,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 24),
+        _buildCloseButton(),
+      ],
+    );
   }
 
   /// Success - Valid ticket with details

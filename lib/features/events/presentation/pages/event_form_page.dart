@@ -44,9 +44,11 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   @override
   void initState() {
     super.initState();
-    // Initialize controllers for text fields
+    // A controller for every field that is typed into. Previously only
+    // 'text' got one, so a 'tel' or 'textarea' field had nowhere to put a
+    // value even once it rendered.
     for (var detail in widget.additionalDetails) {
-      if (detail.fieldType == 'text') {
+      if (_isTextual(detail.fieldType)) {
         _additionalTextControllers[detail.key] = TextEditingController();
       }
     }
@@ -64,18 +66,31 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     super.dispose();
   }
 
-  /// Pre-fill form data from user profile
+  /// Pre-fill form data from user profile.
+  ///
+  /// The profile now arrives asynchronously, which it did not before -- the
+  /// provider loads on first read rather than waiting for a screen to ask.
+  /// So this can run after the user has already started typing, and must
+  /// never overwrite what they put there: each field is filled only if it is
+  /// still empty.
   void _prefillFromProfile(UserProfile profile) {
     if (_hasPrefilledData) return;
     _hasPrefilledData = true;
 
-    _nameController.text = profile.fullName;
-    _emailController.text = profile.email;
-    if (profile.phone != null && profile.phone!.isNotEmpty) {
-      _phoneController.text = profile.phone!;
-    } else if (profile.whatsapp != null && profile.whatsapp!.isNotEmpty) {
-      _phoneController.text = profile.whatsapp!;
+    void fill(TextEditingController controller, String? value) {
+      if (value == null || value.isEmpty) return;
+      if (controller.text.isNotEmpty) return;
+      controller.text = value;
     }
+
+    fill(_nameController, profile.fullName);
+    fill(_emailController, profile.email);
+    fill(
+      _phoneController,
+      (profile.phone != null && profile.phone!.isNotEmpty)
+          ? profile.phone
+          : profile.whatsapp,
+    );
 
     if (profile.organization != null) {
       _selectedOrganization = profile.organization;
@@ -135,13 +150,44 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     );
   }
 
+  /// Field types that are entered as free text, and the keyboard each wants.
+  ///
+  /// The server declares twelve types (app/api/events/schemas.py FieldTypes);
+  /// this screen handled two of them and returned SizedBox.shrink() for the
+  /// rest. An invisible field cannot be filled in, is therefore omitted from
+  /// the submission, and the server rejects the registration as missing a
+  /// required field -- so an event using any other type could not be
+  /// registered for at all, with nothing on screen to explain why.
+  static const _textKeyboards = <String, TextInputType>{
+    'text': TextInputType.text,
+    'textarea': TextInputType.multiline,
+    'email': TextInputType.emailAddress,
+    'url': TextInputType.url,
+    'tel': TextInputType.phone,
+    'number': TextInputType.number,
+    'date': TextInputType.datetime,
+    'time': TextInputType.datetime,
+    'datetime': TextInputType.datetime,
+  };
+
+  static bool _isTextual(String fieldType) =>
+      _textKeyboards.containsKey(fieldType) ||
+      // Anything unrecognised falls back to a text box rather than vanishing.
+      !const ['select', 'radio', 'checkbox'].contains(fieldType);
+
   Widget _buildAdditionalField(AdditionalDetail detail) {
-    if (detail.fieldType == 'text') {
+    if (_isTextual(detail.fieldType)) {
       return _buildInputField(
         label: detail.label,
         isRequired: detail.requiredField,
         child: TextFormField(
           controller: _additionalTextControllers[detail.key],
+          keyboardType:
+              _textKeyboards[detail.fieldType] ?? TextInputType.text,
+          // A textarea is for prose, so it gets room for it; everything else
+          // stays a single line.
+          maxLines: detail.fieldType == 'textarea' ? 4 : 1,
+          minLines: detail.fieldType == 'textarea' ? 3 : 1,
           style: TextStyle(
             color: Color(0xFF1E1E1E),
             fontSize: 16,
@@ -182,7 +228,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           },
         ),
       );
-    } else if (detail.fieldType == 'select') {
+    } else if (detail.fieldType == 'select' ||
+        detail.fieldType == 'radio' ||
+        detail.fieldType == 'checkbox') {
       return _buildInputField(
         label: detail.label,
         isRequired: detail.requiredField,

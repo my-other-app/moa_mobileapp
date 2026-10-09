@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/error/either.dart';
-import 'package:finnet/core/error/failures.dart';
-import 'package:finnet/core/network/api_exception.dart';
+import 'package:finnet/core/error/failure_mapper.dart';
 import 'package:finnet/features/events/data/datasources/event_remote_datasource.dart';
 import 'package:finnet/features/events/domain/entities/event_entity.dart'
     as domain;
@@ -26,10 +25,8 @@ class EventRepositoryImpl implements EventRepository {
     int? limit,
     int? categoryId,
     List<int>? interestIds,
-    bool? isOnline,
-    bool? isFree,
-    DateTime? startDate,
-    DateTime? endDate,
+    String? search,
+    bool? isEnded,
   }) async {
     try {
       final response = await remoteDataSource.getEvents(
@@ -37,17 +34,13 @@ class EventRepositoryImpl implements EventRepository {
         limit: limit,
         categoryId: categoryId,
         interestIds: interestIds,
-        isOnline: isOnline,
-        isFree: isFree,
-        startDate: startDate,
-        endDate: endDate,
+        search: search,
+        isEnded: isEnded,
       );
       return Either.right(response.map((e) => e.toListItem()).toList());
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('EventRepository.getEvents error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -62,11 +55,9 @@ class EventRepositoryImpl implements EventRepository {
         limit: limit,
       );
       return Either.right(response.map((e) => e.toListItem()).toList());
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('EventRepository.getForYouEvents error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -81,11 +72,9 @@ class EventRepositoryImpl implements EventRepository {
         limit: limit,
       );
       return Either.right(response.map((e) => e.toListItem()).toList());
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('EventRepository.getFollowingEvents error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -94,43 +83,35 @@ class EventRepositoryImpl implements EventRepository {
     try {
       final response = await remoteDataSource.getEventDetails(eventId);
       return Either.right(response.toEntity());
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('EventRepository.getEventDetails error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
   @override
   Future<Result<void>> registerForEvent(
     int eventId, {
-    Map<String, dynamic>? additionalData,
+    required String fullName,
+    required String email,
+    required String phone,
+    Map<String, dynamic>? additionalDetails,
   }) async {
     try {
-      await remoteDataSource.registerForEvent(eventId,
-          additionalData: additionalData);
+      await remoteDataSource.registerForEvent(
+        eventId,
+        fullName: fullName,
+        email: email,
+        phone: phone,
+        additionalDetails: additionalDetails,
+      );
       return Either.right(null);
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('EventRepository.registerForEvent error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
-  @override
-  Future<Result<void>> cancelRegistration(int eventId) async {
-    try {
-      await remoteDataSource.cancelRegistration(eventId);
-      return Either.right(null);
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
-    } catch (e) {
-      debugPrint('EventRepository.cancelRegistration error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
-    }
-  }
 
   @override
   Future<Result<List<domain.EventListItem>>> getMyRegistrations({
@@ -143,11 +124,9 @@ class EventRepositoryImpl implements EventRepository {
         limit: limit,
       );
       return Either.right(response.map((e) => e.toListItem()).toList());
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('EventRepository.getMyRegistrations error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
+      return Either.left(mapErrorToFailure(e));
     }
   }
 
@@ -156,35 +135,9 @@ class EventRepositoryImpl implements EventRepository {
     try {
       final response = await remoteDataSource.getCategories();
       return Either.right(response.map((e) => e.toEntity()).toList());
-    } on ApiException catch (e) {
-      return Either.left(_mapApiExceptionToFailure(e));
     } catch (e) {
       debugPrint('EventRepository.getCategories error: $e');
-      return Either.left(UnknownFailure(message: e.toString()));
-    }
-  }
-
-  /// Map API exceptions to domain failures.
-  Failure _mapApiExceptionToFailure(ApiException e) {
-    switch (e.type) {
-      case ApiExceptionType.network:
-        return NetworkFailure(message: e.message);
-      case ApiExceptionType.unauthorized:
-        return AuthFailure(message: e.message);
-      case ApiExceptionType.forbidden:
-        return AuthFailure(message: e.message);
-      case ApiExceptionType.badRequest:
-        return ValidationFailure(message: e.message);
-      case ApiExceptionType.notFound:
-        return ServerFailure(message: e.message, code: '404');
-      case ApiExceptionType.server:
-        return ServerFailure(message: e.message);
-      case ApiExceptionType.timeout:
-        return NetworkFailure(message: e.message);
-      case ApiExceptionType.cancelled:
-        return UnknownFailure(message: e.message);
-      case ApiExceptionType.unknown:
-        return UnknownFailure(message: e.message);
+      return Either.left(mapErrorToFailure(e));
     }
   }
 }

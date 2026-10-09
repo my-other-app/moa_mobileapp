@@ -167,8 +167,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       context: context,
       onConfirm: () async {
         try {
+          // '/user/delete', not '/api/v1/user/delete': API_BASE_URL already
+          // ends in /api/v1, so the prefixed form requested
+          // /api/v1/api/v1/user/delete and 404'd every time. Account
+          // deletion has therefore never worked -- and the store listings
+          // require it to.
           final res = await APIService.instance.request(
-            '/api/v1/user/delete',
+            '/user/delete',
             DioMethod.delete,
           );
 

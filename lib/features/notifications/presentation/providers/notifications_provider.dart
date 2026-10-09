@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:finnet/features/notifications/data/models/notification_model.dart';
+import 'package:finnet/features/notifications/domain/repositories/notification_repository.dart';
 
 /// State for notification list
 class NotificationsState {
@@ -46,57 +46,36 @@ class NotificationsState {
 
 /// Provider for notification list management
 class NotificationsNotifier extends StateNotifier<NotificationsState> {
-  NotificationsNotifier() : super(const NotificationsState());
+  NotificationsNotifier(this._repository) : super(const NotificationsState());
+
+  final NotificationRepository _repository;
 
   static const int _pageSize = 20;
 
   /// Load initial notifications
   Future<void> loadNotifications() async {
-    // Force load, ignore isLoading
-    // if (state.isLoading) return;
-
-    debugPrint('DEBUG: loadNotifications called');
     state = state.copyWith(isLoading: true, error: null);
 
-    try {
-      debugPrint('DEBUG: Making API request to /notifications/fetch-list');
-      final response = await APIService.instance.request(
-        '/notifications/fetch-list',
-        DioMethod.get,
-        param: {
-          'limit': _pageSize,
-          'offset': 0,
-        },
-      );
+    final result = await _repository.fetchList(limit: _pageSize, offset: 0);
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        final List<dynamic> items = data['items'] ?? [];
-        final notifications = items
-            .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
-            .toList();
-
-        state = state.copyWith(
-          notifications: notifications,
-          isLoading: false,
-          hasMore: notifications.length >= _pageSize,
-          currentOffset: notifications.length,
-        );
-
-        // Also fetch unread count
-        await fetchUnreadCount();
-      } else {
-        state = state.copyWith(
-          isLoading: false,
-          error: 'Failed to load notifications',
-        );
-      }
-    } catch (e) {
-      state = state.copyWith(
+    result.fold(
+      (failure) => state = state.copyWith(
         isLoading: false,
-        error: e.toString(),
-      );
-    }
+        // The failure's own message, not e.toString(): the repository has
+        // already turned a transport error into something a person can read.
+        error: failure.message,
+      ),
+      (page) {
+        state = state.copyWith(
+          notifications: page.items,
+          isLoading: false,
+          hasMore: page.items.length >= _pageSize,
+          currentOffset: page.items.length,
+        );
+      },
+    );
+
+    if (result.isRight) await fetchUnreadCount();
   }
 
   /// Load more notifications (pagination)
@@ -105,127 +84,58 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 
     state = state.copyWith(isLoadingMore: true);
 
-    try {
-      final response = await APIService.instance.request(
-        '/notifications/fetch-list',
-        DioMethod.get,
-        param: {
-          'limit': _pageSize,
-          'offset': state.currentOffset,
-        },
-      );
+    final result = await _repository.fetchList(
+      limit: _pageSize,
+      offset: state.currentOffset,
+    );
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        final List<dynamic> items = data['items'] ?? [];
-        final newNotifications = items
-            .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
-            .toList();
-
+    result.fold(
+      (_) => state = state.copyWith(isLoadingMore: false),
+      (page) {
         state = state.copyWith(
-          notifications: [...state.notifications, ...newNotifications],
+          notifications: [...state.notifications, ...page.items],
           isLoadingMore: false,
-          hasMore: newNotifications.length >= _pageSize,
-          currentOffset: state.currentOffset + newNotifications.length,
+          hasMore: page.items.length >= _pageSize,
+          currentOffset: state.currentOffset + page.items.length,
         );
-      } else {
-        state = state.copyWith(isLoadingMore: false);
-      }
-    } catch (e) {
-      state = state.copyWith(isLoadingMore: false);
-    }
+      },
+    );
   }
 
   /// Fetch unread notification count
   Future<void> fetchUnreadCount() async {
-    try {
-      final response = await APIService.instance.request(
-        '/notifications/unread-count',
-        DioMethod.get,
-      );
-
-      if (response.statusCode == 200) {
-        final count = response.data['count'] as int? ?? 0;
-        state = state.copyWith(unreadCount: count);
-      }
-    } catch (e) {
-      // Silently fail for count fetch
-    }
+    final result = await _repository.unreadCount();
+    // A failed count is not worth surfacing: the badge keeps its previous
+    // value rather than flashing an error over a screen nobody asked to
+    // refresh.
+    result.fold((_) {}, (count) => state = state.copyWith(unreadCount: count));
   }
 
   /// Mark a single notification as read
   Future<void> markAsRead(String notificationId) async {
-    try {
-      final response = await APIService.instance.request(
-        '/notifications/read/$notificationId',
-        DioMethod.post,
-      );
+    final result = await _repository.markAsRead(notificationId);
+    if (result.isLeft) return;
 
-      if (response.statusCode == 200) {
-        // Update local state
-        final updatedNotifications = state.notifications.map((n) {
-          if (n.id == notificationId) {
-            return NotificationModel(
-              id: n.id,
-              userId: n.userId,
-              title: n.title,
-              description: n.description,
-              type: n.type,
-              status: 'read',
-              fromClub: n.fromClub,
-              event: n.event,
-              data: n.data,
-              createdAt: n.createdAt,
-              updatedAt: DateTime.now(),
-            );
-          }
-          return n;
-        }).toList();
-
-        state = state.copyWith(
-          notifications: updatedNotifications,
-          unreadCount: (state.unreadCount - 1).clamp(0, 9999),
-        );
-      }
-    } catch (e) {
-      // Handle error silently
-    }
+    state = state.copyWith(
+      notifications: [
+        for (final n in state.notifications)
+          if (n.id == notificationId) n.copyWithStatus('read') else n,
+      ],
+      unreadCount: (state.unreadCount - 1).clamp(0, 9999),
+    );
   }
 
   /// Mark all notifications as read
   Future<void> markAllAsRead() async {
-    try {
-      final response = await APIService.instance.request(
-        '/notifications/read-all',
-        DioMethod.post,
-      );
+    final result = await _repository.markAllAsRead();
+    if (result.isLeft) return;
 
-      if (response.statusCode == 200) {
-        // Update local state - mark all as read
-        final updatedNotifications = state.notifications.map((n) {
-          return NotificationModel(
-            id: n.id,
-            userId: n.userId,
-            title: n.title,
-            description: n.description,
-            type: n.type,
-            status: 'read',
-            fromClub: n.fromClub,
-            event: n.event,
-            data: n.data,
-            createdAt: n.createdAt,
-            updatedAt: DateTime.now(),
-          );
-        }).toList();
-
-        state = state.copyWith(
-          notifications: updatedNotifications,
-          unreadCount: 0,
-        );
-      }
-    } catch (e) {
-      // Handle error silently
-    }
+    state = state.copyWith(
+      notifications: [
+        for (final n in state.notifications) n.copyWithStatus('read'),
+      ],
+      unreadCount: 0,
+    );
   }
 
   /// Refresh notifications (pull to refresh)
@@ -241,7 +151,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 /// Provider instance
 final notificationsProvider =
     StateNotifierProvider<NotificationsNotifier, NotificationsState>(
-  (ref) => NotificationsNotifier(),
+  (ref) => NotificationsNotifier(ref.watch(notificationRepositoryProvider)),
 );
 
 /// Provider for just unread count (useful for badges in nav)

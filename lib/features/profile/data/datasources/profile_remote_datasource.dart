@@ -43,6 +43,17 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   ProfileRemoteDataSourceImpl(this._dio);
 
+  /// Pull a list out of a body that may be a bare array or a paginated
+  /// envelope. The server uses `items` for the paginated ones; reading the
+  /// body as a list returned nothing, with no error, when it was not one.
+  static List<dynamic> _listFrom(dynamic body) {
+    if (body is List) return body;
+    if (body is Map<String, dynamic>) {
+      return (body['items'] as List<dynamic>?) ?? const [];
+    }
+    return const [];
+  }
+
   @override
   Future<UserProfileModel> getMyProfile() async {
     final response = await _dio.get('/user/profile/me');
@@ -51,8 +62,9 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<UserProfileModel> updateProfile(UpdateProfileRequest request) async {
-    final response = await _dio.put(
-      '/user/profile',
+    // POST /user/profile/update -- there is no PUT /user/profile.
+    final response = await _dio.post(
+      '/user/profile/update',
       data: request.toJson(),
     );
     return UserProfileModel.fromJson(response.data as Map<String, dynamic>);
@@ -61,7 +73,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   @override
   Future<UserProfileModel> createProfile(CreateProfileRequest request) async {
     final response = await _dio.post(
-      '/user/profile',
+      '/user/profile/create',
       data: request.toJson(),
     );
     return UserProfileModel.fromJson(response.data as Map<String, dynamic>);
@@ -69,8 +81,9 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<List<OrganizationModel>> getOrganizations() async {
-    final response = await _dio.get('/organizations');
-    final List<dynamic> data = response.data as List<dynamic>? ?? [];
+    final response = await _dio.get('/orgs/list');
+    // Paginated, so the list is under `items` rather than being the body.
+    final List<dynamic> data = _listFrom(response.data);
     return data
         .map((e) => OrganizationModel.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -78,7 +91,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<List<AvatarModel>> getAvatars() async {
-    final response = await _dio.get('/avatars');
+    final response = await _dio.get('/user/avatar/list');
     final List<dynamic> data = response.data as List<dynamic>? ?? [];
     return data
         .map((e) => AvatarModel.fromJson(e as Map<String, dynamic>))
@@ -87,8 +100,9 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<UserProfileModel> updateAvatar(int avatarId) async {
-    final response = await _dio.put(
-      '/user/avatar',
+    // POST /user/avatar/select -- there is no PUT /user/avatar.
+    final response = await _dio.post(
+      '/user/avatar/select',
       data: {'avatar_id': avatarId},
     );
     return UserProfileModel.fromJson(response.data as Map<String, dynamic>);
@@ -96,7 +110,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<List<InterestModel>> getInterests() async {
-    final response = await _dio.get('/interests');
+    final response = await _dio.get('/interests/list');
     final List<dynamic> data = response.data as List<dynamic>? ?? [];
     return data
         .map((e) => InterestModel.fromJson(e as Map<String, dynamic>))

@@ -13,5 +13,18 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
+
+      # lib/core/config/env/env.dart declares `part 'env.g.dart'`, but *.g.dart
+      # is gitignored — so without this step `flutter analyze` fails with
+      # "Target of URI hasn't been generated" and every test fails to compile.
+      # .env.example is used as the source deliberately: envied only needs the
+      # keys to exist, and this way adding an @EnviedField without updating
+      # .env.example turns into a loud CI failure instead of a broken build
+      # for the next person who clones.
+      - name: Generate env.g.dart
+        run: |
+          cp .env.example .env
+          dart run build_runner build --delete-conflicting-outputs
+
       - run: flutter analyze
       - run: flutter test

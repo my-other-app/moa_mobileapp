@@ -1,0 +1,6 @@
+[submodule "moa_backend"]
+	path = moa_backend
+	url = https://github.com/my-other-app/moa_backend.git
+[submodule "moa_eventwebsite"]
+	path = moa_eventwebsite
+	url = https://github.com/my-other-app/moa_events.git
