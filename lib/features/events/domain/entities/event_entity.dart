@@ -8,13 +8,13 @@ class Event extends Equatable {
   final String slug;
   final ImageUrls? poster;
   final DateTime eventDateTime;
-  final int durationHours;
+  final double durationHours;
   final String locationName;
   final String? locationLink;
   final bool hasFee;
-  final int registrationFee;
+  final double registrationFee;
   final bool hasPrize;
-  final int prizeAmount;
+  final double prizeAmount;
   final bool isOnline;
   final DateTime? registrationStartDate;
   final DateTime? registrationEndDate;
@@ -188,7 +188,7 @@ class EventListItem extends Equatable {
   final String locationName;
   final bool isOnline;
   final bool hasFee;
-  final int registrationFee;
+  final double registrationFee;
   final ClubSummary club;
   final Category category;
 
