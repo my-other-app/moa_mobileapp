@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/network/dio_client.dart';
 import 'package:finnet/features/clubs/data/models/club_models.dart';
+import 'package:finnet/features/clubs/domain/entities/club_note.dart';
 
 /// Provider for the club remote data source.
 final clubRemoteDataSourceProvider = Provider<ClubRemoteDataSource>((ref) {
@@ -65,6 +66,9 @@ abstract class ClubRemoteDataSource {
 
   /// Search clubs.
   Future<List<ClubModel>> searchClubs(String query);
+
+  /// The club's notes -- short posts shown on its NOTES tab.
+  Future<List<ClubNote>> getClubNotes(int clubId, {int? page, int? limit});
 }
 
 /// Implementation of club remote data source.
@@ -156,6 +160,27 @@ class ClubRemoteDataSourceImpl implements ClubRemoteDataSource {
   @override
   Future<List<ClubModel>> searchClubs(String query) {
     return getClubs(search: query);
+  }
+
+  @override
+  Future<List<ClubNote>> getClubNotes(
+    int clubId, {
+    int? page,
+    int? limit,
+  }) async {
+    final size = limit ?? 20;
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/clubs/notes/list/$clubId',
+      queryParameters: {
+        'limit': size,
+        'offset': page == null ? 0 : (page - 1).clamp(0, 1 << 30) * size,
+      },
+    );
+    final items = (response.data?['items'] as List<dynamic>?) ?? const [];
+    return items
+        .whereType<Map<String, dynamic>>()
+        .map(ClubNote.fromJson)
+        .toList();
   }
 
   /// Unpack the paginated envelope.

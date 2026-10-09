@@ -256,6 +256,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                             0,
                         clubSlug: extra?['clubSlug'] ?? '',
                         clubname: extra?['clubName'] ?? '',
+                        // Used as the avatar on each note card. Absent when
+                        // the club page is opened by deep link rather than
+                        // from a list, which the card handles.
+                        clubLogoUrl: extra?['clubLogoUrl'] as String?,
                       );
                     }),
               ]),
