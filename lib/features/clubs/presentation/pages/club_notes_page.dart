@@ -45,7 +45,9 @@ class ClubNotesPage extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: notes.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 20),
+              // The design leaves a wide gap between cards; they read as
+              // separate posts rather than rows of a list.
+              separatorBuilder: (_, __) => const SizedBox(height: 28),
               itemBuilder: (context, index) {
                 final note = notes[index];
                 return NoteCard(
