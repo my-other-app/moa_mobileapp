@@ -27,6 +27,8 @@ import 'package:finnet/features/clubs/presentation/pages/explore_more_clubs_page
 import 'package:finnet/features/profile/presentation/pages/profile_page.dart';
 import 'package:finnet/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:finnet/features/profile/presentation/pages/settings_page.dart';
+import 'package:finnet/features/profile/domain/entities/certificate.dart';
+import 'package:finnet/features/profile/presentation/pages/certificates/certificate_detail_page.dart';
 import 'package:finnet/features/profile/presentation/pages/certificates/certificate_page.dart';
 import 'package:finnet/features/profile/presentation/pages/badges/my_badges_page.dart';
 import 'package:finnet/features/profile/presentation/pages/notifications/notifications_page.dart';
@@ -300,7 +302,28 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'certificates',
                     name: 'certificates',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => CertificatePage()),
+                    builder: (context, state) => CertificatePage(),
+                    routes: [
+                      GoRoute(
+                          path: ':ticketId',
+                          name: 'certificateDetail',
+                          parentNavigatorKey: _rootNavigatorKey,
+                          builder: (context, state) {
+                            final extra =
+                                state.extra as Map<String, dynamic>?;
+                            final certificate =
+                                extra?['certificate'] as Certificate?;
+                            // Reached only from the list, which passes the
+                            // certificate it already has. A deep link has
+                            // nothing to show, so it goes back to the list
+                            // rather than rendering an empty screen.
+                            if (certificate == null) {
+                              return const CertificatePage();
+                            }
+                            return CertificateDetailPage(
+                                certificate: certificate);
+                          }),
+                    ]),
                 GoRoute(
                     path: 'badges',
                     name: 'badges',
