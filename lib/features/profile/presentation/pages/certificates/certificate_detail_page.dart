@@ -4,7 +4,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:finnet/core/config/env/env.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
+import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
+import 'package:finnet/features/profile/presentation/pages/certificates/certificate_preview.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 
 /// One certificate, to the design: preview, title, id, club, two facts,
 /// a pin action, the status banner and the download button.
@@ -33,6 +36,10 @@ class CertificateDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pinned = ref.watch(pinnedCertificatesProvider);
+    final style = ref.watch(certificateStyleProvider(certificate.ticketId));
+    // The profile loads itself, so the name is here without this screen
+    // having to ask for it.
+    final recipient = ref.watch(profileProvider).profile?.fullName;
     final isPinned = pinned.contains(certificate.ticketId);
     final pdfUrl = certificate.pdfUrl(Env.apiBaseUrl);
 
@@ -71,8 +78,15 @@ class CertificateDetailPage extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 children: [
                   _PreviewPanel(
-                    imageUrl: certificate.thumbnailUrl,
                     background: _preview,
+                    child: CertificatePreview(
+                      certificate: certificate,
+                      // Drawn with the club's template once it arrives, and
+                      // with the plain default until then, so the panel does
+                      // not flash empty.
+                      style: style.valueOrNull ?? CertificateStyle.fallback,
+                      recipientName: recipient,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Text(
@@ -186,47 +200,24 @@ const _months = [
 
 String _formatDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
 
-/// The coloured panel holding a preview of the certificate.
-///
-/// The certificate itself is rendered server-side as a PDF, so there is no
-/// image of it to show; the event's poster stands in. Without one the panel
-/// keeps its shape with an icon rather than collapsing.
+/// The coloured panel the certificate sits on, as in the design.
 class _PreviewPanel extends StatelessWidget {
-  final String? imageUrl;
+  final Widget child;
   final Color background;
 
-  const _PreviewPanel({required this.imageUrl, required this.background});
+  const _PreviewPanel({required this.child, required this.background});
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1.15,
-      child: Container(
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.all(32),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: imageUrl == null || imageUrl!.isEmpty
-              ? _placeholder()
-              : Image.network(
-                  imageUrl!,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => _placeholder(),
-                ),
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
       ),
+      padding: const EdgeInsets.all(24),
+      child: child,
     );
   }
-
-  Widget _placeholder() => Container(
-        color: Colors.white,
-        alignment: Alignment.center,
-        child: const Icon(Icons.workspace_premium_outlined,
-            size: 48, color: Colors.black26),
-      );
 }
 
 class _ClubRow extends StatelessWidget {

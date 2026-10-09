@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_pin_store.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_remote_datasource.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
+import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
 
 /// Every certificate the user has earned, newest first.
 ///
@@ -9,6 +10,21 @@ import 'package:finnet/features/profile/domain/entities/certificate.dart';
 /// to fetch it.
 final certificatesProvider = FutureProvider<List<Certificate>>((ref) async {
   return ref.watch(certificateRemoteDataSourceProvider).getMyCertificates();
+});
+
+/// How one certificate should look, from its club's template.
+///
+/// Falls back to the plain default rather than failing: a preview that
+/// cannot be styled is still worth showing.
+final certificateStyleProvider =
+    FutureProvider.family<CertificateStyle, String>((ref, ticketId) async {
+  try {
+    return await ref
+        .watch(certificateRemoteDataSourceProvider)
+        .getStyle(ticketId);
+  } catch (_) {
+    return CertificateStyle.fallback;
+  }
 });
 
 /// The ticket ids the user has pinned, device-local.

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/network/dio_client.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
+import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
 
 final certificateRemoteDataSourceProvider =
     Provider<CertificateRemoteDataSource>((ref) {
@@ -11,6 +12,9 @@ final certificateRemoteDataSourceProvider =
 abstract class CertificateRemoteDataSource {
   /// Every certificate the user has earned.
   Future<List<Certificate>> getMyCertificates();
+
+  /// How this certificate should look.
+  Future<CertificateStyle> getStyle(String ticketId);
 }
 
 class CertificateRemoteDataSourceImpl implements CertificateRemoteDataSource {
@@ -47,5 +51,15 @@ class CertificateRemoteDataSourceImpl implements CertificateRemoteDataSource {
     // the one being looked for than one from two years ago.
     certificates.sort((a, b) => b.issuedOn.compareTo(a.issuedOn));
     return certificates;
+  }
+
+  @override
+  Future<CertificateStyle> getStyle(String ticketId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/events/certificates/$ticketId/style',
+    );
+    return CertificateStyle.fromJson(
+      response.data ?? const <String, dynamic>{},
+    );
   }
 }

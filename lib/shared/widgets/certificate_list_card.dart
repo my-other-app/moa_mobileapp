@@ -6,6 +6,14 @@ class CertificateListCard extends StatelessWidget {
   final String type;
   final String date;
   final String imageUrl;
+
+  /// Drawn in place of [imageUrl] when given.
+  ///
+  /// Certificates have no image to fetch -- they are generated as PDFs on
+  /// request -- so the list renders a miniature of the certificate instead.
+  /// NetworkImage with an empty url drew nothing at all.
+  final Widget? leading;
+
   final VoidCallback? onTap;
 
   const CertificateListCard({
@@ -15,6 +23,7 @@ class CertificateListCard extends StatelessWidget {
     required this.type,
     required this.date,
     required this.imageUrl,
+    this.leading,
     this.onTap,
   });
 
@@ -53,17 +62,20 @@ class CertificateListCard extends StatelessWidget {
         child: Row(
           children: [
             // Certificate Image
-            Container(
+            SizedBox(
               width: 48,
               height: 48,
-              decoration: ShapeDecoration(
-                image: DecorationImage(
-                  image: NetworkImage(imageUrl),
-                  fit: BoxFit.fill,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: leading ??
+                    (imageUrl.isEmpty
+                        ? const ColoredBox(color: Color(0xFFEFEFEF))
+                        : Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const ColoredBox(color: Color(0xFFEFEFEF)),
+                          )),
               ),
             ),
             const SizedBox(width: 8),

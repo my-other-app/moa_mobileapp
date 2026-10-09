@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:finnet/features/profile/presentation/pages/certificates/no_certificate_page.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
+import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
+import 'package:finnet/features/profile/presentation/pages/certificates/certificate_preview.dart';
 import 'package:finnet/shared/widgets/certificate_list_card.dart';
 
 /// The list behind both the ALL and PINNED tabs.
@@ -65,7 +67,25 @@ class CertificateListView extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               final certificate = shown[index];
+              // A miniature of the certificate itself. Too small to read,
+              // but it carries the club's colours, which is what a
+              // thumbnail is for.
+              final style = ref
+                      .watch(certificateStyleProvider(certificate.ticketId))
+                      .valueOrNull ??
+                  CertificateStyle.fallback;
+
               return CertificateListCard(
+                leading: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: 160,
+                    child: CertificatePreview(
+                      certificate: certificate,
+                      style: style,
+                    ),
+                  ),
+                ),
                 title: certificate.title,
                 organization: certificate.clubName ?? '',
                 type: certificate.eventType ?? '',

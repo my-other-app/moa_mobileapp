@@ -183,3 +183,7 @@ void main() {
     });
   });
 }
+
+// --- style parsing -----------------------------------------------------------
+// Appended: the preview is drawn from this config, so a malformed colour or
+// a missing field must degrade rather than take the screen down.
