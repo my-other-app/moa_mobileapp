@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/features/clubs/data/repositories/club_repository_impl.dart';
 import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
+import 'package:finnet/features/clubs/domain/entities/club_note.dart';
 import 'package:finnet/features/clubs/domain/repositories/club_repository.dart';
 
 /// State for clubs list.
@@ -438,3 +439,18 @@ class ClubSearchNotifier extends StateNotifier<ClubsState> {
     state = const ClubsState();
   }
 }
+
+/// A club's notes, fetched on first read.
+///
+/// A FutureProvider rather than a notifier: the NOTES tab only reads this,
+/// and self-loading state is what stopped the profile arriving blank on
+/// screens that forgot to trigger it.
+final clubNotesProvider =
+    FutureProvider.family<List<ClubNote>, int>((ref, clubId) async {
+  final repository = ref.watch(clubRepositoryProvider);
+  final result = await repository.getClubNotes(clubId);
+  return result.fold(
+    (failure) => throw Exception(failure.message),
+    (notes) => notes,
+  );
+});

@@ -4,6 +4,7 @@ import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/error/failure_mapper.dart';
 import 'package:finnet/features/clubs/data/datasources/club_remote_datasource.dart';
 import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
+import 'package:finnet/features/clubs/domain/entities/club_note.dart';
 import 'package:finnet/features/clubs/domain/repositories/club_repository.dart';
 
 /// Provider for the club repository.
@@ -132,4 +133,16 @@ class ClubRepositoryImpl implements ClubRepository {
       return Either.left(mapErrorToFailure(e));
     }
   }
+  @override
+  Future<Result<List<ClubNote>>> getClubNotes(int clubId, {int? page}) async {
+    try {
+      return Either.right(
+        await remoteDataSource.getClubNotes(clubId, page: page),
+      );
+    } catch (e) {
+      debugPrint('ClubRepository.getClubNotes error: $e');
+      return Either.left(mapErrorToFailure(e));
+    }
+  }
+
 }
