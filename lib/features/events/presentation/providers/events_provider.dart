@@ -210,12 +210,24 @@ class EventDetailNotifier extends StateNotifier<EventDetailState> {
   }
 
   /// Register for the event.
-  Future<bool> registerForEvent({Map<String, dynamic>? additionalData}) async {
+  ///
+  /// Name, email and phone are the registrant's details; the server checks
+  /// the email against the signed-in user and validates additionalDetails
+  /// against the event's own custom fields.
+  Future<bool> registerForEvent({
+    required String fullName,
+    required String email,
+    required String phone,
+    Map<String, dynamic>? additionalDetails,
+  }) async {
     state = state.copyWith(isRegistering: true, error: null);
 
     final result = await _repository.registerForEvent(
       _eventId,
-      additionalData: additionalData,
+      fullName: fullName,
+      email: email,
+      phone: phone,
+      additionalDetails: additionalDetails,
     );
 
     return result.fold(
@@ -236,29 +248,9 @@ class EventDetailNotifier extends StateNotifier<EventDetailState> {
     );
   }
 
-  /// Cancel registration.
-  Future<bool> cancelRegistration() async {
-    state = state.copyWith(isRegistering: true, error: null);
-
-    final result = await _repository.cancelRegistration(_eventId);
-
-    return result.fold(
-      (failure) {
-        state = state.copyWith(
-          isRegistering: false,
-          error: failure.message,
-        );
-        return false;
-      },
-      (_) {
-        state = state.copyWith(
-          isRegistering: false,
-          isRegistered: false,
-        );
-        return true;
-      },
-    );
-  }
+  // No cancelRegistration: the server has no route for it, and nothing in
+  // the app called this. It went through DELETE /events/{id}/register,
+  // which has never existed.
 }
 
 /// Provider for event categories.

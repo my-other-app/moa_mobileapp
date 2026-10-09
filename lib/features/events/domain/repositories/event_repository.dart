@@ -9,10 +9,8 @@ abstract class EventRepository {
     int? limit,
     int? categoryId,
     List<int>? interestIds,
-    bool? isOnline,
-    bool? isFree,
-    DateTime? startDate,
-    DateTime? endDate,
+    String? search,
+    bool? isEnded,
   });
 
   /// Get events for the "For You" feed.
@@ -31,13 +29,21 @@ abstract class EventRepository {
   Future<Result<Event>> getEventDetails(int eventId);
 
   /// Register for an event.
+  ///
+  /// The server requires the submitted email to match the signed-in user,
+  /// and validates additionalDetails against the event's own custom fields.
   Future<Result<void>> registerForEvent(
     int eventId, {
-    Map<String, dynamic>? additionalData,
+    required String fullName,
+    required String email,
+    required String phone,
+    Map<String, dynamic>? additionalDetails,
   });
 
-  /// Cancel event registration.
-  Future<Result<void>> cancelRegistration(int eventId);
+  // No cancelRegistration: the server has no route for it. It used to call
+  // DELETE /events/{id}/register, which has never existed, so the only
+  // caller -- EventDetailNotifier, itself unreachable from any screen --
+  // would have reported a 404 as an unknown failure.
 
   /// Get list of events the user is registered for.
   Future<Result<List<EventListItem>>> getMyRegistrations({

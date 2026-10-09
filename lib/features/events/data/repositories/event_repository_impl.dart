@@ -25,10 +25,8 @@ class EventRepositoryImpl implements EventRepository {
     int? limit,
     int? categoryId,
     List<int>? interestIds,
-    bool? isOnline,
-    bool? isFree,
-    DateTime? startDate,
-    DateTime? endDate,
+    String? search,
+    bool? isEnded,
   }) async {
     try {
       final response = await remoteDataSource.getEvents(
@@ -36,10 +34,8 @@ class EventRepositoryImpl implements EventRepository {
         limit: limit,
         categoryId: categoryId,
         interestIds: interestIds,
-        isOnline: isOnline,
-        isFree: isFree,
-        startDate: startDate,
-        endDate: endDate,
+        search: search,
+        isEnded: isEnded,
       );
       return Either.right(response.map((e) => e.toListItem()).toList());
     } catch (e) {
@@ -96,11 +92,19 @@ class EventRepositoryImpl implements EventRepository {
   @override
   Future<Result<void>> registerForEvent(
     int eventId, {
-    Map<String, dynamic>? additionalData,
+    required String fullName,
+    required String email,
+    required String phone,
+    Map<String, dynamic>? additionalDetails,
   }) async {
     try {
-      await remoteDataSource.registerForEvent(eventId,
-          additionalData: additionalData);
+      await remoteDataSource.registerForEvent(
+        eventId,
+        fullName: fullName,
+        email: email,
+        phone: phone,
+        additionalDetails: additionalDetails,
+      );
       return Either.right(null);
     } catch (e) {
       debugPrint('EventRepository.registerForEvent error: $e');
@@ -108,16 +112,6 @@ class EventRepositoryImpl implements EventRepository {
     }
   }
 
-  @override
-  Future<Result<void>> cancelRegistration(int eventId) async {
-    try {
-      await remoteDataSource.cancelRegistration(eventId);
-      return Either.right(null);
-    } catch (e) {
-      debugPrint('EventRepository.cancelRegistration error: $e');
-      return Either.left(mapErrorToFailure(e));
-    }
-  }
 
   @override
   Future<Result<List<domain.EventListItem>>> getMyRegistrations({

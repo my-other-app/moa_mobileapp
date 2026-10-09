@@ -10,37 +10,56 @@ final eventRemoteDataSourceProvider = Provider<EventRemoteDataSource>((ref) {
 });
 
 /// Abstract interface for remote event operations.
+///
+/// Every path here is checked against `app/api/events/router.py` and
+/// `app/api/events/registration/router.py`. The previous version was not:
+/// all eight of its calls addressed routes the server has never had
+/// (`/events`, `/events/following`, `GET /events/{id}`, `/categories`,
+/// `/user/registrations`, ...), sent `page` where the server reads `offset`,
+/// and unpacked `results` from an envelope whose list is called `items`.
+///
+/// It went unnoticed because no screen uses this layer -- the event pages
+/// still call APIService directly with the correct paths. The first screen
+/// moved onto it would have found every list silently empty, because the
+/// wrong envelope key hits the `?? []` fallback and returns nothing without
+/// an error.
 abstract class EventRemoteDataSource {
-  /// Get list of events.
+  /// One page of events, with whichever filters apply.
+  ///
+  /// `GET /events/list` is the server's only general event listing.
   Future<List<EventModel>> getEvents({
     int? page,
     int? limit,
     int? categoryId,
     List<int>? interestIds,
-    bool? isOnline,
-    bool? isFree,
-    DateTime? startDate,
-    DateTime? endDate,
+    String? search,
+    bool? isEnded,
   });
 
-  /// Get "For You" events.
+  /// The personalised feed, ranked server-side.
   Future<List<EventModel>> getForYouEvents({int? page, int? limit});
 
-  /// Get events from followed clubs.
+  /// Events from clubs the user follows.
   Future<List<EventModel>> getFollowingEvents({int? page, int? limit});
 
   /// Get event details.
   Future<EventModel> getEventDetails(int eventId);
 
   /// Register for an event.
-  Future<void> registerForEvent(int eventId,
-      {Map<String, dynamic>? additionalData});
+  Future<void> registerForEvent(
+    int eventId, {
+    required String fullName,
+    required String email,
+    required String phone,
+    Map<String, dynamic>? additionalDetails,
+  });
 
-  /// Cancel event registration.
-  Future<void> cancelRegistration(int eventId);
-
-  /// Get user's event registrations.
-  Future<List<EventModel>> getMyRegistrations({int? page, int? limit});
+  /// Events the user has registered for.
+  Future<List<EventModel>> getMyRegistrations({
+    int? page,
+    int? limit,
+    bool? isEnded,
+  });
 
   /// Get event categories.
   Future<List<CategoryModel>> getCategories();
@@ -52,116 +71,138 @@ class EventRemoteDataSourceImpl implements EventRemoteDataSource {
 
   EventRemoteDataSourceImpl(this._dio);
 
+  /// Matches the server's own default for `limit`.
+  static const _defaultLimit = 10;
+
+  /// Build the pagination the server expects.
+  ///
+  /// It reads `offset`, not `page`. `page` is kept in the domain because
+  /// that is how the callers count, and converted here.
+  Map<String, dynamic> _paging(int? page, int? limit) {
+    final size = limit ?? _defaultLimit;
+    return <String, dynamic>{
+      'limit': size,
+      'offset': page == null ? 0 : (page - 1).clamp(0, 1 << 30) * size,
+    };
+  }
+
+  /// Unpack the paginated envelope.
+  ///
+  /// The list is under `items` -- `PaginatedResponse` in
+  /// `app/core/response/pagination.py`. Reading `results` instead returned
+  /// the empty fallback on every call, with no error to show for it.
+  List<EventModel> _eventsFrom(Map<String, dynamic>? body) {
+    final items = (body?['items'] as List<dynamic>?) ?? const [];
+    return items
+        .whereType<Map<String, dynamic>>()
+        .map(EventModel.fromJson)
+        .toList();
+  }
+
   @override
   Future<List<EventModel>> getEvents({
     int? page,
     int? limit,
     int? categoryId,
     List<int>? interestIds,
-    bool? isOnline,
-    bool? isFree,
-    DateTime? startDate,
-    DateTime? endDate,
+    String? search,
+    bool? isEnded,
   }) async {
-    final queryParams = <String, dynamic>{};
-    if (page != null) queryParams['page'] = page;
-    if (limit != null) queryParams['limit'] = limit;
-    if (categoryId != null) queryParams['category_id'] = categoryId;
+    final queryParams = _paging(page, limit);
     if (interestIds != null && interestIds.isNotEmpty) {
       queryParams['interest_ids'] = interestIds.join(',');
     }
-    if (isOnline != null) queryParams['is_online'] = isOnline;
-    if (isFree != null) queryParams['is_free'] = isFree;
-    if (startDate != null) {
-      queryParams['start_date'] = startDate.toIso8601String();
-    }
-    if (endDate != null) {
-      queryParams['end_date'] = endDate.toIso8601String();
-    }
+    if (search != null && search.isNotEmpty) queryParams['search'] = search;
+    if (isEnded != null) queryParams['is_ended'] = isEnded;
+    // `category_id`, `is_online`, `is_free`, `start_date` and `end_date` are
+    // deliberately absent: /events/list does not accept them, and FastAPI
+    // ignores unknown query parameters, so sending them looked like
+    // filtering while returning everything.
 
-    final response = await _dio.get('/events', queryParameters: queryParams);
-    final List<dynamic> data = response.data['results'] as List<dynamic>? ??
-        response.data as List<dynamic>? ??
-        [];
-    return data
-        .map((e) => EventModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/events/list',
+      queryParameters: queryParams,
+    );
+    return _eventsFrom(response.data);
   }
 
   @override
   Future<List<EventModel>> getForYouEvents({int? page, int? limit}) async {
-    final queryParams = <String, dynamic>{};
-    if (page != null) queryParams['page'] = page;
-    if (limit != null) queryParams['limit'] = limit;
-
-    final response =
-        await _dio.get('/events/for-you', queryParameters: queryParams);
-    final List<dynamic> data = response.data['results'] as List<dynamic>? ??
-        response.data as List<dynamic>? ??
-        [];
-    return data
-        .map((e) => EventModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/events/for-you',
+      queryParameters: _paging(page, limit),
+    );
+    return _eventsFrom(response.data);
   }
 
   @override
   Future<List<EventModel>> getFollowingEvents({int? page, int? limit}) async {
-    final queryParams = <String, dynamic>{};
-    if (page != null) queryParams['page'] = page;
-    if (limit != null) queryParams['limit'] = limit;
-
-    final response =
-        await _dio.get('/events/following', queryParameters: queryParams);
-    final List<dynamic> data = response.data['results'] as List<dynamic>? ??
-        response.data as List<dynamic>? ??
-        [];
-    return data
-        .map((e) => EventModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/events/list',
+      queryParameters: {
+        ..._paging(page, limit),
+        'is_following': true,
+        // Finished events are not something to follow up on in a feed.
+        'is_ended': false,
+      },
+    );
+    return _eventsFrom(response.data);
   }
 
   @override
   Future<EventModel> getEventDetails(int eventId) async {
-    final response = await _dio.get('/events/$eventId');
-    return EventModel.fromJson(response.data as Map<String, dynamic>);
+    final response =
+        await _dio.get<Map<String, dynamic>>('/events/info/$eventId');
+    return EventModel.fromJson(response.data ?? const <String, dynamic>{});
   }
 
   @override
-  Future<void> registerForEvent(int eventId,
-      {Map<String, dynamic>? additionalData}) async {
-    await _dio.post(
-      '/events/$eventId/register',
-      data: additionalData,
+  Future<void> registerForEvent(
+    int eventId, {
+    required String fullName,
+    required String email,
+    required String phone,
+    Map<String, dynamic>? additionalDetails,
+  }) async {
+    // The endpoint lives under the registration sub-router, and the server
+    // requires the submitted email to match the signed-in user.
+    await _dio.post<dynamic>(
+      '/events/registration/$eventId/register',
+      data: {
+        'full_name': fullName,
+        'email': email,
+        'phone': phone,
+        if (additionalDetails != null) 'additional_details': additionalDetails,
+      },
     );
   }
 
   @override
-  Future<void> cancelRegistration(int eventId) async {
-    await _dio.delete('/events/$eventId/register');
-  }
-
-  @override
-  Future<List<EventModel>> getMyRegistrations({int? page, int? limit}) async {
-    final queryParams = <String, dynamic>{};
-    if (page != null) queryParams['page'] = page;
-    if (limit != null) queryParams['limit'] = limit;
-
-    final response =
-        await _dio.get('/user/registrations', queryParameters: queryParams);
-    final List<dynamic> data = response.data['results'] as List<dynamic>? ??
-        response.data as List<dynamic>? ??
-        [];
-    return data
-        .map((e) => EventModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+  Future<List<EventModel>> getMyRegistrations({
+    int? page,
+    int? limit,
+    bool? isEnded,
+  }) async {
+    // There is no /user/registrations: the user's own registrations are the
+    // event list filtered by is_registered.
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/events/list',
+      queryParameters: {
+        ..._paging(page, limit),
+        'is_registered': true,
+        if (isEnded != null) 'is_ended': isEnded,
+      },
+    );
+    return _eventsFrom(response.data);
   }
 
   @override
   Future<List<CategoryModel>> getCategories() async {
-    final response = await _dio.get('/categories');
-    final List<dynamic> data = response.data as List<dynamic>? ?? [];
-    return data
-        .map((e) => CategoryModel.fromJson(e as Map<String, dynamic>))
+    final response =
+        await _dio.get<List<dynamic>>('/events/categories/list');
+    return (response.data ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(CategoryModel.fromJson)
         .toList();
   }
 }
