@@ -40,6 +40,15 @@ class Certificate {
   String pdfUrl(String apiBaseUrl) =>
       '$apiBaseUrl/events/certificates/$ticketId/pdf';
 
+  /// The same certificate as a PNG, for showing on screen.
+  ///
+  /// Rendered from the same template by the same engine as the PDF, so the
+  /// preview and the download are the same document. Showing the PDF itself
+  /// meant Apple's PDF viewer chrome -- a page counter, a page frame, and
+  /// the certificate shrunk inside a sheet of white.
+  String imageUrl(String apiBaseUrl) =>
+      '$apiBaseUrl/events/certificates/$ticketId/image';
+
   /// The title shown on the card and the detail screen.
   ///
   /// The event's own name, with "Certificate" appended only when the name

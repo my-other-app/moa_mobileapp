@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/core/config/env/env.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
-import 'package:finnet/features/profile/presentation/pages/certificates/certificate_pdf_view.dart';
 import 'package:finnet/features/profile/presentation/pages/certificates/certificate_preview.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
@@ -41,6 +40,13 @@ class CertificateDetailPage extends ConsumerWidget {
     // The profile loads itself, so the name is here without this screen
     // having to ask for it.
     final recipient = ref.watch(profileProvider).profile?.fullName;
+    // Held while the rendered certificate loads, and used if it cannot be
+    // rendered at all, so the panel keeps its shape either way.
+    final placeholder = CertificatePreview(
+      certificate: certificate,
+      style: style.valueOrNull ?? CertificateStyle.fallback,
+      recipientName: recipient,
+    );
     final isPinned = pinned.contains(certificate.ticketId);
     final pdfUrl = certificate.pdfUrl(Env.apiBaseUrl);
 
@@ -81,22 +87,19 @@ class CertificateDetailPage extends ConsumerWidget {
                   _PreviewPanel(
                     background: _preview,
                     child: AspectRatio(
-                      // A4 landscape, the shape the PDF is generated at.
-                      aspectRatio: 1.414,
+                      // The shape the server crops the certificate to, so it
+                      // fills the panel rather than letterboxing inside it.
+                      aspectRatio: 800 / 519,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
-                        child: CertificatePdfView(
-                          pdfUrl: pdfUrl,
-                          // Drawn from the club's template while the PDF
-                          // loads, and if it cannot be loaded at all. Close
-                          // enough to hold the space, and never claimed to
-                          // be the artifact itself.
-                          placeholder: CertificatePreview(
-                            certificate: certificate,
-                            style: style.valueOrNull ??
-                                CertificateStyle.fallback,
-                            recipientName: recipient,
-                          ),
+                        child: Image.network(
+                          certificate.imageUrl(Env.apiBaseUrl),
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, progress) =>
+                              progress == null ? child : placeholder,
+                          // Falls back to the drawn version rather than an
+                          // empty panel if the render fails.
+                          errorBuilder: (_, __, ___) => placeholder,
                         ),
                       ),
                     ),

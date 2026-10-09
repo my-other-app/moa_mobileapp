@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:finnet/features/profile/presentation/pages/certificates/no_certificate_page.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
+import 'package:finnet/core/config/env/env.dart';
 import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
 import 'package:finnet/features/profile/presentation/pages/certificates/certificate_preview.dart';
 import 'package:finnet/shared/widgets/certificate_list_card.dart';
@@ -67,24 +68,31 @@ class CertificateListView extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               final certificate = shown[index];
-              // A miniature of the certificate itself. Too small to read,
-              // but it carries the club's colours, which is what a
-              // thumbnail is for.
+              // The real certificate, same render as the detail panel, so a
+              // thumbnail is a small version of what opens rather than an
+              // approximation of it. Cached by the server for a day.
               final style = ref
                       .watch(certificateStyleProvider(certificate.ticketId))
                       .valueOrNull ??
                   CertificateStyle.fallback;
+              final drawn = FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: 160,
+                  child: CertificatePreview(
+                    certificate: certificate,
+                    style: style,
+                  ),
+                ),
+              );
 
               return CertificateListCard(
-                leading: FittedBox(
+                leading: Image.network(
+                  certificate.imageUrl(Env.apiBaseUrl),
                   fit: BoxFit.cover,
-                  child: SizedBox(
-                    width: 160,
-                    child: CertificatePreview(
-                      certificate: certificate,
-                      style: style,
-                    ),
-                  ),
+                  loadingBuilder: (context, child, progress) =>
+                      progress == null ? child : drawn,
+                  errorBuilder: (_, __, ___) => drawn,
                 ),
                 title: certificate.title,
                 organization: certificate.clubName ?? '',
