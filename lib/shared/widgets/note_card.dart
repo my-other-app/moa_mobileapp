@@ -8,8 +8,15 @@ class NoteCard extends StatelessWidget {
   final String headerSubtitle; // e.g., "1 hour ago"
   final String cardTitle; // e.g., "Hack. Build. Repeat."
   final String description; // The main body text
-  final VoidCallback? onLinkTap;
-  // If you want to open a URL or do some action on click of the “open in new” icon
+
+  /// The club this note belongs to, for the tap on its logo.
+  ///
+  /// Previously the tap was hardcoded to `/clubs/1` behind a TODO, so every
+  /// note on every club opened the same club -- and on this account that is
+  /// a club the user has muted. Null disables the tap rather than sending
+  /// someone somewhere arbitrary.
+  final int? clubId;
+  final String? clubSlug;
 
   const NoteCard({
     super.key,
@@ -18,7 +25,8 @@ class NoteCard extends StatelessWidget {
     required this.headerSubtitle,
     required this.cardTitle,
     required this.description,
-    this.onLinkTap,
+    this.clubId,
+    this.clubSlug,
   });
 
   @override
@@ -45,26 +53,41 @@ class NoteCard extends StatelessWidget {
                 children: [
                   // Network image
                   InkWell(
-                    onTap: () {
-                      // TODO: Add clubId and clubSlug to NoteCard widget
-                      context.push('/clubs/1', extra: {
-                        'clubSlug': '',
-                        'clubName': headerTitle,
-                      });
-                    },
-                    child: Image.network(
-                      logoUrl,
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 32,
-                          height: 32,
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.image_not_supported),
-                        );
-                      },
+                    onTap: clubId == null
+                        ? null
+                        : () => context.push('/clubs/$clubId', extra: {
+                              'clubSlug': clubSlug ?? '',
+                              'clubName': headerTitle,
+                              'clubLogoUrl': logoUrl,
+                            }),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.network(
+                        logoUrl,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          // A club without a logo is ordinary, so this is a
+                          // neutral placeholder rather than a broken-image
+                          // icon.
+                          return Container(
+                            width: 32,
+                            height: 32,
+                            color: Colors.grey.shade200,
+                            alignment: Alignment.center,
+                            child: Text(
+                              headerTitle.isEmpty
+                                  ? '?'
+                                  : headerTitle.characters.first.toUpperCase(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),

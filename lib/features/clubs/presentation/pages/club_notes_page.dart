@@ -54,6 +54,7 @@ class ClubNotesPage extends ConsumerWidget {
                   headerSubtitle: note.relativeTime,
                   cardTitle: note.title,
                   description: note.note,
+                  clubId: clubId,
                 );
               },
             ),
