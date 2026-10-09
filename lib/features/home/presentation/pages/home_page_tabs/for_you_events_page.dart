@@ -55,7 +55,7 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
 
     try {
       final res = await APIService.instance.request(
-        '/events/list?offset=$_offset&limit=$_limit',
+        '/events/for-you?offset=$_offset&limit=$_limit',
         DioMethod.get,
       );
       List<dynamic> fetchedEvents = res.data['items'] ?? [];
@@ -86,7 +86,7 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
 
     try {
       final res = await APIService.instance.request(
-        '/events/list?offset=$_offset&limit=$_limit',
+        '/events/for-you?offset=$_offset&limit=$_limit',
         DioMethod.get,
       );
       List<dynamic> fetchedEvents = res.data['items'] ?? [];

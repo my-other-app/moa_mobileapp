@@ -55,7 +55,7 @@ class _FollowingEventsPageState extends State<FollowingEventsPage>
 
     try {
       final res = await APIService.instance.request(
-        '/events/list?is_following=true&offset=$_offset&limit=$_limit',
+        '/events/list?is_following=true&is_ended=false&offset=$_offset&limit=$_limit',
         DioMethod.get,
       );
       if (mounted) {
@@ -85,7 +85,7 @@ class _FollowingEventsPageState extends State<FollowingEventsPage>
 
     try {
       final res = await APIService.instance.request(
-        '/events/list?is_following=true&offset=$_offset&limit=$_limit',
+        '/events/list?is_following=true&is_ended=false&offset=$_offset&limit=$_limit',
         DioMethod.get,
       );
       if (mounted) {
