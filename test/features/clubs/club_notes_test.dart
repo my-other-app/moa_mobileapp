@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:finnet/features/clubs/data/datasources/club_remote_datasource.dart';
+import 'package:finnet/features/clubs/data/models/club_models.dart';
 import 'package:finnet/features/clubs/domain/entities/club_note.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -130,6 +131,40 @@ void main() {
 
       expect(note.title, 'Title');
       expect(note.relativeTime, 'just now');
+    });
+  });
+
+  group('the club logo reaches the card', () {
+    test('a club detail response yields a usable thumbnail url', () async {
+      // The notes tab had no logo source: callers do not set navigation
+      // extras, deep links have none, and NoteListResponse carries no club.
+      // Every card fell back to the club's initial. The logo now comes from
+      // the club itself, so this pins the shape it arrives in.
+      final club = ClubModel.fromJson(const {
+        'id': 5,
+        'name': 'LetMeGoo',
+        'slug': 'letmegoo',
+        'logo': {
+          'thumbnail': 'https://example.test/logo.thumbnail.png',
+          'medium': 'https://example.test/logo.medium.png',
+          'large': 'https://example.test/logo.large.png',
+          'original': 'https://example.test/logo.png',
+        },
+      }).toEntity();
+
+      expect(club.logo?.thumbnail, 'https://example.test/logo.thumbnail.png');
+    });
+
+    test('a club with no logo yields null rather than throwing', () {
+      // Yasya has none in production, so its cards show "Y" -- correct
+      // behaviour, not a failure.
+      final club = ClubModel.fromJson(const {
+        'id': 2,
+        'name': 'Yasya',
+        'slug': 'yasya',
+      }).toEntity();
+
+      expect(club.logo, isNull);
     });
   });
 }

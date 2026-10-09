@@ -27,6 +27,10 @@ class ClubNotesPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notesAsync = ref.watch(clubNotesProvider(clubId));
+    // Fetched rather than taken from the route: navigation extras are absent
+    // on a deep link, and most callers never set them, so relying on them
+    // left every card showing the club's initial instead of its logo.
+    final logo = ref.watch(clubLogoProvider(clubId)).valueOrNull ?? clubLogoUrl;
 
     return ColoredBox(
       color: Colors.white,
@@ -51,7 +55,7 @@ class ClubNotesPage extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final note = notes[index];
                 return NoteCard(
-                  logoUrl: clubLogoUrl ?? '',
+                  logoUrl: logo ?? '',
                   headerTitle: clubName,
                   headerSubtitle: note.relativeTime,
                   cardTitle: note.title,

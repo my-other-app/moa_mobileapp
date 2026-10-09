@@ -454,3 +454,24 @@ final clubNotesProvider =
     (notes) => notes,
   );
 });
+
+/// A club's logo URL, fetched on first read.
+///
+/// The notes tab has no other source for it: navigation extras are absent on
+/// a deep link and most callers never set them, and NoteListResponse carries
+/// only the note's own fields -- no club. Without this the cards all fell
+/// back to the club's initial.
+///
+/// A FutureProvider so it loads itself and is cached per club, rather than
+/// each card asking.
+final clubLogoProvider =
+    FutureProvider.family<String?, int>((ref, clubId) async {
+  final repository = ref.watch(clubRepositoryProvider);
+  final result = await repository.getClubDetails(clubId);
+  return result.fold(
+    // A missing logo is not worth failing the tab over; the card falls back
+    // to the club's initial.
+    (_) => null,
+    (club) => club.logo?.thumbnail,
+  );
+});
