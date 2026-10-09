@@ -43,10 +43,38 @@ final profileProvider =
 class ProfileNotifier extends StateNotifier<ProfileState> {
   final ProfileRepository _repository;
 
-  ProfileNotifier(this._repository) : super(const ProfileState());
+  /// Loads the profile as soon as anything asks for it.
+  ///
+  /// It used to wait for a screen to call loadProfile(), and only the
+  /// profile screens, the login flow and onboarding ever did. Open the app
+  /// with a stored token -- so no login flow runs -- go straight to an event
+  /// and the registration form read a state nobody had filled: name, email
+  /// and phone blank, with no error and nothing to retry. Visiting Profile
+  /// ran its initState, which is why those fields appeared only after a trip
+  /// to Settings and back.
+  ///
+  /// Riverpod builds a provider on first read, so loading here means "fetch
+  /// when first needed" rather than "fetch at startup", and every consumer
+  /// gets the same answer without having to know to ask.
+  ProfileNotifier(this._repository) : super(const ProfileState()) {
+    loadProfile();
+  }
 
   /// Load the current user's profile.
-  Future<void> loadProfile() async {
+  ///
+  /// Reuses an in-flight request rather than starting a second one: several
+  /// screens can mount at once, and each watching the provider must not mean
+  /// another identical call.
+  Future<void>? _inFlight;
+
+  Future<void> loadProfile({bool force = false}) {
+    if (_inFlight != null && !force) return _inFlight!;
+    final request = _loadProfile();
+    _inFlight = request.whenComplete(() => _inFlight = null);
+    return _inFlight!;
+  }
+
+  Future<void> _loadProfile() async {
     state = state.copyWith(isLoading: true, error: null);
 
     final result = await _repository.getMyProfile();

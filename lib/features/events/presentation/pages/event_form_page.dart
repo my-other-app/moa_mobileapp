@@ -66,18 +66,31 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     super.dispose();
   }
 
-  /// Pre-fill form data from user profile
+  /// Pre-fill form data from user profile.
+  ///
+  /// The profile now arrives asynchronously, which it did not before -- the
+  /// provider loads on first read rather than waiting for a screen to ask.
+  /// So this can run after the user has already started typing, and must
+  /// never overwrite what they put there: each field is filled only if it is
+  /// still empty.
   void _prefillFromProfile(UserProfile profile) {
     if (_hasPrefilledData) return;
     _hasPrefilledData = true;
 
-    _nameController.text = profile.fullName;
-    _emailController.text = profile.email;
-    if (profile.phone != null && profile.phone!.isNotEmpty) {
-      _phoneController.text = profile.phone!;
-    } else if (profile.whatsapp != null && profile.whatsapp!.isNotEmpty) {
-      _phoneController.text = profile.whatsapp!;
+    void fill(TextEditingController controller, String? value) {
+      if (value == null || value.isEmpty) return;
+      if (controller.text.isNotEmpty) return;
+      controller.text = value;
     }
+
+    fill(_nameController, profile.fullName);
+    fill(_emailController, profile.email);
+    fill(
+      _phoneController,
+      (profile.phone != null && profile.phone!.isNotEmpty)
+          ? profile.phone
+          : profile.whatsapp,
+    );
 
     if (profile.organization != null) {
       _selectedOrganization = profile.organization;
