@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/core/config/env/env.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
+import 'package:finnet/features/profile/presentation/pages/certificates/certificate_pdf_view.dart';
 import 'package:finnet/features/profile/presentation/pages/certificates/certificate_preview.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
@@ -79,13 +80,25 @@ class CertificateDetailPage extends ConsumerWidget {
                 children: [
                   _PreviewPanel(
                     background: _preview,
-                    child: CertificatePreview(
-                      certificate: certificate,
-                      // Drawn with the club's template once it arrives, and
-                      // with the plain default until then, so the panel does
-                      // not flash empty.
-                      style: style.valueOrNull ?? CertificateStyle.fallback,
-                      recipientName: recipient,
+                    child: AspectRatio(
+                      // A4 landscape, the shape the PDF is generated at.
+                      aspectRatio: 1.414,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: CertificatePdfView(
+                          pdfUrl: pdfUrl,
+                          // Drawn from the club's template while the PDF
+                          // loads, and if it cannot be loaded at all. Close
+                          // enough to hold the space, and never claimed to
+                          // be the artifact itself.
+                          placeholder: CertificatePreview(
+                            certificate: certificate,
+                            style: style.valueOrNull ??
+                                CertificateStyle.fallback,
+                            recipientName: recipient,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
