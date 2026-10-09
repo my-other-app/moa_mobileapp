@@ -2,19 +2,28 @@ import 'package:finnet/features/events/domain/entities/event_entity.dart';
 import 'package:finnet/features/profile/data/models/profile_models.dart';
 
 /// Data model for event from API.
+
+/// Read a JSON number as an int, whatever shape it arrived in.
+///
+/// `as int?` throws on a double, and JSON gives no guarantee which one a
+/// number will be. A cast that works on a fixture fails on real data.
+int? _toInt(dynamic value) => (value as num?)?.toInt();
+
+double? _toDouble(dynamic value) => (value as num?)?.toDouble();
+
 class EventModel {
   final int id;
   final String name;
   final String slug;
   final Map<String, dynamic>? poster;
   final String? eventDatetime;
-  final int? duration;
+  final double? duration;
   final String? locationName;
   final String? locationLink;
   final bool? hasFee;
-  final int? regFee;
+  final double? regFee;
   final bool? hasPrize;
-  final int? prizeAmount;
+  final double? prizeAmount;
   final bool? isOnline;
   final String? regStartdate;
   final String? regEnddate;
@@ -22,7 +31,7 @@ class EventModel {
   final CategoryModel? category;
   final List<InterestModel>? interests;
   final List<EventFieldModel>? additionalDetails;
-  final int? rating;
+  final double? rating;
   final int? totalRating;
   final String? about;
   final String? contactPhone;
@@ -59,18 +68,22 @@ class EventModel {
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
     return EventModel(
-      id: json['id'] as int? ?? 0,
+      id: _toInt(json['id']) ?? 0,
       name: json['name'] as String? ?? '',
       slug: json['slug'] as String? ?? '',
       poster: json['poster'] as Map<String, dynamic>?,
       eventDatetime: json['event_datetime'] as String?,
-      duration: json['duration'] as int?,
+      // duration is a Float column and reg_fee/prize_amount are
+      // Numeric(10,2), so all three arrive as doubles. `as int?` threw on
+      // every event that had a duration -- which is every event, since the
+      // column is NOT NULL.
+      duration: _toDouble(json['duration']),
       locationName: json['location_name'] as String?,
       locationLink: json['location_link'] as String?,
       hasFee: json['has_fee'] as bool?,
-      regFee: json['reg_fee'] as int?,
+      regFee: _toDouble(json['reg_fee']),
       hasPrize: json['has_prize'] as bool?,
-      prizeAmount: json['prize_amount'] as int?,
+      prizeAmount: _toDouble(json['prize_amount']),
       isOnline: json['is_online'] as bool?,
       regStartdate: json['reg_startdate'] as String?,
       regEnddate: json['reg_enddate'] as String?,
@@ -86,8 +99,8 @@ class EventModel {
       additionalDetails: (json['additional_details'] as List<dynamic>?)
           ?.map((e) => EventFieldModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-      rating: json['rating'] as int?,
-      totalRating: json['total_rating'] as int?,
+      rating: _toDouble(json['rating']),
+      totalRating: _toInt(json['total_ratings'] ?? json['total_rating']),
       about: json['about'] as String?,
       contactPhone: json['contact_phone'] as String?,
       contactEmail: json['contact_email'] as String?,
@@ -148,7 +161,7 @@ class EventModel {
       interests: interests?.map((e) => e.toEntity()).toList() ?? [],
       additionalFields:
           additionalDetails?.map((e) => e.toEntity()).toList() ?? [],
-      rating: (rating ?? 0).toDouble(),
+      rating: rating ?? 0,
       totalRatings: totalRating ?? 0,
       description: about,
       contactPhone: contactPhone,
@@ -191,7 +204,7 @@ class ClubSummaryModel {
 
   factory ClubSummaryModel.fromJson(Map<String, dynamic> json) {
     return ClubSummaryModel(
-      id: json['id'] as int? ?? 0,
+      id: _toInt(json['id']) ?? 0,
       name: json['name'] as String? ?? '',
       slug: json['slug'] as String? ?? '',
       logo: json['logo'] as Map<String, dynamic>?,
@@ -233,7 +246,7 @@ class CategoryModel {
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
-      id: json['id'] as int? ?? 0,
+      id: _toInt(json['id']) ?? 0,
       name: json['name'] as String? ?? '',
       icon: json['icon'] as String?,
       iconType: json['icon_type'] as String?,

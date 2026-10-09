@@ -469,9 +469,14 @@ final clubLogoProvider =
   final repository = ref.watch(clubRepositoryProvider);
   final result = await repository.getClubDetails(clubId);
   return result.fold(
-    // A missing logo is not worth failing the tab over; the card falls back
-    // to the club's initial.
-    (_) => null,
+    (failure) {
+      // Logged, not swallowed. This returned null on any failure, so a club
+      // fetch that was throwing on every call -- `as int?` against a
+      // fractional rating -- looked exactly like a club with no logo, and
+      // left nothing behind to find it by.
+      debugPrint('clubLogoProvider($clubId) failed: ${failure.message}');
+      return null;
+    },
     (club) => club.logo?.thumbnail,
   );
 });

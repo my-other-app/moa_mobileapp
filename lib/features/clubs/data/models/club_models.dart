@@ -2,6 +2,17 @@ import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
 import 'package:finnet/features/profile/data/models/profile_models.dart';
 
 /// Data model for club from API.
+
+/// Read a JSON number as an int, whatever shape it arrived in.
+///
+/// Dart's `as int?` throws on a double, and JSON gives no guarantee which
+/// one a number will be: 4 deserialises as int, 4.5 as double. A cast that
+/// works on the test fixture fails on the first club somebody rates.
+int? _toInt(dynamic value) => (value as num?)?.toInt();
+
+/// The same, for values that are genuinely fractional.
+double? _toDouble(dynamic value) => (value as num?)?.toDouble();
+
 class ClubModel {
   final int id;
   final String name;
@@ -10,7 +21,7 @@ class ClubModel {
   final String? locationName;
   final String? locationLink;
   final String? about;
-  final int? rating;
+  final double? rating;
   final int? totalRating;
   final SocialLinksModel? socials;
   final List<InterestModel>? interests;
@@ -41,22 +52,26 @@ class ClubModel {
 
   factory ClubModel.fromJson(Map<String, dynamic> json) {
     return ClubModel(
-      id: json['id'] as int? ?? 0,
+      id: _toInt(json['id']) ?? 0,
       name: json['name'] as String? ?? '',
       slug: json['slug'] as String? ?? '',
       logo: json['logo'] as Map<String, dynamic>?,
       locationName: json['location_name'] as String?,
       locationLink: json['location_link'] as String?,
       about: json['about'] as String?,
-      rating: json['rating'] as int?,
-      totalRating: json['total_rating'] as int?,
+      // JSON numbers arrive as int or double depending on the value, so a
+      // bare `as int?` throws on 4.5 and takes the whole club with it. The
+      // server sends `rating` as a float and the key is `total_ratings`, not
+      // `total_rating` -- reading the singular silently yielded null.
+      rating: _toDouble(json['rating']),
+      totalRating: _toInt(json['total_ratings'] ?? json['total_rating']),
       socials: json['socials'] != null
           ? SocialLinksModel.fromJson(json['socials'] as Map<String, dynamic>)
           : null,
       interests: (json['interests'] as List<dynamic>?)
           ?.map((e) => InterestModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-      followersCount: json['followers_count'] as int?,
+      followersCount: _toInt(json['followers_count']),
       contactPhone: json['contact_phone'] as String?,
       contactEmail: json['contact_email'] as String?,
       org: json['org'] != null
@@ -79,7 +94,7 @@ class ClubModel {
       'location_link': locationLink,
       'about': about,
       'rating': rating,
-      'total_rating': totalRating,
+      'total_ratings': totalRating,
       'socials': socials?.toJson(),
       'interests': interests?.map((e) => e.toJson()).toList(),
       'followers_count': followersCount,
@@ -99,7 +114,7 @@ class ClubModel {
       locationName: locationName,
       locationLink: locationLink,
       description: about,
-      rating: (rating ?? 0).toDouble(),
+      rating: rating ?? 0,
       totalRatings: totalRating ?? 0,
       socials: socials?.toEntity(),
       interests: interests?.map((e) => e.toEntity()).toList() ?? [],
