@@ -27,7 +27,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
 
   // Filter state
   int? _selectedOrgId;
-  List<int> _selectedInterestIds = [];
+  final List<int> _selectedInterestIds = [];
   bool _showMyOrg = false;
 
   bool isLoading = true;

@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';

@@ -28,7 +28,7 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  List<Map<String, dynamic>> _events = [];
+  final List<Map<String, dynamic>> _events = [];
   List<Map<String, dynamic>> _filteredEvents = [];
   bool _isLoading = true;
   String? _errorMessage;
