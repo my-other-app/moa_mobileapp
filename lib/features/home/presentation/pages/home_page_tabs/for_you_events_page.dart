@@ -3,6 +3,7 @@ import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 
 class ForYouEventsPage extends StatefulWidget {
   const ForYouEventsPage({super.key});
@@ -69,7 +70,10 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = extractErrorMessage(
+            e,
+            defaultMessage: 'Could not load your feed.',
+          );
           _isLoading = false;
         });
       }

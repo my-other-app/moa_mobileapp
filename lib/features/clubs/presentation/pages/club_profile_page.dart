@@ -9,6 +9,7 @@ import 'package:finnet/features/clubs/presentation/pages/club_events_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 
 class ClubProfilePage extends StatefulWidget {
   final int id;
@@ -116,7 +117,10 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
       });
     } catch (e) {
       setState(() {
-        errorMessage = e.toString();
+        errorMessage = extractErrorMessage(
+          e,
+          defaultMessage: 'Could not load this club.',
+        );
         isLoading = false;
       });
     }

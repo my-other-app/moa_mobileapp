@@ -4,6 +4,7 @@ import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/presentation/pages/no_registered_event_page.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 
 class UpcomingEventsPage extends StatefulWidget {
   const UpcomingEventsPage({super.key});
@@ -68,7 +69,10 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = extractErrorMessage(
+          e,
+          defaultMessage: 'Could not load upcoming events.',
+        );
           _isLoading = false;
         });
       }

@@ -1,5 +1,6 @@
 import 'package:finnet/features/auth/data/models/profile.dart';
 import 'package:finnet/features/auth/data/services/profile_service.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 
 /// Profile state classes (no longer using Bloc).
 abstract class ProfileState {}
@@ -39,7 +40,12 @@ class ProfileCubit {
       _state = ProfileLoaded(profile: profile);
       onStateChanged?.call(_state);
     } catch (e) {
-      _state = ProfileFailure(error: e.toString());
+      _state = ProfileFailure(
+        error: extractErrorMessage(
+          e,
+          defaultMessage: 'Could not load your profile.',
+        ),
+      );
       onStateChanged?.call(_state);
     }
   }

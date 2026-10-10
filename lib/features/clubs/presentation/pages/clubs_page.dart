@@ -12,6 +12,7 @@ import 'package:finnet/features/clubs/presentation/pages/no_clubs_following_page
 
 import 'package:finnet/features/clubs/presentation/pages/clubs_you_follow_section.dart';
 import 'package:finnet/features/clubs/presentation/pages/pinned_clubs_section.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 
 /// Clubs Page with dynamic filter chips.
 class ClubsPage extends ConsumerStatefulWidget {
@@ -77,7 +78,10 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          errorMessage = e.toString();
+          errorMessage = extractErrorMessage(
+            e,
+            defaultMessage: 'Could not load clubs.',
+          );
           isLoading = false;
         });
       }

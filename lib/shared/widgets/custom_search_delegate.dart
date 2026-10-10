@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 
 /// Search delegate for EVENTS ONLY - used on home and events pages.
 /// Supports tab-based filtering (for_you, following, registered, past).
@@ -224,7 +225,10 @@ class EventSearchDelegate extends SearchDelegate<String> {
       );
       _events = response.data['items'] ?? [];
     } catch (e) {
-      _error = e.toString();
+      _error = extractErrorMessage(
+        e,
+        defaultMessage: 'Search failed. Please try again.',
+      );
       debugPrint('Event search error: $e');
     }
   }
@@ -402,7 +406,10 @@ class ClubSearchDelegate extends SearchDelegate<String> {
       );
       _clubs = response.data['items'] ?? [];
     } catch (e) {
-      _error = e.toString();
+      _error = extractErrorMessage(
+        e,
+        defaultMessage: 'Search failed. Please try again.',
+      );
       debugPrint('Club search error: $e');
     }
   }

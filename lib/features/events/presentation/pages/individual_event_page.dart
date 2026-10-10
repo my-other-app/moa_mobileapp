@@ -169,7 +169,10 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
       }
     } catch (e) {
       setState(() {
-        errorMessage = e.toString();
+        errorMessage = extractErrorMessage(
+          e,
+          defaultMessage: 'Could not load this event.',
+        );
         isLoading = false;
       });
     }

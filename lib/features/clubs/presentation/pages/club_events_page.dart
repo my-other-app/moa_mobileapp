@@ -4,6 +4,7 @@ import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 
 /// Page to display club's events (past or upcoming)
 class ClubEventsPage extends StatefulWidget {
@@ -107,7 +108,10 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = extractErrorMessage(
+          e,
+          defaultMessage: 'Could not load this club\'s events.',
+        );
         _isLoading = false;
       });
     }

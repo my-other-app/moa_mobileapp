@@ -8,6 +8,7 @@ import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/auth/presentation/pages/onboarding_details_page.dart'
     show Organization;
+import 'package:finnet/core/utils/error_utils.dart';
 
 /// Edit Profile Page - fully migrated to Riverpod.
 class EditProfilePage extends ConsumerStatefulWidget {
@@ -376,7 +377,14 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update profile: $e')),
+            SnackBar(
+              content: Text(
+                extractErrorMessage(
+                  e,
+                  defaultMessage: 'Could not save your profile.',
+                ),
+              ),
+            ),
           );
         }
       } finally {

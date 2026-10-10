@@ -7,6 +7,7 @@ import 'package:finnet/features/auth/data/services/apple_auth_service.dart';
 import 'package:finnet/features/auth/data/services/profile_service.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 
 /// Onboarding Initial Page with Google and Apple Sign In support.
 class OnboardingInitialPage extends StatefulWidget {
@@ -95,7 +96,14 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
       debugPrint('Error during Google sign in: $error');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google Sign In error: $error')),
+          SnackBar(
+            content: Text(
+              extractErrorMessage(
+                error,
+                defaultMessage: 'Could not sign in with Google.',
+              ),
+            ),
+          ),
         );
       }
     }

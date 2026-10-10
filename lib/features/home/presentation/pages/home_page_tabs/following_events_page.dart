@@ -4,6 +4,7 @@ import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/home/presentation/pages/home_page_tabs/no_following_club_page.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 
 class FollowingEventsPage extends StatefulWidget {
   const FollowingEventsPage({super.key});
@@ -68,7 +69,10 @@ class _FollowingEventsPageState extends State<FollowingEventsPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = extractErrorMessage(
+            e,
+            defaultMessage: 'Could not load events from clubs you follow.',
+          );
           _isLoading = false;
         });
       }

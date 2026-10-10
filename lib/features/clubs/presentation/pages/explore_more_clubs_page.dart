@@ -7,6 +7,7 @@ import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/shared/widgets/explore_more_club_card.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 
 class ExploreMoreClubsPage extends ConsumerStatefulWidget {
   final int? initialOrganizationId;
@@ -118,7 +119,10 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          errorMessage = e.toString();
+          errorMessage = extractErrorMessage(
+          e,
+          defaultMessage: 'Could not load clubs.',
+        );
           isLoading = false;
         });
       }
