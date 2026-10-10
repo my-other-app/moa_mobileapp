@@ -47,6 +47,17 @@ class _TicketViewPageState extends State<TicketViewPage>
     with TickerProviderStateMixin {
   bool _isDownloading = false;
   bool _isAddingToWallet = false;
+
+  /// The ticket as the club designed it, rendered by the server.
+  ///
+  /// This screen used to draw its own ticket -- a hardcoded card in the
+  /// app's colours with its own QR -- so an attendee saw one design here
+  /// and a different one in the PDF they downloaded. The image is the same
+  /// template, payload and engine as the PDF. Null while loading; on
+  /// failure the drawn card below is the fallback, so the QR is always
+  /// there to scan.
+  Uint8List? _ticketImage;
+  bool _ticketImageFailed = false;
   late AnimationController _glowController;
   late AnimationController _pulseController;
 
@@ -84,6 +95,7 @@ class _TicketViewPageState extends State<TicketViewPage>
   @override
   void initState() {
     super.initState();
+    _loadTicketImage();
     _glowController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -100,6 +112,27 @@ class _TicketViewPageState extends State<TicketViewPage>
     _glowController.dispose();
     _pulseController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadTicketImage() async {
+    try {
+      // Through the shared Dio so the auth interceptor signs it: a ticket
+      // image is an entry pass and the endpoint keeps the PDF's access rule.
+      final response = await APIService.instance.dio.get<List<int>>(
+        '/events/tickets/${widget.ticketId}/image',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final bytes = response.data;
+      if (!mounted) return;
+      if (response.statusCode == 200 && bytes != null && bytes.isNotEmpty) {
+        setState(() => _ticketImage = Uint8List.fromList(bytes));
+      } else {
+        setState(() => _ticketImageFailed = true);
+      }
+    } catch (e) {
+      debugPrint('Ticket image unavailable, showing the drawn card: $e');
+      if (mounted) setState(() => _ticketImageFailed = true);
+    }
   }
 
   Future<void> _downloadTicket() async {
@@ -569,6 +602,69 @@ class _TicketViewPageState extends State<TicketViewPage>
   }
 
   Widget _buildTicketCard() {
+    if (_ticketImage != null) {
+      return _buildRenderedTicket(_ticketImage!);
+    }
+    if (!_ticketImageFailed) {
+      // Loading. A spinner the size of a ticket, not a flash of the drawn
+      // card that then gets replaced.
+      return AspectRatio(
+        aspectRatio: 1560 / 690,
+        child: Container(
+          decoration: BoxDecoration(
+            color: _cardDark,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: _accentYellow.withAlpha(60), width: 1.5),
+          ),
+          child: const Center(
+            child: SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ),
+        ),
+      );
+    }
+    return _buildDrawnTicketCard();
+  }
+
+  /// The club's design, rendered server-side, with the same glow treatment.
+  Widget _buildRenderedTicket(Uint8List bytes) {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: _accentYellow
+                    .withAlpha((20 + 15 * _pulseController.value).toInt()),
+                blurRadius: 40 + (10 * _pulseController.value),
+                spreadRadius: -10,
+                offset: const Offset(0, 20),
+              ),
+            ],
+          ),
+          child: child,
+        );
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Image.memory(
+          bytes,
+          fit: BoxFit.contain,
+          width: double.infinity,
+          gaplessPlayback: true,
+        ),
+      ),
+    );
+  }
+
+  /// The app's own drawn card, kept only as the fallback when the rendered
+  /// ticket cannot be fetched -- offline, say. The QR is still real.
+  Widget _buildDrawnTicketCard() {
     return AnimatedBuilder(
       animation: _pulseController,
       builder: (context, child) {
