@@ -27,14 +27,27 @@ as its own pull request pair (backend + web).
 
 | Slice | What | Notes |
 | --- | --- | --- |
-| 12 | **Closeout and retention** | The closeout report PDF (attendance, roles, ways in, merch, messages, certificates, ratings) kept and emailed to recipients; the status clock (draft → published → live → closed → archived; closed locks settings and the door); the retention job that scrubs the guest list after the report (phones, answers, delivery logs, walk-ups), archiving contacts for the club first. Registrations themselves stay: they belong to the guests' own accounts. |
+| 13 | **Delivery outcomes and channels** | SES bounce / complaint / delivery notices (SNS, signature-verified) land on the send and mark the address; bounced addresses are skipped until corrected; the WhatsApp hook (Meta, signed) and a provider registry that says which channels have a provider behind them. |
 
 ## Next, in order
 
 | Slice | What | Notes |
 | --- | --- | --- |
-| 13 | Delivery outcomes and channels | SES bounce / complaint / delivery webhook into the delivery log; bounced addresses skipped; WhatsApp provider abstraction with a "not configured" provider and the channel shown as such. |
 | 14 | Club branding, contacts, event duplicate | Brand colours on the club profile feeding designs and emails; a club contact book across events; duplicate an event's setup. |
 | 15 | Admission numbers | Per-event admission number format (prefix, digits, event code) alongside the scan code. |
+
+## Operations: delivery notices
+
+Outcomes (delivered, bounced, complained, not delivered) come from the providers themselves and land on the send they belong to, matched by the id the provider returned when it took the mail (`provider_id`). A hard bounce or a complaint marks the registration (`email_bounced_at`) so later sends skip the address with the reason "that address bounced — correct it to send again"; correcting the email on the attendees page clears it.
+
+**Amazon SES → SNS → the API.** In SES, add an event destination (or a notification) for Bounce, Complaint, Delivery and DeliveryDelay to an SNS topic, and subscribe the topic over HTTPS to
+
+```
+https://api.myotherapp.in/api/v1/hooks/ses?token=<SES_WEBHOOK_TOKEN>
+```
+
+The API confirms the subscription itself (it fetches the `SubscribeURL`, on an Amazon host only). Every call must carry Amazon's signature, verified against the certificate SNS hosts; the `token` is a second check and is set in the backend's environment as `SES_WEBHOOK_TOKEN`. A call that fails either is answered 202 with `ok: false` and logged, so Amazon does not retry it for hours.
+
+**WhatsApp (Meta Cloud API).** Not wired to a provider yet: the delivery summary says so, and sends on that channel are recorded as skipped with the reason. When one is, set `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID`, point Meta's webhook at `https://api.myotherapp.in/api/v1/hooks/whatsapp` with `WHATSAPP_VERIFY_TOKEN` and `WHATSAPP_APP_SECRET` set, and statuses (delivered, read, failed with Meta's codes) land the same way.
 
 Left out on purpose: face matching at the gate, inbound email (needs an SES receiving domain), and ticket types as a separate concept (our roles and registration fields cover it).
