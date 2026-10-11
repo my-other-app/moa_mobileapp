@@ -21,18 +21,18 @@ as its own pull request pair (backend + web).
 | 8 | ID cards: badge designs per role with eight starters, card and batch PDFs, print jobs, reprint policy, pre-printed stock, print at check-in from the gate | #17 | #6 |
 | 9 | Self check-in and kiosk: paired kiosk devices with shift tokens and a staff PIN, the `/kiosk` screen (front camera, typed code, auto-print, "this isn't me"), check-in from the guest's own phone via the kiosk's rotating QR at `/s/[token]` (name, or a code by email), print from the phone at the kiosk | #18 | #7 |
 | 10 | Agenda: the run of show (blocks with time, speaker, room; parallel tracks; a heading per day), public on the event page (moa_events#1) and in the app (moa_mobileapp#30), the agenda layer in both layout engines with four starters and a parity test, the programme design kind, the A4 programme PDF, the kiosk playing what is still to come while a card prints | #19 | #8 |
+| 11 | Merchandise: items with stock or sized variants, eligibility by role or guest field, what each guest is owed resolved from their own record, the handover at the gate (atomic stock decrement, size picked at the counter written to the record), the merch log with facets and analytics, the "Hands out merch" duty | #20 | #9 |
 
 ## In progress
 
 | Slice | What | Notes |
 | --- | --- | --- |
-| 11 | **Merchandise** | Items with stock or sized variants, eligibility by role or guest field; handover at the gate (attendee-first: find the person, see what they are owed); the merch log and analytics. |
+| 12 | **Closeout and retention** | The closeout report PDF (attendance, roles, ways in, merch, messages, certificates, ratings) kept and emailed to recipients; the status clock (draft → published → live → closed → archived; closed locks settings and the door); the retention job that scrubs the guest list after the report (phones, answers, delivery logs, walk-ups), archiving contacts for the club first. Registrations themselves stay: they belong to the guests' own accounts. |
 
 ## Next, in order
 
 | Slice | What | Notes |
 | --- | --- | --- |
-| 12 | Closeout and retention | End-of-event report PDF emailed to recipients; event status clock (draft → published → live → closed → archived); retention job that deletes the guest list after the report, with archived contacts. |
 | 13 | Delivery outcomes and channels | SES bounce / complaint / delivery webhook into the delivery log; bounced addresses skipped; WhatsApp provider abstraction with a "not configured" provider and the channel shown as such. |
 | 14 | Club branding, contacts, event duplicate | Brand colours on the club profile feeding designs and emails; a club contact book across events; duplicate an event's setup. |
 | 15 | Admission numbers | Per-event admission number format (prefix, digits, event code) alongside the scan code. |
