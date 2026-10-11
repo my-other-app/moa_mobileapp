@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:finnet/shared/widgets/rating_stars.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/event_model.dart';
+import 'package:finnet/common/models/events/agenda_model.dart';
+import 'package:intl/intl.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/themes/app_colors.dart';
@@ -69,6 +71,9 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
   int? userPosition;
   String? positionLabel;
   List<EventDownload> downloads = [];
+
+  // The run of show, when the organiser has written one.
+  Agenda agenda = const Agenda(items: []);
 
   bool isLoading = true;
   String? errorMessage;
@@ -167,6 +172,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
       if (regEndDate != null && !registrationClosed) {
         _startTimer();
       }
+      await _fetchAgenda();
     } catch (e) {
       setState(() {
         errorMessage = extractErrorMessage(
@@ -176,6 +182,167 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
         isLoading = false;
       });
     }
+  }
+
+  /// The agenda is public and optional: an event without one, or a failed
+  /// call, simply shows no agenda section.
+  Future<void> _fetchAgenda() async {
+    try {
+      final Response<dynamic> res = await APIService.instance.request(
+        '/events/${widget.eventId}/agenda',
+        DioMethod.get,
+      );
+      final data = res.data;
+      if (data is Map<String, dynamic> && mounted) {
+        setState(() => agenda = Agenda.fromJson(data));
+      }
+    } catch (_) {
+      // Nothing to show; the event itself has loaded.
+    }
+  }
+
+  Widget _buildAgendaSection(BuildContext context) {
+    final time = DateFormat('HH:mm');
+    final dayFormat = DateFormat('EEEE d MMMM');
+    final days = agenda.byDay;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Agenda',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        for (final entry in days.entries) ...[
+          if (days.length > 1) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 6),
+              child: Text(
+                dayFormat.format(entry.key).toUpperCase(),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ),
+          ],
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < entry.value.length; i++) ...[
+                  if (i > 0) Divider(height: 1, color: Colors.grey.shade300),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 72,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                time.format(entry.value[i].startsAt.toLocal()),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  fontFeatures: [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                              if (entry.value[i].endsAt != null)
+                                Text(
+                                  '– ${time.format(entry.value[i].endsAt!.toLocal())}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures()
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      entry.value[i].title,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  if (entry.value[i].parallel)
+                                    Container(
+                                      margin: const EdgeInsets.only(left: 8),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                      ),
+                                      child: Text(
+                                        'Parallel',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              if (entry.value[i].detail.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    entry.value[i].detail,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                ),
+                              if (entry.value[i].description != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    entry.value[i].description!,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      height: 1.4,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+      ],
+    );
   }
 
   void _startTimer() {
@@ -1155,6 +1322,9 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 const SizedBox(height: 12),
               ],
             ],
+
+            // ========== AGENDA (when the organiser has written one) ==========
+            if (agenda.items.isNotEmpty) _buildAgendaSection(context),
 
             // ========== MAIN DESCRIPTION ==========
             Text(
