@@ -22,19 +22,20 @@ as its own pull request pair (backend + web).
 | 9 | Self check-in and kiosk: paired kiosk devices with shift tokens and a staff PIN, the `/kiosk` screen (front camera, typed code, auto-print, "this isn't me"), check-in from the guest's own phone via the kiosk's rotating QR at `/s/[token]` (name, or a code by email), print from the phone at the kiosk | #18 | #7 |
 | 10 | Agenda: the run of show (blocks with time, speaker, room; parallel tracks; a heading per day), public on the event page (moa_events#1) and in the app (moa_mobileapp#30), the agenda layer in both layout engines with four starters and a parity test, the programme design kind, the A4 programme PDF, the kiosk playing what is still to come while a card prints | #19 | #8 |
 | 11 | Merchandise: items with stock or sized variants, eligibility by role or guest field, what each guest is owed resolved from their own record, the handover at the gate (atomic stock decrement, size picked at the counter written to the record), the merch log with facets and analytics, the "Hands out merch" duty | #20 | #9 |
+| 12 | Closeout and retention: the status clock (draft → published → live → closed → archived; closed locks the door and the settings), the closeout report PDF, retention forward only (report kept and delivered, then the scrub: phones, answers, delivery logs, phone check-in sessions, walk-up records; contacts archived for the club). Registrations stay with the guests' accounts | #21 | #10 |
+| 13 | Delivery outcomes: the SES hook (SNS, signature-verified, plus a shared token) lands bounce/complaint/delivery/delay notices on the send and marks the address; bounced addresses skipped until corrected; the WhatsApp hook (Meta, signed); the provider registry behind each channel | #22 | #11 |
 
 ## In progress
 
 | Slice | What | Notes |
 | --- | --- | --- |
-| 13 | **Delivery outcomes and channels** | SES bounce / complaint / delivery notices (SNS, signature-verified) land on the send and mark the address; bounced addresses are skipped until corrected; the WhatsApp hook (Meta, signed) and a provider registry that says which channels have a provider behind them. |
+| 14 | **Club branding, contacts, event duplicate** | Brand colours on the club profile that designs and emails fall back to; the club's contact book (what retention kept, searchable, exported as CSV); duplicating an event's setup onto a new date. Web: moa_web#12; backend: `feat/club-branding`. |
+| 15 | **Admission numbers** | A per-event format (prefix, digits, event code) and a sequential number per ticket, never rewritten; read at the gate like the scan code; on tickets, rows and find results. Web: moa_web#13; backend: `feat/admission-numbers`. |
 
 ## Next, in order
 
 | Slice | What | Notes |
 | --- | --- | --- |
-| 14 | Club branding, contacts, event duplicate | Brand colours on the club profile feeding designs and emails; a club contact book across events; duplicate an event's setup. |
-| 15 | Admission numbers | Per-event admission number format (prefix, digits, event code) alongside the scan code. |
 
 ## Operations: delivery notices
 
