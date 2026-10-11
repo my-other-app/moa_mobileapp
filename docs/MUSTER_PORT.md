@@ -25,17 +25,11 @@ as its own pull request pair (backend + web).
 | 12 | Closeout and retention: the status clock (draft → published → live → closed → archived; closed locks the door and the settings), the closeout report PDF, retention forward only (report kept and delivered, then the scrub: phones, answers, delivery logs, phone check-in sessions, walk-up records; contacts archived for the club). Registrations stay with the guests' accounts | #21 | #10 |
 | 13 | Delivery outcomes: the SES hook (SNS, signature-verified, plus a shared token) lands bounce/complaint/delivery/delay notices on the send and marks the address; bounced addresses skipped until corrected; the WhatsApp hook (Meta, signed); the provider registry behind each channel | #22 | #11 |
 | 14 | Club branding, contacts, event duplicate: brand colours on the club that designs and emails fall back to (stock colours count as unset); the club's contact book over what retention kept (search, event groups, attendance, CSV); an event copied onto a new date with its settings, fields, designs, email journey and merch, plus doors, team and agenda when asked | #23 | #12 |
+| 15 | Admission numbers: a per-event format (prefix, digits, the event code) and a number per ticket minted from the event's counter, never rewritten, with everyone registered earlier numbered on request; the gate reads it like the scan code; the ticket's admission token prints it; on rows and find results | #24 | #13 |
 
 ## In progress
 
-| Slice | What | Notes |
-| --- | --- | --- |
-| 15 | **Admission numbers** | A per-event format (prefix, digits, event code) and a sequential number per ticket, never rewritten; read at the gate like the scan code; on tickets, rows and find results. Web: moa_web#13; backend: `feat/admission-numbers`. |
-
-## Next, in order
-
-| Slice | What | Notes |
-| --- | --- | --- |
+Nothing. Every slice is delivered as an open PR pair; merge in the order of the table above (each PR targets the main branch and stacks on the one before it, so its diff shrinks as earlier ones land). Deploy the backend with `migrate=true` after merging.
 
 ## Operations: delivery notices
 
