@@ -50,6 +50,7 @@ dependencies:
   flutter_svg: ^2.0.17
   dropdown_button2: ^2.3.9
   cached_network_image: ^3.4.1
+  razorpay_flutter: ^1.4.0
   shimmer: ^3.0.0
   
   # Authentication

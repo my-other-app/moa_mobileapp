@@ -5,6 +5,8 @@ import 'package:finnet/shared/widgets/rating_stars.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/agenda_model.dart';
+import 'package:finnet/common/models/events/store_model.dart';
+import 'package:finnet/features/events/presentation/widgets/merch_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
@@ -173,6 +175,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
         _startTimer();
       }
       await _fetchAgenda();
+      await _fetchCatalog();
     } catch (e) {
       setState(() {
         errorMessage = extractErrorMessage(
@@ -199,6 +202,56 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
     } catch (_) {
       // Nothing to show; the event itself has loaded.
     }
+  }
+
+  /// What the event sells with its ticket; shown so people know before they register.
+  StoreCatalog catalog = StoreCatalog.empty;
+
+  Future<void> _fetchCatalog() async {
+    try {
+      final Response<dynamic> res = await APIService.instance.request(
+        '/events/${widget.eventId}/store/catalog',
+        DioMethod.get,
+        skipAuth: true,
+      );
+      final data = res.data;
+      if (data is Map<String, dynamic> && mounted) {
+        setState(() => catalog = StoreCatalog.fromJson(data));
+      }
+    } catch (_) {
+      // Nothing on sale, or nothing reachable; the event itself has loaded.
+    }
+  }
+
+  Widget _buildStoreSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('On sale with your ticket', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        const Text('Pick these when you register and pay once.', style: TextStyle(fontSize: 12.5, color: Color(0xFF6B7280))),
+        const SizedBox(height: 8),
+        for (final item in catalog.items)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      if (item.hasSizes) Text(item.variants.map((v) => v.label).join(' · '), style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                    ],
+                  ),
+                ),
+                Text(item.isFree ? 'Free' : MerchPicker.rupees(item.price), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        const SizedBox(height: 16),
+      ],
+    );
   }
 
   Widget _buildAgendaSection(BuildContext context) {
@@ -1325,6 +1378,9 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
 
             // ========== AGENDA (when the organiser has written one) ==========
             if (agenda.items.isNotEmpty) _buildAgendaSection(context),
+
+            // ========== ON SALE WITH THE TICKET ==========
+            if (catalog.hasAnything) _buildStoreSection(context),
 
             // ========== MAIN DESCRIPTION ==========
             Text(

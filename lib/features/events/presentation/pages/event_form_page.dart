@@ -4,6 +4,9 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/event_model.dart';
+import 'package:finnet/common/models/events/store_model.dart';
+import 'package:finnet/features/events/presentation/widgets/merch_picker.dart';
+import 'package:finnet/features/payments/checkout.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
@@ -41,9 +44,14 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   bool _isSubmitting = false;
   bool _hasPrefilledData = false;
 
+  /// What the event sells with its ticket, and what this guest picked.
+  StoreCatalog _catalog = StoreCatalog.empty;
+  Map<String, StorePick> _picks = {};
+
   @override
   void initState() {
     super.initState();
+    _fetchCatalog();
     // A controller for every field that is typed into. Previously only
     // 'text' got one, so a 'tel' or 'textarea' field had nowhere to put a
     // value even once it rendered.
@@ -51,6 +59,20 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       if (_isTextual(detail.fieldType)) {
         _additionalTextControllers[detail.key] = TextEditingController();
       }
+    }
+  }
+
+  /// The shelf is public and optional: an event that sells nothing, or a
+  /// failed call, simply shows no shelf.
+  Future<void> _fetchCatalog() async {
+    try {
+      final res = await APIService.instance.request('/events/${widget.eventId}/store/catalog', DioMethod.get, skipAuth: true);
+      final data = res.data;
+      if (data is Map<String, dynamic> && mounted) {
+        setState(() => _catalog = StoreCatalog.fromJson(data));
+      }
+    } catch (_) {
+      // Nothing to pick; the form itself is unaffected.
     }
   }
 
@@ -533,6 +555,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           'phone': _phoneController.text.trim(),
           'additional_details': additionalDetailsMap,
           if (organizationName != null) 'organization': organizationName,
+          if (picksToPayload(_catalog, _picks).isNotEmpty) 'store': picksToPayload(_catalog, _picks),
         };
 
         final response = await APIService.instance.request(
@@ -544,6 +567,25 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         if (response.statusCode == 200 && mounted) {
           // Extract ticket data from response
           final data = response.data as Map<String, dynamic>;
+          // The ticket, and whatever was picked from the shelf, are paid in one checkout.
+          final due = (data['pay_amount'] as num?)?.toDouble() ?? 0;
+          if (due > 0) {
+            final paid = await RegistrationCheckout.pay(
+              eventId: widget.eventId,
+              registrationId: data['event_registration_id'] as String,
+              name: _nameController.text.trim(),
+              email: _emailController.text.trim(),
+              phone: _phoneController.text.trim(),
+            );
+            if (!mounted) return;
+            if (!paid) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Payment not completed. Your place is held — tap Continue to pay.')),
+              );
+              return;
+            }
+          }
+          if (!mounted) return;
           context.go('/events/registration-success', extra: {
             'ticketId': data['ticket_id'],
             'eventName': data['event_name'],
@@ -873,6 +915,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                           child: _buildAdditionalField(detail),
                         );
                       }),
+
+                      // The shelf: what the event sells with its ticket.
+                      MerchPicker(catalog: _catalog, picks: _picks, onChanged: (next) => setState(() => _picks = next)),
                     ],
                   ),
                 ),
