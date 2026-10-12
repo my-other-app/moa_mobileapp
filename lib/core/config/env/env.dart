@@ -23,4 +23,8 @@ abstract class Env {
   /// Enable analytics tracking
   @EnviedField(varName: 'ENABLE_ANALYTICS', defaultValue: 'false')
   static final String enableAnalytics = _Env.enableAnalytics;
+
+  /// Razorpay key id (the public one; the checkout opens with it)
+  @EnviedField(varName: 'RAZORPAY_KEY_ID', defaultValue: '')
+  static final String razorpayKeyId = _Env.razorpayKeyId;
 }
