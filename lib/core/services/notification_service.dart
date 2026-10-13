@@ -8,6 +8,8 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/app/router/app_router.dart';
+import 'package:go_router/go_router.dart';
 
 /// Background message handler - must be a top-level function
 @pragma('vm:entry-point')
@@ -248,16 +250,38 @@ class NotificationService {
 
   void _handleNotificationTap(RemoteMessage message) {
     debugPrint('Notification tapped: ${message.messageId}');
-    // TODO: Navigate to specific screen based on message.data
-    // Example: if (message.data['type'] == 'event') navigateTo('/event/${message.data['id']}');
+    openFromData(message.data);
   }
 
   void _handleLocalNotificationTap(NotificationResponse response) {
     debugPrint('Local notification tapped: ${response.payload}');
-    if (response.payload != null) {
-      // TODO: Handle navigation based on payload
-      // final data = jsonDecode(response.payload!);
+    if (response.payload == null) return;
+    try {
+      final data = jsonDecode(response.payload!);
+      if (data is Map) openFromData(Map<String, dynamic>.from(data));
+    } catch (_) {
+      // A payload that is not ours; nothing to open.
     }
+  }
+
+  /// Where a notification's data points. A live update from an event opens
+  /// that event, whose page shows the room's strip.
+  static String? routeFor(Map<String, dynamic> data) {
+    final type = data['type']?.toString();
+    final eventId = data['event_id']?.toString();
+    if (eventId != null && eventId.isNotEmpty && int.tryParse(eventId) != null) {
+      if (type == 'event_live_update' || type == 'event_reminder' || type == 'event_started' || type == 'event_checkin') {
+        return '/events/$eventId';
+      }
+    }
+    return null;
+  }
+
+  void openFromData(Map<String, dynamic> data) {
+    final route = routeFor(data);
+    final context = rootNavigatorKey.currentContext;
+    if (route == null || context == null) return;
+    GoRouter.of(context).push(route);
   }
 
   Future<void> _showLocalNotification({
