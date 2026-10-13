@@ -1,0 +1,53 @@
+import 'package:finnet/common/models/events/live_model.dart';
+import 'package:finnet/core/services/notification_service.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  group('LiveFeed', () {
+    test('reads the room and knows whether it is worth a strip', () {
+      final feed = LiveFeed.fromJson(<String, dynamic>{
+        'event': {'id': 68, 'name': 'Hack Night 04', 'status': 'live'},
+        'banner': {'kind': 'room', 'text': 'Demos move to Lab 3B'},
+        'poll': {'id': 'p1', 'prompt': 'What are you building?'},
+        'questions': [{}, {}],
+        'quiz': {'live': true, 'title': 'Warm-up'},
+      });
+      expect(feed.eventId, 68);
+      expect(feed.isActive, isTrue);
+      expect(feed.headline, 'Demos move to Lab 3B');
+      expect(feed.quizLive, isTrue);
+      expect(feed.questions, 2);
+    });
+
+    test('a quiet room earns nothing', () {
+      final feed = LiveFeed.fromJson(<String, dynamic>{
+        'event': {'id': 68},
+        'banner': null,
+        'poll': null,
+        'questions': <dynamic>[],
+        'quiz': {'live': false, 'title': null},
+      });
+      expect(feed.isActive, isFalse);
+      expect(LiveFeed.empty.isActive, isFalse);
+    });
+
+    test('the headline falls back from the banner to the quiz to the poll', () {
+      expect(const LiveFeed(eventId: 1, quizLive: true).headline, contains('quiz'));
+      expect(const LiveFeed(eventId: 1, pollPrompt: 'Rate it').headline, 'Rate it');
+      expect(const LiveFeed(eventId: 1, questions: 3).headline, contains('floor'));
+    });
+  });
+
+  group('a tapped notification', () {
+    test('a live update opens its event', () {
+      expect(NotificationService.routeFor({'type': 'event_live_update', 'event_id': '68'}), '/events/68');
+      expect(NotificationService.routeFor({'type': 'event_reminder', 'event_id': 7}), '/events/7');
+    });
+
+    test('anything else opens nothing', () {
+      expect(NotificationService.routeFor({'type': 'new_event'}), isNull);
+      expect(NotificationService.routeFor({'type': 'event_live_update', 'event_id': 'abc'}), isNull);
+      expect(NotificationService.routeFor(<String, dynamic>{}), isNull);
+    });
+  });
+}

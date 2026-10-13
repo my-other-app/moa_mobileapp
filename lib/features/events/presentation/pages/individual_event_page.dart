@@ -5,6 +5,7 @@ import 'package:finnet/shared/widgets/rating_stars.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/agenda_model.dart';
+import 'package:finnet/common/models/events/live_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
 import 'package:finnet/features/events/presentation/widgets/merch_picker.dart';
 import 'package:intl/intl.dart';
@@ -176,6 +177,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
       }
       await _fetchAgenda();
       await _fetchCatalog();
+      await _fetchLive();
     } catch (e) {
       setState(() {
         errorMessage = extractErrorMessage(
@@ -202,6 +204,80 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
     } catch (_) {
       // Nothing to show; the event itself has loaded.
     }
+  }
+
+  /// The live room: a banner, a poll or a quiz up right now earns a strip.
+  LiveFeed live = LiveFeed.empty;
+
+  Future<void> _fetchLive() async {
+    try {
+      final Response<dynamic> res = await APIService.instance.request(
+        '/events/${widget.eventId}/live',
+        DioMethod.get,
+      );
+      final data = res.data;
+      if (data is Map<String, dynamic> && mounted) {
+        setState(() => live = LiveFeed.fromJson(data));
+      }
+    } catch (_) {
+      // The room is optional; the event itself has loaded.
+    }
+  }
+
+  /// The room is the web page, so voting, polls and the quiz are the same on every phone.
+  Future<void> _openLiveRoom() async {
+    final url = Uri.parse('https://events.myotherapp.in/${widget.eventId}/live');
+    await launchUrl(url, mode: LaunchMode.inAppBrowserView);
+  }
+
+  Widget _buildLiveStrip(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        border: Border.all(color: const Color(0xFFA7F3D0)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF14B8A6),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'LIVE NOW',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: Color(0xFF0F766E),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(live.headline, style: const TextStyle(fontSize: 14)),
+          const SizedBox(height: 10),
+          FilledButton(
+            onPressed: _openLiveRoom,
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF2C333D),
+              minimumSize: const Size.fromHeight(44),
+            ),
+            child: const Text('Open the live room'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// What the event sells with its ticket; shown so people know before they register.
@@ -1375,6 +1451,9 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 const SizedBox(height: 12),
               ],
             ],
+
+            // ========== THE LIVE ROOM (while something is up) ==========
+            if (live.isActive) _buildLiveStrip(context),
 
             // ========== AGENDA (when the organiser has written one) ==========
             if (agenda.items.isNotEmpty) _buildAgendaSection(context),
