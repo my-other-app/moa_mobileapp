@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:finnet/core/config/app_config.dart';
 
 /// Status type for event cards
 enum EventCardStatus {
@@ -138,7 +139,7 @@ class EventCard extends StatelessWidget {
               GestureDetector(
                 onTap: () async {
                   final Uri url =
-                      Uri.parse("https://events.myotherapp.in/$eventSlug");
+                      Uri.parse("${AppConfig.publicSiteUrl}/events/$eventSlug");
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 },
                 child: Padding(

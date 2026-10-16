@@ -19,6 +19,7 @@ import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/features/events/presentation/pages/networking_page.dart';
 import 'package:finnet/core/utils/hours.dart';
+import 'package:finnet/core/config/app_config.dart';
 
 class IndividualEventPage extends StatefulWidget {
   final int eventId;
@@ -227,7 +228,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
 
   /// The room is the web page, so voting, polls and the quiz are the same on every phone.
   Future<void> _openLiveRoom() async {
-    final url = Uri.parse('https://events.myotherapp.in/${widget.eventId}/live');
+    final url = Uri.parse('${AppConfig.publicSiteUrl}/${widget.eventId}/live');
     await launchUrl(url, mode: LaunchMode.inAppBrowserView);
   }
 
@@ -1768,13 +1769,13 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 if (certificateUrl != null && certificateUrl!.isNotEmpty) {
                   String finalUrl = certificateUrl!;
 
-                  // Handle old format: /api/v1/events/certificates/{id} → https://events.myotherapp.in/certificates/{id}
+                  // Handle old format: /api/v1/events/certificates/{id} → {publicSiteUrl}/certificates/{id}
                   if (certificateUrl!
                       .startsWith('/api/v1/events/certificates/')) {
                     final certId = certificateUrl!
                         .replaceFirst('/api/v1/events/certificates/', '');
                     finalUrl =
-                        'https://events.myotherapp.in/certificates/$certId';
+                        '${AppConfig.publicSiteUrl}/certificates/$certId';
                   } else if (certificateUrl!.startsWith('/')) {
                     // Other relative URLs - use API domain
                     finalUrl = 'https://api.myotherapp.in$certificateUrl';
