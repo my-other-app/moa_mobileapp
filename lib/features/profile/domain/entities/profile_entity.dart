@@ -13,6 +13,12 @@ class UserProfile extends Equatable {
   final bool isProfileComplete;
   final DateTime? createdAt;
 
+  /// Whether the account has shown it owns [email]. Google and Apple accounts
+  /// always have; an email/password account once its owner typed back the
+  /// code sent there. Null when the server did not say (an older server, or
+  /// a response that is not the full profile): then nobody is asked to verify.
+  final bool? emailVerified;
+
   const UserProfile({
     required this.id,
     required this.fullName,
@@ -24,7 +30,11 @@ class UserProfile extends Equatable {
     this.interests = const [],
     this.isProfileComplete = false,
     this.createdAt,
+    this.emailVerified,
   });
+
+  /// An email/password account that has not verified its address yet.
+  bool get needsEmailVerification => emailVerified == false;
 
   UserProfile copyWith({
     String? id,
@@ -37,6 +47,7 @@ class UserProfile extends Equatable {
     List<Interest>? interests,
     bool? isProfileComplete,
     DateTime? createdAt,
+    bool? emailVerified,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -49,6 +60,7 @@ class UserProfile extends Equatable {
       interests: interests ?? this.interests,
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,
       createdAt: createdAt ?? this.createdAt,
+      emailVerified: emailVerified ?? this.emailVerified,
     );
   }
 
@@ -64,6 +76,7 @@ class UserProfile extends Equatable {
         interests,
         isProfileComplete,
         createdAt,
+        emailVerified,
       ];
 }
 

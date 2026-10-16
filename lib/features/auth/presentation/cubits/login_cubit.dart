@@ -16,11 +16,16 @@ class LoginSuccess extends LoginState {
   final String photoUrl;
   final UserModel? user;
 
+  /// Set only by an email sign-up: the address a verification code was just
+  /// sent to, so the next screen can ask for it.
+  final String? signedUpEmail;
+
   LoginSuccess({
     required this.accessToken,
     required this.refreshToken,
     required this.photoUrl,
     this.user,
+    this.signedUpEmail,
   });
 }
 
@@ -165,6 +170,7 @@ class LoginCubit {
         accessToken: result['access_token'],
         refreshToken: result['refresh_token'],
         photoUrl: '', // Email signup doesn't provide profile photo
+        signedUpEmail: email,
       );
       onStateChanged?.call(_state);
     } catch (e) {

@@ -6,6 +6,7 @@ import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/auth/presentation/widgets/email_verification_banner.dart';
 import 'package:finnet/features/home/presentation/providers/bottom_nav_provider.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/auth/presentation/pages/onboarding_initial_page.dart';
@@ -39,6 +40,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget build(BuildContext context) {
     final volunteerState = ref.watch(volunteerProvider);
     final hasVolunteerEvents = volunteerState.events.isNotEmpty;
+    final profile = ref.watch(profileProvider).profile;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -58,6 +60,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       body: ListView(
         padding: EdgeInsets.all(16),
         children: [
+          // Only for an email/password account that has not verified yet.
+          if (profile != null && profile.needsEmailVerification) ...[
+            CustomOptionTile(
+              key: const ValueKey('settings-verify-email'),
+              verticalSpacing: 16,
+              leadingIcon: Icons.mark_email_unread_outlined,
+              leadingIconColor: const Color(0xFF17A58F),
+              title: const Text(
+                'Verify Email',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'Bring in tickets you booked on the website',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              onTap: () => openEmailVerification(context, profile.email),
+              trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+            ),
+            const Divider(height: 0),
+          ],
+
           // Volunteer section (only show if user has volunteer events)
           if (hasVolunteerEvents) ...[
             CustomOptionTile(

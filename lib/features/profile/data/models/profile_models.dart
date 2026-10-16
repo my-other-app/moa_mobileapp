@@ -11,6 +11,9 @@ class UserProfileModel {
   final ProfileDetailsModel? profile;
   final List<InterestModel>? interests;
 
+  /// Null when the response did not carry it.
+  final bool? emailVerified;
+
   const UserProfileModel({
     required this.id,
     this.fullName,
@@ -20,6 +23,7 @@ class UserProfileModel {
     this.userType,
     this.profile,
     this.interests,
+    this.emailVerified,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
@@ -37,6 +41,7 @@ class UserProfileModel {
       interests: (json['interests'] as List<dynamic>?)
           ?.map((e) => InterestModel.fromJson(e as Map<String, dynamic>))
           .toList(),
+      emailVerified: json['email_verified'] as bool?,
     );
   }
 
@@ -50,6 +55,7 @@ class UserProfileModel {
       'user_type': userType,
       'profile': profile?.toJson(),
       'interests': interests?.map((e) => e.toJson()).toList(),
+      if (emailVerified != null) 'email_verified': emailVerified,
     };
   }
 
@@ -66,6 +72,7 @@ class UserProfileModel {
       interests: interests?.map((e) => e.toEntity()).toList() ?? [],
       isProfileComplete: _isProfileComplete(),
       createdAt: null,
+      emailVerified: emailVerified,
     );
   }
 
