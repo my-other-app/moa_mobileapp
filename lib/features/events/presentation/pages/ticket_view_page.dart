@@ -14,6 +14,7 @@ import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:apple_passkit/apple_passkit.dart';
 import 'package:finnet/core/utils/hours.dart';
+import 'package:finnet/core/config/app_config.dart';
 
 /// Premium ticket page with stunning glow effects and Apple Wallet-like design.
 class TicketViewPage extends StatefulWidget {
@@ -75,10 +76,10 @@ class _TicketViewPageState extends State<TicketViewPage>
       if (widget.ticketUrl!.startsWith('/api/v1/events/tickets/')) {
         final id =
             widget.ticketUrl!.replaceFirst('/api/v1/events/tickets/', '');
-        return 'https://events.myotherapp.in/tickets/$id';
+        return '${AppConfig.publicSiteUrl}/tickets/$id';
       }
     }
-    return 'https://events.myotherapp.in/tickets/${widget.ticketId}';
+    return '${AppConfig.publicSiteUrl}/tickets/${widget.ticketId}';
   }
 
   String get _formattedDate {

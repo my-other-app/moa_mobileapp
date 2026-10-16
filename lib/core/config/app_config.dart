@@ -7,6 +7,10 @@ class AppConfig {
   factory AppConfig() => _instance;
   AppConfig._internal();
 
+  /// The public website: event pages (/events/{slug}), tickets, certificates
+  /// and the live room. Older events.myotherapp.in links redirect here.
+  static const publicSiteUrl = 'https://myotherapp.in';
+
   /// Current application environment
   Environment environment = Environment.development;
 
