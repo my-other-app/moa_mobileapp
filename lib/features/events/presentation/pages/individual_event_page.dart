@@ -18,6 +18,7 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/features/events/presentation/pages/networking_page.dart';
+import 'package:finnet/core/utils/hours.dart';
 
 class IndividualEventPage extends StatefulWidget {
   final int eventId;
@@ -44,7 +45,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
   String? slug;
   Map<String, dynamic>? poster;
   DateTime? eventDateTime;
-  int? duration;
+  double? duration;
   String? locationName;
   String? locationLink;
   bool? hasFee;
@@ -817,7 +818,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                '$duration Hours',
+                duration == null ? '—' : hoursLabel(duration!),
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -865,7 +866,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
   bool _isWithinNetworkingWindow() {
     if (eventDateTime == null || duration == null) return false;
     final now = DateTime.now();
-    final eventEnd = eventDateTime!.add(Duration(hours: duration!));
+    final eventEnd = eventDateTime!.add(hoursToDuration(duration!));
     final windowEnd = eventEnd.add(const Duration(hours: 1));
     return now.isAfter(eventDateTime!) && now.isBefore(windowEnd);
   }
@@ -1251,7 +1252,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                       context,
                       icon: AssetResources.duration,
                       title: 'Duration',
-                      value: "$duration Hours",
+                      value: duration == null ? '—' : hoursLabel(duration!),
                     ),
                   ),
                 ),

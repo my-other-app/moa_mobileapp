@@ -1,10 +1,13 @@
+import 'package:finnet/core/utils/hours.dart';
+
 class EventInfo {
   final int id;
   final String name;
   final String slug;
   final Map<String, dynamic> poster;
   final DateTime eventDateTime;
-  final int duration;
+  /// Hours, as a decimal (2.5 is two and a half hours).
+  final double duration;
   final String locationName;
   final String locationLink;
   final bool hasFee;
@@ -80,7 +83,7 @@ class EventInfo {
       eventDateTime:
           DateTime.tryParse(json['event_datetime'] as String? ?? '') ??
               DateTime.now(),
-      duration: (json['duration'] as num?)?.toInt() ?? 0,
+      duration: (json['duration'] as num?)?.toDouble() ?? 0,
       locationName: json['location_name'] as String? ?? '',
       locationLink: json['location_link'] as String? ?? '',
       hasFee: json['has_fee'] as bool? ?? false,
@@ -128,7 +131,7 @@ class EventInfo {
 
   /// Check if the event has ended
   bool get isEventEnded =>
-      eventDateTime.add(Duration(hours: duration)).isBefore(DateTime.now());
+      eventDateTime.add(hoursToDuration(duration)).isBefore(DateTime.now());
 
   /// Check if certificate is available
   bool get hasCertificate =>
