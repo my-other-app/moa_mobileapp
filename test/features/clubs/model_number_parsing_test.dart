@@ -59,6 +59,19 @@ void main() {
 
       expect(club.totalRatings, 7);
     });
+
+    test('a club with no logo yields null rather than throwing', () {
+      // Kept from the notes tests when Notes was removed: some clubs have no
+      // logo in production, and their cards show an initial -- correct
+      // behaviour, not a failure.
+      final club = ClubModel.fromJson(const {
+        'id': 2,
+        'name': 'Yasya',
+        'slug': 'yasya',
+      }).toEntity();
+
+      expect(club.logo, isNull);
+    });
   });
 
   group('EventModel survives them too', () {

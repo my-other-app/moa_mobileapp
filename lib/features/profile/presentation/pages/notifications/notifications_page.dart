@@ -303,6 +303,8 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
         return const Color(0xFFFFCC80); // Orange
       case 'club_announcement':
         return const Color(0xFFEF9A9A); // Red
+      case 'club_thread':
+        return const Color(0xFFB8DFF2); // Blue, from the club page's palette
       default:
         return Colors.grey[200]!;
     }
@@ -330,6 +332,14 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
               'clubName': notification.fromClub?.name ?? '',
             },
           );
+        }
+        break;
+      case 'club_thread':
+        // A club posted. Opens the post itself; if the club has removed it
+        // since, the post's page says so.
+        final threadId = notification.threadId;
+        if (threadId != null) {
+          context.push('/threads/${Uri.encodeComponent(threadId)}');
         }
         break;
       case 'event_checkin':

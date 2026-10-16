@@ -24,6 +24,7 @@ import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/clubs_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_individual_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/explore_more_clubs_page.dart';
+import 'package:finnet/features/threads/presentation/pages/thread_detail_page.dart';
 import 'package:finnet/features/profile/presentation/pages/profile_page.dart';
 import 'package:finnet/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:finnet/features/profile/presentation/pages/settings_page.dart';
@@ -166,6 +167,17 @@ final routerProvider = Provider<GoRouter>((ref) {
             );
           }),
 
+      // A club's post, with its comments. Top level rather than under
+      // /clubs/:clubId, because a tapped notification knows the post and
+      // not the club.
+      GoRoute(
+          path: '/threads/:threadId',
+          name: 'threadDetail',
+          parentNavigatorKey: rootNavigatorKey,
+          builder: (context, state) => ThreadDetailPage(
+                threadId: state.pathParameters['threadId'] ?? '',
+              )),
+
       // Main shell with bottom nav
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
@@ -259,10 +271,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                             0,
                         clubSlug: extra?['clubSlug'] ?? '',
                         clubname: extra?['clubName'] ?? '',
-                        // Used as the avatar on each note card. Absent when
-                        // the club page is opened by deep link rather than
-                        // from a list, which the card handles.
-                        clubLogoUrl: extra?['clubLogoUrl'] as String?,
                       );
                     }),
               ]),
@@ -370,6 +378,7 @@ class AppRoutes {
   static const String clubs = 'clubs';
   static const String exploreClubs = 'exploreClubs';
   static const String clubDetail = 'clubDetail';
+  static const String threadDetail = 'threadDetail';
   static const String profile = 'profile';
   static const String editProfile = 'editProfile';
   static const String profileInterests = 'profileInterests';

@@ -1,6 +1,5 @@
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
-import 'package:finnet/features/clubs/domain/entities/club_note.dart';
 
 /// Repository interface for club operations.
 abstract class ClubRepository {
@@ -45,7 +44,4 @@ abstract class ClubRepository {
 
   /// Search clubs by name.
   Future<Result<List<ClubListItem>>> searchClubs(String query);
-
-  /// The club's notes, newest first.
-  Future<Result<List<ClubNote>>> getClubNotes(int clubId, {int? page});
 }

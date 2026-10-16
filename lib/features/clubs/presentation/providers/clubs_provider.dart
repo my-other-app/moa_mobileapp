@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/features/clubs/data/repositories/club_repository_impl.dart';
 import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
-import 'package:finnet/features/clubs/domain/entities/club_note.dart';
 import 'package:finnet/features/clubs/domain/repositories/club_repository.dart';
 
 /// State for clubs list.
@@ -439,44 +438,3 @@ class ClubSearchNotifier extends StateNotifier<ClubsState> {
     state = const ClubsState();
   }
 }
-
-/// A club's notes, fetched on first read.
-///
-/// A FutureProvider rather than a notifier: the NOTES tab only reads this,
-/// and self-loading state is what stopped the profile arriving blank on
-/// screens that forgot to trigger it.
-final clubNotesProvider =
-    FutureProvider.family<List<ClubNote>, int>((ref, clubId) async {
-  final repository = ref.watch(clubRepositoryProvider);
-  final result = await repository.getClubNotes(clubId);
-  return result.fold(
-    (failure) => throw Exception(failure.message),
-    (notes) => notes,
-  );
-});
-
-/// A club's logo URL, fetched on first read.
-///
-/// The notes tab has no other source for it: navigation extras are absent on
-/// a deep link and most callers never set them, and NoteListResponse carries
-/// only the note's own fields -- no club. Without this the cards all fell
-/// back to the club's initial.
-///
-/// A FutureProvider so it loads itself and is cached per club, rather than
-/// each card asking.
-final clubLogoProvider =
-    FutureProvider.family<String?, int>((ref, clubId) async {
-  final repository = ref.watch(clubRepositoryProvider);
-  final result = await repository.getClubDetails(clubId);
-  return result.fold(
-    (failure) {
-      // Logged, not swallowed. This returned null on any failure, so a club
-      // fetch that was throwing on every call -- `as int?` against a
-      // fractional rating -- looked exactly like a club with no logo, and
-      // left nothing behind to find it by.
-      debugPrint('clubLogoProvider($clubId) failed: ${failure.message}');
-      return null;
-    },
-    (club) => club.logo?.thumbnail,
-  );
-});

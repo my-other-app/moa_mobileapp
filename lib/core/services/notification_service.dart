@@ -265,9 +265,16 @@ class NotificationService {
   }
 
   /// Where a notification's data points. A live update from an event opens
-  /// that event, whose page shows the room's strip.
+  /// that event, whose page shows the room's strip. A club's new post
+  /// (`club_thread`) opens that post; if it has been removed since, its page
+  /// says so.
   static String? routeFor(Map<String, dynamic> data) {
     final type = data['type']?.toString();
+    if (type == 'club_thread') {
+      final threadId = data['thread_id']?.toString().trim();
+      if (threadId == null || threadId.isEmpty) return null;
+      return '/threads/${Uri.encodeComponent(threadId)}';
+    }
     final eventId = data['event_id']?.toString();
     if (eventId != null && eventId.isNotEmpty && int.tryParse(eventId) != null) {
       if (type == 'event_live_update' || type == 'event_reminder' || type == 'event_started' || type == 'event_checkin') {
