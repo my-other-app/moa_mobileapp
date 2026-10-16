@@ -15,6 +15,7 @@ import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/features/events/presentation/pages/networking_page.dart';
@@ -1114,17 +1115,20 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Event poster.
+            // Event poster, or its drawn cover when it has none.
             AspectRatio(
               aspectRatio: 1.0,
-              child: ClipRRect(
+              child: EventPosterImage(
+                poster: poster,
+                eventId: id ?? widget.eventId,
+                // A missing category parses as id 0 and an empty name.
+                categoryId:
+                    (category?.id ?? 0) != 0 ? category!.id : null,
+                categoryName: category?.name,
+                startsAt: eventDateTime,
+                isOnline: isOnline ?? false,
+                slot: PosterSlot.hero,
                 borderRadius: BorderRadius.circular(8.0),
-                child: Image.network(
-                  poster != null && poster!.isNotEmpty
-                      ? poster!['medium'] ?? 'https://via.placeholder.com/300'
-                      : 'https://via.placeholder.com/300',
-                  fit: BoxFit.cover,
-                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -1142,16 +1146,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                       });
                     }
                   },
-                  child: CircleAvatar(
-                    radius: 24,
-                    backgroundColor: Colors.white,
-                    backgroundImage: NetworkImage(
-                      club != null && club!.logo.isNotEmpty
-                          ? club!.logo['thumbnail'] ??
-                              'https://via.placeholder.com/150'
-                          : 'https://via.placeholder.com/150',
-                    ),
-                  ),
+                  child: _ClubLogo(url: club?.logo['thumbnail']),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1873,6 +1868,28 @@ class BulletList extends StatelessWidget {
             ),
           )
           .toList(),
+    );
+  }
+}
+
+/// The club's logo beside the event's title: a grey disc with a group icon
+/// when there is no logo or it fails, rather than a placeholder service's
+/// image.
+class _ClubLogo extends StatelessWidget {
+  final Object? url;
+
+  const _ClubLogo({this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = this.url;
+    final hasUrl = url is String && url.trim().isNotEmpty;
+    return CircleAvatar(
+      radius: 24,
+      backgroundColor: const Color(0xFFF3F3F3),
+      foregroundImage: hasUrl ? NetworkImage(url) : null,
+      onForegroundImageError: hasUrl ? (_, __) {} : null,
+      child: const Icon(Icons.group, color: Colors.grey),
     );
   }
 }

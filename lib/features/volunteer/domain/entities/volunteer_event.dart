@@ -7,6 +7,10 @@ class VolunteerEvent {
   final String slug;
   final String name;
   final String? posterUrl;
+
+  /// The poster's sizes as the server sent them, so each screen can pick
+  /// the one it needs. Null when the event has no poster.
+  final Map<String, dynamic>? poster;
   final String? clubLogoUrl;
   final String clubName;
   final DateTime eventDatetime;
@@ -19,6 +23,7 @@ class VolunteerEvent {
     required this.slug,
     required this.name,
     this.posterUrl,
+    this.poster,
     this.clubLogoUrl,
     required this.clubName,
     required this.eventDatetime,
@@ -37,6 +42,7 @@ class VolunteerEvent {
       slug: json['slug'] as String,
       name: json['name'] as String,
       posterUrl: poster?['large'] as String? ?? poster?['medium'] as String?,
+      poster: poster,
       clubLogoUrl: clubLogo?['thumbnail'] as String?,
       clubName: club?['name'] as String? ?? '',
       eventDatetime: DateTime.parse(json['event_datetime'] as String),

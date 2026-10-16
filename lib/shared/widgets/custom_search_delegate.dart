@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/shared/widgets/event_poster_image.dart';
 
 /// Search delegate for EVENTS ONLY - used on home and events pages.
 /// Supports tab-based filtering (for_you, following, registered, past).
@@ -162,21 +163,15 @@ class EventSearchDelegate extends SearchDelegate<String> {
 
   Widget _buildEventTile(BuildContext context, dynamic event) {
     return ListTile(
-      leading: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          event['poster']?['thumbnail'] ?? 'https://via.placeholder.com/50',
-          width: 50,
-          height: 50,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(
-            width: 50,
-            height: 50,
-            color: Colors.grey[200],
-            child: const Icon(Icons.event),
-          ),
-        ),
-      ),
+      leading: event is Map
+          ? EventPosterImage.fromEvent(
+              event,
+              slot: PosterSlot.thumb,
+              width: 50,
+              height: 50,
+              borderRadius: BorderRadius.circular(8),
+            )
+          : null,
       title: Text(event['name'] ?? 'Unnamed Event'),
       subtitle: Text(event['club']?['name'] ?? ''),
       trailing: Container(
@@ -369,15 +364,21 @@ class ClubSearchDelegate extends SearchDelegate<String> {
     );
   }
 
+  /// The club's logo, or a grey disc with a group icon when it has none or
+  /// it fails -- not a placeholder service's image.
+  Widget _clubAvatar(Object? url) {
+    final hasUrl = url is String && url.trim().isNotEmpty;
+    return CircleAvatar(
+      backgroundColor: const Color(0xFFF3F3F3),
+      foregroundImage: hasUrl ? NetworkImage(url) : null,
+      onForegroundImageError: hasUrl ? (_, __) {} : null,
+      child: const Icon(Icons.group, color: Colors.grey),
+    );
+  }
+
   Widget _buildClubTile(BuildContext context, dynamic club) {
     return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: const Color(0xFFF3F3F3),
-        backgroundImage: NetworkImage(
-          club['logo']?['thumbnail'] ?? 'https://via.placeholder.com/50',
-        ),
-        onBackgroundImageError: (_, __) {},
-      ),
+      leading: _clubAvatar(club['logo']?['thumbnail']),
       title: Text(club['name'] ?? 'Unnamed Club'),
       subtitle: Text('${club['followers_count'] ?? 0} followers'),
       onTap: () {
