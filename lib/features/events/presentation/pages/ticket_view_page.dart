@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:apple_passkit/apple_passkit.dart';
+import 'package:finnet/core/utils/hours.dart';
 
 /// Premium ticket page with stunning glow effects and Apple Wallet-like design.
 class TicketViewPage extends StatefulWidget {
@@ -20,7 +21,7 @@ class TicketViewPage extends StatefulWidget {
   final String eventName;
   final DateTime? eventDateTime;
   final String? locationName;
-  final int? durationHours;
+  final double? durationHours;
   final String? ticketUrl;
   final String? ticketHolderName;
   final String? ticketType;
@@ -178,7 +179,7 @@ class _TicketViewPageState extends State<TicketViewPage>
       location: widget.locationName ?? '',
       startDate: widget.eventDateTime!,
       endDate:
-          widget.eventDateTime!.add(Duration(hours: widget.durationHours ?? 2)),
+          widget.eventDateTime!.add(hoursToDuration(widget.durationHours ?? 2)),
       iosParams: const IOSParams(reminder: Duration(hours: 1)),
       androidParams: const AndroidParams(emailInvites: []),
     );
