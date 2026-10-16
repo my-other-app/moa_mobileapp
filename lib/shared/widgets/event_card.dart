@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/core/config/app_config.dart';
@@ -17,7 +18,19 @@ enum EventCardStatus {
 class EventCard extends StatelessWidget {
   final String title;
   final String organizer;
-  final String imageUrl;
+
+  /// The event's poster map from the API (`{thumbnail, medium, large,
+  /// original}`) or a single URL. Without one -- every upcoming event
+  /// today -- the card draws the event's cover instead.
+  final Object? poster;
+
+  /// The category's id and name, the start and whether it is online: what
+  /// the drawn cover shows when there is no poster.
+  final Object? categoryId;
+  final String? categoryName;
+  final DateTime? startsAt;
+  final bool isOnline;
+
   final List<String> tags;
   final VoidCallback onTap;
   final String orgImage;
@@ -34,7 +47,11 @@ class EventCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.organizer,
-    required this.imageUrl,
+    this.poster,
+    this.categoryId,
+    this.categoryName,
+    this.startsAt,
+    this.isOnline = false,
     required this.tags,
     required this.onTap,
     required this.orgImage,
@@ -74,6 +91,9 @@ class EventCard extends StatelessWidget {
                 height: 48,
                 child: CachedNetworkImage(
                   imageUrl: orgImage,
+                  // Logos are presigned too: key the cache on the object,
+                  // not the signature, or it never hits.
+                  cacheKey: orgImage.isEmpty ? null : posterCacheKey(orgImage),
                   imageBuilder: (context, imageProvider) => Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -157,29 +177,16 @@ class EventCard extends StatelessWidget {
               onTap: () {
                 context.push('/events/$eventId', extra: _getNavigationExtras());
               },
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                imageBuilder: (context, imageProvider) => Container(
-                  height: size.height * 0.5,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10.0),
-                    image: DecorationImage(
-                      image: imageProvider,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                placeholder: (context, url) => Container(
-                  height: size.height * 0.5,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10.0),
-                    color: Colors.grey[300],
-                  ),
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => const SizedBox.shrink(),
+              child: EventPosterImage(
+                poster: poster,
+                eventId: eventId,
+                categoryId: categoryId,
+                categoryName: categoryName,
+                startsAt: startsAt,
+                isOnline: isOnline,
+                width: double.infinity,
+                height: size.height * 0.5,
+                borderRadius: BorderRadius.circular(10.0),
               ),
             ),
             // Status badge overlay

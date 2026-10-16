@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
+import 'package:finnet/shared/widgets/event_poster_image.dart';
 
 /// Page showing events the user is volunteering for
 class VolunteerEventsPage extends ConsumerStatefulWidget {
@@ -165,55 +166,12 @@ class _VolunteerEventsPageState extends ConsumerState<VolunteerEventsPage> {
                     const BorderRadius.vertical(top: Radius.circular(16)),
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
-                  child: CachedNetworkImage(
-                    imageUrl: event.posterUrl ?? '',
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: const Color(0xFF2C333D),
-                      child: Center(
-                        child: Text(
-                          event.name.isNotEmpty
-                              ? event.name[0].toUpperCase()
-                              : 'E',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'BebasNeue',
-                          ),
-                        ),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: const Color(0xFF2C333D),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              event.name.isNotEmpty
-                                  ? event.name[0].toUpperCase()
-                                  : 'E',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 48,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'BebasNeue',
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              event.name,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  // The drawn cover when there is no poster, while it
+                  // loads, and if it fails.
+                  child: EventPosterImage(
+                    poster: event.poster ?? event.posterUrl,
+                    eventId: event.id,
+                    startsAt: event.eventDatetime,
                   ),
                 ),
               ),

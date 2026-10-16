@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
+import 'package:finnet/shared/widgets/event_cover.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
@@ -290,8 +291,11 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
               '${event['duration']} Hours'
             ],
             onTap: () {},
-            imageUrl:
-                event['poster']?['medium'] ?? 'https://via.placeholder.com/150',
+            poster: event['poster'],
+            categoryId: event['category']?['id'],
+            categoryName: event['category']?['name'],
+            startsAt: parseEventStart(event['event_datetime']),
+            isOnline: event['is_online'] == true,
             eventId: event['id'],
             clubId: event['club']?['id'] ?? widget.clubId,
             eventSlug: event['slug'] ?? '',
