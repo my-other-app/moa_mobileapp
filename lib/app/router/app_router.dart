@@ -14,6 +14,7 @@ import 'package:finnet/features/auth/presentation/pages/interests_selection_page
 import 'package:finnet/features/auth/presentation/pages/onboarding_avatar_picker_page.dart';
 import 'package:finnet/features/auth/presentation/pages/onboarding_final_page.dart';
 import 'package:finnet/features/auth/presentation/pages/reg_successfull_page.dart';
+import 'package:finnet/features/auth/presentation/pages/verify_email_page.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 
 // Main screens
@@ -101,6 +102,22 @@ final routerProvider = Provider<GoRouter>((ref) {
             return ProfileCheckPage(
               accessToken: extra?['accessToken'] ?? '',
               profileUrl: extra?['profileUrl'] ?? '',
+            );
+          }),
+      // The code sent to an email/password account's address. Under /auth so
+      // it opens straight after sign-up, before the session is in auth state;
+      // the banner and Settings push it for a signed-in account too.
+      GoRoute(
+          path: '/auth/verify-email',
+          name: 'verifyEmail',
+          parentNavigatorKey: rootNavigatorKey,
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            return VerifyEmailPage(
+              email: extra?['email'] as String? ?? '',
+              onboarding: extra?['onboarding'] == true,
+              accessToken: extra?['accessToken'] as String? ?? '',
+              profileUrl: extra?['profileUrl'] as String? ?? '',
             );
           }),
 
@@ -366,6 +383,7 @@ class AppRoutes {
   AppRoutes._();
   static const String onboarding = 'onboarding';
   static const String profileCheck = 'profileCheck';
+  static const String verifyEmail = 'verifyEmail';
   static const String onboardingDetails = 'onboardingDetails';
   static const String onboardingAvatar = 'onboardingAvatar';
   static const String onboardingInterests = 'onboardingInterests';

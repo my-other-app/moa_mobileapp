@@ -56,6 +56,17 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
         const SnackBar(content: Text('Logging in...')),
       );
     } else if (state is LoginSuccess) {
+      if (state.signedUpEmail != null) {
+        // A new email account: the sign-up sent a code to the address. The
+        // verify screen carries on to the profile check when done or skipped.
+        context.go('/auth/verify-email', extra: {
+          'email': state.signedUpEmail,
+          'onboarding': true,
+          'accessToken': state.accessToken,
+          'profileUrl': state.photoUrl,
+        });
+        return;
+      }
       context.go('/auth/profile-check', extra: {
         'accessToken': state.accessToken,
         'profileUrl': state.photoUrl,
