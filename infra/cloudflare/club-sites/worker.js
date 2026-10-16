@@ -11,6 +11,10 @@
  * This Worker only fetches it and hands it out at the club's own address,
  * with a cache and a strict Content-Security-Policy. The page counts its own
  * visits (it is the whole tab here) and its buttons open the events site.
+ *
+ * The zone's Email Obfuscation is OFF (2026-10-16): it rewrote the club's
+ * contact address into a link needing Cloudflare's decoder script, which the
+ * CSP below refuses, and it ignores <!--email_off--> on Worker responses.
  */
 
 const ZONE = "myotherapp.in";
