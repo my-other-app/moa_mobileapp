@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/core/services/notification_service.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 
 /// Animated splash screen with logo and loading animation.
@@ -84,11 +85,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     if (authState.isAuthenticated) {
       // User is logged in, go to home
-      context.go('/');
+      final router = GoRouter.of(context);
+      router.go('/');
+      _openLaunchNotification(router);
     } else {
+      // A notification that launched the app is dropped when signed out, as
+      // any protected link is: the redirect to sign-in does not remember
+      // where it was going. Cleared rather than left, because signing in
+      // rebuilds the router and runs this screen again.
+      NotificationService.pendingLaunch.clear();
       // User not logged in, go to onboarding
       context.go('/auth/onboarding');
     }
+  }
+
+  /// Open the notification that launched the app, if one did, on top of
+  /// home -- so Back returns home rather than closing the app.
+  ///
+  /// Taken now, so it opens exactly once; pushed after the next frame, once
+  /// the router has settled on home. Through the router rather than this
+  /// screen's context, which `go` is about to dispose.
+  void _openLaunchNotification(GoRouter router) {
+    final route = NotificationService.pendingLaunch.take();
+    if (route == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => router.push(route));
   }
 
   @override

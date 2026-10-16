@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/services/pending_notification_route.dart';
 import 'package:finnet/app/router/app_router.dart';
 import 'package:go_router/go_router.dart';
 
@@ -30,6 +31,11 @@ class NotificationService {
 
   bool _isInitialized = false;
   String? _fcmToken;
+
+  /// Where the notification that launched the app points, until the splash
+  /// screen opens it. Static so it can be read without touching Firebase.
+  static final PendingNotificationRoute pendingLaunch =
+      PendingNotificationRoute(routeFor);
 
   /// Get the current FCM token
   String? get fcmToken => _fcmToken;
@@ -69,10 +75,24 @@ class NotificationService {
     // Handle notification tap when app is in background
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
-    // Check if app was opened from a notification
-    RemoteMessage? initialMessage = await _messaging.getInitialMessage();
+    // Was the app launched by a tap? Held rather than opened: this runs
+    // before runApp, so there is no navigator yet -- pushing here did
+    // nothing. The splash screen opens it once it has routed home.
+    final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
-      _handleNotificationTap(initialMessage);
+      debugPrint('App launched by notification: ${initialMessage.messageId}');
+      pendingLaunch.hold(initialMessage.data);
+    }
+    // The same for a tap on a local notification -- a push re-shown while the
+    // app was in the foreground, then tapped after the app was closed.
+    try {
+      final launch =
+          await _localNotifications.getNotificationAppLaunchDetails();
+      if (launch?.didNotificationLaunchApp ?? false) {
+        pendingLaunch.holdPayload(launch?.notificationResponse?.payload);
+      }
+    } catch (e) {
+      debugPrint('Could not read notification launch details: $e');
     }
 
     _isInitialized = true;
@@ -265,9 +285,16 @@ class NotificationService {
   }
 
   /// Where a notification's data points. A live update from an event opens
-  /// that event, whose page shows the room's strip.
+  /// that event, whose page shows the room's strip. A club's new post
+  /// (`club_thread`) opens that post; if it has been removed since, its page
+  /// says so.
   static String? routeFor(Map<String, dynamic> data) {
     final type = data['type']?.toString();
+    if (type == 'club_thread') {
+      final threadId = data['thread_id']?.toString().trim();
+      if (threadId == null || threadId.isEmpty) return null;
+      return '/threads/${Uri.encodeComponent(threadId)}';
+    }
     final eventId = data['event_id']?.toString();
     if (eventId != null && eventId.isNotEmpty && int.tryParse(eventId) != null) {
       if (type == 'event_live_update' || type == 'event_reminder' || type == 'event_started' || type == 'event_checkin') {

@@ -75,6 +75,7 @@ enum NotificationType {
   newEvent('new_event'),
   nearbyEvent('nearby_event'),
   clubAnnouncement('club_announcement'),
+  clubThread('club_thread'),
   volunteerAdded('volunteer_added'),
   volunteerRemoved('volunteer_removed');
 
@@ -179,6 +180,16 @@ class NotificationModel {
   /// Get the notification type as enum
   NotificationType? get notificationType => NotificationType.fromValue(type);
 
+  /// The club post a `club_thread` notification is about, from its data.
+  ///
+  /// The server puts `thread_id` (a UUID) in `data`, the same payload the
+  /// push carries. Null when absent or blank -- there is then nothing to
+  /// open.
+  String? get threadId {
+    final id = data?['thread_id']?.toString().trim();
+    return (id == null || id.isEmpty) ? null : id;
+  }
+
   /// Get display icon based on notification type
   String get iconEmoji {
     switch (type) {
@@ -194,6 +205,8 @@ class NotificationModel {
         return '🎖️';
       case 'club_announcement':
         return '📣';
+      case 'club_thread':
+        return '💬';
       case 'event_reminder':
         return '⏰';
       default:

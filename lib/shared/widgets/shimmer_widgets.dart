@@ -123,6 +123,55 @@ class ShimmerClubTile extends StatelessWidget {
   }
 }
 
+/// Shimmer loading skeleton for a club's post (a Threads card).
+class ShimmerThreadCard extends StatelessWidget {
+  const ShimmerThreadCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade200,
+      highlightColor: Colors.grey.shade100,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade300, width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const ShimmerBox(height: 44, width: 44, borderRadius: 6),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      ShimmerBox(height: 16, width: 160),
+                      SizedBox(height: 8),
+                      ShimmerBox(height: 12, width: 80),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const ShimmerBox(height: 14),
+            const SizedBox(height: 6),
+            const ShimmerBox(height: 14),
+            const SizedBox(height: 6),
+            const ShimmerBox(height: 14, width: 220),
+            const SizedBox(height: 16),
+            const ShimmerBox(height: 20, width: 120),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Shimmer loading skeleton for profile page.
 class ShimmerProfileCard extends StatelessWidget {
   const ShimmerProfileCard({super.key});
