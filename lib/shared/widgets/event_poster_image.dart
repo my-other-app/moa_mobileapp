@@ -17,9 +17,10 @@ enum PosterSlot {
 
 /// The poster sizes to try for each slot, best first. The server makes
 /// `thumbnail` (150px), `medium` (500px) and `large` (800px) from the
-/// `original` upload (`app/api/events/models.py`).
+/// `original` upload (`app/api/events/models.py`). A card is about 360pt
+/// wide, over 1000px on a 3x phone, so `medium` would be blown up and soft.
 const Map<PosterSlot, List<String>> posterSizePreference = {
-  PosterSlot.card: ['medium', 'large', 'original', 'thumbnail'],
+  PosterSlot.card: ['large', 'medium', 'original', 'thumbnail'],
   PosterSlot.hero: ['large', 'original', 'medium', 'thumbnail'],
   PosterSlot.thumb: ['thumbnail', 'medium', 'large', 'original'],
 };

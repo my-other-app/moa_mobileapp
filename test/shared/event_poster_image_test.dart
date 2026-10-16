@@ -31,11 +31,11 @@ Widget _host(Widget child, {double width = 320, double height = 400}) =>
 
 void main() {
   group('pickPosterUrl', () {
-    test('cards take medium, then large, original, thumbnail', () {
-      expect(pickPosterUrl(_poster), _poster['medium']);
+    test('cards take large, then medium, original, thumbnail', () {
+      expect(pickPosterUrl(_poster), _poster['large']);
       expect(
-        pickPosterUrl({..._poster, 'medium': null}),
-        _poster['large'],
+        pickPosterUrl({..._poster, 'large': null}),
+        _poster['medium'],
       );
       expect(
         pickPosterUrl({'original': _poster['original'], 'thumbnail': 'x'}),
@@ -115,7 +115,7 @@ void main() {
       expect(find.text('17'), findsOneWidget);
     });
 
-    testWidgets('loads the medium poster, cached by its path', (tester) async {
+    testWidgets('loads the large poster, cached by its path', (tester) async {
       await tester.pumpWidget(_host(EventPosterImage(
         poster: _poster,
         eventId: 42,
@@ -123,8 +123,8 @@ void main() {
 
       final image =
           tester.widget<CachedNetworkImage>(find.byType(CachedNetworkImage));
-      expect(image.imageUrl, _poster['medium']);
-      expect(image.cacheKey, '$_bucket/e7f1.medium.jpeg');
+      expect(image.imageUrl, _poster['large']);
+      expect(image.cacheKey, '$_bucket/e7f1.large.jpeg');
     });
 
     testWidgets('the event page loads the large poster', (tester) async {
@@ -230,12 +230,12 @@ void main() {
       expect(find.text('Registered'), findsOneWidget);
     });
 
-    testWidgets('loads the medium poster when there is one', (tester) async {
+    testWidgets('loads the large poster when there is one', (tester) async {
       await tester.pumpWidget(card(poster: _poster));
 
       final image = tester.widget<CachedNetworkImage>(find.byWidgetPredicate(
-          (w) => w is CachedNetworkImage && w.imageUrl == _poster['medium']));
-      expect(image.cacheKey, '$_bucket/e7f1.medium.jpeg');
+          (w) => w is CachedNetworkImage && w.imageUrl == _poster['large']));
+      expect(image.cacheKey, '$_bucket/e7f1.large.jpeg');
     });
   });
 }
