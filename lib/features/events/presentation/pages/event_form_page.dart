@@ -3,11 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
 import 'package:finnet/features/events/presentation/widgets/merch_picker.dart';
 import 'package:finnet/features/payments/checkout.dart';
+import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
+import 'package:finnet/features/payments/domain/payment_failures.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/error/failures.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
@@ -517,6 +521,26 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     );
   }
 
+  /// No order could be made, so nothing was charged. An event this build
+  /// can't pay (409 UPDATE_APP_TO_PAY) also offers its page on the website.
+  void _showPaymentFailure(Failure failure) {
+    final webUrl = failure is UpdateAppToPayFailure ? failure.webUrl : null;
+    final uri = webUrl == null ? null : Uri.tryParse(webUrl);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(failure.message),
+        showCloseIcon: uri != null,
+        action: uri == null
+            ? null
+            : SnackBarAction(
+                label: 'Open website',
+                onPressed: () =>
+                    launchUrl(uri, mode: LaunchMode.externalApplication),
+              ),
+      ),
+    );
+  }
+
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -570,7 +594,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           // The ticket, and whatever was picked from the shelf, are paid in one checkout.
           final due = (data['pay_amount'] as num?)?.toDouble() ?? 0;
           if (due > 0) {
-            final paid = await RegistrationCheckout.pay(
+            final outcome = await RegistrationCheckout.pay(
+              repository: ref.read(paymentRepositoryProvider),
               eventId: widget.eventId,
               registrationId: data['event_registration_id'] as String,
               name: _nameController.text.trim(),
@@ -578,7 +603,11 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               phone: _phoneController.text.trim(),
             );
             if (!mounted) return;
-            if (!paid) {
+            if (outcome.isLeft) {
+              _showPaymentFailure(outcome.left);
+              return;
+            }
+            if (!outcome.right) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Payment not completed. Your place is held — tap Continue to pay.')),
               );
