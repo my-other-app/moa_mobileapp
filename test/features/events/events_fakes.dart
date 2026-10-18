@@ -15,9 +15,16 @@ import 'package:finnet/features/profile/domain/repositories/profile_repository.d
 class RouteAdapter implements HttpClientAdapter {
   final List<RequestOptions> requests = [];
   final Map<String, List<(int, Object?)>> _routes = {};
+  final Map<String, Stream<Uint8List> Function()> _streams = {};
 
   void on(String method, String path, Object? body, {int status = 200}) {
     _routes.putIfAbsent('$method $path', () => []).add((status, body));
+  }
+
+  /// GET [path] answers `text/event-stream`, with a body from [open] for
+  /// each connection.
+  void stream(String path, Stream<Uint8List> Function() open) {
+    _streams['GET $path'] = open;
   }
 
   List<RequestOptions> sent(String method, String path) =>
@@ -30,6 +37,12 @@ class RouteAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    final stream = _streams['${options.method} ${options.path}'];
+    if (stream != null) {
+      return ResponseBody(stream(), 200, headers: {
+        Headers.contentTypeHeader: ['text/event-stream; charset=utf-8'],
+      });
+    }
     final queue = _routes['${options.method} ${options.path}'];
     final (status, body) = queue == null
         ? (404, <String, dynamic>{'message': 'Not found'})

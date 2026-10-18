@@ -13,6 +13,9 @@ class NotificationsState {
   final bool hasMore;
   final int currentOffset;
 
+  /// The server's cursor for the next page, when it pages by keyset.
+  final String? nextCursor;
+
   const NotificationsState({
     this.notifications = const [],
     this.isLoading = false,
@@ -21,6 +24,7 @@ class NotificationsState {
     this.unreadCount = 0,
     this.hasMore = true,
     this.currentOffset = 0,
+    this.nextCursor,
   });
 
   NotificationsState copyWith({
@@ -31,6 +35,7 @@ class NotificationsState {
     int? unreadCount,
     bool? hasMore,
     int? currentOffset,
+    String? Function()? nextCursor,
   }) {
     return NotificationsState(
       notifications: notifications ?? this.notifications,
@@ -40,6 +45,7 @@ class NotificationsState {
       unreadCount: unreadCount ?? this.unreadCount,
       hasMore: hasMore ?? this.hasMore,
       currentOffset: currentOffset ?? this.currentOffset,
+      nextCursor: nextCursor != null ? nextCursor() : this.nextCursor,
     );
   }
 }
@@ -71,6 +77,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
           isLoading: false,
           hasMore: page.items.length >= _pageSize,
           currentOffset: page.items.length,
+          nextCursor: () => page.nextCursor,
         );
       },
     );
@@ -84,9 +91,12 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 
     state = state.copyWith(isLoadingMore: true);
 
+    // By the server's cursor when it gave one: the next page does not shift
+    // when newer lines arrive. The offset stays for a server without.
     final result = await _repository.fetchList(
       limit: _pageSize,
       offset: state.currentOffset,
+      cursor: state.nextCursor,
     );
 
     result.fold(
@@ -97,6 +107,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
           isLoadingMore: false,
           hasMore: page.items.length >= _pageSize,
           currentOffset: state.currentOffset + page.items.length,
+          nextCursor: () => page.nextCursor,
         );
       },
     );
@@ -143,6 +154,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
     state = state.copyWith(
       hasMore: true,
       currentOffset: 0,
+      nextCursor: () => null,
     );
     await loadNotifications();
   }

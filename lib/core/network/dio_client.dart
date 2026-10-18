@@ -6,6 +6,7 @@ import 'package:finnet/core/config/env/env.dart';
 import 'package:finnet/core/network/interceptors/auth_interceptor.dart';
 import 'package:finnet/core/network/interceptors/error_interceptor.dart';
 import 'package:finnet/core/network/interceptors/logging_interceptor.dart';
+import 'package:finnet/core/network/interceptors/topic_change_interceptor.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 
 /// Builds the single Dio instance used app-wide, with the full interceptor
@@ -34,6 +35,7 @@ Dio buildAppDio() {
   dio.interceptors.addAll([
     AuthInterceptor(SecureStorageService(), dio),
     ErrorInterceptor(),
+    TopicChangeInterceptor(),
     if (kDebugMode) LoggingInterceptor(),
   ]);
 

@@ -4,6 +4,7 @@
 class LiveFeed {
   const LiveFeed({
     required this.eventId,
+    this.eventStatus,
     this.bannerText,
     this.bannerKind,
     this.pollPrompt,
@@ -15,6 +16,11 @@ class LiveFeed {
   static const LiveFeed empty = LiveFeed(eventId: 0);
 
   final int eventId;
+
+  /// `event.status`: where the event is on its status clock (`published`,
+  /// `live`, `closed`, ...), as the website reads it. Null from a server that
+  /// does not send it.
+  final String? eventStatus;
   final String? bannerText;
   final String? bannerKind;
   final String? pollPrompt;
@@ -30,6 +36,9 @@ class LiveFeed {
     final questions = json['questions'];
     return LiveFeed(
       eventId: event is Map ? (event['id'] as num?)?.toInt() ?? 0 : 0,
+      eventStatus: event is Map && event['status'] is String
+          ? event['status'] as String
+          : null,
       bannerText: banner is Map ? banner['text'] as String? : null,
       bannerKind: banner is Map ? banner['kind'] as String? : null,
       pollPrompt: poll is Map ? poll['prompt'] as String? : null,
@@ -38,6 +47,15 @@ class LiveFeed {
       questions: questions is List ? questions.length : 0,
     );
   }
+
+  /// The room's body -- the poll's (`GET /events/{id}/live`), or a stream
+  /// snapshot's, which is the same JSON -- or null for anything else.
+  static LiveFeed? tryParse(Object? json) =>
+      json is Map<String, dynamic> ? LiveFeed.fromJson(json) : null;
+
+  /// The event is happening now (`event.status == 'live'`, the website's
+  /// test): the only time the page keeps a stream open.
+  bool get isEventLive => eventStatus == 'live';
 
   /// Whether there is anything worth a strip on the event page.
   bool get isActive =>

@@ -9,6 +9,8 @@ import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/agenda_model.dart';
 import 'package:finnet/common/models/events/live_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
+import 'package:finnet/features/events/data/datasources/live_remote_datasource.dart';
+import 'package:finnet/features/events/data/live/live_stream_client.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/presentation/finish_payment.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
@@ -54,7 +56,8 @@ class IndividualEventPage extends ConsumerStatefulWidget {
       _IndividualEventPageState();
 }
 
-class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
+class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
+    with WidgetsBindingObserver {
   // State variables for event fields.
   int? id;
   String? name;
@@ -142,7 +145,38 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
         _finishPaymentOnLoad = widget.initialStatus == finishPaymentStatus;
       }
     }
+    final liveSource = ref.read(liveRemoteDataSourceProvider);
+    _live = LiveStreamClient<LiveFeed>(
+      open: ({lastEventId, required abort}) => liveSource.openRoomStream(
+        widget.eventId,
+        lastEventId: lastEventId,
+        abort: abort,
+      ),
+      poll: () => liveSource.fetchRoom(widget.eventId),
+      parse: LiveFeed.tryParse,
+      onData: (feed) {
+        if (mounted) setState(() => live = feed);
+      },
+      // As the website: a stream only while the event is happening.
+      shouldStream: (feed) => feed.isEventLive,
+    );
+    WidgetsBinding.instance.addObserver(this);
     _fetchData();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _live.shown();
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        _live.hidden();
+      case AppLifecycleState.inactive:
+        // A call coming in, the app switcher opening: still on screen.
+        break;
+    }
   }
 
   RegistrationStatus get _status {
@@ -238,7 +272,10 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
       }
       await _fetchAgenda();
       await _fetchCatalog();
-      await _fetchLive();
+      if (!mounted) return;
+      // The room fetched, as on every load; the stream follows while the
+      // event is live, and while it streams there is nothing to fetch.
+      _live.refresh();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -393,20 +430,14 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
   /// The live room: a banner, a poll or a quiz up right now earns a strip.
   LiveFeed live = LiveFeed.empty;
 
-  Future<void> _fetchLive() async {
-    try {
-      final Response<dynamic> res = await APIService.instance.request(
-        '/events/${widget.eventId}/live',
-        DioMethod.get,
-      );
-      final data = res.data;
-      if (data is Map<String, dynamic> && mounted) {
-        setState(() => live = LiveFeed.fromJson(data));
-      }
-    } catch (_) {
-      // The room is optional; the event itself has loaded.
-    }
-  }
+  /// Keeps [live] current. The page fetches the room as it always has (on
+  /// load and on each reload); while that -- or a snapshot -- says the event
+  /// is live (`event.status`), the room's stream (`view=room`) keeps the
+  /// strip current as long as the page is open and the app in front. Before
+  /// the event, after it, and on a server without streams (today's answers
+  /// 404) the one fetch is all there is. A failed fetch leaves the strip as
+  /// it was: the room is optional; the event itself has loaded.
+  late final LiveStreamClient<LiveFeed> _live;
 
   /// The room is the web page, so voting, polls and the quiz are the same on every phone.
   Future<void> _openLiveRoom() async {
@@ -693,6 +724,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
   @override
   void dispose() {
     _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _live.close();
     super.dispose();
   }
 

@@ -11,6 +11,7 @@ abstract class NotificationRepository {
   Future<Result<NotificationPage>> fetchList({
     required int limit,
     required int offset,
+    String? cursor,
   });
 
   Future<Result<int>> unreadCount();
