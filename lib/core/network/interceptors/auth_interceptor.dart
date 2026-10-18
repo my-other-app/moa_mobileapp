@@ -12,7 +12,9 @@ typedef SessionEndedCallback = void Function(SessionEndReason reason);
 /// Handles:
 /// - Adding Bearer token to Authorization header
 /// - Skipping auth for specific requests (using 'skipAuth' extra)
-/// - Token refresh on 401 errors, then one retry of the request
+/// - Token refresh on 401 errors, then one retry of the request. One refresh
+///   runs at a time, and a 401 for a token a finished refresh already
+///   replaced is retried with the new token rather than refreshed again
 /// - Ending the session -- tokens deleted, [onSessionEnded] told -- when the
 ///   refresh is refused or the account is suspended
 class AuthInterceptor extends Interceptor {
@@ -86,6 +88,20 @@ class AuthInterceptor extends Interceptor {
       return;
     }
 
+    // Sent before a refresh that has since finished: the token it carried
+    // was replaced while it was out. Refreshing again would spend the new
+    // refresh token for nothing (the server issues a new one on every
+    // refresh), so it is sent again with the stored token instead.
+    final stored = await _readOrNull(_secureStorage.getAccessToken);
+    if (stored != null &&
+        stored.isNotEmpty &&
+        options.headers['Authorization'] != 'Bearer $stored') {
+      debugPrint('AuthInterceptor: 401 on ${options.path} with a replaced '
+          'token, retrying with the current one');
+      await _retry(options, handler);
+      return;
+    }
+
     debugPrint('AuthInterceptor: 401 on ${options.path}, refreshing');
     final outcome = await (_refreshing ??= _refresh().whenComplete(() {
       _refreshing = null;
@@ -135,6 +151,9 @@ class AuthInterceptor extends Interceptor {
           debugPrint('AuthInterceptor: session changed during refresh');
           return _RefreshOutcome.unavailable;
         }
+        // Both, every time: the server issues a new refresh token on every
+        // refresh. The one sent stays good only until the new one is first
+        // used; presenting it after that ends the session (SESSION_REUSED).
         await _secureStorage.saveAccessToken(access);
         await _secureStorage.saveRefreshToken(refresh);
         debugPrint('AuthInterceptor: token refreshed');
@@ -144,9 +163,14 @@ class AuthInterceptor extends Interceptor {
       return _RefreshOutcome.unavailable;
     } on DioException catch (e) {
       // 401 is the server saying the session is over: expired, signed out
-      // from the Security page, or revoked by a token_version bump.
+      // from the Security page, revoked by a token_version bump, or
+      // SESSION_REUSED -- a refresh token older than the last one issued was
+      // presented, and the server ended the session. All of them are "your
+      // session has ended", said once: the tokens go with it, so no later
+      // 401 has a session left to report.
       if (e.response?.statusCode == 401) {
-        debugPrint('AuthInterceptor: refresh refused, session over');
+        debugPrint('AuthInterceptor: refresh refused '
+            '(${_errorCode(e.response?.data) ?? 'no code'}), session over');
         await _endSession(SessionEndReason.expired);
         return _RefreshOutcome.sessionEnded;
       }

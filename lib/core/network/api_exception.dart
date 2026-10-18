@@ -273,6 +273,9 @@ class ApiException implements Exception {
   static const Map<String, String> _copyForCode = {
     'ACCOUNT_SUSPENDED': accountSuspendedMessage,
     'TOKEN_EXPIRED': sessionEndedMessage,
+    // The refresh token was used from two places, so the server ended the
+    // session. To the person it is the same as any other ended session.
+    'SESSION_REUSED': sessionEndedMessage,
   };
 
   static bool _isUsable(String? text) => text != null && text.trim().isNotEmpty;
