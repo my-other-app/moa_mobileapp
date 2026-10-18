@@ -91,8 +91,8 @@ void main() {
     await _start(tester, signedIn: false);
 
     expect(find.text('SIGN IN'), findsOneWidget);
-    // Signing in rebuilds the router and runs the splash again; a kept
-    // route would then open out of nowhere.
+    // A kept route would open out of nowhere the next time the splash
+    // runs.
     expect(NotificationService.pendingLaunch.take(), isNull);
   });
 }

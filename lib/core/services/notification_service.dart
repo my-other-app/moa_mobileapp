@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/services/pending_notification_route.dart';
+import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/app/router/app_router.dart';
 import 'package:go_router/go_router.dart';
 
@@ -20,6 +20,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 /// Service for handling push notifications via Firebase Cloud Messaging.
+///
+/// Start-up does not wait on any of this. [initialize] used to run before
+/// `runApp`, asking for push permission and then waiting up to ten seconds
+/// for an APNs token, so an iPhone showed a blank screen and a permission
+/// prompt before it showed the app. Now `main` starts the app first and runs
+/// [initialize] alongside it; permission is asked for once the person has
+/// signed in ([requestPermissionAndRegister]), and the token is sent only
+/// while someone is signed in.
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
@@ -28,9 +36,14 @@ class NotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  final SecureStorageService _storage = SecureStorageService();
 
-  bool _isInitialized = false;
+  Future<void>? _initializing;
   String? _fcmToken;
+
+  /// A token deletion still running from the last sign-out. A token fetched
+  /// before it finishes would be the one being deleted.
+  Future<void>? _tokenDeletion;
 
   /// Where the notification that launched the app points, until the splash
   /// screen opens it. Static so it can be read without touching Firebase.
@@ -40,126 +53,135 @@ class NotificationService {
   /// Get the current FCM token
   String? get fcmToken => _fcmToken;
 
-  /// Force register FCM token with backend (e.g. after login)
-  Future<void> registerToken() async {
-    if (_fcmToken != null) {
-      await _sendTokenToServer(_fcmToken!);
-    } else {
-      await _getToken();
-    }
+  /// Register the handler for messages that arrive while the app is in the
+  /// background or closed. Cheap and synchronous: call it in `main` before
+  /// `runApp`.
+  static void registerBackgroundHandler() {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   }
 
-  /// Initialize the notification service.
-  /// Call this in main() after Firebase.initializeApp()
-  Future<void> initialize() async {
-    if (_isInitialized) return;
+  /// Set up message handling. Asks for nothing and waits on nothing slow;
+  /// safe to run without awaiting, alongside `runApp`.
+  Future<void> initialize() => _initializing ??= _initialize();
 
-    // Set up background message handler
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-    // Request permission (iOS)
-    await _requestPermission();
-
-    // Initialize local notifications
-    await _initializeLocalNotifications();
-
-    // Get FCM token
-    await _getToken();
-
-    // Listen for token refresh
-    _messaging.onTokenRefresh.listen(_handleTokenRefresh);
-
-    // Handle foreground messages
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
-    // Handle notification tap when app is in background
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
-
-    // Was the app launched by a tap? Held rather than opened: this runs
-    // before runApp, so there is no navigator yet -- pushing here did
-    // nothing. The splash screen opens it once it has routed home.
-    final initialMessage = await _messaging.getInitialMessage();
-    if (initialMessage != null) {
-      debugPrint('App launched by notification: ${initialMessage.messageId}');
-      pendingLaunch.hold(initialMessage.data);
-    }
-    // The same for a tap on a local notification -- a push re-shown while the
-    // app was in the foreground, then tapped after the app was closed.
+  Future<void> _initialize() async {
+    // Was the app launched by a tap? Read first, ahead of anything slower:
+    // the splash screen takes it 1.5 s after start-up and opens it once it
+    // has routed home.
     try {
+      final initialMessage = await _messaging.getInitialMessage();
+      if (initialMessage != null) {
+        debugPrint('App launched by notification: ${initialMessage.messageId}');
+        pendingLaunch.hold(initialMessage.data);
+      }
+    } catch (e) {
+      debugPrint('NotificationService: could not read the launch message: $e');
+    }
+
+    try {
+      await _initializeLocalNotifications();
+      // The same for a tap on a local notification -- a push re-shown while
+      // the app was in the foreground, then tapped after it was closed.
       final launch =
           await _localNotifications.getNotificationAppLaunchDetails();
       if (launch?.didNotificationLaunchApp ?? false) {
         pendingLaunch.holdPayload(launch?.notificationResponse?.payload);
       }
     } catch (e) {
-      debugPrint('Could not read notification launch details: $e');
+      debugPrint('NotificationService: local notifications unavailable: $e');
     }
 
-    _isInitialized = true;
+    _messaging.onTokenRefresh.listen(_handleTokenRefresh);
+    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
     debugPrint('NotificationService initialized');
   }
 
-  Future<void> _requestPermission() async {
-    debugPrint('🔔 [Notifications] Requesting permission...');
-
-    NotificationSettings settings = await _messaging.requestPermission(
-      alert: true,
-      announcement: false,
-      badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-      sound: true,
-    );
-
-    debugPrint(
-        '🔔 [Notifications] Permission status: ${settings.authorizationStatus}');
-    debugPrint('🔔 [Notifications] Alert: ${settings.alert}');
-    debugPrint('🔔 [Notifications] Badge: ${settings.badge}');
-    debugPrint('🔔 [Notifications] Sound: ${settings.sound}');
-
-    // For iOS, we MUST wait for APNs token before getting FCM token
-    if (Platform.isIOS) {
-      debugPrint('🔔 [Notifications] iOS - Waiting for APNs token...');
-
-      // Retry getting APNs token a few times
-      String? apnsToken;
-      for (int i = 0; i < 5; i++) {
-        apnsToken = await _messaging.getAPNSToken();
-        if (apnsToken != null) break;
-        await Future.delayed(const Duration(seconds: 2));
-        debugPrint(
-            '🔔 [Notifications] Retry ${i + 1}/5 waiting for APNs token...');
-      }
-
+  /// Ask for permission to show notifications, then register this device.
+  ///
+  /// Call after sign-in, not at start-up. The system shows its prompt only
+  /// while the answer is undecided; after that this just registers.
+  Future<void> requestPermissionAndRegister() async {
+    try {
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
       debugPrint(
-          '🔔 [Notifications] APNs token: ${apnsToken ?? "NULL - THIS IS THE PROBLEM!"}');
+          'NotificationService: permission ${settings.authorizationStatus}');
+    } catch (e) {
+      debugPrint('NotificationService: permission request failed: $e');
+    }
+    await syncToken();
+  }
 
-      if (apnsToken == null) {
-        debugPrint(
-            '🔔 [Notifications] ⚠️ APNs token is NULL! Push notifications will NOT work.');
-        debugPrint(
-            '🔔 [Notifications] Check: 1) Push capability in Xcode, 2) APNs key in Firebase, 3) Bundle ID matches');
-        // Don't return here, try to get FCM token anyway, sometimes it works if APNs was cached
+  /// Send this device's push token to the server, if someone is signed in.
+  /// Asks for nothing.
+  Future<void> syncToken() async {
+    try {
+      if (!await _isSignedIn()) return;
+      await _tokenDeletion;
+      // On iOS the FCM token needs the APNs token, which can take a few
+      // seconds to arrive after launch. This runs in the background now, so
+      // the wait no longer holds up anything the person can see.
+      if (Platform.isIOS && !await _waitForApnsToken()) {
+        debugPrint('NotificationService: no APNs token yet; '
+            'the token refresh listener will register it when it arrives');
+        return;
       }
+      final token = await _messaging.getToken();
+      if (token == null) {
+        debugPrint('NotificationService: no FCM token');
+        return;
+      }
+      _fcmToken = token;
+      await _sendTokenToServer(token);
+    } catch (e) {
+      debugPrint('NotificationService: could not register the push token: $e');
     }
   }
 
-  void _showToast(String message) {
-    Fluttertoast.showToast(
-      msg: message,
-      toastLength: Toast.LENGTH_LONG,
-      gravity: ToastGravity.BOTTOM,
-      backgroundColor: Colors.black87,
-      textColor: Colors.white,
-      fontSize: 16.0,
-    );
+  /// Stop this device receiving the signed-out person's notifications.
+  ///
+  /// The backend has no way to delete a registered token
+  /// (`/user/fcm-token` takes POST only), so the token itself is deleted:
+  /// FCM then refuses sends to it, and the next person to sign in on this
+  /// device registers a fresh one. Best effort -- never throws.
+  Future<void> unregister() async {
+    _fcmToken = null;
+    final deletion = _messaging.deleteToken().timeout(
+          const Duration(seconds: 10),
+        );
+    _tokenDeletion = deletion.catchError((Object e) {
+      debugPrint('NotificationService: could not delete the push token: $e');
+    });
+    await _tokenDeletion;
+  }
+
+  Future<bool> _waitForApnsToken() async {
+    for (var attempt = 0; attempt < 5; attempt++) {
+      if (await _messaging.getAPNSToken() != null) return true;
+      await Future.delayed(const Duration(seconds: 2));
+    }
+    return false;
+  }
+
+  Future<bool> _isSignedIn() async {
+    try {
+      final token = await _storage.getAccessToken();
+      return token != null && token.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _initializeLocalNotifications() async {
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
+    // No permission requests here: that waits for sign-in.
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
       requestAlertPermission: false,
@@ -193,38 +215,14 @@ class NotificationService {
     }
   }
 
-  Future<void> _getToken() async {
-    debugPrint('🔔 [Notifications] Getting FCM token...');
-    try {
-      _fcmToken = await _messaging.getToken();
-      debugPrint('🔔 [Notifications] FCM Token: ${_fcmToken ?? "NULL"}');
-
-      if (_fcmToken != null) {
-        debugPrint(
-            '🔔 [Notifications] ✅ FCM token obtained, sending to server...');
-        await _sendTokenToServer(_fcmToken!);
-      } else {
-        debugPrint(
-            '🔔 [Notifications] ❌ FCM token is NULL - cannot register for push notifications');
-        debugPrint(
-            '🔔 [Notifications] This usually means APNs is not properly configured');
-      }
-    } catch (e, stackTrace) {
-      debugPrint('🔔 [Notifications] ❌ Error getting FCM token: $e');
-      debugPrint('🔔 [Notifications] Stack trace: $stackTrace');
-      _showToast("Error getting FCM token: $e");
-    }
-  }
-
-  void _handleTokenRefresh(String token) {
+  Future<void> _handleTokenRefresh(String token) async {
     _fcmToken = token;
-    debugPrint('FCM Token refreshed: $token');
-    _sendTokenToServer(token);
+    debugPrint('NotificationService: FCM token refreshed');
+    if (await _isSignedIn()) await _sendTokenToServer(token);
   }
 
   Future<void> _sendTokenToServer(String token) async {
     try {
-      _showToast("Registering push token...");
       await APIService.instance.request(
         '/user/fcm-token',
         DioMethod.post,
@@ -233,11 +231,9 @@ class NotificationService {
           'platform': Platform.isIOS ? 'ios' : 'android'
         },
       );
-      debugPrint('FCM token sent to server');
-      _showToast("Push notifications enabled! ✅");
+      debugPrint('NotificationService: FCM token sent to server');
     } catch (e) {
-      debugPrint('Error sending FCM token to server: $e');
-      _showToast("Failed to register push token: $e");
+      debugPrint('NotificationService: could not send the FCM token: $e');
     }
   }
 

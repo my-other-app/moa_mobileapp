@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/auth/session_events.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
+import 'package:finnet/features/auth/data/services/session_services.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
-import 'package:finnet/core/services/notification_service.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:flutter/material.dart';
+
+export 'package:finnet/core/auth/session_events.dart' show SessionEndReason;
 
 /// Authentication state for the application.
 class AuthState extends Equatable {
@@ -15,6 +19,10 @@ class AuthState extends Equatable {
   final String? error;
   final bool isInitialized;
 
+  /// Why the last session ended, until the sign-in screen has said so.
+  /// Null when nobody was signed in, and once the notice has been shown.
+  final SessionEndReason? endedBecause;
+
   const AuthState({
     this.user,
     this.accessToken,
@@ -22,6 +30,7 @@ class AuthState extends Equatable {
     this.isLoading = false,
     this.error,
     this.isInitialized = false,
+    this.endedBecause,
   });
 
   /// Whether the user is authenticated.
@@ -37,6 +46,7 @@ class AuthState extends Equatable {
     bool? isInitialized,
     bool clearUser = false,
     bool clearError = false,
+    bool clearEndReason = false,
   }) {
     return AuthState(
       user: clearUser ? null : (user ?? this.user),
@@ -45,26 +55,52 @@ class AuthState extends Equatable {
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
       isInitialized: isInitialized ?? this.isInitialized,
+      endedBecause: clearEndReason ? null : endedBecause,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [user, accessToken, refreshToken, isLoading, error, isInitialized];
+  List<Object?> get props => [
+        user,
+        accessToken,
+        refreshToken,
+        isLoading,
+        error,
+        isInitialized,
+        endedBecause,
+      ];
 }
+
+/// The auth state a fresh session scope starts from, instead of reading
+/// secure storage.
+///
+/// `SessionScope` sets it when it replaces every provider after a sign-out:
+/// it already knows nobody is signed in, and why.
+final authSeedProvider = Provider<AuthState?>((ref) => null);
 
 /// Provider for the authentication state.
 final authStateProvider =
     StateNotifierProvider<AuthStateNotifier, AuthState>((ref) {
-  return AuthStateNotifier(ref);
+  return AuthStateNotifier(ref, seed: ref.read(authSeedProvider));
 });
 
 /// State notifier for managing authentication state.
 class AuthStateNotifier extends StateNotifier<AuthState> {
   final Ref _ref;
+  StreamSubscription<SessionEndReason>? _revocations;
 
-  AuthStateNotifier(this._ref) : super(const AuthState()) {
-    _initialize();
+  AuthStateNotifier(this._ref, {AuthState? seed})
+      : super(seed ?? const AuthState()) {
+    // The network layer deletes the tokens when the server refuses them;
+    // this is how the UI finds out.
+    _revocations = SessionEvents.revoked.listen(_onRevoked);
+    if (seed == null) _initialize();
+  }
+
+  @override
+  void dispose() {
+    _revocations?.cancel();
+    super.dispose();
   }
 
   /// Initialize auth state from secure storage.
@@ -73,6 +109,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
       final storage = _ref.read(secureStorageServiceProvider);
       final accessToken = await storage.getAccessToken();
       final refreshToken = await storage.getRefreshToken();
+      if (!mounted) return;
 
       if (accessToken != null && accessToken.isNotEmpty) {
         state = state.copyWith(
@@ -80,23 +117,14 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
             refreshToken: refreshToken,
             isInitialized: true);
         debugPrint('AuthStateNotifier: Restored session from storage');
-        // Register FCM token now that we have session
-        NotificationService().registerToken();
-        if (state.user != null) {
-          Fluttertoast.showToast(
-            msg: "Logged in as User ID: ${state.user!.id}",
-            backgroundColor: Colors.blue,
-            textColor: Colors.white,
-            toastLength: Toast.LENGTH_LONG,
-          );
-        }
+        unawaited(_ref.read(pushRegistrationProvider).onSessionRestored());
       } else {
         state = state.copyWith(isInitialized: true);
         debugPrint('AuthStateNotifier: No saved session found');
       }
     } catch (e) {
       debugPrint('AuthStateNotifier: Error initializing: $e');
-      state = state.copyWith(isInitialized: true);
+      if (mounted) state = state.copyWith(isInitialized: true);
     }
   }
 
@@ -126,16 +154,10 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
         isLoading: false,
         isInitialized: true);
     debugPrint('AuthStateNotifier: User authenticated');
-    // Register FCM token after login
-    NotificationService().registerToken();
-    if (user != null) {
-      Fluttertoast.showToast(
-        msg: "Logged in as User ID: ${user.id}",
-        backgroundColor: Colors.blue,
-        textColor: Colors.white,
-        toastLength: Toast.LENGTH_LONG,
-      );
-    }
+    // The moment to ask for push permission: the person has just chosen to
+    // sign in, rather than being met by a prompt before the app has shown
+    // anything.
+    unawaited(_ref.read(pushRegistrationProvider).onSignedIn());
   }
 
   /// Update user profile.
@@ -144,17 +166,73 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     debugPrint('AuthStateNotifier: User profile updated');
   }
 
-  /// Logout and clear session.
+  /// Sign out: end the session on the server, stop this device receiving
+  /// the person's pushes, delete the tokens.
+  ///
+  /// The server calls are best effort and not awaited -- a sign-out never
+  /// waits on the network or fails because of it. Setting the state is the
+  /// last step: `SessionScope` sees it and replaces every provider, so the
+  /// next person to sign in starts with nothing of this one's.
   Future<void> logout() async {
+    final storage = _ref.read(secureStorageServiceProvider);
+    String? accessToken;
     try {
-      final storage = _ref.read(secureStorageServiceProvider);
+      accessToken = await storage.getAccessToken();
+    } catch (e) {
+      debugPrint('AuthStateNotifier: could not read the token: $e');
+    }
+    if (accessToken != null && accessToken.isNotEmpty) {
+      unawaited(_ref.read(sessionRevokerProvider).revoke(accessToken));
+    }
+    unawaited(_ref.read(pushRegistrationProvider).onSignedOut());
+    try {
       await storage.clearTokens();
-      state = const AuthState(isInitialized: true);
-      debugPrint('AuthStateNotifier: User logged out');
     } catch (e) {
       debugPrint('AuthStateNotifier: Error during logout: $e');
-      state = const AuthState(isInitialized: true);
     }
+    if (!mounted) return;
+    state = const AuthState(
+      isInitialized: true,
+      endedBecause: SessionEndReason.signedOut,
+    );
+    debugPrint('AuthStateNotifier: User logged out');
+  }
+
+  /// The server refused the stored session. The interceptor has deleted the
+  /// tokens; take the person to sign-in and say why.
+  Future<void> _onRevoked(SessionEndReason reason) async {
+    if (!state.isAuthenticated) return;
+    debugPrint('AuthStateNotifier: session ended by the server ($reason)');
+    unawaited(_ref.read(pushRegistrationProvider).onSignedOut());
+    try {
+      await _ref.read(secureStorageServiceProvider).clearTokens();
+    } catch (e) {
+      debugPrint('AuthStateNotifier: could not clear tokens: $e');
+    }
+    if (!mounted) return;
+    state = AuthState(isInitialized: true, endedBecause: reason);
+  }
+
+  /// The sign-in screen has told the person why they were signed out.
+  void acknowledgeSessionEnd() {
+    if (state.endedBecause == null) return;
+    state = state.copyWith(clearEndReason: true);
+  }
+}
+
+/// What the sign-in screen says about how the last session ended, or null
+/// when there is nothing to say (nobody was signed in, or they chose to sign
+/// out).
+String? sessionEndNotice(SessionEndReason? reason) {
+  switch (reason) {
+    case SessionEndReason.expired:
+      return 'Your session has ended. Please sign in again.';
+    case SessionEndReason.suspended:
+      return 'This account has been suspended. If you think this is a '
+          'mistake, write to support@myotherapp.in.';
+    case SessionEndReason.signedOut:
+    case null:
+      return null;
   }
 }
 
