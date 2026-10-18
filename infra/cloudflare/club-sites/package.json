@@ -1,0 +1,9 @@
+{
+  "name": "club-sites-worker",
+  "private": true,
+  "description": "The club-sites Cloudflare Worker. Deployed by deploy.sh; this file only lets Node run its tests.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}
