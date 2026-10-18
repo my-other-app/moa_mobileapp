@@ -47,7 +47,8 @@ void main() {
 
     test('classifies a DioException that never reached the interceptor', () {
       // AuthInterceptor can emit one of these when a token-refresh retry
-      // throws something that is not a DioException.
+      // throws something that is not a DioException. Dio's own words are
+      // for the log; the failure carries the app's.
       final failure = mapErrorToFailure(DioException(
         requestOptions: RequestOptions(path: '/x'),
         type: DioExceptionType.connectionError,
@@ -55,7 +56,7 @@ void main() {
       ));
 
       expect(failure, isA<NetworkFailure>());
-      expect(failure.message, 'No route to host');
+      expect(failure.message, ApiException.networkMessage);
     });
 
     test('a cancellation is not a network failure', () {
@@ -72,14 +73,29 @@ void main() {
     test('falls back to UnknownFailure for anything else', () {
       expect(mapErrorToFailure(StateError('nope')), isA<UnknownFailure>());
     });
+
+    test("a bug's toString() never becomes the message", () {
+      final failure = mapErrorToFailure(TypeError());
+
+      expect(failure.message, ApiException.genericMessage);
+    });
+
+    test("a FormatException keeps the app's own words", () {
+      final failure = mapErrorToFailure(
+        const FormatException('The payment order came back without an id.'),
+      );
+
+      expect(failure, isA<ServerFailure>());
+      expect(failure.message, 'The payment order came back without an id.');
+    });
   });
 
   group('ErrorInterceptor keeps the server message', () {
     test('a 401 keeps the reason the server gave', () {
       // The check-in endpoint answers 401 with "User is not a volunteer for
-      // this event". The friendly copy in `message` would tell a door
-      // volunteer to log in again, which is the wrong instruction, so the
-      // real reason has to survive somewhere.
+      // this event". Stock copy in `message` told a door volunteer to log in
+      // again, which is the wrong instruction; the server's words are now
+      // the message, and still in `serverMessage` for classifying.
       final interceptor = ErrorInterceptor();
       final requestOptions = RequestOptions(path: '/events/volunteer/checkin/1');
       ApiException? seen;
@@ -101,7 +117,7 @@ void main() {
 
       expect(seen, isNotNull);
       expect(seen!.type, ApiExceptionType.unauthorized);
-      expect(seen!.message, 'Unauthorized. Please log in again.');
+      expect(seen!.message, 'User is not a volunteer for this event');
       expect(seen!.serverMessage, 'User is not a volunteer for this event');
     });
 

@@ -61,7 +61,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return Either.right(null);
     } catch (e) {
       debugPrint('AuthRepository.signOut error: $e');
-      return Either.left(CacheFailure(message: e.toString()));
+      return Either.left(const CacheFailure());
     }
   }
 
@@ -75,7 +75,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return Either.right(tokensModel.toEntity());
     } catch (e) {
       debugPrint('AuthRepository.getStoredTokens error: $e');
-      return Either.left(CacheFailure(message: e.toString()));
+      return Either.left(const CacheFailure());
     }
   }
 
@@ -90,7 +90,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return Either.right(null);
     } catch (e) {
       debugPrint('AuthRepository.saveTokens error: $e');
-      return Either.left(CacheFailure(message: e.toString()));
+      return Either.left(const CacheFailure());
     }
   }
 
@@ -101,7 +101,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return Either.right(null);
     } catch (e) {
       debugPrint('AuthRepository.clearTokens error: $e');
-      return Either.left(CacheFailure(message: e.toString()));
+      return Either.left(const CacheFailure());
     }
   }
 
