@@ -21,9 +21,11 @@ class NotificationRepositoryImpl implements NotificationRepository {
   Future<Result<NotificationPage>> fetchList({
     required int limit,
     required int offset,
+    String? cursor,
   }) =>
       _guard(
-        () => remoteDataSource.fetchList(limit: limit, offset: offset),
+        () => remoteDataSource.fetchList(
+            limit: limit, offset: offset, cursor: cursor),
         'fetchList',
       );
 

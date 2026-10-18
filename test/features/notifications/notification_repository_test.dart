@@ -20,8 +20,11 @@ class _FakeDataSource implements NotificationRemoteDataSource {
   Future<NotificationPage> fetchList({
     required int limit,
     required int offset,
+    String? cursor,
   }) async {
-    calls.add('fetchList($limit,$offset)');
+    calls.add(cursor == null
+        ? 'fetchList($limit,$offset)'
+        : 'fetchList($limit,$offset,$cursor)');
     if (throws != null) throw throws!;
     return page;
   }
@@ -77,6 +80,12 @@ void main() {
       expect(result.isRight, isTrue);
       expect(result.right.items.single.id, 'n1');
       expect(dataSource.calls.single, 'fetchList(20,0)');
+    });
+
+    test('passes the server\'s cursor through for the next page', () async {
+      await repository.fetchList(limit: 20, offset: 20, cursor: 'abc');
+
+      expect(dataSource.calls.single, 'fetchList(20,20,abc)');
     });
 
     test('maps an unauthorized ApiException to AuthFailure', () async {
