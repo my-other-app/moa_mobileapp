@@ -22,6 +22,7 @@ import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/home/presentation/pages/home_page.dart';
 import 'package:finnet/features/events/presentation/pages/events_page.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
+import 'package:finnet/features/events/presentation/pages/explore_events_page.dart';
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/clubs_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_individual_page.dart';
@@ -250,6 +251,21 @@ final routerProvider = Provider<GoRouter>((ref) {
                         fullName: extra?['fullName'],
                       );
                     }),
+                // Before ':eventId', which would take "explore" for an id.
+                GoRoute(
+                    path: 'explore',
+                    name: 'exploreEvents',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) {
+                      final extra = state.extra as Map<String, dynamic>?;
+                      return ExploreEventsPage(
+                        initialTopic: extra?['topic'] as String? ??
+                            state.uri.queryParameters['topic'],
+                        initialInterestId: extra?['interestId'] as int? ??
+                            int.tryParse(
+                                state.uri.queryParameters['interest'] ?? ''),
+                      );
+                    }),
                 GoRoute(
                     path: ':eventId',
                     name: 'eventDetail',
@@ -296,11 +312,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                     parentNavigatorKey: rootKey,
                     builder: (context, state) {
                       final extra = state.extra as Map<String, dynamic>?;
+                      final legacyIds = extra?['interestIds'] is List
+                          ? List<int>.from(extra!['interestIds'] as List)
+                          : const <int>[];
                       return ExploreMoreClubsPage(
                         initialOrganizationId: extra?['organizationId'] as int?,
-                        initialInterestIds: extra?['interestIds'] != null
-                            ? List<int>.from(extra!['interestIds'] as List)
-                            : null,
+                        initialTopic: extra?['topic'] as String? ??
+                            state.uri.queryParameters['topic'],
+                        initialInterestId: extra?['interestId'] as int? ??
+                            int.tryParse(
+                                state.uri.queryParameters['interest'] ?? '') ??
+                            legacyIds.firstOrNull,
                       );
                     }),
                 GoRoute(
@@ -418,6 +440,7 @@ class AppRoutes {
   static const String eventRegistrationSuccess = 'eventRegistrationSuccess';
   static const String clubs = 'clubs';
   static const String exploreClubs = 'exploreClubs';
+  static const String exploreEvents = 'exploreEvents';
   static const String clubDetail = 'clubDetail';
   static const String threadDetail = 'threadDetail';
   static const String profile = 'profile';

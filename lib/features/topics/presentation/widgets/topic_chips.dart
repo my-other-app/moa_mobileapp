@@ -15,12 +15,16 @@ class TopicChip extends StatelessWidget {
   /// Shown after the name ("Development 12"), when the server counted.
   final int? count;
 
+  /// What [count] counts, for screen readers: "12 upcoming", "30 clubs".
+  final String countUnit;
+
   const TopicChip({
     super.key,
     required this.topic,
     this.selected,
     this.onTap,
     this.count,
+    this.countUnit = 'upcoming',
   });
 
   @override
@@ -54,7 +58,7 @@ class TopicChip extends StatelessWidget {
       selected: isFilter ? on : null,
       label: [
         '${topic.label} topic',
-        if (count != null) '$count upcoming',
+        if (count != null) '$count $countUnit',
       ].join(', '),
       onTap: onTap,
       excludeSemantics: true,

@@ -11,6 +11,10 @@ import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/clubs/presentation/pages/no_clubs_following_page.dart';
 
 import 'package:finnet/features/clubs/presentation/pages/clubs_you_follow_section.dart';
+import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/domain/topic_rules.dart';
+import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
+import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/features/clubs/presentation/pages/pinned_clubs_section.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 
@@ -28,7 +32,6 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
 
   // Filter state
   int? _selectedOrgId;
-  final List<int> _selectedInterestIds = [];
   bool _showMyOrg = false;
 
   bool isLoading = true;
@@ -106,41 +109,30 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
     _navigateToExploreWithFilters();
   }
 
-  void _toggleInterestFilter(Interest interest) {
-    setState(() {
-      if (_selectedInterestIds.contains(interest.id)) {
-        _selectedInterestIds.remove(interest.id);
-      } else {
-        _selectedInterestIds.add(interest.id);
-      }
-    });
-    // Navigate to explore with filters
-    _navigateToExploreWithFilters();
-  }
-
-  void _navigateToExploreWithFilters() {
+  void _navigateToExploreWithFilters({String? topic, int? interestId}) {
     // Navigate to explore page with selected filters
     context.push('/clubs/explore', extra: {
       'organizationId': _selectedOrgId,
-      'interestIds': _selectedInterestIds,
+      if (topic != null) 'topic': topic,
+      if (interestId != null) 'interestId': interestId,
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(profileProvider);
-    final interestsAsync = ref.watch(interestsProvider);
+    final topicsAsync = ref.watch(topicDirectoryProvider);
 
     final userOrg = profileState.profile?.organization;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: _buildBody(userOrg, interestsAsync),
+      body: _buildBody(userOrg, topicsAsync),
     );
   }
 
   Widget _buildBody(
-      Organization? userOrg, AsyncValue<List<Interest>> interestsAsync) {
+      Organization? userOrg, AsyncValue<List<Topic>> topicsAsync) {
     if (isLoading) {
       return ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -174,7 +166,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Search box and filter chips
-            _buildSearchAndFilters(userOrg, interestsAsync),
+            _buildSearchAndFilters(userOrg, topicsAsync),
             // Show PinnedClubsSection only if there are pinned clubs
             if (pinnedClubs.isNotEmpty) ...[
               PinnedClubsSection(pinnedClubs: pinnedClubs),
@@ -232,7 +224,11 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
   }
 
   Widget _buildSearchAndFilters(
-      Organization? userOrg, AsyncValue<List<Interest>> interestsAsync) {
+      Organization? userOrg, AsyncValue<List<Topic>> topicsAsync) {
+    // Topics still loading, or failed: just the college. (It used to show
+    // made-up chips -- "District", "IOT" -- that did nothing.)
+    final topics = topicsAsync.valueOrNull ?? const <Topic>[];
+    final grouped = topicsWorthShowing(topics);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -266,71 +262,59 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
           ),
         ),
         const SizedBox(height: 12),
-        // Dynamic filter chips
+        // The college, then a chip per topic -- or, on a server with one
+        // topic holding everything, the interests themselves. Each opens
+        // Explore with it chosen.
         SizedBox(
           height: 36,
-          child: Padding(
-            padding: const EdgeInsets.only(left: 16),
-            child: interestsAsync.when(
-              data: (interests) => ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  // Organization chip (if user has one)
-                  if (userOrg != null) ...[
-                    _FilterChip(
-                      label: userOrg.name,
-                      isSelected: _showMyOrg,
-                      onTap: () => _toggleOrgFilter(userOrg),
+          child: ListView(
+            key: const ValueKey('clubs-topic-chips'),
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.only(left: 16, right: 8),
+            children: [
+              if (userOrg != null) ...[
+                Center(
+                  child: _FilterChip(
+                    label: userOrg.name,
+                    isSelected: _showMyOrg,
+                    onTap: () => _toggleOrgFilter(userOrg),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              if (grouped)
+                for (final topic in topics)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Center(
+                      child: TopicChip(
+                        topic: topic,
+                        selected: false,
+                        count: topic.clubs,
+                        countUnit: 'clubs',
+                        onTap: () =>
+                            _navigateToExploreWithFilters(topic: topic.slug),
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                  ],
-                  // Interest chips
-                  ...interests.take(8).map((interest) {
-                    final isSelected =
-                        _selectedInterestIds.contains(interest.id);
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                  )
+              else
+                for (final interest in interestsOf(topics).take(8))
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Center(
                       child: _FilterChip(
                         label: interest.name,
-                        isSelected: isSelected,
-                        onTap: () => _toggleInterestFilter(interest),
+                        isSelected: false,
+                        onTap: () => _navigateToExploreWithFilters(
+                            interestId: interest.id),
                       ),
-                    );
-                  }),
-                ],
-              ),
-              loading: () => _buildStaticChips(),
-              error: (_, __) => _buildStaticChips(),
-            ),
+                    ),
+                  ),
+            ],
           ),
         ),
         const SizedBox(height: 24),
       ],
-    );
-  }
-
-  // Fallback static chips when interests can't be loaded
-  Widget _buildStaticChips() {
-    final staticChips = ["College", "District", "State", "AI", "IOT", "Web"];
-    return ListView.separated(
-      scrollDirection: Axis.horizontal,
-      itemCount: staticChips.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 8),
-      itemBuilder: (context, index) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFAFAFAF)),
-          ),
-          child: Center(
-            child: Text(
-              staticChips[index],
-              style: const TextStyle(fontSize: 14, color: Color(0xFFAFAFAF)),
-            ),
-          ),
-        );
-      },
     );
   }
 }

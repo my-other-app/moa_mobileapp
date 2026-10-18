@@ -98,5 +98,17 @@ void main() {
 
       expect(router.routerDelegate.navigatorKey, same(rootNavigatorKey));
     });
+
+    test('/events/explore is Explore, not an event with the id "explore"',
+        () {
+      final router = containerWith(_signedIn).read(routerProvider);
+
+      String? nameOf(String path) =>
+          router.configuration.findMatch(Uri.parse(path)).last.route.name;
+
+      expect(nameOf('/events/explore'), AppRoutes.exploreEvents);
+      expect(nameOf('/events/12'), AppRoutes.eventDetail);
+      expect(nameOf('/clubs/explore'), AppRoutes.exploreClubs);
+    });
   });
 }
