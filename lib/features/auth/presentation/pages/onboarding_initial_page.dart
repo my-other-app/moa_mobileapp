@@ -10,6 +10,7 @@ import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/auth/presentation/widgets/terms_consent.dart';
 
 /// Onboarding Initial Page with Google and Apple Sign In support.
 ///
@@ -211,25 +212,35 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
       backgroundColor: const Color(0xFFFFFFA0),
       body: Stack(
         children: [
-          Column(
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 80),
-                      _buildLogo(),
-                      const SizedBox(height: 48),
-                      _buildContent(),
-                      const Spacer(),
-                      _buildLoginButtons(),
-                      const SizedBox(height: 80),
-                    ],
+          // Scrolls when the screen is shorter than the page (an iPhone SE,
+          // or larger text); otherwise the Spacer keeps the buttons low.
+          LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 80),
+                        _buildLogo(),
+                        const SizedBox(height: 48),
+                        _buildContent(),
+                        const Spacer(),
+                        const SizedBox(height: 24),
+                        // Above the buttons, where it is read before
+                        // continuing and the grass below doesn't cover it.
+                        const TermsConsent(),
+                        const SizedBox(height: 16),
+                        _buildLoginButtons(),
+                        const SizedBox(height: 80),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
           Positioned(
             bottom: 0,
@@ -540,7 +551,9 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                const TermsConsent(),
+                const SizedBox(height: 4),
                 // Toggle between sign-in and sign-up
                 Center(
                   child: TextButton(

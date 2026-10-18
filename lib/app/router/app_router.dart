@@ -35,8 +35,6 @@ import 'package:finnet/features/profile/presentation/pages/certificates/certific
 import 'package:finnet/features/profile/presentation/pages/certificates/certificate_page.dart';
 import 'package:finnet/features/profile/presentation/pages/badges/my_badges_page.dart';
 import 'package:finnet/features/profile/presentation/pages/notifications/notifications_page.dart';
-import 'package:finnet/features/profile/presentation/pages/settings/terms_and_condition_page.dart';
-import 'package:finnet/features/profile/presentation/pages/settings/privacy_policy_page.dart';
 import 'package:finnet/features/main/presentation/pages/main_shell.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 
@@ -336,23 +334,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                     parentNavigatorKey: rootKey,
                     builder: (context, state) =>
                         const InterestsSelectionPage(isOnboarding: false)),
+                // Privacy Policy and Terms open myotherapp.in/privacy and
+                // /terms in the browser (shared/utils/external_links.dart);
+                // there are no in-app copies to keep in step.
                 GoRoute(
                     path: 'settings',
                     name: 'settings',
                     parentNavigatorKey: rootKey,
-                    builder: (context, state) => const SettingsPage(),
-                    routes: [
-                      GoRoute(
-                          path: 'terms',
-                          name: 'terms',
-                          parentNavigatorKey: rootKey,
-                          builder: (context, state) => TermsAndConditionPage()),
-                      GoRoute(
-                          path: 'privacy',
-                          name: 'privacy',
-                          parentNavigatorKey: rootKey,
-                          builder: (context, state) => PrivacyPolicyPage()),
-                    ]),
+                    builder: (context, state) => const SettingsPage()),
                 GoRoute(
                     path: 'certificates',
                     name: 'certificates',
@@ -435,8 +424,6 @@ class AppRoutes {
   static const String editProfile = 'editProfile';
   static const String profileInterests = 'profileInterests';
   static const String settings = 'settings';
-  static const String terms = 'terms';
-  static const String privacy = 'privacy';
   static const String certificates = 'certificates';
   static const String badges = 'badges';
   static const String notifications = 'notifications';

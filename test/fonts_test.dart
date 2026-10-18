@@ -32,16 +32,17 @@ Set<String> _usedFamilies() {
 void main() {
   test('every font family the code names is declared', () {
     // 'DM Sans' and 'Bebas Neue' were used ~100 times without being
-    // declared, so that text quietly rendered in the system font.
-    //
-    // 'Jaro' (onboarding_initial_page.dart, in auth) has no font file in
-    // assets/fonts at all, so it cannot be declared from here; it is the
-    // one known gap, listed so that any new undeclared family still fails.
-    const knownMissing = {'Jaro'};
-    final missing = _usedFamilies()
-        .difference(_declaredFamilies())
-        .difference(knownMissing);
+    // declared, and 'Jaro' had no font file at all, so that text quietly
+    // rendered in the system font.
+    final missing = _usedFamilies().difference(_declaredFamilies());
     expect(missing, isEmpty, reason: 'undeclared font families: $missing');
+  });
+
+  test('the code names each family one way', () {
+    // pubspec keeps 'DM Sans' and 'Bebas Neue' as aliases for anything
+    // still spelled that way (a package, an old branch); lib/ itself uses
+    // DMSans and BebasNeue only.
+    expect(_usedFamilies(), {'DMSans', 'BebasNeue'});
   });
 
   test('both spellings of each family point at the same file', () {

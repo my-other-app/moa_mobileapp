@@ -115,40 +115,25 @@ class OnboardingFinalPage extends ConsumerWidget {
     );
   }
 
+  /// The avatar chosen a step earlier. Not tappable: there is no picker
+  /// here, so it no longer looks like one ("+ add pic" did nothing).
   Widget _buildProfileImage(String? imageUrl) {
-    return GestureDetector(
-      onTap: () {
-        // TODO: Open avatar picker
-      },
-      child: Container(
-        width: 120,
-        height: 120,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Color(0xFFA855F7),
-        ),
-        child: ClipOval(
-          child: imageUrl != null && imageUrl.isNotEmpty
-              ? Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      Icon(Icons.person, size: 60, color: Colors.white),
-                )
-              : Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add, size: 40, color: Colors.white),
-                      SizedBox(height: 4),
-                      Text(
-                        'add pic',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-        ),
+    return Container(
+      width: 120,
+      height: 120,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFFA855F7),
+      ),
+      child: ClipOval(
+        child: imageUrl != null && imageUrl.isNotEmpty
+            ? Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    Icon(Icons.person, size: 60, color: Colors.white),
+              )
+            : Icon(Icons.person, size: 60, color: Colors.white),
       ),
     );
   }
