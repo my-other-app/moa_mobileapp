@@ -16,6 +16,8 @@ import 'package:finnet/features/profile/domain/entities/profile_entity.dart'
     as entity;
 import 'package:finnet/features/topics/data/models/topic_model.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/presentation/widgets/topic_tag_strip.dart';
+import 'package:go_router/go_router.dart';
 
 class ClubProfilePage extends StatefulWidget {
   final int id;
@@ -205,6 +207,17 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
                       Text(
                         '$followersCount Followers',
                         style: const TextStyle(fontSize: 12),
+                      ),
+                      // Its topics in their colours, above its interests.
+                      // A topic opens Explore Clubs on it.
+                      TopicTagStrip(
+                        topGap: 8,
+                        declared: clubInfo?.topics,
+                        interests: [
+                          for (final i in interests) i.toEntity(),
+                        ],
+                        onTopicTap: (topic) => context.push('/clubs/explore',
+                            extra: {'topic': topic.slug}),
                       ),
                       const SizedBox(height: 8),
                       // Interests as tags with a color selected by index.
