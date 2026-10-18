@@ -150,11 +150,17 @@ Run `npx wrangler tail media` alongside to see each request. A 502 with "S3 refu
    APP_MEDIA_CDN_URL=https://media.myotherapp.in
    ```
 
-2. Recreate the backend so it reads the new `.env`:
+2. Recreate the backend so it reads the new `.env`, always from a freshly
+   built image (`--build`), and with stdin closed:
 
    ```
-   docker compose -f docker-compose.prod.yml up -d backend
+   sudo docker-compose -f docker-compose.prod.yml up -d --build --no-deps backend < /dev/null
    ```
+
+   A plain `up -d backend` recreates from whatever image is on the box. On
+   2026-10-17 that image lacked a package installed only by `exec pip`, and
+   production was down for 20 minutes. Check that `.env` is the current one
+   before recreating: it has been overwritten by a stale copy before.
 
 A malformed value (a path, a query) stops the backend at startup, so watch it come up. From then on, every response hands out CDN addresses. The app and the public site pick them up as their caches expire: the discover site's pages within a few minutes.
 
@@ -163,7 +169,7 @@ A malformed value (a path, a query) stops the backend at startup, so watch it co
 A published club site is a stored page. Pages made before step 6 still point their images at the API's image route. That still works, because the route now redirects to the CDN, but it costs a hop per picture. Publish every site again:
 
 ```
-docker compose -f docker-compose.prod.yml exec -T backend python scripts/republish_sites.py
+sudo docker-compose -f docker-compose.prod.yml exec -T backend python scripts/republish_sites.py < /dev/null
 ```
 
 The nightly refresh would get there within a day anyway.
