@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
@@ -8,7 +9,10 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/network/interceptors/topic_change_interceptor.dart';
 import 'package:finnet/core/services/pending_notification_route.dart';
+import 'package:finnet/core/services/push_dedupe.dart';
+import 'package:finnet/core/services/push_topics.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/app/router/app_router.dart';
@@ -30,6 +34,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// [initialize] alongside it; permission is asked for once the person has
 /// signed in ([requestPermissionAndRegister]), and the token is sent only
 /// while someone is signed in.
+///
+/// Broadcasts (a club's posts and events, new events in your topics,
+/// announcements) can reach the device through FCM topics: once signed in it
+/// subscribes to the topics the server lists for its person
+/// ([TopicReconciler]) -- on start, on sign-in, after a follow, a mute or a
+/// change of interests -- and leaves them on sign-out. Its token goes to the
+/// server with `topics: 1` once it is in all of them. A push the server sent
+/// twice (the same `push_id`) is shown and opened once ([PushDedupe]).
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
@@ -42,6 +54,16 @@ class NotificationService {
 
   Future<void>? _initializing;
   String? _fcmToken;
+
+  late final TopicReconciler _topics = TopicReconciler(
+    source: DioPushTopicSource(APIService.instance.dio),
+    messaging: FirebaseTopicMessaging(_messaging),
+    store: SecureAppliedTopicsStore(_storage),
+  );
+  Timer? _topicsSoon;
+
+  /// Each push shown and opened once, by its `push_id`.
+  static final PushDedupe dedupe = PushDedupe();
 
   /// A token deletion still running from the last sign-out. A token fetched
   /// before it finishes would be the one being deleted.
@@ -96,6 +118,8 @@ class NotificationService {
     _messaging.onTokenRefresh.listen(_handleTokenRefresh);
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+    // A follow, a mute, saved interests: the topic list may have changed.
+    TopicChangeInterceptor.listener = refreshTopics;
 
     debugPrint('NotificationService initialized');
   }
@@ -139,10 +163,51 @@ class NotificationService {
         return;
       }
       _fcmToken = token;
-      await _sendTokenToServer(token);
+      await _register(token);
     } catch (e) {
       debugPrint('NotificationService: could not register the push token: $e');
     }
+  }
+
+  /// Send the token -- saying whether this device is already in all of its
+  /// person's topics, which the last reconcile kept -- then reconcile the
+  /// topics, and say it again if that is what made the device ready. The
+  /// token is never held up by the topics: they can be a few hundred calls.
+  Future<void> _register(String token) async {
+    final ready = await _topics.readyFor(token);
+    await _sendTokenToServer(token, topics: ready);
+    if (await _syncTopics(token) && !ready) {
+      await _sendTokenToServer(token, topics: true);
+    }
+  }
+
+  /// Bring this device's topics in line with the server's list; true when
+  /// the device is in all of them now.
+  Future<bool> _syncTopics(String token) async {
+    try {
+      final result = await _topics.reconcile(token);
+      debugPrint('NotificationService: topics ${result.name}');
+      return result == TopicSync.applied || result == TopicSync.upToDate;
+    } catch (e) {
+      debugPrint('NotificationService: could not reconcile topics: $e');
+      return false;
+    }
+  }
+
+  /// Reconcile the topics soon: after a follow, a mute, saved interests or a
+  /// notification switch (TopicChangeInterceptor). A burst of them -- five
+  /// follows from the club list -- is one reconcile, two seconds after the
+  /// last. Nothing while signed out or before the token is known.
+  void refreshTopics() {
+    _topicsSoon?.cancel();
+    _topicsSoon = Timer(const Duration(seconds: 2), () async {
+      final token = _fcmToken;
+      if (token == null || !await _isSignedIn()) return;
+      final wasReady = await _topics.readyFor(token);
+      if (await _syncTopics(token) && !wasReady) {
+        await _sendTokenToServer(token, topics: true);
+      }
+    });
   }
 
   /// Tell the server to forget this device's push token, while the session
@@ -167,6 +232,14 @@ class NotificationService {
   /// before [unregisterOnServer] could run), and the next person to sign in
   /// on this device registers a fresh one. Best effort -- never throws.
   Future<void> unregister() async {
+    _topicsSoon?.cancel();
+    // Out of the person's topics first: deleting the token ends them too,
+    // but a token that could not be deleted (offline) would keep them.
+    try {
+      await _topics.clear().timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('NotificationService: could not leave the topics: $e');
+    }
     _fcmToken = null;
     final deletion = _messaging.deleteToken().timeout(
           const Duration(seconds: 10),
@@ -235,24 +308,16 @@ class NotificationService {
   Future<void> _handleTokenRefresh(String token) async {
     _fcmToken = token;
     debugPrint('NotificationService: FCM token refreshed');
-    if (await _isSignedIn()) await _sendTokenToServer(token);
+    if (await _isSignedIn()) await _register(token);
   }
 
-  Future<void> _sendTokenToServer(String token) async {
-    try {
-      await APIService.instance.request(
-        '/user/fcm-token',
-        DioMethod.post,
-        param: {
-          'fcm_token': token,
-          'platform': Platform.isIOS ? 'ios' : 'android'
-        },
+  Future<void> _sendTokenToServer(String token, {required bool topics}) =>
+      registerPushTokenOnServer(
+        APIService.instance.dio,
+        token,
+        platform: Platform.isIOS ? 'ios' : 'android',
+        topics: topics,
       );
-      debugPrint('NotificationService: FCM token sent to server');
-    } catch (e) {
-      debugPrint('NotificationService: could not send the FCM token: $e');
-    }
-  }
 
   Future<String> _downloadAndSaveFile(String url, String fileName) async {
     final Directory directory = await getApplicationDocumentsDirectory();
@@ -265,6 +330,8 @@ class NotificationService {
 
   void _handleForegroundMessage(RemoteMessage message) {
     debugPrint('Received foreground message: ${message.messageId}');
+    // A second copy of a broadcast (the same push_id): shown once.
+    if (!dedupe.firstShow(message.data)) return;
 
     RemoteNotification? notification = message.notification;
     AndroidNotification? android = message.notification?.android;
@@ -318,6 +385,8 @@ class NotificationService {
   }
 
   void openFromData(Map<String, dynamic> data) {
+    // A tap on a second copy of a push already opened does nothing.
+    if (!dedupe.firstOpen(data)) return;
     final route = routeFor(data);
     final context = rootNavigatorKey.currentContext;
     if (route == null || context == null) return;
@@ -429,6 +498,30 @@ class NotificationService {
   Future<void> unsubscribeFromTopic(String topic) async {
     await _messaging.unsubscribeFromTopic(topic);
     debugPrint('Unsubscribed from topic: $topic');
+  }
+}
+
+/// `POST /user/fcm-token`: this device gets its person's pushes. With
+/// [topics], it also says it is in all of its person's FCM topics
+/// (`topics: 1`), and the server stops sending it broadcasts one by one; an
+/// older server ignores the field. Without, the body is what it always was.
+/// Never throws.
+@visibleForTesting
+Future<void> registerPushTokenOnServer(
+  Dio dio,
+  String token, {
+  required String platform,
+  required bool topics,
+}) async {
+  try {
+    await dio.post<dynamic>('/user/fcm-token', data: {
+      'fcm_token': token,
+      'platform': platform,
+      if (topics) 'topics': 1,
+    });
+    debugPrint('NotificationService: FCM token sent to server');
+  } catch (e) {
+    debugPrint('NotificationService: could not send the FCM token: $e');
   }
 }
 
