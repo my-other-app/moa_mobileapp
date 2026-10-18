@@ -21,6 +21,10 @@ enum LiveMode {
   /// Not started.
   idle,
 
+  /// The event is not live (as far as the last poll or snapshot says): the
+  /// poll as before streams, and no stream.
+  notLive,
+
   /// Opening the stream; nothing has come down it yet.
   connecting,
 
@@ -30,8 +34,8 @@ enum LiveMode {
   /// Waiting to open the stream again.
   reconnecting,
 
-  /// The stream is unavailable for now: polling, and trying the stream
-  /// again later.
+  /// The stream is unavailable for now (full, or failing): what was fetched
+  /// stands, and the stream is tried again later. Nothing on a timer.
   polling,
 
   /// The server has no stream (404, 405, 501, a 2xx that is not a stream):
@@ -50,10 +54,14 @@ enum LiveMode {
 }
 
 /// Keeps one view of an event's live room current: from the server's stream
-/// (`GET /events/{id}/live/stream?view=...`) when it has one, from the view's
-/// poll when it does not, as the live room's stream contract (LIVE_SSE)
-/// asks of every client:
+/// (`GET /events/{id}/live/stream?view=...`) while the event is live and the
+/// server has one, from the view's poll otherwise, as the live room's stream
+/// contract (LIVE_SSE) asks of every client:
 ///
+/// - The poll comes first -- the one fetch the page has always made, on
+///   [start] and on every [refresh] -- and the stream opens only while
+///   [shouldStream] says so of what the poll (or a snapshot) gave: the event
+///   is live. A snapshot saying it no longer is closes the stream.
 /// - Every `snapshot` is the poll's own body, parsed with the poll's parser
 ///   and handed to [onData]; its `id` is sent back as `Last-Event-ID` on every
 ///   reconnect, so a stream that missed nothing sends no snapshot again.
@@ -61,11 +69,13 @@ enum LiveMode {
 ///   in a row up to 30 s, each with 0-100 % jitter added.
 /// - An open that gets no snapshot or ping within 20 s has failed; a stream
 ///   silent for 45 s (three missed pings) is dropped and reopened.
-/// - Polls instead -- the view's poll, as before streams -- when the server
-///   has no stream (404/405/501/422, or a 2xx that is not one: tried once
-///   more after 10 minutes), when it is full (503 `LIVE_STREAM_FULL`, or
-///   429: tried again after `Retry-After`, 60 s without one), or after three
-///   failed attempts in a row (tried again after 5 minutes).
+/// - Falls back to the poll -- one fetch, never one on a timer, and none when
+///   the poll is what the page is showing already -- when the server has no
+///   stream (404/405/501/422, or a 2xx that is not one: tried once more after
+///   10 minutes), when it is full (503 `LIVE_STREAM_FULL`, or 429: tried
+///   again after `Retry-After`, 60 s without one), or after three failed
+///   attempts in a row (tried again after 5 minutes). A full server is
+///   shedding load: a hall of pages polling it would make that worse.
 /// - `gone`: closed and not reopened; one poll says what the page shows now.
 /// - In the background: closed after [hiddenGrace], reopened (with the last
 ///   id) when the app is back.
@@ -78,12 +88,13 @@ class LiveStreamClient<T> {
     required LivePoller<T> poll,
     required T? Function(Object? json) parse,
     required void Function(T value) onData,
-    this.pollEvery,
+    required bool Function(T value) shouldStream,
     Random? random,
   })  : _open = open,
         _poll = poll,
         _parse = parse,
         _onData = onData,
+        _shouldStream = shouldStream,
         _random = random ?? Random();
 
   /// The reconnect delay until the stream's own `retry:` arrives.
@@ -113,19 +124,11 @@ class LiveStreamClient<T> {
   /// How long the app may be in the background before the stream closes.
   static const hiddenGrace = Duration(seconds: 30);
 
-  /// How often to poll while the stream is unavailable for now (full, or
-  /// failing), once this server has shown it has streams. Null: poll once
-  /// on falling back, and not again until something else asks.
-  ///
-  /// A server that has never answered with a stream (today's, which answers
-  /// 404) is never polled on a timer: the page does exactly what it did
-  /// before streams.
-  final Duration? pollEvery;
-
   final LiveStreamOpener _open;
   final LivePoller<T> _poll;
   final T? Function(Object? json) _parse;
   final void Function(T value) _onData;
+  final bool Function(T value) _shouldStream;
   final Random _random;
 
   LiveMode _mode = LiveMode.idle;
@@ -135,14 +138,17 @@ class LiveStreamClient<T> {
   bool _visible = true;
   bool _paused = false;
 
+  /// What the last poll or snapshot said: the event is live.
+  bool _wantStream = false;
+
   String? _lastId;
   Duration _retry = defaultRetry;
   int _failures = 0;
-
-  /// This server has answered with a stream (or said it is full of them).
-  bool _streamsSeen = false;
-  bool _wasOff = false;
   bool _offRetried = false;
+
+  /// A poll has been made since the stream last delivered: what the page
+  /// shows is the poll's, so falling back needs no second fetch.
+  bool _polledSinceStream = false;
 
   /// The time to try the stream again came while the app was hidden.
   bool _retryDue = false;
@@ -158,7 +164,6 @@ class LiveStreamClient<T> {
   Timer? _silenceTimer;
   Timer? _reconnectTimer;
   Timer? _streamRetryTimer;
-  Timer? _pollTimer;
   Timer? _graceTimer;
   bool _pollInFlight = false;
 
@@ -167,17 +172,19 @@ class LiveStreamClient<T> {
   /// The `id` of the last snapshot, sent as `Last-Event-ID` on reconnect.
   String? get lastEventId => _lastId;
 
-  /// Opens the stream. Calling it again does nothing.
+  /// The page's first fetch of the room; the stream follows if it says the
+  /// event is live. Calling it again does nothing.
   void start() {
     if (_started || _closed) return;
     _started = true;
-    if (_paused) return; // opened when the app comes back
-    _connect();
+    _mode = LiveMode.notLive;
+    _pollOnce();
   }
 
-  /// The page loaded itself again (after a payment, a retry), which used to
-  /// mean polling the room again: a poll now, unless the stream is the
-  /// source. Starts the client the first time.
+  /// The page loaded itself again (after a payment, a retry), which has
+  /// always meant fetching the room again: a fetch now -- which opens the
+  /// stream if the event has gone live -- unless the stream is the source.
+  /// Starts the client the first time.
   void refresh() {
     if (_closed) return;
     if (!_started) {
@@ -213,10 +220,35 @@ class LiveStreamClient<T> {
     _teardown();
     _cancel(_reconnectTimer);
     _cancel(_streamRetryTimer);
-    _cancel(_pollTimer);
     _cancel(_graceTimer);
-    _reconnectTimer = _streamRetryTimer = _pollTimer = _graceTimer = null;
+    _reconnectTimer = _streamRetryTimer = _graceTimer = null;
     _mode = LiveMode.closed;
+  }
+
+  /// Opens or closes the stream for what the last poll or snapshot said.
+  void _reconsider() {
+    if (_closed || _paused || !_started) return;
+    if (_wantStream) {
+      if (_mode == LiveMode.notLive) _connect();
+      return;
+    }
+    switch (_mode) {
+      case LiveMode.connecting:
+      case LiveMode.streaming:
+      case LiveMode.reconnecting:
+      case LiveMode.polling:
+      case LiveMode.off:
+        // Not live (any more): no stream, and no retry of one.
+        _teardown();
+        _cancel(_reconnectTimer);
+        _cancel(_streamRetryTimer);
+        _reconnectTimer = _streamRetryTimer = null;
+        _retryDue = false;
+        _failures = 0;
+        _mode = LiveMode.notLive;
+      default:
+        break;
+    }
   }
 
   // ─── The stream ──────────────────────────────────────────────────────
@@ -228,6 +260,10 @@ class LiveStreamClient<T> {
     _cancel(_streamRetryTimer);
     _reconnectTimer = _streamRetryTimer = null;
     _retryDue = false;
+    if (!_wantStream) {
+      _mode = LiveMode.notLive;
+      return;
+    }
 
     final attempt = _attempt;
     final abort = Completer<void>();
@@ -248,7 +284,6 @@ class LiveStreamClient<T> {
       return;
     }
     if (response.isEventStream) {
-      _streamsSeen = true;
       _response = response;
       _frames = const SseDecoder().bind(response.body).listen(
             (frame) => _frame(attempt, frame),
@@ -267,7 +302,6 @@ class LiveStreamClient<T> {
         if (attempt != _attempt) return;
         if (code == 'LIVE_STREAM_FULL') {
           _teardown();
-          _streamsSeen = true;
           _fallBack(retryAfter ?? defaultRetryAfter);
         } else {
           _failed(attempt);
@@ -290,7 +324,7 @@ class LiveStreamClient<T> {
       // As the poll handles it -- the poll refreshes the session on a 401 --
       // then the stream again; counted, so it cannot go round for ever.
       _pollOnce();
-      _afterFailure(polled: true);
+      _afterFailure();
     } else {
       _afterFailure();
     }
@@ -330,9 +364,9 @@ class LiveStreamClient<T> {
     if (_mode == LiveMode.streaming) return;
     _mode = LiveMode.streaming;
     _failures = 0;
+    _polledSinceStream = false;
     _cancel(_openTimer);
-    _cancel(_pollTimer);
-    _openTimer = _pollTimer = null;
+    _openTimer = null;
   }
 
   /// The stream ended: by the server (its lifetime, a deploy), the network,
@@ -355,19 +389,16 @@ class LiveStreamClient<T> {
     _afterFailure();
   }
 
-  void _afterFailure({bool polled = false}) {
+  void _afterFailure() {
     _failures++;
     if (_failures >= failuresBeforePolling) {
       _failures = 0;
       _fallBack(retryAfterFailures);
       return;
     }
-    // The first failure in a row: the poll keeps the page current while the
-    // stream is tried again -- and gives a page that has just opened what
-    // it always had.
-    if (_failures == 1 && !polled && !(_pollTimer?.isActive ?? false)) {
-      _pollOnce();
-    }
+    // The first failure in a row after the stream had been the source: one
+    // fetch, so what was missed while it broke is not missed for long.
+    if (_failures == 1) _pollIfStale();
     _scheduleReconnect();
   }
 
@@ -396,8 +427,7 @@ class LiveStreamClient<T> {
     _teardown();
     _cancel(_reconnectTimer);
     _cancel(_streamRetryTimer);
-    _cancel(_pollTimer);
-    _reconnectTimer = _streamRetryTimer = _pollTimer = null;
+    _reconnectTimer = _streamRetryTimer = null;
     _mode = LiveMode.gone;
     // What the poll says now is what the page shows.
     _pollOnce();
@@ -424,12 +454,7 @@ class LiveStreamClient<T> {
 
   void _off() {
     _mode = LiveMode.off;
-    _cancel(_pollTimer);
-    _pollTimer = null;
-    // Once: the poll the page has always made. The ten-minute retry finding
-    // the stream still off changes nothing, so it polls nothing.
-    if (!_wasOff) _pollOnce();
-    _wasOff = true;
+    _pollIfStale();
     if (!_offRetried) {
       _offRetried = true;
       _scheduleStreamRetry(retryWhenOff);
@@ -438,17 +463,8 @@ class LiveStreamClient<T> {
 
   void _fallBack(Duration retryIn) {
     _mode = LiveMode.polling;
-    _startPolling();
+    _pollIfStale();
     _scheduleStreamRetry(retryIn);
-  }
-
-  void _startPolling() {
-    if (_pollTimer?.isActive ?? false) return;
-    _pollOnce();
-    final every = pollEvery;
-    if (every != null && _streamsSeen) {
-      _pollTimer = Timer.periodic(every, (_) => _pollOnce());
-    }
   }
 
   void _scheduleStreamRetry(Duration after) {
@@ -464,9 +480,15 @@ class LiveStreamClient<T> {
     });
   }
 
+  /// One fetch, unless the page is showing the poll's answer already.
+  void _pollIfStale() {
+    if (!_polledSinceStream) _pollOnce();
+  }
+
   void _pollOnce() {
     if (_closed || _pollInFlight) return;
     _pollInFlight = true;
+    _polledSinceStream = true;
     Future<T?>.sync(_poll).then(
       (value) {
         if (value != null) _deliver(value, fromPoll: true);
@@ -481,7 +503,9 @@ class LiveStreamClient<T> {
     if (_closed) return;
     // A poll answered after the stream took over is older than the stream.
     if (fromPoll && _mode == LiveMode.streaming) return;
+    _wantStream = _shouldStream(value);
     _onData(value);
+    _reconsider();
   }
 
   T? _decode(String data) {
@@ -501,29 +525,24 @@ class LiveStreamClient<T> {
     _modeBeforePause = _mode;
     _teardown();
     _cancel(_reconnectTimer);
-    _cancel(_pollTimer);
-    _reconnectTimer = _pollTimer = null;
+    _reconnectTimer = null;
     if (_started) _mode = LiveMode.paused;
   }
 
   void _resume() {
     _paused = false;
-    switch (_modeBeforePause) {
+    final before = _modeBeforePause;
+    switch (before) {
       case LiveMode.idle:
-        if (_started) {
-          _connect();
-        } else {
-          _mode = LiveMode.idle;
-        }
+        // Hidden before it started: [start] has set the mode since, if it ran.
+        break;
+      case LiveMode.notLive:
       case LiveMode.gone:
       case LiveMode.closed:
-        _mode = _modeBeforePause;
+        _mode = before;
       case LiveMode.off:
-        _mode = LiveMode.off;
-        if (_retryDue) _connect();
       case LiveMode.polling:
-        _mode = LiveMode.polling;
-        if (pollEvery != null && _streamsSeen) _startPolling();
+        _mode = before;
         if (_retryDue) _connect();
       case LiveMode.connecting:
       case LiveMode.streaming:
@@ -532,6 +551,8 @@ class LiveStreamClient<T> {
         _failures = 0;
         _connect();
     }
+    // A poll that came back while hidden may have said the event went live.
+    _reconsider();
   }
 
   static void _cancel(Timer? timer) => timer?.cancel();

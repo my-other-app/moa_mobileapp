@@ -322,21 +322,40 @@ void main() {
   });
 
   group('the live strip', () {
-    Map<String, dynamic> room(String banner) => {
-          'event': {'id': 7},
+    Map<String, dynamic> room(String banner, {String status = 'live'}) => {
+          'event': {'id': 7, 'name': 'Hack Night', 'status': status},
           'banner': {'kind': 'room', 'text': banner},
           'poll': null,
           'questions': <dynamic>[],
           'quiz': {'live': false, 'title': null},
         };
 
-    Uint8List snapshot(String banner, {required int id}) =>
-        Uint8List.fromList(utf8.encode(
-            'id: $id\nevent: snapshot\ndata: ${jsonEncode(room(banner))}\n\n'));
+    Uint8List snapshot(String banner,
+            {required int id, String status = 'live'}) =>
+        Uint8List.fromList(utf8.encode('id: $id\nevent: snapshot\n'
+            'data: ${jsonEncode(room(banner, status: status))}\n\n'));
 
     testWidgets(
-        'today\'s server, whose stream is a 404: the one poll the page always '
-        'made, and nothing on a timer', (tester) async {
+        'an event that is not live: the one fetch the page always made, and '
+        'no stream', (tester) async {
+      final body = StreamController<Uint8List>();
+      api
+        ..on('GET', '/events/info/7', _info())
+        ..on('GET', '/events/7/live',
+            room('Doors open at 6', status: 'published'))
+        ..stream('/events/7/live/stream', () => body.stream);
+      await _pump(tester);
+
+      expect(find.text('Doors open at 6'), findsOneWidget);
+      expect(api.sent('GET', '/events/7/live'), hasLength(1));
+      await tester.pump(const Duration(hours: 1));
+      expect(api.sent('GET', '/events/7/live/stream'), isEmpty);
+      expect(api.sent('GET', '/events/7/live'), hasLength(1));
+    });
+
+    testWidgets(
+        'a live event on today\'s server, whose stream is a 404: the one fetch '
+        'the page always made, and nothing on a timer', (tester) async {
       api
         ..on('GET', '/events/info/7', _info())
         ..on('GET', '/events/7/live', room('Demos move to Lab 3B'));
@@ -364,16 +383,19 @@ void main() {
       api.on('GET', '/events/info/7', _info());
       await _pump(tester);
       expect(find.text('LIVE NOW'), findsNothing);
+      expect(api.sent('GET', '/events/7/live/stream'), isEmpty);
     });
 
-    testWidgets('a server that streams: the strip follows it, with no poll',
-        (tester) async {
+    testWidgets(
+        'a live event on a server that streams: the strip follows the stream '
+        'after the first fetch', (tester) async {
       final body = StreamController<Uint8List>();
       api
         ..on('GET', '/events/info/7', _info())
+        ..on('GET', '/events/7/live', room('Doors open at 6'))
         ..stream('/events/7/live/stream', () => body.stream);
       await _pump(tester);
-      expect(find.text('LIVE NOW'), findsNothing);
+      expect(find.text('Doors open at 6'), findsOneWidget);
 
       body.add(Uint8List.fromList(utf8.encode('retry: 3000\n\n')));
       body.add(snapshot('Demos move to Lab 3B', id: 1));
@@ -387,7 +409,16 @@ void main() {
 
       final sent = api.sent('GET', '/events/7/live/stream').single;
       expect(sent.queryParameters, {'view': 'room'});
-      expect(api.sent('GET', '/events/7/live'), isEmpty);
+      expect(api.sent('GET', '/events/7/live'), hasLength(1));
+
+      // The event ends: the stream closes, and nothing takes its place.
+      body.add(snapshot('Thanks for coming', id: 3, status: 'closed'));
+      await _settle(tester);
+      expect(find.text('Thanks for coming'), findsOneWidget);
+      expect(body.hasListener, isFalse);
+      await tester.pump(const Duration(hours: 1));
+      expect(api.sent('GET', '/events/7/live/stream'), hasLength(1));
+      expect(api.sent('GET', '/events/7/live'), hasLength(1));
     });
 
     testWidgets(
@@ -396,6 +427,7 @@ void main() {
       final bodies = <StreamController<Uint8List>>[];
       api
         ..on('GET', '/events/info/7', _info())
+        ..on('GET', '/events/7/live', room('Doors open at 6'))
         ..stream('/events/7/live/stream', () {
           final body = StreamController<Uint8List>();
           bodies.add(body);
@@ -418,13 +450,14 @@ void main() {
       expect(streams.last.headers['Last-Event-ID'], '41');
       expect(find.text('Demos move to Lab 3B'), findsOneWidget,
           reason: 'the strip stays while the stream reopens');
-      expect(api.sent('GET', '/events/7/live'), isEmpty);
+      expect(api.sent('GET', '/events/7/live'), hasLength(1));
     });
 
     testWidgets('leaving the page closes the stream', (tester) async {
       final body = StreamController<Uint8List>();
       api
         ..on('GET', '/events/info/7', _info())
+        ..on('GET', '/events/7/live', room('Doors open at 6'))
         ..stream('/events/7/live/stream', () => body.stream);
       await _pump(tester);
       body.add(snapshot('Demos', id: 1));

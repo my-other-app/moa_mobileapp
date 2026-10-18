@@ -157,9 +157,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       onData: (feed) {
         if (mounted) setState(() => live = feed);
       },
-      // The room's poll interval, used only while a server that streams
-      // cannot take this stream for now (full, or failing).
-      pollEvery: const Duration(seconds: 5),
+      // As the website: a stream only while the event is happening.
+      shouldStream: (feed) => feed.isEventLive,
     );
     WidgetsBinding.instance.addObserver(this);
     _fetchData();
@@ -274,8 +273,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       await _fetchAgenda();
       await _fetchCatalog();
       if (!mounted) return;
-      // Starts the room's stream the first time; after that, polls again
-      // only when the stream is not what keeps the strip current.
+      // The room fetched, as on every load; the stream follows while the
+      // event is live, and while it streams there is nothing to fetch.
       _live.refresh();
     } catch (e) {
       if (!mounted) return;
@@ -431,11 +430,13 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// The live room: a banner, a poll or a quiz up right now earns a strip.
   LiveFeed live = LiveFeed.empty;
 
-  /// Keeps [live] current: the room's stream (`view=room`) while the page
-  /// is open and the app in front, the room's poll when the server has no
-  /// stream -- today's server answers 404, and the page then makes the one
-  /// poll it always made. A failed poll leaves the strip as it was: the
-  /// room is optional; the event itself has loaded.
+  /// Keeps [live] current. The page fetches the room as it always has (on
+  /// load and on each reload); while that -- or a snapshot -- says the event
+  /// is live (`event.status`), the room's stream (`view=room`) keeps the
+  /// strip current as long as the page is open and the app in front. Before
+  /// the event, after it, and on a server without streams (today's answers
+  /// 404) the one fetch is all there is. A failed fetch leaves the strip as
+  /// it was: the room is optional; the event itself has loaded.
   late final LiveStreamClient<LiveFeed> _live;
 
   /// The room is the web page, so voting, polls and the quiz are the same on every phone.
