@@ -1,6 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:finnet/core/network/api_exception.dart';
 
+/// [message], unless it is empty or reads like a stack trace rather than a
+/// sentence ("DioException [connection error]: ...", "Instance of
+/// 'TypeError'", "type 'Null' is not a subtype of ...") -- those are for logs.
+@visibleForTesting
+String? readableErrorMessage(String? message) {
+  final text = message?.trim() ?? '';
+  if (text.isEmpty) return null;
+  final lower = text.toLowerCase();
+  const technical = [
+    'exception',
+    'instance of',
+    'errno',
+    'stack trace',
+    "type '",
+    'null check',
+    'is not a subtype',
+    '<html',
+  ];
+  if (technical.any(lower.contains)) return null;
+  return text;
+}
+
 /// A reusable error view widget that displays an error message with a retry button.
 ///
 /// This widget provides a consistent error UI across the app with:
@@ -43,8 +65,13 @@ class ErrorView extends StatelessWidget {
 
     // Detect error type from message if no exception provided
     final errorType = exception?.type ?? _detectErrorType(message);
-    final errorMessage =
-        exception?.userMessage ?? _getFriendlyMessage(errorType);
+    // The caller's message when it is written for people -- a repository's
+    // "Couldn't load your blocked list." used to be replaced by the generic
+    // "Something went wrong" -- and the friendly copy for the type when
+    // there is none, or when it is a raw exception string.
+    final errorMessage = exception?.userMessage ??
+        readableErrorMessage(message) ??
+        _getFriendlyMessage(errorType);
 
     if (compact) {
       return _buildCompactError(context, errorMessage, theme);

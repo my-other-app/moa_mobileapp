@@ -12,3 +12,16 @@ String? clubShareUrl({String? slug, int? id}) {
   if (id != null && id > 0) return '$publicSiteUrl/clubs/$id';
   return null;
 }
+
+/// The public page for an event: `https://myotherapp.in/events/{slug}`, or
+/// `/events/{id}` for an event without a slug (the site redirects the id
+/// form). Null with neither.
+///
+/// Not called eventShareUrl: the events feature has one of that name
+/// (events/presentation/utils/event_feed.dart) that always has an id.
+String? eventPageUrl({String? slug, int? id}) {
+  final s = slug?.trim() ?? '';
+  if (s.isNotEmpty) return '$publicSiteUrl/events/${Uri.encodeComponent(s)}';
+  if (id != null && id > 0) return '$publicSiteUrl/events/$id';
+  return null;
+}
