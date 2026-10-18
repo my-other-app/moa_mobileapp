@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/shared/utils/image_url.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 
 class PinnedClubsSection extends StatelessWidget {
   final List<dynamic> pinnedClubs;
@@ -45,11 +47,13 @@ class PinnedClubsSection extends StatelessWidget {
                 },
                 child: Column(
                   children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundColor: Colors.white,
-                      backgroundImage:
-                          NetworkImage(club['logo']['thumbnail'] ?? ''),
+                    // A club with no logo has `logo: null`; reading
+                    // `club['logo']['thumbnail']` threw and took the whole
+                    // clubs tab down with it.
+                    ClubLogo(
+                      url: imageUrlFrom(club['logo']),
+                      size: 48,
+                      circle: true,
                     ),
                     const SizedBox(height: 4),
                     SizedBox(

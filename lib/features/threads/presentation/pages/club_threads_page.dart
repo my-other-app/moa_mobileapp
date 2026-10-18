@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/features/threads/domain/entities/moderation.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
 import 'package:finnet/features/threads/presentation/providers/threads_provider.dart';
+import 'package:finnet/features/threads/presentation/widgets/moderation_actions.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_feedback.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
@@ -114,6 +116,12 @@ class _ThreadList extends ConsumerWidget {
           onTap: () => _open(context, thread),
           onLike: () => _like(context, ref, thread),
           onVote: (optionId) => _vote(context, ref, thread, optionId),
+          onReport: () => reportContent(
+            context,
+            ref,
+            target: ReportTarget.thread(thread.id),
+            what: 'post',
+          ),
         );
       },
     );

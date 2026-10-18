@@ -32,6 +32,9 @@ class ThreadCard extends StatelessWidget {
   /// Open the club. Null where the club is already on screen.
   final VoidCallback? onClubTap;
 
+  /// Report the post. When set, the header has a "…" menu offering it.
+  final VoidCallback? onReport;
+
   /// Show the whole text rather than the first few lines.
   final bool expanded;
 
@@ -43,6 +46,7 @@ class ThreadCard extends StatelessWidget {
     this.onVote,
     this.onComments,
     this.onClubTap,
+    this.onReport,
     this.expanded = false,
   });
 
@@ -72,7 +76,11 @@ class ThreadCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _Header(thread: thread, onClubTap: onClubTap),
+              _Header(
+                thread: thread,
+                onClubTap: onClubTap,
+                onReport: onReport,
+              ),
               if (body.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 Text(
@@ -112,8 +120,9 @@ class ThreadCard extends StatelessWidget {
 class _Header extends StatelessWidget {
   final Thread thread;
   final VoidCallback? onClubTap;
+  final VoidCallback? onReport;
 
-  const _Header({required this.thread, this.onClubTap});
+  const _Header({required this.thread, this.onClubTap, this.onReport});
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +168,39 @@ class _Header extends StatelessWidget {
           const SizedBox(width: 8),
           const _PinnedChip(),
         ],
+        if (onReport != null) _PostMenu(onReport: onReport!),
       ],
+    );
+  }
+}
+
+enum _PostAction { report }
+
+/// The "…" in a post's header.
+class _PostMenu extends StatelessWidget {
+  final VoidCallback onReport;
+
+  const _PostMenu({required this.onReport});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 40,
+      height: 40,
+      child: PopupMenuButton<_PostAction>(
+        key: const ValueKey('thread-more'),
+        tooltip: 'More options',
+        padding: EdgeInsets.zero,
+        icon: const Icon(Icons.more_horiz, color: ThreadCard.ink),
+        color: Colors.white,
+        onSelected: (_) => onReport(),
+        itemBuilder: (_) => const [
+          PopupMenuItem(
+            value: _PostAction.report,
+            child: Text('Report post'),
+          ),
+        ],
+      ),
     );
   }
 }

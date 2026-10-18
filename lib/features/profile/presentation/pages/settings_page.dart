@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/common/widgets/custom_option_tile.dart';
@@ -7,12 +8,12 @@ import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/auth/presentation/widgets/email_verification_banner.dart';
-import 'package:finnet/features/home/presentation/providers/bottom_nav_provider.dart';
+import 'package:finnet/features/profile/presentation/pages/settings/blocked_users_page.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
-import 'package:finnet/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
+import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/confirmation_dialog.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:finnet/features/main/presentation/pages/main_shell.dart';
 
 /// Settings page - fully migrated to Riverpod (no Bloc).
 class SettingsPage extends ConsumerStatefulWidget {
@@ -23,10 +24,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  // Toggles for switches
-  bool _eventNotification = true;
-  bool _clubUpdates = false;
-
   @override
   void initState() {
     super.initState();
@@ -104,70 +101,73 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             const SizedBox(height: 8),
           ],
 
+          // Event Notification and Club Updates switches used to sit here.
+          // They changed nothing -- the server keeps no notification
+          // preferences -- so they are gone until it does. The system
+          // settings turn notifications off.
+
           CustomOptionTile(
+            key: const ValueKey('settings-blocked-users'),
             verticalSpacing: 16,
-            leadingImageName: AssetResources.eventnotification,
-            title: const Text('Event Notification'),
-            onTap: () {},
-            trailing: Switch(
-              value: _eventNotification,
-              onChanged: (bool newValue) {
-                setState(() => _eventNotification = newValue);
-              },
+            leadingIcon: Icons.block,
+            title: const Text('Blocked Users'),
+            subtitle: const Text(
+              'People whose comments you have hidden',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const BlockedUsersPage(),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
           ),
           const Divider(height: 0),
 
+          // Contact Support: the team inbox, not a personal WhatsApp.
           CustomOptionTile(
-            verticalSpacing: 16,
-            leadingImageName: AssetResources.clubsupdate,
-            title: const Text('Club Updates'),
-            onTap: () {},
-            trailing: Switch(
-              value: _clubUpdates,
-              onChanged: (bool newValue) {
-                setState(() => _clubUpdates = newValue);
-              },
-            ),
-          ),
-          const Divider(height: 0),
-          const Divider(height: 0),
-
-          // Contact Support Row
-          CustomOptionTile(
+            key: const ValueKey('settings-support'),
             verticalSpacing: 16,
             leadingImageName: AssetResources.contsctsupport,
             title: const Text('Contact Support'),
-            onTap: () async {
-              if (await canLaunchUrl(Uri.parse("https://wa.me/917025662019"))) {
-                await launchUrl(
-                  Uri.parse("https://wa.me/917025662019"),
-                  mode: LaunchMode.externalApplication,
-                );
-              }
-            },
+            subtitle: const Text(
+              supportEmail,
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            onTap: _emailSupport,
           ),
           const Divider(height: 0),
 
-          // Terms and Conditions Row
           CustomOptionTile(
+            key: const ValueKey('settings-website'),
+            verticalSpacing: 16,
+            leadingIcon: Icons.language,
+            title: const Text('Website'),
+            subtitle: const Text(
+              'myotherapp.in',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            onTap: () => _open(websiteUri),
+          ),
+          const Divider(height: 0),
+
+          // The policies live on the website, so the copy people read is
+          // the one we keep current.
+          CustomOptionTile(
+            key: const ValueKey('settings-terms'),
             verticalSpacing: 16,
             leadingImageName: AssetResources.termsandcondition,
             title: const Text('Terms and Conditions'),
-            onTap: () {
-              context.push('/profile/settings/terms');
-            },
+            onTap: () => _open(termsUri),
           ),
           const Divider(height: 0),
 
-          // Privacy Policy Row
           CustomOptionTile(
+            key: const ValueKey('settings-privacy'),
             verticalSpacing: 16,
             leadingImageName: AssetResources.privacypolicy,
             title: const Text('Privacy Policy'),
-            onTap: () {
-              context.push('/profile/settings/privacy');
-            },
+            onTap: () => _open(privacyPolicyUri),
           ),
           const Divider(height: 0),
 
@@ -183,6 +183,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ],
       ),
     );
+  }
+
+  void _snack(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Open [uri] in the browser, or say it could not be.
+  Future<void> _open(Uri uri) async {
+    final opened = await ref.read(linkLauncherProvider)(uri);
+    if (!opened && mounted) {
+      _snack("Couldn't open ${uri.host}${uri.path}. Try again later.");
+    }
+  }
+
+  /// Write to support. Without a mail app, the address is copied instead,
+  /// so there is still a way to reach us.
+  Future<void> _emailSupport() async {
+    final opened = await ref.read(linkLauncherProvider)(supportEmailUri);
+    if (opened || !mounted) return;
+    await Clipboard.setData(const ClipboardData(text: supportEmail));
+    if (mounted) _snack('No email app found. $supportEmail is copied.');
   }
 
   void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
@@ -204,16 +227,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             // Use Riverpod for logout
             ref.read(profileProvider.notifier).clearProfile();
             await ref.read(authStateProvider.notifier).logout();
-            ref.read(bottomNavIndexProvider.notifier).resetToHome();
+            ref.read(navigationIndexProvider.notifier).state = 0;
 
-            if (context.mounted) {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (context) => OnboardingInitialPage(),
-                ),
-                (route) => false,
-              );
-            }
+            // The router takes them to sign-in once the session is gone; pushing
+            // onboarding here as well made the screen flicker.
           } else {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(

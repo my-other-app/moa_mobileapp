@@ -90,7 +90,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   TextStyle get _labelTextStyle => const TextStyle(
         color: Color(0xFF1E1E1E),
         fontSize: 12,
-        fontFamily: 'DM Sans',
+        fontFamily: 'DMSans',
         fontWeight: FontWeight.w400,
       );
 
@@ -209,7 +209,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             hintStyle: const TextStyle(
               color: Color(0xFFB4B4B4),
               fontSize: 16,
-              fontFamily: 'DM Sans',
+              fontFamily: 'DMSans',
               fontWeight: FontWeight.w400,
             ),
             prefixIcon: const Padding(
@@ -354,27 +354,10 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             Navigator.of(context).pop();
           }
         }
-      } on DioException catch (e) {
-        if (mounted) {
-          // Extract actual error message from response
-          String errorMessage = 'Failed to update profile';
-          if (e.response?.data != null) {
-            final data = e.response!.data;
-            if (data is Map && data['message'] != null) {
-              errorMessage = data['message'];
-            } else if (data is Map && data['detail'] != null) {
-              errorMessage = data['detail'].toString();
-            } else if (data is String) {
-              errorMessage = data;
-            }
-          } else {
-            errorMessage = e.message ?? 'Network error occurred';
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage)),
-          );
-        }
       } catch (e) {
+        // APIService.request throws an ApiException for every failed call
+        // (never the DioException a dead branch here used to catch);
+        // extractErrorMessage reads the server's message off it.
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -401,7 +384,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       hintStyle: const TextStyle(
         color: Color(0xFFB4B4B4),
         fontSize: 16,
-        fontFamily: 'DM Sans',
+        fontFamily: 'DMSans',
         fontWeight: FontWeight.w400,
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
@@ -423,7 +406,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   TextStyle get _inputTextStyle => const TextStyle(
         color: Color(0xFF1E1E1E),
         fontSize: 16,
-        fontFamily: 'DM Sans',
+        fontFamily: 'DMSans',
         fontWeight: FontWeight.w400,
       );
 
@@ -433,7 +416,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       style: const TextStyle(
         color: Color(0xFFB4B4B4),
         fontSize: 16,
-        fontFamily: 'DM Sans',
+        fontFamily: 'DMSans',
         fontWeight: FontWeight.w400,
       ),
     );

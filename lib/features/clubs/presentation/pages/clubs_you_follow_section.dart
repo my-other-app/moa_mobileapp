@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:finnet/shared/utils/image_url.dart';
 import 'club_list_tile.dart';
 
 class ClubsYouFollowSection extends StatelessWidget {
@@ -25,7 +26,7 @@ class ClubsYouFollowSection extends StatelessWidget {
             return ClubListTile(
               clubId: club['id'],
               clubName: club['name'] ?? 'name',
-              imageUrl: club['logo']?['thumbnail'] ?? '',
+              imageUrl: imageUrlFrom(club['logo']) ?? '',
               clubSlug: club['slug'] ?? '',
               isPinned: club['is_pinned'] ?? false,
               isHidden: club['is_hidden'] ?? false,

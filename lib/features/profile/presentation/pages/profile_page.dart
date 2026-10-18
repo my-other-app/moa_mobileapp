@@ -3,13 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/common/widgets/custom_option_tile.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
-import 'package:finnet/features/home/presentation/providers/bottom_nav_provider.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
-import 'package:finnet/features/auth/presentation/pages/onboarding_initial_page.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/shared/widgets/confirmation_dialog.dart';
+import 'package:finnet/features/main/presentation/pages/main_shell.dart';
 
 /// Profile Page - exact same UI as original, using Riverpod for state.
 class ProfilePage extends ConsumerStatefulWidget {
@@ -235,16 +234,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         // Clear profile and auth state using Riverpod
         ref.read(profileProvider.notifier).clearProfile();
         await ref.read(authStateProvider.notifier).logout();
-        ref.read(bottomNavIndexProvider.notifier).resetToHome();
+        ref.read(navigationIndexProvider.notifier).state = 0;
 
-        if (context.mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => OnboardingInitialPage(),
-            ),
-            (route) => false,
-          );
-        }
+        // The router takes them to sign-in once the session is gone; pushing
+        // onboarding here as well made the screen flicker.
       },
     );
   }

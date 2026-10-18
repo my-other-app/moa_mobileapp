@@ -1,8 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:finnet/shared/utils/image_url.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/shared/widgets/event_card.dart'
+    show PaymentDueBadge, registrationAwaitsPayment;
 import 'package:finnet/shared/widgets/event_poster_image.dart';
+
+/// `/events/list` for a search, narrowed to the tab it was started from.
+///
+/// The query is encoded: typed as-is, "C++ & AI" became `search=C++ ` plus a
+/// stray `& AI` parameter, and a `#` cut the URL short.
+@visibleForTesting
+String eventSearchEndpoint(String query, {String filterType = 'for_you'}) {
+  final q = Uri.encodeQueryComponent(query);
+  final endpoint = StringBuffer('/events/list?search=$q&offset=0&limit=20');
+  switch (filterType) {
+    case 'following':
+      endpoint.write('&is_following=true');
+    case 'registered':
+      endpoint.write('&is_registered=true&is_ended=false');
+    case 'past':
+      endpoint.write('&is_registered=true&is_ended=true');
+    // 'for_you' - no additional filter, shows all events
+  }
+  return endpoint.toString();
+}
+
+/// `/clubs/list` for a search, the query encoded.
+@visibleForTesting
+String clubSearchEndpoint(String query) =>
+    '/clubs/list?search=${Uri.encodeQueryComponent(query)}&offset=0&limit=20';
 
 /// Search delegate for EVENTS ONLY - used on home and events pages.
 /// Supports tab-based filtering (for_you, following, registered, past).
@@ -174,22 +202,34 @@ class EventSearchDelegate extends SearchDelegate<String> {
           : null,
       title: Text(event['name'] ?? 'Unnamed Event'),
       subtitle: Text(event['club']?['name'] ?? ''),
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.yellow.shade100,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          event['category']?['name'] ?? '',
-          style: const TextStyle(fontSize: 12),
-        ),
-      ),
+      // A registration whose fee is still owed says so, as its card does.
+      trailing: _awaitsPayment(event)
+          ? const PaymentDueBadge()
+          : Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.yellow.shade100,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                event['category']?['name'] ?? '',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
       onTap: () {
         close(context, '');
         context.push('/events/${event['id']}');
       },
     );
+  }
+
+  /// Registered (by the tab searched from, or by the result itself) and
+  /// still owing the fee. Not on the past tab: an event that is over can no
+  /// longer be paid for.
+  bool _awaitsPayment(dynamic event) {
+    if (event is! Map || !registrationAwaitsPayment(event)) return false;
+    if (filterType == 'past') return false;
+    return filterType == 'registered' || event['is_registered'] == true;
   }
 
   Future<void> _search(String q) async {
@@ -198,24 +238,8 @@ class EventSearchDelegate extends SearchDelegate<String> {
     _error = null;
 
     try {
-      // Build query params based on filter type
-      String endpoint = '/events/list?search=$q&offset=0&limit=20';
-
-      switch (filterType) {
-        case 'following':
-          endpoint += '&is_following=true';
-          break;
-        case 'registered':
-          endpoint += '&is_registered=true&is_ended=false';
-          break;
-        case 'past':
-          endpoint += '&is_registered=true&is_ended=true';
-          break;
-        // 'for_you' - no additional filter, shows all events
-      }
-
       final response = await APIService.instance.request(
-        endpoint,
+        eventSearchEndpoint(q, filterType: filterType),
         DioMethod.get,
       );
       _events = response.data['items'] ?? [];
@@ -378,7 +402,7 @@ class ClubSearchDelegate extends SearchDelegate<String> {
 
   Widget _buildClubTile(BuildContext context, dynamic club) {
     return ListTile(
-      leading: _clubAvatar(club['logo']?['thumbnail']),
+      leading: _clubAvatar(imageUrlFrom(club['logo'])),
       title: Text(club['name'] ?? 'Unnamed Club'),
       subtitle: Text('${club['followers_count'] ?? 0} followers'),
       onTap: () {
@@ -402,7 +426,7 @@ class ClubSearchDelegate extends SearchDelegate<String> {
 
     try {
       final response = await APIService.instance.request(
-        '/clubs/list?search=$q&offset=0&limit=20',
+        clubSearchEndpoint(q),
         DioMethod.get,
       );
       _clubs = response.data['items'] ?? [];

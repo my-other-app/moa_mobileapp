@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/event_cover.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/core/utils/hours.dart';
 
 /// Page to display club's events (past or upcoming)
 class ClubEventsPage extends StatefulWidget {
@@ -281,14 +283,19 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
           return EventCard(
             clubSlug: event['club']?['slug'] ?? '',
             // Use club logo from widget if event's club logo is missing
-            orgImage: event['club']?['logo']?['thumbnail'] ?? widget.clubLogo,
+            orgImage: (event['club'] is Map
+                    ? imageUrlFrom(event['club']['logo'])
+                    : null) ??
+                widget.clubLogo,
             title: event['name'] ?? 'No Title',
             organizer: event['club']?['name'] ?? widget.clubName,
             tags: [
               event['category']?['name'] ?? '',
               event['is_online'] == true ? 'Online' : 'Offline',
               event['has_fee'] == true ? 'Paid' : 'Free',
-              '${event['duration']} Hours'
+              // Left out rather than shown as "null Hours".
+              if (clubEventLengthLabel(event['duration']) case final length?)
+                length,
             ],
             onTap: () {},
             poster: event['poster'],
@@ -308,4 +315,16 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       ),
     );
   }
+}
+
+/// "2 Hours", "2.5 Hours", "1 Hour"; null when the length is missing, not a
+/// number, or not positive -- the card then leaves the tag out.
+// TODO: use eventLengthLabel from events/presentation/utils/event_feed.dart
+// (engineer B's branch) once both are merged; this is a copy of it.
+@visibleForTesting
+String? clubEventLengthLabel(Object? hours) {
+  final num? value =
+      hours is num ? hours : (hours is String ? num.tryParse(hours) : null);
+  if (value == null || value.isNaN || value <= 0) return null;
+  return hoursLabel(value);
 }

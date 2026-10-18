@@ -7,6 +7,8 @@ import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_events_page.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:finnet/shared/utils/image_url.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
@@ -139,7 +141,7 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
         builder: (context) => ClubEventsPage(
           clubId: widget.id,
           clubName: name ?? 'Club',
-          clubLogo: logo?['thumbnail'] ?? '',
+          clubLogo: imageUrlFrom(logo) ?? '',
           isPastEvents: isPast,
         ),
       ),
@@ -181,21 +183,8 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Club logo using thumbnail from logo map if available.
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: Image.network(
-                    (logo != null &&
-                            logo!.isNotEmpty &&
-                            logo!['thumbnail'] != null &&
-                            (logo!['thumbnail'] as String).isNotEmpty)
-                        ? logo!['thumbnail']
-                        : 'https://picsum.photos/200',
-                    width: 56,
-                    height: 56,
-                    fit: BoxFit.cover,
-                  ),
-                ),
+                // The club's logo; a placeholder when it has none.
+                ClubLogo(url: imageUrlFrom(logo), size: 56),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -242,46 +231,21 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
               ],
             ),
             const SizedBox(height: 16),
-            // Buttons: JOIN THE TEAM and FOLLOW.
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      // Implement "Join the Team" logic.
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: const BorderSide(
-                        width: 1.5,
-                        color: Color(0xFF2C333D),
-                      ),
-                    ),
-                    child: const Text(
-                      'JOIN THE TEAM',
-                      style: TextStyle(
-                        fontSize: 24,
-                        color: Color(0xFF2C333D),
-                      ),
-                    ),
-                  ),
+            // FOLLOW, the full width. "JOIN THE TEAM" sat beside it with
+            // nothing behind it -- a dead button is a review rejection.
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _toggleFollow,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2C333D),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _toggleFollow,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2C333D),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: Text(
-                      userData?['is_following'] == true ? 'UNFOLLOW' : 'FOLLOW',
-                      style: const TextStyle(fontSize: 24),
-                    ),
-                  ),
+                child: Text(
+                  userData?['is_following'] == true ? 'UNFOLLOW' : 'FOLLOW',
+                  style: const TextStyle(fontSize: 24),
                 ),
-              ],
+              ),
             ),
             const SizedBox(height: 30),
             // Description section with Read More/Show Less.
@@ -808,13 +772,17 @@ class ClubInfo {
       id: (json['id'] as num?)?.toInt() ?? 0,
       name: json['name'] ?? '',
       slug: json['slug'] ?? '',
-      logo: json['logo'] ?? {},
+      // A dict normally; null for a club with no logo, and a bare URL on
+      // older rows. Kept as a map either way so the page never casts.
+      logo: _logoMap(json['logo']),
       locationName: json['location_name'] ?? '',
       locationLink: json['location_link'] ?? '',
       about: json['about'] ?? '',
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       totalRatings: (json['total_ratings'] as num?)?.toInt() ?? 0,
-      socials: json['socials'] ?? {},
+      socials: json['socials'] is Map
+          ? Map<String, dynamic>.from(json['socials'])
+          : <String, dynamic>{},
       interests: (json['interests'] as List<dynamic>?)
               ?.map((e) => Interest.fromJson(e))
               .toList() ??
@@ -822,10 +790,19 @@ class ClubInfo {
       followersCount: (json['followers_count'] as num?)?.toInt() ?? 0,
       contactPhone: json['contact_phone'] ?? '',
       contactEmail: json['contact_email'] ?? '',
-      userData: json['user_data'] ?? {},
+      userData: json['user_data'] is Map
+          ? Map<String, dynamic>.from(json['user_data'])
+          : <String, dynamic>{},
       org: Org.fromJson(json['org'] ?? {}),
     );
   }
+}
+
+/// The club's logo as a map, whatever shape the server sent it in.
+Map<String, dynamic> _logoMap(dynamic value) {
+  if (value is Map) return Map<String, dynamic>.from(value);
+  final url = imageUrlFrom(value);
+  return url == null ? <String, dynamic>{} : {'thumbnail': url, 'original': url};
 }
 
 class Interest {

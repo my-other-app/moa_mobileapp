@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:finnet/shared/utils/image_url.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
@@ -320,11 +321,7 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
           return ExploreMoreClubCard(
             name: club['name'] ?? '',
             followersCount: club['followers_count'] ?? 0,
-            logo: club['logo'] != null &&
-                    club['logo'] is Map &&
-                    club['logo']['thumbnail'] != null
-                ? club['logo']['thumbnail']
-                : '',
+            logo: imageUrlFrom(club['logo']) ?? '',
             interests: club['interests'] != null
                 ? (club['interests'] as List)
                     .map((interest) => interest['name'] ?? '')

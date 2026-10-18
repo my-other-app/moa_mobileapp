@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/themes/app_colors.dart';
-
-import '../../../core/resources/asset_resources.dart';
-import 'svg_icon.dart';
+import 'package:finnet/shared/utils/share_links.dart';
+import 'package:finnet/shared/widgets/svg_icon.dart';
+import 'package:share_plus/share_plus.dart';
 
 class CustomTab extends StatelessWidget {
   final String tabTitle;
@@ -35,6 +36,9 @@ class ClubTabHeader extends StatefulWidget {
   final String clubName;
   final String clubSlug;
 
+  /// The club's id: what the share link falls back to without a slug.
+  final int? clubId;
+
   /// Pages (scrollable) associated with each tab.
   final List<Widget> tabPages;
 
@@ -44,6 +48,7 @@ class ClubTabHeader extends StatefulWidget {
     required this.tabPages,
     required this.clubName,
     required this.clubSlug,
+    this.clubId,
   });
 
   @override
@@ -87,12 +92,17 @@ class _ClubTabHeaderState extends State<ClubTabHeader>
                 style: const TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
               ),
               actions: [
-                IconButton(
-                  icon: SvgIcon(svgIconPath: AssetResources.share),
-                  onPressed: () {
-                    // TODO: Implement share functionality
-                  },
-                ),
+                if (_shareUrl != null)
+                  // A Builder so the button has a context of its own: the
+                  // share sheet is anchored to it on iPad.
+                  Builder(
+                    builder: (buttonContext) => IconButton(
+                      key: const ValueKey('club-share'),
+                      tooltip: 'Share club',
+                      icon: SvgIcon(svgIconPath: AssetResources.share),
+                      onPressed: () => _share(buttonContext),
+                    ),
+                  ),
               ],
               centerTitle: true,
 
@@ -136,6 +146,33 @@ class _ClubTabHeaderState extends State<ClubTabHeader>
         ),
       ),
     );
+  }
+
+  String? get _shareUrl =>
+      clubShareUrl(slug: widget.clubSlug, id: widget.clubId);
+
+  /// Share the club's public page.
+  Future<void> _share(BuildContext buttonContext) async {
+    final url = _shareUrl;
+    if (url == null) return;
+    final name = widget.clubName.trim();
+    final box = buttonContext.findRenderObject() as RenderBox?;
+    try {
+      await Share.share(
+        name.isEmpty ? url : '$name on MyOtherApp: $url',
+        subject: name.isEmpty ? null : name,
+        // iPad presents the sheet as a popover, which needs somewhere to
+        // point; without an origin it throws instead of opening.
+        sharePositionOrigin:
+            box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+      );
+    } catch (e) {
+      debugPrint('Club share failed: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't open sharing. Try again.")),
+      );
+    }
   }
 
   @override

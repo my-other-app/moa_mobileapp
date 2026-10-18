@@ -1,5 +1,5 @@
 name: finnet
-description: "A community managemnt platform."
+description: "MyOtherApp: events and clubs for students."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.1+2
+version: 1.1.0+3
 
 environment:
   sdk: ^3.6.0
@@ -128,27 +128,25 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   fonts:
+    # DM Sans ships here as one variable font (axes: opsz, wght). The engine
+    # maps TextStyle.fontWeight onto the wght axis of a variable font, so
+    # every weight from 100 to 900 renders true from this single file -- a
+    # w700 lays out exactly as FontVariation('wght', 700) does. Listing the
+    # same file under nine `weight:` entries selected nothing, so it is
+    # listed once.
     - family: DMSans
       fonts:
         - asset: assets/fonts/DMSans-VariableFont_opsz,wght.ttf
-          weight: 100
+    # The same files under the names the code also uses ('DM Sans' in 92
+    # places, 'Bebas Neue' in 10). Undeclared, those fell back to the
+    # system font.
+    - family: DM Sans
+      fonts:
         - asset: assets/fonts/DMSans-VariableFont_opsz,wght.ttf
-          weight: 200
-        - asset: assets/fonts/DMSans-VariableFont_opsz,wght.ttf
-          weight: 300
-        - asset: assets/fonts/DMSans-VariableFont_opsz,wght.ttf
-          weight: 400
-        - asset: assets/fonts/DMSans-VariableFont_opsz,wght.ttf
-          weight: 500
-        - asset: assets/fonts/DMSans-VariableFont_opsz,wght.ttf
-          weight: 600
-        - asset: assets/fonts/DMSans-VariableFont_opsz,wght.ttf
-          weight: 700
-        - asset: assets/fonts/DMSans-VariableFont_opsz,wght.ttf
-          weight: 800
-        - asset: assets/fonts/DMSans-VariableFont_opsz,wght.ttf
-          weight: 900
     - family: BebasNeue
+      fonts:
+        - asset: assets/fonts/BebasNeue-Regular.ttf
+    - family: Bebas Neue
       fonts:
         - asset: assets/fonts/BebasNeue-Regular.ttf
 

@@ -105,4 +105,29 @@ void main() {
       expect(event.prizeAmount, 5000.0);
     });
   });
+
+  group('ClubModel survives the logos the server actually sends', () {
+    test('no logo is no logo, not a crash', () {
+      final club = ClubModel.fromJson(const {
+        'id': 5,
+        'name': 'LetMeGoo',
+        'slug': 'letmegoo',
+        'logo': null,
+      }).toEntity();
+
+      expect(club.name, 'LetMeGoo');
+      expect(club.logo, isNull);
+    });
+
+    test('a bare URL from an older row is kept as the thumbnail', () {
+      final club = ClubModel.fromJson(const {
+        'id': 5,
+        'name': 'LetMeGoo',
+        'slug': 'letmegoo',
+        'logo': 'https://example.test/old.png',
+      }).toEntity();
+
+      expect(club.logo?.thumbnail, 'https://example.test/old.png');
+    });
+  });
 }

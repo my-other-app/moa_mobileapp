@@ -197,7 +197,7 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 14,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),
@@ -208,7 +208,7 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
                     style: TextStyle(
                       color: Colors.grey[700],
                       fontSize: 13,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w300,
                     ),
                     maxLines: 2,
@@ -221,7 +221,7 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
                     style: TextStyle(
                       color: Colors.grey[500],
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w300,
                     ),
                   ),

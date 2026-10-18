@@ -32,6 +32,7 @@ class ClubIndividualPage extends StatelessWidget {
       ],
       clubName: clubname,
       clubSlug: clubSlug,
+      clubId: clubId,
     );
   }
 }

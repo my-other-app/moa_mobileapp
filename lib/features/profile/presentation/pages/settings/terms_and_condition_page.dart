@@ -34,7 +34,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -44,7 +44,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -54,7 +54,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -63,7 +63,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -73,7 +73,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -83,7 +83,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -92,7 +92,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -101,7 +101,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -111,7 +111,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -120,7 +120,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -129,7 +129,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -139,7 +139,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -148,7 +148,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -157,7 +157,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -167,7 +167,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -176,7 +176,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -186,7 +186,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -195,7 +195,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -205,7 +205,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -214,7 +214,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -223,7 +223,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -233,7 +233,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -242,7 +242,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -252,7 +252,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -261,7 +261,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -271,7 +271,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -280,7 +280,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -290,7 +290,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -299,7 +299,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -309,7 +309,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -319,7 +319,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -328,7 +328,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -338,7 +338,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -348,7 +348,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -357,7 +357,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -367,7 +367,7 @@ class TermsAndConditionPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 12,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w400,
                     ),
                   ),

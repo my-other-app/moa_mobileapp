@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
 
@@ -65,15 +66,8 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Club logo with fallback.
-                  Image.network(
-                    (widget.logo.isNotEmpty)
-                        ? widget.logo
-                        : 'https://picsum.photos/200',
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                  ),
+                  // The club's logo; a placeholder when it has none.
+                  ClubLogo(url: widget.logo, size: 40, radius: 0),
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,36 +117,20 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
                 }).toList(),
               ),
               const SizedBox(height: 24),
-              // Buttons: "Join the Team" and Follow/Unfollow.
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () {
-                        // TODO: Implement "Join the Team" logic.
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF2C333D),
-                        side: const BorderSide(color: Color(0xFF2C333D)),
-                      ),
-                      child: const Text('JOIN THE TEAM'),
-                    ),
+              // Follow/Unfollow, the full width. A "Join the Team" button
+              // used to share the row with nothing behind it.
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _toggleFollow,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2C333D),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _toggleFollow,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF2C333D),
-                      ),
-                      child: Text(
-                        _isFollowing ? 'UNFOLLOW' : 'FOLLOW',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
+                  child: Text(
+                    _isFollowing ? 'UNFOLLOW' : 'FOLLOW',
+                    style: const TextStyle(color: Colors.white),
                   ),
-                ],
+                ),
               ),
             ],
           ),
