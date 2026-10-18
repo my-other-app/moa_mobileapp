@@ -1,18 +1,28 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/shared/widgets/rating_stars.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/agenda_model.dart';
 import 'package:finnet/common/models/events/live_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
+import 'package:finnet/features/events/domain/registration_status.dart';
+import 'package:finnet/features/events/presentation/finish_payment.dart';
+import 'package:finnet/features/events/presentation/utils/event_errors.dart';
+import 'package:finnet/features/events/presentation/utils/event_feed.dart';
+import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
 import 'package:finnet/features/events/presentation/widgets/merch_picker.dart';
+import 'package:finnet/features/events/presentation/widgets/registration_feedback.dart';
+import 'package:finnet/features/payments/checkout.dart';
+import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/themes/app_colors.dart';
-import 'package:finnet/core/utils/error_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
@@ -22,7 +32,7 @@ import 'package:finnet/features/events/presentation/pages/networking_page.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/core/config/app_config.dart';
 
-class IndividualEventPage extends StatefulWidget {
+class IndividualEventPage extends ConsumerStatefulWidget {
   final int eventId;
   final String? initialStatus;
   final String? initialTicketUrl;
@@ -37,10 +47,11 @@ class IndividualEventPage extends StatefulWidget {
   });
 
   @override
-  State<IndividualEventPage> createState() => _IndividualEventPageState();
+  ConsumerState<IndividualEventPage> createState() =>
+      _IndividualEventPageState();
 }
 
-class _IndividualEventPageState extends State<IndividualEventPage> {
+class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
   // State variables for event fields.
   int? id;
   String? name;
@@ -71,6 +82,15 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
   // Registration/Attendance status
   bool isRegistered = false;
   bool isAttended = false;
+
+  /// Registered for a paid event and not paid: no ticket until they pay.
+  bool awaitingPayment = false;
+
+  /// A payment for the registration is under way.
+  bool _paying = false;
+
+  /// Opened from "Finish payment" on a list: start paying once loaded, once.
+  bool _finishPaymentOnLoad = false;
   String? ticketUrl;
   String? certificateUrl;
   double? userRating;
@@ -100,9 +120,21 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
       } else if (widget.initialStatus == 'attended') {
         isAttended = true;
         certificateUrl = widget.initialCertificateUrl;
+      } else if (widget.initialStatus == finishPaymentStatus ||
+          widget.initialStatus == RegistrationStatus.awaitingPayment.name) {
+        isRegistered = true;
+        awaitingPayment = true;
+        _finishPaymentOnLoad = widget.initialStatus == finishPaymentStatus;
       }
     }
     _fetchData();
+  }
+
+  RegistrationStatus get _status {
+    if (isAttended) return RegistrationStatus.attended;
+    if (awaitingPayment) return RegistrationStatus.awaitingPayment;
+    if (isRegistered) return RegistrationStatus.registered;
+    return RegistrationStatus.none;
   }
 
   Future<void> _fetchData() async {
@@ -111,9 +143,14 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
         '/events/info/${widget.eventId}',
         DioMethod.get,
       );
+      final Map<String, dynamic> raw = res.data is Map<String, dynamic>
+          ? res.data as Map<String, dynamic>
+          : const <String, dynamic>{};
 
       // Parse the JSON response into an EventInfo model.
-      EventInfo eventInfo = EventInfo.fromJson(res.data);
+      EventInfo eventInfo = EventInfo.fromJson(raw);
+      final status = registrationStatusFrom(raw, carried: _status);
+      if (!mounted) return;
 
       // Update state with the parsed values.
       setState(() {
@@ -122,7 +159,8 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
         slug = eventInfo.slug;
         poster = eventInfo.poster;
         eventDateTime = eventInfo.eventDateTime;
-        duration = eventInfo.duration;
+        // EventInfo reads a missing or zero length as 0; the page shows "—".
+        duration = eventInfo.duration > 0 ? eventInfo.duration : null;
         locationName = eventInfo.locationName;
         locationLink = eventInfo.locationLink;
         hasFee = eventInfo.hasFee;
@@ -131,7 +169,9 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
         prizeAmount = eventInfo.prizeAmount;
         isOnline = eventInfo.isOnline;
         regStartDate = eventInfo.regStartDate;
-        regEndDate = eventInfo.regEndDate;
+        // `reg_enddate` is optional. EventInfo reads a missing one as "now",
+        // which closed registration for every event without a deadline.
+        regEndDate = raw['reg_enddate'] == null ? null : eventInfo.regEndDate;
         club = eventInfo.club;
         category = eventInfo.category;
         interests = eventInfo.interests;
@@ -145,13 +185,12 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
 
         // New registration/attendance fields
         // IMPORTANT: Use API values if available, otherwise preserve navigation values
-        // This ensures status from EventCard navigation is not lost
-        if (eventInfo.isRegistered == true) {
-          isRegistered = true;
-        }
-        if (eventInfo.isAttended == true) {
-          isAttended = true;
-        }
+        // This ensures status from EventCard navigation is not lost.
+        // `is_paid: false` is a registration still waiting for its payment:
+        // it has no ticket to view yet.
+        isAttended = status == RegistrationStatus.attended;
+        isRegistered = status != RegistrationStatus.none;
+        awaitingPayment = status == RegistrationStatus.awaitingPayment;
         // Only update URLs if API provides them
         if (eventInfo.ticketUrl != null && eventInfo.ticketUrl!.isNotEmpty) {
           ticketUrl = eventInfo.ticketUrl;
@@ -178,18 +217,141 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
       if (regEndDate != null && !registrationClosed) {
         _startTimer();
       }
+      if (_finishPaymentOnLoad) {
+        _finishPaymentOnLoad = false;
+        if (awaitingPayment && !registrationClosed) unawaited(_finishPayment());
+      }
       await _fetchAgenda();
       await _fetchCatalog();
       await _fetchLive();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        errorMessage = extractErrorMessage(
+        errorMessage = readableError(
           e,
-          defaultMessage: 'Could not load this event.',
+          fallback: 'Could not load this event.',
         );
         isLoading = false;
       });
     }
+  }
+
+  /// Registers again with the same details: for a signed-in person's unpaid
+  /// registration the server answers with that registration and what it owes.
+  Future<Map<String, dynamic>> _registerAgain(
+    int eventId,
+    Map<String, dynamic> body,
+  ) async {
+    final response = await APIService.instance.request(
+      '/events/registration/$eventId/register',
+      DioMethod.post,
+      param: body,
+    );
+    final data = response.data;
+    return data is Map<String, dynamic> ? data : const <String, dynamic>{};
+  }
+
+  /// Pays for this event's unpaid registration, then refreshes the event so
+  /// the ticket shows.
+  Future<void> _finishPayment() async {
+    if (_paying) return;
+    setState(() => _paying = true);
+    try {
+      var profile = ref.read(profileProvider).profile;
+      if (profile == null) {
+        await ref.read(profileProvider.notifier).loadProfile();
+        profile = ref.read(profileProvider).profile;
+      }
+      final phone = (profile?.phone?.isNotEmpty ?? false)
+          ? profile!.phone
+          : profile?.whatsapp;
+      final repository = ref.read(paymentRepositoryProvider);
+      final outcome = await FinishPayment(
+        register: _registerAgain,
+        pay: ({
+          required int eventId,
+          required String registrationId,
+          required String name,
+          required String email,
+          required String phone,
+        }) =>
+            RegistrationCheckout.pay(
+          repository: repository,
+          eventId: eventId,
+          registrationId: registrationId,
+          name: name,
+          email: email,
+          phone: phone,
+        ),
+      ).run(
+        eventId: id ?? widget.eventId,
+        questions: additionalDetails,
+        name: profile?.fullName ?? '',
+        email: profile?.email ?? '',
+        phone: phone,
+      );
+      if (!mounted) return;
+
+      switch (outcome.result) {
+        case FinishPaymentResult.paid:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Payment received. Your ticket is ready.')),
+          );
+          // Paid, whatever an older server (one without `is_paid`) can say;
+          // the refresh brings the ticket.
+          setState(() => awaitingPayment = false);
+          await _fetchData();
+        case FinishPaymentResult.notCompleted:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Payment not completed. Your registration is saved — tap Finish payment to try again.'),
+            ),
+          );
+        case FinishPaymentResult.needsForm:
+          await _openRegistrationForm();
+        case FinishPaymentResult.refused:
+          await showRegistrationRefusal(context, outcome.refusal!);
+          await _fetchData();
+        case FinishPaymentResult.failed:
+          showPaymentFailure(context, outcome.failure!);
+          await _fetchData();
+      }
+    } finally {
+      if (mounted) setState(() => _paying = false);
+    }
+  }
+
+  /// The registration form, then whatever it was closed with: straight to
+  /// the ticket or the payment when a refusal offered it. The event is
+  /// fetched again either way -- a registration may now exist.
+  Future<void> _openRegistrationForm() async {
+    final result = await context.push<Object?>(
+      '/events/${id ?? widget.eventId}/register',
+      extra: {'additionalDetails': additionalDetails},
+    );
+    if (!mounted) return;
+    await _fetchData();
+    if (!mounted) return;
+    if (result == RegistrationAction.viewTicket && isRegistered) {
+      if (awaitingPayment) return;
+      _openTicket();
+    } else if (result == RegistrationAction.finishPayment && awaitingPayment) {
+      await _finishPayment();
+    }
+  }
+
+  /// Shares the event's page on the website.
+  Future<void> _shareEvent() async {
+    final link = eventShareUrl(id: id ?? widget.eventId, slug: slug);
+    final box = context.findRenderObject() as RenderBox?;
+    await Share.share(
+      name == null || name!.isEmpty ? link : '$name\n$link',
+      subject: name,
+      sharePositionOrigin:
+          box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+    );
   }
 
   /// The agenda is public and optional: an event without one, or a failed
@@ -866,9 +1028,9 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
 
   /// Check if current time is within the networking window (event start → end + 1hr).
   bool _isWithinNetworkingWindow() {
-    if (eventDateTime == null || duration == null) return false;
+    if (eventDateTime == null) return false;
     final now = DateTime.now();
-    final eventEnd = eventDateTime!.add(hoursToDuration(duration!));
+    final eventEnd = eventDateTime!.add(hoursToDuration(duration ?? 0));
     final windowEnd = eventEnd.add(const Duration(hours: 1));
     return now.isAfter(eventDateTime!) && now.isBefore(windowEnd);
   }
@@ -1048,7 +1210,10 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to submit rating: ${extractErrorMessage(e)}'),
+            content: Text(readableError(
+              e,
+              fallback: "We couldn't submit your rating. Please try again.",
+            )),
             backgroundColor: Colors.red,
           ),
         );
@@ -1106,7 +1271,13 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
           category?.name ?? 'Event Details',
           style: const TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
         ),
-        // Share button removed - event page doesn't need it since users can share from bottom sheet or event card
+        actions: [
+          IconButton(
+            tooltip: 'Share event',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: _shareEvent,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0).copyWith(
@@ -1523,20 +1694,6 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                         ),
                       ],
                     ),
-                    const Spacer(),
-                    // Right side: View All Reviews link
-                    TextButton(
-                      onPressed: () {
-                        // TODO: Navigate to all reviews page
-                      },
-                      child: Text(
-                        'View All Reviews',
-                        style: TextStyle(
-                          color: Theme.of(context).primaryColor,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -1586,13 +1743,76 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
       return _buildCertificateBottomSheet(context);
     }
 
-    // Priority 2: Check if user is registered (upcoming event they registered for)
+    // Priority 2: Registered for a paid event and not paid: no ticket yet.
+    if (awaitingPayment) {
+      return _buildFinishPaymentBottomSheet(context);
+    }
+
+    // Priority 3: Check if user is registered (upcoming event they registered for)
     if (isRegistered) {
       return _buildTicketBottomSheet(context);
     }
 
     // Default: Show registration UI
     return _buildRegistrationBottomSheet(context);
+  }
+
+  /// Bottom sheet for a registration still waiting for its payment.
+  ///
+  /// Registering again is how the payment is reached, and the server refuses
+  /// it once registration has closed, so then there is nothing to tap.
+  Widget _buildFinishPaymentBottomSheet(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF3E0),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              registrationClosed
+                  ? 'Registration closed before your payment went through'
+                  : 'Registered — finish the payment to get your ticket',
+              textAlign: TextAlign.left,
+              style: const TextStyle(
+                fontWeight: FontWeight.normal,
+                fontSize: 12,
+                color: Color(0xFF8A4B00),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed:
+                  (_paying || registrationClosed) ? null : _finishPayment,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2C333D),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: _paying
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : Text(registrationClosed
+                      ? 'REGISTRATION CLOSED'
+                      : 'FINISH PAYMENT'),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
   }
 
   /// Bottom sheet for registration state
@@ -1603,8 +1823,8 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Only show the countdown container if registration is not closed.
-          if (!registrationClosed)
+          // The countdown, when there is a deadline and it hasn't passed.
+          if (!registrationClosed && regEndDate != null)
             Container(
               width: double.infinity,
               height: 25,
@@ -1614,9 +1834,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                regEndDate != null
-                    ? countdownText
-                    : 'Registration details not available',
+                countdownText,
                 textAlign: TextAlign.left,
                 style: const TextStyle(
                   fontWeight: FontWeight.normal,
@@ -1631,11 +1849,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
             child: FilledButton(
               onPressed: (isLoading || registrationClosed)
                   ? null
-                  : () {
-                      context.push('/events/${id ?? 0}/register', extra: {
-                        'additionalDetails': additionalDetails,
-                      });
-                    },
+                  : _openRegistrationForm,
               child: Text(isLoading
                   ? 'LOADING...'
                   : registrationClosed
@@ -1645,6 +1859,41 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
           ),
           const SizedBox(height: 10),
         ],
+      ),
+    );
+  }
+
+  /// Opens the ticket in the in-app viewer.
+  void _openTicket() {
+    final url = ticketUrl;
+    if (url == null || url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ticket is being generated. Please check back later.'),
+        ),
+      );
+      return;
+    }
+    // Extract ticket ID from URL
+    final String ticketId;
+    if (url.startsWith('/api/v1/events/tickets/')) {
+      ticketId = url.replaceFirst('/api/v1/events/tickets/', '');
+    } else if (url.contains('/tickets/')) {
+      ticketId = url.split('/tickets/').last;
+    } else {
+      ticketId = url;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TicketViewPage(
+          ticketId: ticketId,
+          eventName: name ?? 'Event',
+          eventDateTime: eventDateTime,
+          locationName: locationName,
+          durationHours: duration,
+          ticketUrl: url,
+        ),
       ),
     );
   }
@@ -1680,42 +1929,7 @@ class _IndividualEventPageState extends State<IndividualEventPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: () {
-                if (ticketUrl != null && ticketUrl!.isNotEmpty) {
-                  // Extract ticket ID from URL
-                  String extractedTicketId = '';
-                  if (ticketUrl!.startsWith('/api/v1/events/tickets/')) {
-                    extractedTicketId =
-                        ticketUrl!.replaceFirst('/api/v1/events/tickets/', '');
-                  } else if (ticketUrl!.contains('/tickets/')) {
-                    extractedTicketId = ticketUrl!.split('/tickets/').last;
-                  } else {
-                    extractedTicketId = ticketUrl!;
-                  }
-
-                  // Navigate to in-app ticket viewer
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TicketViewPage(
-                        ticketId: extractedTicketId,
-                        eventName: name ?? 'Event',
-                        eventDateTime: eventDateTime,
-                        locationName: locationName,
-                        durationHours: duration,
-                        ticketUrl: ticketUrl,
-                      ),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                          'Ticket is being generated. Please check back later.'),
-                    ),
-                  );
-                }
-              },
+              onPressed: _openTicket,
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF2C333D),
                 padding: const EdgeInsets.symmetric(vertical: 14),
