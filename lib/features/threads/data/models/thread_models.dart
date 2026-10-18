@@ -29,6 +29,9 @@ String? _str(dynamic value) {
 
 bool _bool(dynamic value) => value is bool ? value : value == 'true';
 
+String? _nonEmpty(String? value) =>
+    (value == null || value.isEmpty) ? null : value;
+
 Map<String, dynamic>? _map(dynamic value) =>
     value is Map ? Map<String, dynamic>.from(value) : null;
 
@@ -274,12 +277,14 @@ class ThreadPageModel {
   }
 }
 
-/// `CommentOut`: `{id, body, author: {id, name, is_club}, created_at}`.
+/// `CommentOut`: `{id, body, author: {id, name, avatar, is_club},
+/// created_at}`.
 class ThreadCommentModel {
   final String id;
   final String body;
   final int? authorId;
   final String authorName;
+  final ImageUrls? authorAvatar;
   final bool isClub;
   final DateTime createdAt;
 
@@ -288,6 +293,7 @@ class ThreadCommentModel {
     required this.body,
     this.authorId,
     required this.authorName,
+    this.authorAvatar,
     this.isClub = false,
     required this.createdAt,
   });
@@ -301,6 +307,7 @@ class ThreadCommentModel {
       authorId: _int(author?['id']),
       // The server's own fallback for a follower with no name.
       authorName: name.isEmpty ? 'A follower' : name,
+      authorAvatar: _image(author?['avatar']),
       isClub: _bool(author?['is_club']),
       createdAt: _date(json['created_at']),
     );
@@ -311,6 +318,7 @@ class ThreadCommentModel {
         body: body,
         authorId: authorId,
         authorName: authorName,
+        authorAvatarUrl: _nonEmpty(authorAvatar?.thumbnailUrl),
         isClub: isClub,
         createdAt: createdAt,
       );

@@ -328,6 +328,29 @@ void main() {
       expect(comment.isClub, isTrue);
     });
 
+    test("reads the author's avatar, and who can be blocked", () {
+      final person = ThreadCommentModel.fromJson(const {
+        'id': 'c4',
+        'body': 'hi',
+        'author': {
+          'id': 7,
+          'name': 'Rahul',
+          'avatar': {'thumbnail': 'https://img/t.png', 'original': 'o'},
+        },
+      }).toEntity();
+      final club = ThreadCommentModel.fromJson(const {
+        'id': 'c5',
+        'body': 'hi',
+        'author': {'id': 9, 'name': 'Club', 'is_club': true, 'avatar': null},
+      }).toEntity();
+
+      expect(person.authorAvatarUrl, 'https://img/t.png');
+      expect(person.authorCanBeBlocked, isTrue);
+      expect(club.authorAvatarUrl, isNull);
+      // The club's reply speaks for the club: report it, don't block it.
+      expect(club.authorCanBeBlocked, isFalse);
+    });
+
     test('a missing author is a nameless follower nobody can delete', () {
       final comment = ThreadCommentModel.fromJson(const {
         'id': 'c3',
@@ -338,6 +361,7 @@ void main() {
       expect(comment.authorId, isNull);
       expect(comment.isClub, isFalse);
       expect(comment.isBy(null), isFalse);
+      expect(comment.authorCanBeBlocked, isFalse);
     });
   });
 
