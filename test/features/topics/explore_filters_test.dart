@@ -1,3 +1,4 @@
+import 'package:finnet/features/clubs/presentation/pages/clubs_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/explore_more_clubs_page.dart';
 import 'package:finnet/features/events/presentation/pages/explore_events_page.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
@@ -5,6 +6,7 @@ import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../events/events_fakes.dart';
 import 'topic_fixtures.dart';
@@ -220,6 +222,63 @@ void main() {
 
       expect(lastQuery('/clubs/list'), {'interest_ids': '16'});
       expect(find.text('No clubs in Music yet'), findsOneWidget);
+    });
+  });
+
+  group('the Clubs tab', () {
+    Future<List<Object?>> pumpTab(WidgetTester tester) async {
+      final extras = <Object?>[];
+      final router = GoRouter(routes: [
+        GoRoute(path: '/', builder: (_, __) => const ClubsPage()),
+        GoRoute(
+          path: '/clubs/explore',
+          builder: (_, state) {
+            extras.add(state.extra);
+            return const Scaffold(body: Text('explore'));
+          },
+        ),
+      ]);
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ));
+      await _settle(tester);
+      return extras;
+    }
+
+    testWidgets('a topic chip opens Explore Clubs on that topic',
+        (tester) async {
+      api
+        ..on('GET', '/clubs/list?is_pinned=true', _page(const []))
+        ..on('GET', '/clubs/list?is_following=true', _page(const []))
+        ..on('GET', '/interests/topics', contractTopicsBody);
+      final extras = await pumpTab(tester);
+
+      expect(
+        tester.getSemantics(find.byKey(const ValueKey('topic-chip-arts'))),
+        isSemantics(label: 'Arts topic, 5 clubs', isSelected: false),
+      );
+      await tester.tap(find.byKey(const ValueKey('topic-chip-arts')));
+      await _settle(tester);
+
+      expect(extras.single, {'organizationId': null, 'topic': 'arts'});
+    });
+
+    testWidgets('on the one-topic server, its interests instead',
+        (tester) async {
+      api
+        ..on('GET', '/clubs/list?is_pinned=true', _page(const []))
+        ..on('GET', '/clubs/list?is_following=true', _page(const []))
+        ..on('GET', '/interests/list', productionListBody);
+      final extras = await pumpTab(tester);
+
+      expect(find.byKey(const ValueKey('topic-chip-arts')), findsNothing);
+      await tester.tap(find.text('Photography'));
+      await _settle(tester);
+
+      expect(extras.single, {'organizationId': null, 'interestId': 15});
     });
   });
 }
