@@ -80,7 +80,7 @@ The target stack is already chosen correctly. The problem is that the old stack 
 side by side and new code picks whichever is nearest.
 
 ### 3.1 Two networking stacks, and the UI uses the wrong one
-- `lib/core/network/` is the real stack: `dio_client.dart` + 4 interceptors (auth/refresh, cert pinning, error, logging).
+- `lib/core/network/` is the real stack: `dio_client.dart` + 3 interceptors (auth/refresh, error, logging); the no-op cert-pinning one was removed in Phase 0.
 - `lib/core/api/api_helper.dart` wraps it as an `APIService` singleton — and **this is the one in use**:
   **28 files** import `core/api/`, with **54 `APIService.instance` call sites**.
 - **22 of those files are in `presentation/` or `shared/widgets/`** — UI widgets issuing HTTP directly, with no
