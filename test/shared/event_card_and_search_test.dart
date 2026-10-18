@@ -1,6 +1,6 @@
 import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_events_page.dart';
-import 'package:finnet/shared/utils/share_links.dart';
+import 'package:finnet/features/events/presentation/utils/event_feed.dart';
 import 'package:finnet/shared/widgets/custom_search_delegate.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
@@ -16,6 +16,8 @@ Future<List<(String, Object?)>> _pumpCard(
   WidgetTester tester, {
   EventCardStatus status = EventCardStatus.none,
   String eventSlug = 'build-a-robot',
+  int eventId = 7,
+  VoidCallback? onFinishPayment,
 }) async {
   final pushed = <(String, Object?)>[];
   final router = GoRouter(routes: [
@@ -32,11 +34,12 @@ Future<List<(String, Object?)>> _pumpCard(
             tags: const ['Workshop', 'Offline', 'Paid'],
             onTap: () {},
             orgImage: '',
-            eventId: 7,
+            eventId: eventId,
             clubId: 1,
             clubSlug: 'tinkerhub-cet',
             eventSlug: eventSlug,
             status: status,
+            onFinishPayment: onFinishPayment,
           ),
         ),
       ),
@@ -88,8 +91,7 @@ void main() {
           ),
         ),
       ));
-      expect(find.text('Please check your internet connection and try again.'),
-          findsOneWidget);
+      expect(find.text(ApiException.networkMessage), findsOneWidget);
       expect(find.text('ignored'), findsNothing);
     });
   });
@@ -128,6 +130,34 @@ void main() {
 
       expect(pushed.single.$1, '/events/7');
       expect(pushed.single.$2, {'status': 'finishPayment'});
+    });
+
+    testWidgets("a list's own FINISH PAYMENT runs instead of the push",
+        (tester) async {
+      var finished = 0;
+      final pushed = await _pumpCard(
+        tester,
+        status: EventCardStatus.awaitingPayment,
+        onFinishPayment: () => finished++,
+      );
+      final button = find.byKey(const ValueKey('event-finish-payment'));
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      expect(finished, 1);
+      expect(pushed, isEmpty);
+    });
+
+    testWidgets('tapping the title of an unpaid card says so to the page',
+        (tester) async {
+      final pushed =
+          await _pumpCard(tester, status: EventCardStatus.awaitingPayment);
+
+      await tester.tap(find.text('Build a robot'));
+      await tester.pumpAndSettle();
+
+      expect((pushed.single.$2 as Map)['status'], 'awaitingPayment');
     });
 
     testWidgets('a paid registration keeps VIEW TICKET', (tester) async {
@@ -180,11 +210,11 @@ void main() {
           contains('https://myotherapp.in/events/7'));
     });
 
-    test('the event link helper', () {
-      expect(eventPageUrl(slug: 'a b', id: 7),
-          'https://myotherapp.in/events/a%20b');
-      expect(eventPageUrl(slug: null, id: 7), 'https://myotherapp.in/events/7');
-      expect(eventPageUrl(slug: '', id: 0), isNull);
+    testWidgets('an event with neither a slug nor an id has no share button',
+        (tester) async {
+      await _pumpCard(tester, eventSlug: '', eventId: 0);
+
+      expect(find.byKey(const ValueKey('event-share')), findsNothing);
     });
   });
 
@@ -217,14 +247,34 @@ void main() {
     });
   });
 
-  group("a club's event length tag", () {
-    test('is left out rather than "null Hours"', () {
-      expect(clubEventLengthLabel(null), isNull);
-      expect(clubEventLengthLabel('soon'), isNull);
-      expect(clubEventLengthLabel(0), isNull);
-      expect(clubEventLengthLabel(2), '2 Hours');
-      expect(clubEventLengthLabel(2.5), '2.5 Hours');
-      expect(clubEventLengthLabel('1'), '1 Hour');
+  group("a club's events", () {
+    Map<String, dynamic> withClub(Map<String, dynamic> event) =>
+        clubEventWithClub(event,
+            clubId: 9, clubName: 'IEDC CET', clubLogo: 'https://x/logo.png');
+
+    test("an event without its club is drawn as the page's club", () {
+      final card = eventCardFromJson(withClub({'id': 3, 'name': 'Demo'}));
+      expect(card.clubId, 9);
+      expect(card.organizer, 'IEDC CET');
+      expect(card.orgImage, 'https://x/logo.png');
+    });
+
+    test("the event's own club wins, and a missing logo falls back", () {
+      final card = eventCardFromJson(withClub({
+        'id': 3,
+        'club': {'id': 4, 'name': 'Other', 'slug': 'other', 'logo': null},
+      }));
+      expect(card.clubId, 4);
+      expect(card.organizer, 'Other');
+      expect(card.clubSlug, 'other');
+      expect(card.orgImage, 'https://x/logo.png');
+    });
+
+    test('the length tag is left out rather than "null Hours"', () {
+      expect(eventCardFromJson(withClub({'id': 3})).tags,
+          isNot(contains(contains('null'))));
+      expect(eventCardFromJson(withClub({'id': 3, 'duration': 2.5})).tags,
+          contains('2.5 Hours'));
     });
   });
 }

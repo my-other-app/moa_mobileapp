@@ -1,5 +1,7 @@
-/// The public site's address. Club, event and policy pages all live under it.
-const publicSiteUrl = 'https://myotherapp.in';
+import 'package:finnet/core/config/app_config.dart';
+
+// Links to the public site (AppConfig.publicSiteUrl). An event's page is
+// `eventShareUrl` in features/events/presentation/utils/event_feed.dart.
 
 /// The public page for a club: `https://myotherapp.in/clubs/{slug}`.
 ///
@@ -8,20 +10,9 @@ const publicSiteUrl = 'https://myotherapp.in';
 /// null, so the caller can leave the share button out.
 String? clubShareUrl({String? slug, int? id}) {
   final s = slug?.trim() ?? '';
-  if (s.isNotEmpty) return '$publicSiteUrl/clubs/${Uri.encodeComponent(s)}';
-  if (id != null && id > 0) return '$publicSiteUrl/clubs/$id';
-  return null;
-}
-
-/// The public page for an event: `https://myotherapp.in/events/{slug}`, or
-/// `/events/{id}` for an event without a slug (the site redirects the id
-/// form). Null with neither.
-///
-/// Not called eventShareUrl: the events feature has one of that name
-/// (events/presentation/utils/event_feed.dart) that always has an id.
-String? eventPageUrl({String? slug, int? id}) {
-  final s = slug?.trim() ?? '';
-  if (s.isNotEmpty) return '$publicSiteUrl/events/${Uri.encodeComponent(s)}';
-  if (id != null && id > 0) return '$publicSiteUrl/events/$id';
+  if (s.isNotEmpty) {
+    return '${AppConfig.publicSiteUrl}/clubs/${Uri.encodeComponent(s)}';
+  }
+  if (id != null && id > 0) return '${AppConfig.publicSiteUrl}/clubs/$id';
   return null;
 }

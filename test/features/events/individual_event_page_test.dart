@@ -264,6 +264,19 @@ void main() {
     expect(find.text('VIEW TICKET'), findsOneWidget);
   });
 
+  testWidgets(
+      "opened from an unpaid card's title or poster, it offers the payment "
+      'without starting it', (tester) async {
+    // An older server again: only the card knew it was unpaid.
+    api.on('GET', '/events/info/7', _info());
+    final payments = await _pump(tester, initialStatus: 'awaitingPayment');
+
+    expect(find.text('FINISH PAYMENT'), findsOneWidget);
+    expect(find.text('VIEW TICKET'), findsNothing);
+    expect(payments.orders, isEmpty);
+    expect(api.sent('POST', '/events/registration/7/register'), isEmpty);
+  });
+
   testWidgets('a full event says so when the payment is attempted',
       (tester) async {
     api

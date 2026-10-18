@@ -2,7 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
-import 'package:finnet/shared/utils/share_links.dart';
+import 'package:finnet/features/events/domain/registration_status.dart';
+import 'package:finnet/features/events/presentation/utils/event_feed.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
 import 'package:share_plus/share_plus.dart';
@@ -17,18 +18,12 @@ enum EventCardStatus {
   awaitingPayment, // Registered for a paid event, not paid - "FINISH PAYMENT"
 }
 
-/// Whether a registration still owes its fee: `has_fee` true and `is_paid`
-/// false. A missing `is_paid` is not read as unpaid -- older payloads do
-/// not carry it, and telling someone who paid to pay again is worse than
-/// not reminding someone who has not.
-bool registrationAwaitsPayment(Map<dynamic, dynamic> item) =>
-    item['has_fee'] == true && item['is_paid'] == false;
-
 /// The card status for an event this person is registered for:
-/// [EventCardStatus.awaitingPayment] when its fee is still owed, else
-/// [EventCardStatus.registered].
+/// [EventCardStatus.awaitingPayment] when its fee is still owed
+/// ([isAwaitingPayment]: `has_fee` true and `is_paid` false; a missing
+/// `is_paid` is not read as unpaid), else [EventCardStatus.registered].
 EventCardStatus registeredCardStatus(Map<dynamic, dynamic> item) =>
-    registrationAwaitsPayment(item)
+    isAwaitingPayment(item)
         ? EventCardStatus.awaitingPayment
         : EventCardStatus.registered;
 
@@ -95,6 +90,11 @@ class EventCard extends StatelessWidget {
   final String? certificateUrl;
   final bool showShareIcon;
 
+  /// What FINISH PAYMENT does on an [EventCardStatus.awaitingPayment] card,
+  /// when the list wants to know it happened (to fetch itself again after).
+  /// Without it the button opens the event page straight into paying.
+  final VoidCallback? onFinishPayment;
+
   const EventCard({
     super.key,
     required this.title,
@@ -115,7 +115,14 @@ class EventCard extends StatelessWidget {
     this.ticketUrl,
     this.certificateUrl,
     this.showShareIcon = true,
+    this.onFinishPayment,
   });
+
+  /// The event's public page, or null with neither a slug nor an id to
+  /// link to (the share button is then left out).
+  String? get _shareUrl => eventSlug.trim().isNotEmpty || eventId > 0
+      ? eventShareUrl(id: eventId, slug: eventSlug)
+      : null;
 
   @override
   Widget build(BuildContext context) {
@@ -207,8 +214,7 @@ class EventCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (showShareIcon &&
-                eventPageUrl(slug: eventSlug, id: eventId) != null)
+            if (showShareIcon && _shareUrl != null)
               // A Builder so the share sheet can anchor to the icon (iPad).
               Builder(
                 builder: (iconContext) => GestureDetector(
@@ -352,10 +358,13 @@ class EventCard extends StatelessWidget {
       case EventCardStatus.awaitingPayment:
         return FilledButton(
           key: const ValueKey('event-finish-payment'),
-          onPressed: () {
-            // The event page starts the payment when it arrives with this.
-            context.push('/events/$eventId', extra: {'status': 'finishPayment'});
-          },
+          onPressed: onFinishPayment ??
+              () {
+                // The event page starts the payment when it arrives with
+                // this.
+                context.push('/events/$eventId',
+                    extra: {'status': finishPaymentStatus});
+              },
           style: FilledButton.styleFrom(
             backgroundColor: PaymentDueBadge.color,
             foregroundColor: Colors.white,
@@ -374,7 +383,7 @@ class EventCard extends StatelessWidget {
 
   /// Share the event's public page through the system share sheet.
   Future<void> _share(BuildContext iconContext) async {
-    final url = eventPageUrl(slug: eventSlug, id: eventId);
+    final url = _shareUrl;
     if (url == null) return;
     final box = iconContext.findRenderObject() as RenderBox?;
     final name = title.trim();

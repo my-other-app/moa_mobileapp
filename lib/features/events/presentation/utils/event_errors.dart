@@ -1,46 +1,24 @@
 import 'package:dio/dio.dart';
 import 'package:finnet/core/network/api_exception.dart';
+import 'package:finnet/core/utils/error_utils.dart';
+
+export 'package:finnet/core/utils/error_utils.dart'
+    show apiExceptionOf, errorCodeOf, statusCodeOf;
 
 // Reading errors for the events and payments screens.
 //
-// `APIService.request` rethrows the interceptor's ApiException on its own, and
-// `ApiException.toString()` is "ApiException: <message> (forbidden, code: 403)"
-// -- which is what `extractErrorMessage` showed people, because it only knows
-// DioException. These helpers read the ApiException (bare, or inside a
-// DioException) and the server's envelope directly, so the screens here can
-// branch on `error_code` and never print an exception's toString.
-
-/// The ApiException behind [error], whichever way it arrived.
-ApiException? apiExceptionOf(Object? error) {
-  if (error is ApiException) return error;
-  if (error is DioException) {
-    final inner = error.error;
-    if (inner is ApiException) return inner;
-  }
-  return null;
-}
+// The ApiException behind an error, its `error_code` and its status come
+// from core (`apiExceptionOf`, `errorCodeOf`, `statusCodeOf` in
+// core/utils/error_utils.dart), re-exported here so the screens that import
+// this file keep one import. What is left here is the events screens' own
+// reading: the server's words where it explained itself, and the copy for a
+// page that can't load.
 
 Map<dynamic, dynamic>? _body(Object? error) {
   if (error is DioException) {
     final data = error.response?.data;
     if (data is Map) return data;
   }
-  return null;
-}
-
-/// The server's `error_code`, when it sent one.
-String? errorCodeOf(Object? error) {
-  final code = apiExceptionOf(error)?.errorCode;
-  if (code != null && code.isNotEmpty) return code;
-  final fromBody = _body(error)?['error_code'];
-  return fromBody is String && fromBody.isNotEmpty ? fromBody : null;
-}
-
-/// The HTTP status, when there was a response.
-int? statusOf(Object? error) {
-  final api = apiExceptionOf(error);
-  if (api?.statusCode != null) return api!.statusCode;
-  if (error is DioException) return error.response?.statusCode;
   return null;
 }
 
@@ -66,7 +44,7 @@ String? serverMessageOf(Object? error) {
 /// failure, and never an exception's toString.
 String readableError(Object? error, {required String fallback}) {
   final api = apiExceptionOf(error);
-  final status = statusOf(error);
+  final status = statusCodeOf(error);
   final serverError = status != null && status >= 500;
 
   final said = serverMessageOf(error);
@@ -82,22 +60,6 @@ String readableError(Object? error, {required String fallback}) {
         return api.userMessage;
       default:
         return fallback;
-    }
-  }
-
-  if (error is DioException) {
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        return 'The request timed out. Please try again.';
-      case DioExceptionType.connectionError:
-        return 'Please check your internet connection and try again.';
-      default:
-        break;
-    }
-    if (serverError) {
-      return 'Something went wrong on our end. Please try again later.';
     }
   }
   return fallback;

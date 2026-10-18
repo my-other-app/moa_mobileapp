@@ -3,8 +3,9 @@ import 'package:finnet/shared/utils/image_url.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
-import 'package:finnet/shared/widgets/event_card.dart'
-    show PaymentDueBadge, registrationAwaitsPayment;
+import 'package:finnet/features/events/domain/registration_status.dart'
+    show isAwaitingPayment;
+import 'package:finnet/shared/widgets/event_card.dart' show PaymentDueBadge;
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 
 /// `/events/list` for a search, narrowed to the tab it was started from.
@@ -201,7 +202,7 @@ class EventSearchDelegate extends SearchDelegate<String> {
             )
           : null,
       title: Text(event['name'] ?? 'Unnamed Event'),
-      subtitle: Text(event['club']?['name'] ?? ''),
+      subtitle: Text(_clubNameOf(event)),
       // A registration whose fee is still owed says so, as its card does.
       trailing: _awaitsPayment(event)
           ? const PaymentDueBadge()
@@ -223,11 +224,19 @@ class EventSearchDelegate extends SearchDelegate<String> {
     );
   }
 
+  /// The hosting club's name, or nothing for an event that came without
+  /// its club.
+  static String _clubNameOf(dynamic event) {
+    final club = event is Map ? event['club'] : null;
+    final name = club is Map ? club['name'] : null;
+    return name is String ? name : '';
+  }
+
   /// Registered (by the tab searched from, or by the result itself) and
   /// still owing the fee. Not on the past tab: an event that is over can no
   /// longer be paid for.
   bool _awaitsPayment(dynamic event) {
-    if (event is! Map || !registrationAwaitsPayment(event)) return false;
+    if (event is! Map || !isAwaitingPayment(event)) return false;
     if (filterType == 'past') return false;
     return filterType == 'registered' || event['is_registered'] == true;
   }

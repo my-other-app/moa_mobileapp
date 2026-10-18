@@ -1,5 +1,5 @@
+import 'package:finnet/core/config/app_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:finnet/shared/utils/share_links.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Where people write to us. A team inbox, not anyone's personal number.
@@ -7,9 +7,9 @@ const supportEmail = 'support@myotherapp.in';
 
 /// The policies the stores link to, kept on the public site so there is one
 /// copy to update rather than one in every app build.
-final privacyPolicyUri = Uri.parse('$publicSiteUrl/privacy');
-final termsUri = Uri.parse('$publicSiteUrl/terms');
-final websiteUri = Uri.parse(publicSiteUrl);
+final privacyPolicyUri = Uri.parse('${AppConfig.publicSiteUrl}/privacy');
+final termsUri = Uri.parse('${AppConfig.publicSiteUrl}/terms');
+final websiteUri = Uri.parse(AppConfig.publicSiteUrl);
 final supportEmailUri = Uri(
   scheme: 'mailto',
   path: supportEmail,

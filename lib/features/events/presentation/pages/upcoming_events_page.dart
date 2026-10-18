@@ -4,7 +4,6 @@ import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:finnet/features/events/presentation/utils/event_feed.dart';
-import 'package:finnet/features/events/presentation/widgets/awaiting_payment_strip.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
@@ -193,25 +192,15 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage>
             final event = Map<String, dynamic>.from(
                 _events[index] as Map? ?? const <String, dynamic>{});
             // A registration still waiting for its payment has no ticket to
-            // view: it offers the payment instead.
-            if (isAwaitingPayment(event)) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AwaitingPaymentStrip(
-                    onFinishPayment: () => _finishPayment(event),
-                  ),
-                  const SizedBox(height: 16),
-                  eventCardFromJson(event),
-                ],
-              );
-            }
+            // view: its card says "Payment due" and offers FINISH PAYMENT,
+            // after which the list is fetched again.
             return eventCardFromJson(
               event,
-              status: EventCardStatus.registered,
+              status: registeredCardStatus(event),
               ticketUrl: event['ticket_url'] is String
                   ? event['ticket_url'] as String
                   : null,
+              onFinishPayment: () => _finishPayment(event),
             );
           },
         ),

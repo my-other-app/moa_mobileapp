@@ -28,7 +28,7 @@ const finishPaymentStatus = 'finishPayment';
 /// sends `is_paid: false` for a free registration too, so a free event never
 /// counts as unpaid. A server that sends no `is_paid` leaves things as they
 /// were: registered means a ticket.
-bool isAwaitingPayment(Map<String, dynamic> event) =>
+bool isAwaitingPayment(Map<dynamic, dynamic> event) =>
     event['is_paid'] == false && event['has_fee'] == true;
 
 /// The status `/events/info/{id}` describes.

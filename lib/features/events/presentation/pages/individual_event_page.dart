@@ -25,6 +25,7 @@ import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
@@ -1329,7 +1330,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
                       });
                     }
                   },
-                  child: _ClubLogo(url: club?.logo['thumbnail']),
+                  child: _ClubLogo(url: imageUrlFrom(club?.logo)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/core/utils/hours.dart';
+import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/event_cover.dart';
 
@@ -61,15 +63,16 @@ EventCard eventCardFromJson(
   String? ticketUrl,
   String? certificateUrl,
   bool showShareIcon = true,
+  VoidCallback? onFinishPayment,
 }) {
   final club = _map(event['club']);
   final category = _map(event['category']);
-  final logo = _map(club['logo']);
   final name = _string(event['name']);
   final organizer = _string(club['name']);
   return EventCard(
     clubSlug: _string(club['slug']),
-    orgImage: _string(logo['thumbnail']),
+    // The S3 dict, an older row's bare URL, or nothing.
+    orgImage: imageUrlFrom(club['logo']) ?? '',
     title: name.isEmpty ? 'No Title' : name,
     organizer: organizer.isEmpty ? 'Unknown Organizer' : organizer,
     tags: eventCardTags(event),
@@ -87,5 +90,6 @@ EventCard eventCardFromJson(
     ticketUrl: ticketUrl,
     certificateUrl: certificateUrl,
     showShareIcon: showShareIcon,
+    onFinishPayment: onFinishPayment,
   );
 }

@@ -262,21 +262,23 @@ class ErrorView extends StatelessWidget {
     return ApiExceptionType.unknown;
   }
 
-  /// Get user-friendly message based on error type
+  /// Get user-friendly message based on error type: the same copy
+  /// [ApiException.userMessage] uses, so a screen reads the same whether it
+  /// passed the exception or only a message.
   String _getFriendlyMessage(ApiExceptionType type) {
     switch (type) {
       case ApiExceptionType.network:
-        return 'Please check your internet connection and try again.';
+        return ApiException.networkMessage;
       case ApiExceptionType.timeout:
-        return 'The connection is taking too long. Please try again.';
+        return ApiException.timeoutMessage;
       case ApiExceptionType.server:
-        return 'Something went wrong on our end. Please try again later.';
+        return ApiException.serverErrorMessage;
       case ApiExceptionType.unauthorized:
-        return 'Your session has expired. Please log in again.';
+        return ApiException.sessionEndedMessage;
       case ApiExceptionType.notFound:
         return 'The requested content was not found.';
       default:
-        return 'Something went wrong. Please try again.';
+        return ApiException.genericMessage;
     }
   }
 }

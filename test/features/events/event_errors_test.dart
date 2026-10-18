@@ -95,8 +95,15 @@ void main() {
           type: ApiExceptionType.network,
         ),
       );
-      expect(readableError(error, fallback: 'x'),
-          'Please check your internet connection and try again.');
+      expect(readableError(error, fallback: 'x'), ApiException.networkMessage);
+    });
+
+    test('a dropped connection Dio threw directly reads the same', () {
+      final error = DioException(
+        requestOptions: RequestOptions(path: '/x'),
+        type: DioExceptionType.connectionError,
+      );
+      expect(readableError(error, fallback: 'x'), ApiException.networkMessage);
     });
   });
 

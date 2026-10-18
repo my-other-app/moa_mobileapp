@@ -44,6 +44,7 @@ void main() {
     }
 
     expect(find.text('FINISH PAYMENT'), findsOneWidget);
+    expect(find.text('Payment due'), findsOneWidget);
     expect(find.text('VIEW TICKET'), findsOneWidget);
     expect(find.textContaining('null'), findsNothing);
     expect(find.text('Unknown Organizer'), findsOneWidget);

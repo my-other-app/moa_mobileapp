@@ -110,7 +110,9 @@ class EventInfo {
       // Optional on the server. Read as "now" when missing, it closed
       // registration for every event without a deadline.
       regEndDate: DateTime.tryParse(json['reg_enddate'] as String? ?? ''),
-      club: Club.fromJson(json['club'] ?? {}),
+      club: Club.fromJson(json['club'] is Map<String, dynamic>
+          ? json['club'] as Map<String, dynamic>
+          : const <String, dynamic>{}),
       category: Category.fromJson(json['category'] ?? {}),
       interests: (json['interests'] as List<dynamic>?)
               ?.map((e) => Interest.fromJson(e))
@@ -193,11 +195,19 @@ class Club {
   });
 
   factory Club.fromJson(Map<String, dynamic> json) {
+    final logo = json['logo'];
     return Club(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
       slug: json['slug'] ?? '',
-      logo: json['logo'] ?? {},
+      // The S3 dict. An older row's bare URL is kept as its thumbnail, and a
+      // club that never uploaded a logo (null) has none -- reading either as
+      // a map threw and took the event page down.
+      logo: logo is Map<String, dynamic>
+          ? logo
+          : logo is String && logo.trim().isNotEmpty
+              ? <String, dynamic>{'thumbnail': logo.trim()}
+              : <String, dynamic>{},
     );
   }
 }

@@ -32,4 +32,24 @@ void main() {
 
     expect(EventInfo.fromJson({'registration_id': ''}).registrationId, isNull);
   });
+
+  test("a club's logo: the dict, an older row's bare URL, or none", () {
+    final dict = EventInfo.fromJson({
+      'club': {
+        'id': 1,
+        'logo': {'thumbnail': 'https://x/t.png', 'large': 'https://x/l.png'},
+      },
+    });
+    expect(dict.club.logo['thumbnail'], 'https://x/t.png');
+
+    final bare = EventInfo.fromJson({
+      'club': {'id': 1, 'logo': 'https://x/old.png'},
+    });
+    expect(bare.club.logo['thumbnail'], 'https://x/old.png');
+
+    expect(EventInfo.fromJson({'club': {'id': 1, 'logo': null}}).club.logo,
+        isEmpty);
+    // An event whose club is gone.
+    expect(EventInfo.fromJson({'club': null}).club.id, 0);
+  });
 }
