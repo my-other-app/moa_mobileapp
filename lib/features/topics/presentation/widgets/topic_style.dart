@@ -51,12 +51,20 @@ Color topicColor(Topic topic) {
   return Color(palette[topic.id.abs() % palette.length]);
 }
 
-/// Whether [icon] is something to draw as text: an emoji, not a URL.
+/// Whether [icon] is something to draw as text: only an emoji the server
+/// calls one (`icon_type: "emoji"`) and that looks like one.
+///
+/// Anything else gets the built-in icon: a URL (`icon_type: "url"`), no
+/// type at all, or text -- production's topic has the placeholder icon
+/// "string", which must never appear as a word on a chip.
 bool _isGlyph(String? icon, String? iconType) {
+  if (iconType != 'emoji') return false;
   final text = icon?.trim() ?? '';
-  if (text.isEmpty) return false;
-  if (iconType != null && iconType != 'emoji') return false;
-  return !text.contains('/') && text.runes.length <= 8;
+  if (text.isEmpty || text.runes.length > 8) return false;
+  // Letters, digits or URL punctuation: a word or a link, not an emoji.
+  if (RegExp(r'[A-Za-z0-9/.:]').hasMatch(text)) return false;
+  // At least one symbol from the emoji and pictograph ranges.
+  return text.runes.any((r) => r >= 0x2000);
 }
 
 /// The topic's icon: its emoji, else a symbol for its slug.

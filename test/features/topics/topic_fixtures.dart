@@ -7,8 +7,9 @@ const productionListBody = [
   {
     'id': 1,
     'name': 'arts',
-    'icon': null,
-    'icon_type': null,
+    // Production's placeholder, which must never be drawn.
+    'icon': 'string',
+    'icon_type': 'string',
     'interests': [
       {'id': 6, 'name': 'Coding', 'icon': '💻', 'icon_type': 'emoji'},
       {'id': 7, 'name': 'UI/UX', 'icon': '🎨', 'icon_type': 'emoji'},
@@ -175,10 +176,18 @@ const productionCatalogue = [
     slug: 'arts',
     name: 'arts',
     interests: [
-      Interest(id: 6, name: 'Coding', icon: '💻', categoryId: 1),
-      Interest(id: 7, name: 'UI/UX', icon: '🎨', categoryId: 1),
-      Interest(id: 15, name: 'Photography', icon: '📸', categoryId: 1),
-      Interest(id: 16, name: 'Music', icon: '🎵', categoryId: 1),
+      Interest(
+          id: 6, name: 'Coding', icon: '💻', iconType: 'emoji', categoryId: 1),
+      Interest(
+          id: 7, name: 'UI/UX', icon: '🎨', iconType: 'emoji', categoryId: 1),
+      Interest(
+          id: 15,
+          name: 'Photography',
+          icon: '📸',
+          iconType: 'emoji',
+          categoryId: 1),
+      Interest(
+          id: 16, name: 'Music', icon: '🎵', iconType: 'emoji', categoryId: 1),
     ],
   ),
 ];

@@ -88,6 +88,21 @@ void main() {
       expect(topics.single.upcomingEvents, isNull);
     });
 
+    for (final status in [405, 422]) {
+      test('falls back on $status too (production answers 405 today)',
+          () async {
+        api
+          ..on('GET', '/interests/topics', {'detail': 'Method Not Allowed'},
+              status: status)
+          ..on('GET', '/interests/list', productionListBody);
+
+        final topics = await container.read(topicDirectoryProvider.future);
+
+        expect(api.sent('GET', '/interests/topics'), hasLength(1));
+        expect(topics.single.name, 'arts');
+      });
+    }
+
     test('the fallback shares the catalogue rather than fetching it again',
         () async {
       api.on('GET', '/interests/list', productionListBody);
