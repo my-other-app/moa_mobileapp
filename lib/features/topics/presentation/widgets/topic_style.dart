@@ -70,7 +70,9 @@ class TopicIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (_isGlyph(topic.icon, topic.iconType)) {
+      // Not scaled with the text, like an Icon: it marks, it is not read.
       return Text(topic.icon!.trim(),
+          textScaler: TextScaler.noScaling,
           style: TextStyle(fontSize: size * 0.9, height: 1.1));
     }
     return Icon(_defaultIcons[topic.slug] ?? Icons.interests_outlined,
