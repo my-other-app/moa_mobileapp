@@ -1,0 +1,9 @@
+{
+  "name": "media-worker",
+  "private": true,
+  "description": "The media CDN Cloudflare Worker (media.myotherapp.in). Deployed with wrangler (README.md); this file only lets Node run its tests.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

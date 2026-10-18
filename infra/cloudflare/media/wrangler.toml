@@ -1,0 +1,39 @@
+# The media CDN: https://media.myotherapp.in/<key> -> that picture in the
+# bucket, kept at the edge. How to deploy it, and the order to switch it on
+# in: README.md. Deploy with `npx wrangler deploy` from this folder.
+#
+# Secrets, set once with `npx wrangler secret put <NAME>` and never written
+# here (they survive every deploy; [vars] below do not, they are replaced by
+# what this file says):
+#   S3_BUCKET              the bucket's name (the backend's APP_S3_BUCKET)
+#   S3_ACCESS_KEY_ID       a read-only key for the public folders (README: the IAM policy)
+#   S3_SECRET_ACCESS_KEY
+# Until all of them are set the Worker answers 503 and caches nothing.
+
+name = "media"
+# The account club-sites deploys to (club-sites/deploy.sh).
+account_id = "e29f4da682f820b5ce4381163a1baf4a"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+
+# Only at its own address: no *.workers.dev copy of the bucket's pictures.
+workers_dev = false
+routes = [
+  # More specific than club-sites' *.myotherapp.in/*, so it wins for this host.
+  { pattern = "media.myotherapp.in/*", zone_name = "myotherapp.in" },
+]
+
+[vars]
+# Where the bucket is (S3 console -> the bucket -> Properties -> AWS Region).
+S3_REGION = "us-east-1"
+# The backend's APP_S3_BASE_PATH, when it is not empty: every key is under it,
+# and the CDN's addresses leave it out.
+S3_BASE_PATH = ""
+
+# Misses one address may cause per minute, per Cloudflare location. A hit
+# costs nothing and is never counted; a miss is an S3 GET (and egress). A
+# page full of pictures nobody has opened yet is well under this.
+[[ratelimits]]
+name = "MISS_LIMITER"
+namespace_id = "7301"
+simple = { limit = 300, period = 60 }
