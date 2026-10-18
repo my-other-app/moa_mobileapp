@@ -39,6 +39,11 @@ class LiveFeed {
     );
   }
 
+  /// The room's body -- the poll's (`GET /events/{id}/live`), or a stream
+  /// snapshot's, which is the same JSON -- or null for anything else.
+  static LiveFeed? tryParse(Object? json) =>
+      json is Map<String, dynamic> ? LiveFeed.fromJson(json) : null;
+
   /// Whether there is anything worth a strip on the event page.
   bool get isActive =>
       bannerText != null || pollPrompt != null || quizLive || questions > 0;
