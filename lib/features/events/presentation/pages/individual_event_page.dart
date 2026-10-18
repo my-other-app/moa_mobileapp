@@ -19,6 +19,8 @@ import 'package:finnet/features/events/presentation/widgets/registration_feedbac
 import 'package:finnet/features/payments/checkout.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/presentation/widgets/topic_tag_strip.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
@@ -72,6 +74,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
   Club? club;
   Category? category;
   List<Interest> interests = [];
+
+  /// The event's `topics`; null from a server that does not send them.
+  List<Topic>? topics;
   List<AdditionalDetail> additionalDetails = [];
   double? rating;
   int? totalRating;
@@ -183,6 +188,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
         club = eventInfo.club;
         category = eventInfo.category;
         interests = eventInfo.interests;
+        topics = eventInfo.topics;
         additionalDetails = eventInfo.additionalDetails;
         rating = eventInfo.rating;
         totalRating = eventInfo.totalRating;
@@ -1368,6 +1374,16 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
                   ),
                 ),
               ],
+            ),
+            // Its topics in their colours, then its interests. A topic
+            // opens Explore on it.
+            TopicTagStrip(
+              topGap: 16,
+              declared: topics,
+              interests: [for (final i in interests) i.toEntity()],
+              showInterests: true,
+              onTopicTap: (topic) => context.push('/events/explore',
+                  extra: {'topic': topic.slug}),
             ),
 
             const SizedBox(height: 16),

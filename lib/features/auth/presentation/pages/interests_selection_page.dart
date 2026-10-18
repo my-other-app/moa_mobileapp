@@ -3,11 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart'
     hide ProfileState;
-import 'package:finnet/features/auth/data/models/profile.dart';
+import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
+import 'package:finnet/features/topics/presentation/widgets/topic_interest_picker.dart';
+import 'package:finnet/shared/widgets/error_view.dart';
 
-/// Interests Selection Page - migrated to Riverpod.
+/// The most interests a person picks.
+const maxInterests = 5;
+
+/// Choosing interests: in onboarding, and from Edit Profile.
+///
+/// The interests come from `/interests/list`, grouped by topic in the
+/// shared [TopicInterestPicker]. They used to be three lists written into
+/// this file with ids that had to match the server's by hand.
 class InterestsSelectionPage extends ConsumerStatefulWidget {
   const InterestsSelectionPage({super.key, required this.isOnboarding});
 
@@ -20,46 +30,51 @@ class InterestsSelectionPage extends ConsumerStatefulWidget {
 
 class _InterestsSelectionPageState
     extends ConsumerState<InterestsSelectionPage> {
-  final Set<InterestItem> selectedInterests = {};
+  /// Chosen interest ids, in the order they were chosen.
+  final Set<int> _selected = {};
+
+  /// Whether the person has changed anything: until then, a profile that
+  /// arrives late still fills in what they had.
+  bool _touched = false;
   bool isLoading = false;
 
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Get current interests from Riverpod profileProvider
-      final profile = ref.read(profileProvider).profile;
-      List<Interest>? currentInterests;
-
-      // Map UserProfile interests to legacy Interest model
-      if (profile?.interests != null) {
-        currentInterests = profile!.interests
-            .map((i) => Interest(
-                  id: i.id,
-                  name: i.name,
-                  icon: i.icon,
-                  iconType: i.iconType,
-                ))
-            .toList();
-      }
-
-      debugPrint(
-          'Current interests: ${currentInterests?.map((e) => e.toJson()).toList()}}');
-
-      currentInterests?.forEach((intrests) => selectedInterests.add(
-          InterestItem(
-              id: intrests.id, name: intrests.name, icon: intrests.icon)));
-
-      setState(() {
-        selectedInterests;
-      });
+      if (!mounted) return;
+      _seed(ref.read(profileProvider).profile);
+      ref.listenManual(profileProvider, (_, next) => _seed(next.profile));
     });
   }
 
+  void _seed(UserProfile? profile) {
+    if (_touched || profile == null) return;
+    setState(() {
+      _selected
+        ..clear()
+        ..addAll(profile.interests.map((i) => i.id));
+    });
+  }
+
+  void _toggle(Interest interest) {
+    setState(() {
+      _touched = true;
+      if (!_selected.remove(interest.id)) _selected.add(interest.id);
+    });
+  }
+
+  void _limitReached() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(
+        content: Text('You can choose up to $maxInterests interests. '
+            'Deselect one to pick another.'),
+      ));
+  }
+
   Future<void> _submitInterests() async {
-    List<int> interestIds =
-        selectedInterests.map((item) => item.id ?? 0).toList();
+    final interestIds = _selected.toList();
 
     setState(() {
       isLoading = true;
@@ -73,19 +88,14 @@ class _InterestsSelectionPageState
           'interest_ids': interestIds,
         },
       );
-      debugPrint('Interest selection response: ${response.data}');
 
       if (mounted) {
         if (response.statusCode != null &&
             response.statusCode! >= 200 &&
             response.statusCode! < 300) {
           if (mounted) {
-            // Reload profile using Riverpod provider
-            await ref.read(profileProvider.notifier).loadProfile();
-            debugPrint('Profile reloaded via Riverpod');
+            await ref.read(profileProvider.notifier).loadProfile(force: true);
           }
-
-          // Navigate to the OnboardingFinalPage upon success
 
           if (widget.isOnboarding && mounted) {
             context.go('/onboarding/avatar');
@@ -119,6 +129,8 @@ class _InterestsSelectionPageState
 
   @override
   Widget build(BuildContext context) {
+    final catalogue = ref.watch(topicCatalogueProvider);
+
     return Scaffold(
       backgroundColor:
           widget.isOnboarding ? const Color(0xFFFFFFA0) : Colors.white,
@@ -147,6 +159,8 @@ class _InterestsSelectionPageState
             if (widget.isOnboarding) _buildDragIndicator(),
             Expanded(
               child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -166,7 +180,7 @@ class _InterestsSelectionPageState
                           ),
                           SizedBox(height: 8),
                           Text(
-                            'Choose up to 5 vibes that speak to you',
+                            'Choose up to $maxInterests vibes that speak to you',
                             style: TextStyle(
                               color: Colors.black,
                               fontSize: 14,
@@ -177,13 +191,28 @@ class _InterestsSelectionPageState
                         ],
                       ),
                     ),
-                    // Interest Sections
-                    _buildInterestSection('Academic', academicInterests),
-                    const SizedBox(height: 36),
-                    _buildInterestSection('Creative', creativeInterests),
-                    const SizedBox(height: 36),
-                    _buildInterestSection(
-                        'Emerging Trends', emergingTrendInterests),
+                    catalogue.when(
+                      data: (topics) => TopicInterestPicker(
+                        topics: topics,
+                        selectedIds: _selected,
+                        maxSelected: maxInterests,
+                        onToggle: _toggle,
+                        onLimitReached: _limitReached,
+                      ),
+                      loading: () => const Padding(
+                        padding: EdgeInsets.all(48),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (_, __) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32),
+                        child: ErrorView(
+                          message: 'Could not load interests.',
+                          compact: true,
+                          onRetry: () => ref.invalidate(topicCatalogueProvider),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -242,81 +271,6 @@ class _InterestsSelectionPageState
     );
   }
 
-  Widget _buildInterestSection(String title, List<InterestItem> interests) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontFamily: 'DMSans',
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: interests
-                .map((interest) => _buildInterestChip(interest))
-                .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInterestChip(InterestItem interest) {
-    final isSelected = selectedInterests.contains(interest);
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (isSelected) {
-            selectedInterests.remove(interest);
-          } else if (selectedInterests.length < 5) {
-            selectedInterests.add(interest);
-          }
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(60),
-            side: BorderSide(
-              color: isSelected ? const Color(0xFF17A58F) : Colors.transparent,
-              width: 2,
-            ),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              interest.icon ?? '',
-              style: const TextStyle(fontSize: 20),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              interest.name ?? '',
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 14,
-                fontFamily: 'DMSans',
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildContinueButton() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -324,7 +278,8 @@ class _InterestsSelectionPageState
         width: 361,
         height: 56,
         child: ElevatedButton(
-          onPressed: selectedInterests.isNotEmpty && !isLoading
+          key: const ValueKey('interests-continue'),
+          onPressed: _selected.isNotEmpty && !isLoading
               ? _submitInterests
               : null,
           style: ElevatedButton.styleFrom(
@@ -332,7 +287,6 @@ class _InterestsSelectionPageState
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            // padding: const EdgeInsets.symmetric(horizontal: 128, vertical: 13),
           ),
           child: isLoading
               ? const CircularProgressIndicator(color: Colors.white)
@@ -357,57 +311,3 @@ class _InterestsSelectionPageState
     );
   }
 }
-
-// Updated InterestItem model with id
-class InterestItem {
-  final int? id;
-  final String? name;
-  final String? icon;
-
-  InterestItem({required this.id, required this.name, required this.icon});
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is InterestItem &&
-          runtimeType == other.runtimeType &&
-          id == other.id;
-
-  @override
-  int get hashCode => id.hashCode;
-}
-
-// Updated interest lists with ids for each interest
-final academicInterests = [
-  InterestItem(id: 6, name: 'Coding', icon: '💻'),
-  InterestItem(id: 7, name: 'UI/UX', icon: '🎨'),
-  InterestItem(id: 8, name: 'Data Science', icon: '📊'),
-  InterestItem(id: 9, name: 'Entrepreneurship', icon: '👨‍💼'),
-  InterestItem(id: 10, name: 'Marketing', icon: '🏷️'),
-  InterestItem(id: 11, name: 'Finance', icon: '💰'),
-  InterestItem(id: 2, name: 'AI/ML', icon: '🦾'),
-  InterestItem(id: 12, name: 'Analytics', icon: '📈'),
-  InterestItem(id: 13, name: 'Cybersecurity', icon: '🔒'),
-  InterestItem(id: 14, name: 'Product Management', icon: '🏭'),
-];
-
-final creativeInterests = [
-  InterestItem(id: 15, name: 'Photography', icon: '📸'),
-  InterestItem(id: 16, name: 'Music', icon: '🎵'),
-  InterestItem(id: 17, name: 'Film', icon: '🎬'),
-  InterestItem(id: 18, name: 'Animation', icon: '🐰'),
-  InterestItem(id: 19, name: 'Writing', icon: '✏️'),
-  InterestItem(id: 20, name: 'Fashion', icon: '👗'),
-  InterestItem(id: 21, name: 'Gaming', icon: '🎮'),
-];
-
-final emergingTrendInterests = [
-  InterestItem(id: 22, name: 'Blockchain', icon: '🔗'),
-  InterestItem(id: 23, name: 'VR/AR', icon: '🥽'),
-  InterestItem(id: 24, name: 'Memes & Internet Culture', icon: '🎭'),
-  InterestItem(id: 25, name: 'Content Creation', icon: '🎥'),
-  InterestItem(id: 26, name: 'E-Sports', icon: '🎮'),
-  InterestItem(id: 27, name: 'Space Exploration', icon: '🚀'),
-];
-
-// Dummy OnboardingFinalPage widget for navigation after a successful API call

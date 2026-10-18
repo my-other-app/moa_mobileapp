@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:finnet/features/events/presentation/utils/event_feed.dart';
+import 'package:finnet/features/topics/presentation/widgets/browse_by_topic_row.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 
@@ -145,15 +146,23 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
       );
     }
 
-    // Empty state
+    // Empty state -- with the topics to browse, a way to find something.
     if (_events.isEmpty) {
       return Container(
         color: Colors.white,
-        child: const Center(
-          child: Text(
-            'Nothing to show on the feed',
-            style: TextStyle(fontSize: 18),
-          ),
+        padding: const EdgeInsets.all(16),
+        child: const Column(
+          children: [
+            BrowseByTopicRow(bottomGap: 20),
+            Expanded(
+              child: Center(
+                child: Text(
+                  'Nothing to show on the feed',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -167,17 +176,22 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
           // Use primary: true to cooperate with NestedScrollView
           primary: true,
           padding: const EdgeInsets.all(16),
-          itemCount: _events.length + (_hasMore ? 1 : 0),
-          separatorBuilder: (context, index) => const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20.0),
-            child: Divider(
-              thickness: 1,
-              color: Colors.black,
-              indent: 50,
-              endIndent: 50,
-            ),
-          ),
-          itemBuilder: (context, index) {
+          // "Browse by topic" first, then the feed.
+          itemCount: 1 + _events.length + (_hasMore ? 1 : 0),
+          separatorBuilder: (context, index) => index == 0
+              ? const SizedBox.shrink()
+              : const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20.0),
+                  child: Divider(
+                    thickness: 1,
+                    color: Colors.black,
+                    indent: 50,
+                    endIndent: 50,
+                  ),
+                ),
+          itemBuilder: (context, position) {
+            if (position == 0) return const BrowseByTopicRow(bottomGap: 20);
+            final index = position - 1;
             if (index == _events.length) {
               return const Center(
                 child: Padding(

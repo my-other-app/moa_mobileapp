@@ -4,20 +4,48 @@ import 'package:flutter/material.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/api/api_helper.dart';
-import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/domain/topic_filter.dart';
+import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
+import 'package:finnet/features/topics/presentation/widgets/topic_filter_bar.dart';
 import 'package:finnet/shared/widgets/explore_more_club_card.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 
+/// The query `/clubs/list` gets for clubs at [organizationId], under
+/// [filter], matching [search].
+///
+/// Only parameters the endpoint has: a topic goes as its interests'
+/// `interest_ids` (see [TopicFilter]).
+@visibleForTesting
+Map<String, dynamic> exploreClubsQuery({
+  int? organizationId,
+  TopicFilter filter = TopicFilter.none,
+  String search = '',
+}) {
+  return {
+    if (organizationId != null) 'org_id': organizationId,
+    ...filter.queryParameters,
+    if (search.trim().isNotEmpty) 'search': search.trim(),
+  };
+}
+
+/// Clubs to browse: by college, topic and interest, with a search.
+///
+/// [initialTopic] is a topic's slug or id, [initialInterestId] an
+/// interest's; either waits for the topics before the first fetch, since a
+/// topic is asked for by its interests.
 class ExploreMoreClubsPage extends ConsumerStatefulWidget {
   final int? initialOrganizationId;
-  final List<int>? initialInterestIds;
+  final String? initialTopic;
+  final int? initialInterestId;
 
   const ExploreMoreClubsPage({
     super.key,
     this.initialOrganizationId,
-    this.initialInterestIds,
+    this.initialTopic,
+    this.initialInterestId,
   });
 
   @override
@@ -32,8 +60,11 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
 
   // Filter state
   int? _selectedOrgId;
-  Set<int> _selectedInterestIds = {};
+  TopicFilter _filter = TopicFilter.none;
   String _searchQuery = '';
+
+  /// Bumped per fetch, so an answer to an older filter is dropped.
+  int _generation = 0;
 
   // Search
   final TextEditingController _searchController = TextEditingController();
@@ -43,8 +74,25 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
   void initState() {
     super.initState();
     _selectedOrgId = widget.initialOrganizationId;
-    _selectedInterestIds = widget.initialInterestIds?.toSet() ?? {};
-    _fetchData();
+    final waits = (widget.initialTopic?.isNotEmpty ?? false) ||
+        widget.initialInterestId != null;
+    if (!waits) {
+      _fetchData();
+      return;
+    }
+    var resolved = false;
+    ref.listenManual<AsyncValue<List<Topic>>>(topicDirectoryProvider,
+        (_, next) {
+      if (resolved || next.isLoading) return;
+      resolved = true;
+      // Topics that failed to load filter nothing: the list still shows.
+      _filter = TopicFilter.resolve(
+        next.valueOrNull ?? const <Topic>[],
+        topicRef: widget.initialTopic,
+        interestId: widget.initialInterestId,
+      );
+      _fetchData();
+    }, fireImmediately: true);
   }
 
   @override
@@ -71,59 +119,57 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
     _fetchData();
   }
 
-  void _toggleInterestFilter(int interestId) {
-    setState(() {
-      if (_selectedInterestIds.contains(interestId)) {
-        _selectedInterestIds.remove(interestId);
-      } else {
-        _selectedInterestIds.add(interestId);
-      }
-    });
+  void _setTopicFilter(TopicFilter filter) {
+    if (filter == _filter) return;
+    setState(() => _filter = filter);
     _fetchData();
   }
 
+  bool get _isFiltered =>
+      _searchQuery.isNotEmpty || _selectedOrgId != null || _filter.isActive;
+
   Future<void> _fetchData() async {
+    final generation = ++_generation;
     setState(() {
       isLoading = true;
       errorMessage = null;
     });
 
+    // A topic with no interests yet: no club can be under it.
+    if (_filter.matchesNothing) {
+      setState(() {
+        clubs = [];
+        isLoading = false;
+      });
+      return;
+    }
+
     try {
-      // Build query string manually for proper encoding
-      final List<String> queryParts = [];
-
-      if (_selectedOrgId != null) {
-        queryParts.add('org_id=$_selectedOrgId');
-      }
-      if (_selectedInterestIds.isNotEmpty) {
-        queryParts.add('interest_ids=${_selectedInterestIds.join(",")}');
-      }
-      if (_searchQuery.isNotEmpty) {
-        queryParts.add('search=$_searchQuery');
-      }
-
-      final String endpoint = queryParts.isNotEmpty
-          ? '/clubs/list?${queryParts.join("&")}'
-          : '/clubs/list';
-
       Response<dynamic> res = await APIService.instance.request(
-        endpoint,
+        '/clubs/list',
         DioMethod.get,
+        // As query parameters, so the search is encoded: it was pasted
+        // into the URL as typed.
+        param: exploreClubsQuery(
+          organizationId: _selectedOrgId,
+          filter: _filter,
+          search: _searchQuery,
+        ),
       );
 
-      if (mounted) {
+      if (mounted && generation == _generation) {
         setState(() {
           clubs = res.data['items'] ?? [];
           isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && generation == _generation) {
         setState(() {
           errorMessage = extractErrorMessage(
-          e,
-          defaultMessage: 'Could not load clubs.',
-        );
+            e,
+            defaultMessage: 'Could not load clubs.',
+          );
           isLoading = false;
         });
       }
@@ -134,7 +180,17 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
   Widget build(BuildContext context) {
     final profileState = ref.watch(profileProvider);
     final userOrg = profileState.profile?.organization;
-    final userInterests = profileState.profile?.interests ?? [];
+    final topics = ref.watch(topicDirectoryProvider);
+
+    final orgChip = userOrg == null
+        ? const <Widget>[]
+        : [
+            PlainFilterChip(
+              label: userOrg.name,
+              selected: _selectedOrgId == userOrg.id,
+              onTap: () => _toggleOrgFilter(userOrg.id),
+            ),
+          ];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -152,8 +208,17 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
           // Search bar
           _buildSearchBar(),
           const SizedBox(height: 12),
-          // Filter chips
-          _buildFilterChips(userOrg, userInterests),
+          // College, topics, then the chosen topic's interests. Topics that
+          // are still loading or failed leave just the college.
+          TopicFilterBar(
+            key: const ValueKey('explore-clubs-filters'),
+            topics: topics.valueOrNull ?? const [],
+            filter: _filter,
+            onChanged: _setTopicFilter,
+            leading: orgChip,
+            topicCount: (t) => t.clubs,
+            topicCountUnit: 'clubs',
+          ),
           const SizedBox(height: 16),
           // Club list
           Expanded(child: _buildClubList()),
@@ -202,47 +267,6 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
     );
   }
 
-  Widget _buildFilterChips(
-      Organization? userOrg, List<Interest> userInterests) {
-    // Nothing to show if no org and no interests
-    if (userOrg == null && userInterests.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return SizedBox(
-      height: 36,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 16),
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: [
-            // Organisation chip
-            if (userOrg != null) ...[
-              _FilterChip(
-                label: userOrg.name,
-                isSelected: _selectedOrgId == userOrg.id,
-                onTap: () => _toggleOrgFilter(userOrg.id),
-              ),
-              const SizedBox(width: 8),
-            ],
-            // Interest chips
-            ...userInterests.map((interest) {
-              final isSelected = _selectedInterestIds.contains(interest.id);
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: _FilterChip(
-                  label: interest.name,
-                  isSelected: isSelected,
-                  onTap: () => _toggleInterestFilter(interest.id),
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildClubList() {
     if (isLoading) {
       return ListView.separated(
@@ -274,6 +298,7 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
     }
 
     if (clubs.isEmpty) {
+      final what = _filter.label;
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -281,22 +306,23 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
             Icon(Icons.group_off, size: 48, color: Colors.grey[400]),
             const SizedBox(height: 12),
             Text(
-              _searchQuery.isNotEmpty ||
-                      _selectedOrgId != null ||
-                      _selectedInterestIds.isNotEmpty
-                  ? 'No clubs found for this filter'
-                  : 'No clubs to explore',
+              !_isFiltered
+                  ? 'No clubs to explore'
+                  : what.isNotEmpty &&
+                          _searchQuery.isEmpty &&
+                          _selectedOrgId == null
+                      ? 'No clubs in $what yet'
+                      : 'No clubs found for this filter',
+              key: const ValueKey('explore-clubs-empty'),
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
-            if (_searchQuery.isNotEmpty ||
-                _selectedOrgId != null ||
-                _selectedInterestIds.isNotEmpty) ...[
+            if (_isFiltered) ...[
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () {
                   setState(() {
                     _selectedOrgId = null;
-                    _selectedInterestIds.clear();
+                    _filter = TopicFilter.none;
                     _searchQuery = '';
                     _searchController.clear();
                   });
@@ -329,58 +355,10 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
                 : [],
             id: club['id'] ?? 0,
             clubSlug: club['slug'] ?? '',
-            isFollowing: club['is_following'],
+            // `bool_or` over no rows is null, not false.
+            isFollowing: club['is_following'] == true,
           );
         },
-      ),
-    );
-  }
-}
-
-/// Interactive filter chip widget.
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _FilterChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF17A58F) : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color:
-                isSelected ? const Color(0xFF17A58F) : const Color(0xFFAFAFAF),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: isSelected ? Colors.white : const Color(0xFFAFAFAF),
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-            if (isSelected) ...[
-              const SizedBox(width: 4),
-              const Icon(Icons.close, size: 14, color: Colors.white),
-            ],
-          ],
-        ),
       ),
     );
   }

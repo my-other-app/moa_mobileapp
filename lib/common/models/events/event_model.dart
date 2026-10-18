@@ -1,4 +1,8 @@
 import 'package:finnet/core/utils/hours.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart'
+    as entity;
+import 'package:finnet/features/topics/data/models/topic_model.dart';
+import 'package:finnet/features/topics/domain/entities/topic.dart';
 
 class EventInfo {
   final int id;
@@ -22,6 +26,10 @@ class EventInfo {
   final Club club;
   final Category category;
   final List<Interest> interests;
+
+  /// The event's `topics`; null from a server that does not send them, when
+  /// they are worked out from [interests] instead.
+  final List<Topic>? topics;
   final List<AdditionalDetail> additionalDetails;
   final double rating;
   final int totalRating;
@@ -69,6 +77,7 @@ class EventInfo {
     required this.club,
     required this.category,
     required this.interests,
+    this.topics,
     required this.additionalDetails,
     required this.rating,
     required this.totalRating,
@@ -118,6 +127,7 @@ class EventInfo {
               ?.map((e) => Interest.fromJson(e))
               .toList() ??
           [],
+      topics: TopicModel.declaredIn(json),
       additionalDetails: (json['additional_details'] as List<dynamic>?)
               ?.map((e) => AdditionalDetail.fromJson(e))
               .toList() ??
@@ -241,21 +251,34 @@ class Interest {
   final String icon;
   final String iconType;
 
+  /// Its topic; null from a server that does not say.
+  final int? categoryId;
+
   Interest({
     required this.id,
     required this.name,
     required this.icon,
     required this.iconType,
+    this.categoryId,
   });
 
   factory Interest.fromJson(Map<String, dynamic> json) {
     return Interest(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      icon: json['icon'] ?? '',
-      iconType: json['icon_type'] ?? '',
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: json['name'] as String? ?? '',
+      icon: json['icon'] as String? ?? '',
+      iconType: json['icon_type'] as String? ?? '',
+      categoryId: (json['category_id'] as num?)?.toInt(),
     );
   }
+
+  entity.Interest toEntity() => entity.Interest(
+        id: id,
+        name: name,
+        icon: icon.isEmpty ? null : icon,
+        iconType: iconType.isEmpty ? null : iconType,
+        categoryId: categoryId,
+      );
 }
 
 class AdditionalDetail {

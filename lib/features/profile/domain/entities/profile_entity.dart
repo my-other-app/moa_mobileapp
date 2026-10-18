@@ -140,20 +140,49 @@ class ImageUrls extends Equatable {
   List<Object?> get props => [original, medium, thumbnail];
 }
 
-/// User interest entity.
+/// An interest: what people, clubs and events are tagged with.
+///
+/// Interests sit under a topic (the server's interest category, its
+/// `category_id`). The topic fields are optional: a server from before
+/// topics sends only id, name and icon.
 class Interest extends Equatable {
   final int id;
   final String name;
   final String? icon;
   final String? iconType;
 
+  /// URL-safe name; null from a server that does not send one.
+  final String? slug;
+
+  /// The topic this interest sits under; null when the payload did not say.
+  final int? categoryId;
+
+  /// Position within its topic; null when the server does not order them.
+  final int? sortOrder;
+
+  /// Upcoming events tagged with it -- only `/interests/topics` counts them.
+  final int? upcomingEvents;
+
   const Interest({
     required this.id,
     required this.name,
     this.icon,
     this.iconType,
+    this.slug,
+    this.categoryId,
+    this.sortOrder,
+    this.upcomingEvents,
   });
 
   @override
-  List<Object?> get props => [id, name, icon, iconType];
+  List<Object?> get props => [
+        id,
+        name,
+        icon,
+        iconType,
+        slug,
+        categoryId,
+        sortOrder,
+        upcomingEvents,
+      ];
 }

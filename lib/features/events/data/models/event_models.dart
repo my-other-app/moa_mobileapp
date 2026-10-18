@@ -1,5 +1,7 @@
 import 'package:finnet/features/events/domain/entities/event_entity.dart';
 import 'package:finnet/features/profile/data/models/profile_models.dart';
+import 'package:finnet/features/topics/data/models/topic_model.dart';
+import 'package:finnet/features/topics/domain/entities/topic.dart';
 
 /// Data model for event from API.
 
@@ -30,6 +32,9 @@ class EventModel {
   final ClubSummaryModel? club;
   final CategoryModel? category;
   final List<InterestModel>? interests;
+
+  /// `topics` as sent; null from a server that sends none.
+  final List<Topic>? topics;
   final List<EventFieldModel>? additionalDetails;
   final double? rating;
   final int? totalRating;
@@ -57,6 +62,7 @@ class EventModel {
     this.club,
     this.category,
     this.interests,
+    this.topics,
     this.additionalDetails,
     this.rating,
     this.totalRating,
@@ -96,6 +102,7 @@ class EventModel {
       interests: (json['interests'] as List<dynamic>?)
           ?.map((e) => InterestModel.fromJson(e as Map<String, dynamic>))
           .toList(),
+      topics: TopicModel.declaredIn(json),
       additionalDetails: (json['additional_details'] as List<dynamic>?)
           ?.map((e) => EventFieldModel.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -128,6 +135,7 @@ class EventModel {
       'club': club?.toJson(),
       'category': category?.toJson(),
       'interests': interests?.map((e) => e.toJson()).toList(),
+      if (topics != null) 'topics': topics!.map(topicRefJson).toList(),
       'additional_details': additionalDetails?.map((e) => e.toJson()).toList(),
       'rating': rating,
       'total_rating': totalRating,
@@ -159,6 +167,7 @@ class EventModel {
       club: club?.toEntity() ?? const ClubSummary(id: 0, name: '', slug: ''),
       category: category?.toEntity() ?? const Category(id: 0, name: ''),
       interests: interests?.map((e) => e.toEntity()).toList() ?? [],
+      topics: topics,
       additionalFields:
           additionalDetails?.map((e) => e.toEntity()).toList() ?? [],
       rating: rating ?? 0,
@@ -184,6 +193,7 @@ class EventModel {
       registrationFee: regFee ?? 0,
       club: club?.toEntity() ?? const ClubSummary(id: 0, name: '', slug: ''),
       category: category?.toEntity() ?? const Category(id: 0, name: ''),
+      topics: topics,
     );
   }
 }
