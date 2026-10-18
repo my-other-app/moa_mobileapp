@@ -238,6 +238,18 @@ void main() {
     expect(e.userMessage, ApiException.accountSuspendedMessage);
   });
 
+  test('a session ended for a reused refresh token reads as an ended session',
+      () {
+    final e = ApiException.fromResponse(401, {
+      'message': 'This session was ended because its sign-in was used from '
+          'two places. Sign in again.',
+      'error_code': 'SESSION_REUSED',
+    });
+
+    expect(e.errorCode, 'SESSION_REUSED');
+    expect(e.userMessage, ApiException.sessionEndedMessage);
+  });
+
   test('the user message never carries a class name or a status code', () {
     for (final status in [400, 401, 403, 404, 409, 422, 429, 500, 503]) {
       final message = ApiException.fromResponse(status, null).userMessage;

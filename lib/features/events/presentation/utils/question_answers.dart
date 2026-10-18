@@ -21,9 +21,10 @@ enum QuestionControl {
   /// Radio buttons: pick one.
   radio,
 
-  /// Tick boxes. The server takes one string per question and insists it is
-  /// one of the options, so one box can be ticked at a time: a single "I
-  /// agree" box, or a pick-one list.
+  /// Tick boxes, one ticked at a time: a single "I agree" box, or a pick-one
+  /// list, sent as one string that must be one of the options. The server
+  /// now also takes a list of options for a checkbox question, but one
+  /// deployed before that takes only a string, so a string is what is sent.
   checkbox,
 }
 

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
+import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:finnet/features/events/presentation/utils/question_answers.dart';
 import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
 import 'package:finnet/features/events/presentation/widgets/merch_picker.dart';
@@ -56,6 +57,16 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   StoreCatalog _catalog = StoreCatalog.empty;
   Map<String, StorePick> _picks = {};
 
+  /// What the server said is wrong with each answer (INVALID_ANSWERS), by
+  /// question key, shown under its question until that answer changes.
+  final Map<String, String> _answerErrors = {};
+
+  /// Each question's place in the scroll, in order, to bring the first
+  /// refused answer into view.
+  late final List<GlobalKey> _questionKeys = [
+    for (final _ in widget.additionalDetails) GlobalKey(),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -95,6 +106,14 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  /// The answer to [key] changed: what the server said about the old one no
+  /// longer applies.
+  void _answerChanged(String key) {
+    if (_answerErrors.containsKey(key)) {
+      setState(() => _answerErrors.remove(key));
+    }
   }
 
   /// Pre-fill form data from user profile.
@@ -254,6 +273,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       _pickedMoments[detail.key] = moment;
       _pickedAnswers[detail.key] = answer;
       _additionalTextControllers[detail.key]?.text = label;
+      _answerErrors.remove(detail.key);
     });
   }
 
@@ -266,6 +286,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     return _buildInputField(
       label: detail.label,
       isRequired: detail.requiredField,
+      errorText: _answerErrors[detail.key],
       child: TextFormField(
         controller: _additionalTextControllers[detail.key],
         readOnly: true,
@@ -311,9 +332,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     );
   }
 
-  /// Radio buttons, or tick boxes for a checkbox question. The server keeps
-  /// one answer per question and it must be one of the options, so ticking a
-  /// box unticks the others; one box alone is an "I agree".
+  /// Radio buttons, or tick boxes for a checkbox question. One answer per
+  /// question, one of the options, so ticking a box unticks the others; one
+  /// box alone is an "I agree". (The server now takes a list for a checkbox
+  /// too; one string is what every server version accepts.)
   Widget _buildChoiceField(AdditionalDetail detail,
       {required bool checkbox}) {
     final values =
@@ -332,7 +354,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       builder: (field) {
         final selected = _additionalSelectValues[detail.key];
         void choose(String? value) {
-          setState(() => _additionalSelectValues[detail.key] = value);
+          setState(() {
+            _additionalSelectValues[detail.key] = value;
+            _answerErrors.remove(detail.key);
+          });
           field.didChange(value);
         }
 
@@ -373,7 +398,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         return _buildInputField(
           label: detail.label,
           isRequired: detail.requiredField,
-          errorText: field.errorText,
+          errorText: field.errorText ?? _answerErrors[detail.key],
           child: options,
         );
       },
@@ -393,8 +418,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       return _buildInputField(
         label: detail.label,
         isRequired: detail.requiredField,
+        errorText: _answerErrors[detail.key],
         child: TextFormField(
           controller: _additionalTextControllers[detail.key],
+          onChanged: (_) => _answerChanged(detail.key),
           keyboardType:
               _textKeyboards[detail.fieldType] ?? TextInputType.text,
           // A textarea is for prose, so it gets room for it; everything else
@@ -445,6 +472,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       return _buildInputField(
         label: detail.label,
         isRequired: detail.requiredField,
+        errorText: _answerErrors[detail.key],
         child: DropdownButtonFormField2<String>(
           value: _additionalSelectValues[detail.key],
           isExpanded: true,
@@ -534,6 +562,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           onChanged: (String? newValue) {
             setState(() {
               _additionalSelectValues[detail.key] = newValue;
+              _answerErrors.remove(detail.key);
             });
           },
           validator: (value) {
@@ -710,16 +739,48 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   /// the payment, the form closes with that choice for the event page to
   /// act on.
   Future<void> _showRefusal(Object error) async {
+    final refused = invalidAnswersOf(
+        error, widget.additionalDetails.map((detail) => detail.key));
+    if (refused != null) {
+      _showAnswerErrors(refused, serverMessageOf(error));
+      return;
+    }
     final action =
         await showRegistrationRefusal(context, describeRegistrationError(error));
     if (action == null || !mounted) return;
     if (context.canPop()) context.pop(action);
   }
 
+  /// Each refused answer's reason under its question, and the first of
+  /// them brought into view: the form can be long, and a dialog naming the
+  /// questions sent people hunting for them.
+  void _showAnswerErrors(Map<String, String> refused, String? said) {
+    setState(() {
+      _answerErrors
+        ..clear()
+        ..addAll(refused);
+    });
+    final first = widget.additionalDetails
+        .indexWhere((detail) => refused.containsKey(detail.key));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final place = _questionKeys[first].currentContext;
+      if (place == null || !place.mounted) return;
+      Scrollable.ensureVisible(
+        place,
+        alignment: 0.1,
+        duration: const Duration(milliseconds: 250),
+      );
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(said ?? 'Check your answers.')),
+    );
+  }
+
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isSubmitting = true;
+        _answerErrors.clear();
       });
 
       try {
@@ -1129,12 +1190,13 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                       ),
 
                       // Additional dynamic fields
-                      ...widget.additionalDetails.map((detail) {
-                        return Padding(
+                      for (final (i, detail)
+                          in widget.additionalDetails.indexed)
+                        Padding(
+                          key: _questionKeys[i],
                           padding: const EdgeInsets.only(top: 24),
                           child: _buildAdditionalField(detail),
-                        );
-                      }),
+                        ),
 
                       // The shelf: what the event sells with its ticket.
                       MerchPicker(catalog: _catalog, picks: _picks, onChanged: (next) => setState(() => _picks = next)),

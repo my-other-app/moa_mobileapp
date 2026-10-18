@@ -2,22 +2,24 @@ import 'package:dio/dio.dart';
 import 'package:finnet/core/error/failure_mapper.dart';
 import 'package:finnet/core/error/failures.dart';
 import 'package:finnet/core/network/api_exception.dart';
+import 'package:finnet/features/volunteer/data/ticket_code.dart';
 import 'package:finnet/features/volunteer/domain/entities/volunteer_event.dart';
 
 /// Work out why a scan was refused.
 ///
-/// The server has no machine-readable reason for any of these: every refusal
-/// in `app/api/events/volunteer/service.py` is a `CustomHTTPException(400,
-/// "English prose")`, with `error_code` left unset. So the only thing to
-/// classify on is the message. [ApiException.errorCode] is preferred where
-/// present, so the day the server starts setting one this stops being prose
-/// matching without another change here.
+/// [ApiException.errorCode] first (`app/api/events/volunteer/service.py`
+/// sets one on every refusal now), then the message, for a server from
+/// before the codes.
+///
+/// [entered] is the code that was scanned or typed. When it names no ticket,
+/// the message says what to do -- and, for an admission number, that only
+/// the ticket code checks anyone in ([noTicketMessage]).
 ///
 /// This used to live twice in the provider -- once in `validateTicket`, once
 /// in `checkinParticipant` -- plus a third partial copy in each method's
 /// generic `catch`. The copies disagreed: one of them never checked for an
 /// unpaid fee at all.
-CheckinResult classifyRefusal(Object error) {
+CheckinResult classifyRefusal(Object error, {String? entered}) {
   final failure = mapErrorToFailure(error);
 
   // Anything that never reached the endpoint. Must not be reported as a bad
@@ -46,6 +48,15 @@ CheckinResult classifyRefusal(Object error) {
     return CheckinResult.refused(
       type: CheckinResultType.notPermitted,
       message: api?.serverMessage ?? 'You are not a volunteer for this event.',
+    );
+  }
+
+  if (entered != null &&
+      entered.trim().isNotEmpty &&
+      _namesNoTicket(api, failure)) {
+    return CheckinResult.refused(
+      type: CheckinResultType.notFound,
+      message: noTicketMessage(entered),
     );
   }
 
@@ -142,6 +153,19 @@ CheckinResultType? _byErrorCode(String code) {
       return CheckinResultType.notPermitted;
   }
   return null;
+}
+
+/// The refusal says the code names no registration: REGISTRATION_NOT_FOUND,
+/// or, from a server without codes, "Registration not found". Not any 404:
+/// EVENT_NOT_FOUND is about the event.
+bool _namesNoTicket(ApiException? api, Failure failure) {
+  final code = api?.errorCode?.toUpperCase();
+  if (code != null) {
+    return code == 'REGISTRATION_NOT_FOUND' || code == 'TICKET_NOT_FOUND';
+  }
+  final said = (api?.serverMessage ?? failure.message).toLowerCase();
+  return said.contains('registration not found') ||
+      said.contains('ticket not found');
 }
 
 /// Pull the event name out of "...belongs to 'Hack Night 04'".

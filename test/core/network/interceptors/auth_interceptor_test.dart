@@ -298,4 +298,173 @@ void main() {
       expect(t.storage.values, isNotEmpty);
     });
   });
+
+  // The server issues a new refresh token on every refresh. The one sent
+  // stays good until the new one is first used; anything older then ends the
+  // session with 401 SESSION_REUSED.
+  group('refresh rotation', () {
+    ResponseBody json(String body, int status) => ResponseBody.fromString(
+          body,
+          status,
+          headers: _FakeHttpClientAdapter._jsonHeaders,
+        );
+
+    ({Dio dio, MemoryStorage storage, List<SessionEndReason> ended, Map<String, int> calls})
+        setUp(Map<String, FutureOr<ResponseBody> Function(RequestOptions)> handlers) {
+      final storage =
+          MemoryStorage({'access_token': 'a0', 'refresh_token': 'r0'});
+      final ended = <SessionEndReason>[];
+      final calls = <String, int>{};
+      final dio = Dio(BaseOptions(baseUrl: 'https://example.test'));
+      dio.httpClientAdapter = _FakeHttpClientAdapter({
+        for (final entry in handlers.entries)
+          entry.key: (options) {
+            calls[entry.key] = (calls[entry.key] ?? 0) + 1;
+            return entry.value(options);
+          },
+      });
+      dio.interceptors.addAll([
+        AuthInterceptor(storage, dio, onSessionEnded: ended.add),
+        ErrorInterceptor(),
+      ]);
+      return (dio: dio, storage: storage, ended: ended, calls: calls);
+    }
+
+    String sentToken(RequestOptions options) => (options.data as FormData)
+        .fields
+        .singleWhere((field) => field.key == 'token')
+        .value;
+
+    const expired =
+        '{"message":"Token has expired","error_code":"TOKEN_EXPIRED"}';
+
+    test('every refresh keeps both new tokens, and the next sends the new one',
+        () async {
+      final live = <String>{};
+      final presented = <String>[];
+      var generation = 0;
+      final t = setUp({
+        '/a': (options) => live.contains(options.headers['Authorization'])
+            ? json('{"ok":true}', 200)
+            : json(expired, 401),
+        '/auth/refresh': (options) {
+          presented.add(sentToken(options));
+          generation++;
+          live.add('Bearer a$generation');
+          return json(
+              '{"access_token":"a$generation","refresh_token":"r$generation"}',
+              200);
+        },
+      });
+
+      expect((await t.dio.get('/a')).statusCode, 200);
+      expect(t.storage.values,
+          {'access_token': 'a1', 'refresh_token': 'r1'});
+
+      live.clear(); // a1 expires
+      expect((await t.dio.get('/a')).statusCode, 200);
+
+      expect(presented, ['r0', 'r1']);
+      expect(t.storage.values,
+          {'access_token': 'a2', 'refresh_token': 'r2'});
+      expect(t.ended, isEmpty);
+    });
+
+    test('a 401 that lands after the refresh finished is retried with the new '
+        'token, not refreshed again', () async {
+      // Two requests leave with a0. The quick one's 401 sets off the
+      // refresh; the slow one's arrives after it has finished. Refreshing
+      // again for it would spend r1 at once -- and, against a server that
+      // has already seen r1 used, r0 would end the session.
+      final presented = <String>[];
+      final t = setUp({
+        '/quick': (options) => options.headers['Authorization'] == 'Bearer a1'
+            ? json('{"ok":true}', 200)
+            : json(expired, 401),
+        '/slow': (options) async {
+          if (options.headers['Authorization'] == 'Bearer a1') {
+            return json('{"ok":true}', 200);
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          return json(expired, 401);
+        },
+        '/auth/refresh': (options) {
+          presented.add(sentToken(options));
+          return json('{"access_token":"a1","refresh_token":"r1"}', 200);
+        },
+      });
+
+      final results = await Future.wait([t.dio.get('/quick'), t.dio.get('/slow')]);
+
+      expect(results.map((r) => r.statusCode), [200, 200]);
+      expect(presented, ['r0']);
+      expect(t.calls['/slow'], 2);
+      expect(t.storage.values, {'access_token': 'a1', 'refresh_token': 'r1'});
+    });
+
+    test('a request retried with the new token and refused again is reported, '
+        'not refreshed', () async {
+      final t = setUp({
+        '/quick': (options) => options.headers['Authorization'] == 'Bearer a1'
+            ? json('{"ok":true}', 200)
+            : json(expired, 401),
+        '/slow': (options) async {
+          if (options.headers['Authorization'] != 'Bearer a1') {
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+          }
+          return json(
+              '{"message":"User is not a volunteer for this event"}', 401);
+        },
+        '/auth/refresh': (_) =>
+            json('{"access_token":"a1","refresh_token":"r1"}', 200),
+      });
+
+      final outcomes = await Future.wait([
+        t.dio.get('/quick').then((_) => 'ok', onError: (_) => 'failed'),
+        t.dio.get('/slow').then((_) => 'ok', onError: (Object e) {
+          final api = (e as DioException).error as ApiException;
+          return api.serverMessage;
+        }),
+      ]).timeout(const Duration(seconds: 5));
+
+      expect(outcomes, ['ok', 'User is not a volunteer for this event']);
+      expect(t.calls['/slow'], 2);
+      expect(t.calls['/auth/refresh'], 1);
+      expect(t.ended, isEmpty);
+    });
+
+    test('SESSION_REUSED signs out once, for every waiting request, and '
+        'nothing loops', () async {
+      final t = setUp({
+        '/a': (_) => json(expired, 401),
+        '/auth/refresh': (_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          return json(
+              '{"message":"This session was ended because its sign-in was '
+              'used from two places. Sign in again.",'
+              '"error_code":"SESSION_REUSED"}',
+              401);
+        },
+      });
+
+      final errors = await Future.wait([
+        for (var i = 0; i < 3; i++)
+          t.dio.get('/a').then<Object?>((_) => null, onError: (Object e) => e),
+      ]).timeout(const Duration(seconds: 5));
+
+      expect(t.ended, [SessionEndReason.expired]);
+      expect(t.calls['/auth/refresh'], 1);
+      expect(t.storage.values, isEmpty);
+      for (final error in errors) {
+        final api = (error as DioException).error as ApiException;
+        expect(api.userMessage, ApiException.sessionEndedMessage);
+      }
+
+      // What the screen behind asks for next finds no session: no refresh,
+      // and nothing said a second time.
+      await expectLater(t.dio.get('/a'), throwsA(isA<DioException>()));
+      expect(t.calls['/auth/refresh'], 1);
+      expect(t.ended, [SessionEndReason.expired]);
+    });
+  });
 }

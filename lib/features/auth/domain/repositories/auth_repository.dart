@@ -23,9 +23,6 @@ abstract class AuthRepository {
   /// Clear stored tokens (logout).
   Future<Result<void>> clearTokens();
 
-  /// Refresh the access token using refresh token.
-  Future<Result<AuthTokens>> refreshToken(String refreshToken);
-
   /// Check if the user is currently authenticated.
   Future<bool> isAuthenticated();
 }

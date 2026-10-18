@@ -106,22 +106,6 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Result<AuthTokens>> refreshToken(String refreshToken) async {
-    try {
-      final response = await remoteDataSource.refreshToken(refreshToken);
-      final tokens = response.toEntity();
-
-      // Save new tokens
-      await localDataSource.saveTokens(response);
-
-      return Either.right(tokens);
-    } catch (e) {
-      debugPrint('AuthRepository.refreshToken error: $e');
-      return Either.left(mapErrorToFailure(e));
-    }
-  }
-
-  @override
   Future<bool> isAuthenticated() async {
     return await localDataSource.isAuthenticated();
   }
