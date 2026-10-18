@@ -11,7 +11,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/core/api/api_helper.dart';
-import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:apple_passkit/apple_passkit.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/core/config/app_config.dart';
@@ -256,7 +256,7 @@ class _TicketViewPageState extends State<TicketViewPage>
       if (!errorStr.contains('{{0, 0}')) {
         if (mounted) {
           _showErrorSnackBar(
-              'Could not share PDF: ${errorStr.split(':').last.trim()}');
+              "Couldn't share the PDF, so here's the link to your ticket.");
         }
       }
 
@@ -285,8 +285,9 @@ class _TicketViewPageState extends State<TicketViewPage>
     HapticFeedback.mediumImpact();
 
     try {
-      // Check if Apple Wallet is available (iOS only)
-      if (!Platform.isIOS) {
+      // Check if Apple Wallet is available (iOS only). The button isn't
+      // shown anywhere else; this is a guard.
+      if (!walletSupported) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -350,8 +351,10 @@ class _TicketViewPageState extends State<TicketViewPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content:
-                  Text('Failed to add to wallet: ${extractErrorMessage(e)}')),
+              content: Text(readableError(
+            e,
+            fallback: "We couldn't add this ticket to Apple Wallet. Try again in a moment.",
+          ))),
         );
       }
     } finally {
@@ -1017,18 +1020,24 @@ class _TicketViewPageState extends State<TicketViewPage>
             ),
           ],
         ),
-        const SizedBox(height: 12),
 
-        // Wallet button
-        _WalletButton(
-          isLoading: _isAddingToWallet,
-          onPressed: _addToWallet,
-          gradientColors: [_accentYellow, _accentGreen],
-        ),
+        // Apple Wallet, on iOS only: there is no Android pass to add.
+        if (walletSupported) ...[
+          const SizedBox(height: 12),
+          _WalletButton(
+            isLoading: _isAddingToWallet,
+            onPressed: _addToWallet,
+            gradientColors: [_accentYellow, _accentGreen],
+          ),
+        ],
       ],
     );
   }
 }
+
+/// Whether "Add to Wallet" is offered: Apple Wallet passes are iOS only.
+bool get walletSupported =>
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
 /// Custom painter for perforation line
 class _PerforationPainter extends CustomPainter {

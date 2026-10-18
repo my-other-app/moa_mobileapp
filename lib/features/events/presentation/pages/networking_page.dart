@@ -1,8 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/core/api/api_helper.dart';
-import 'package:finnet/core/utils/error_utils.dart';
-import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 
 /// Model for a networking attendee.
 class NetworkingAttendee {
@@ -77,6 +76,7 @@ class NetworkingPage extends StatefulWidget {
 class _NetworkingPageState extends State<NetworkingPage> {
   bool isLoading = true;
   String? errorMessage;
+  bool unavailable = false;
   List<NetworkingAttendee> attendees = [];
   DateTime? windowClosesAt;
   int total = 0;
@@ -91,6 +91,7 @@ class _NetworkingPageState extends State<NetworkingPage> {
     setState(() {
       isLoading = true;
       errorMessage = null;
+      unavailable = false;
     });
 
     try {
@@ -100,6 +101,7 @@ class _NetworkingPageState extends State<NetworkingPage> {
       );
 
       final data = res.data as Map<String, dynamic>;
+      if (!mounted) return;
       setState(() {
         attendees = (data['attendees'] as List? ?? [])
             .map((a) => NetworkingAttendee.fromJson(a as Map<String, dynamic>))
@@ -111,8 +113,12 @@ class _NetworkingPageState extends State<NetworkingPage> {
         isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        errorMessage = extractErrorMessage(e);
+        errorMessage = networkingErrorMessage(e);
+        // The club's plan doesn't include networking: trying again won't
+        // change that.
+        unavailable = errorCodeOf(e) == networkingUnavailableCode;
         isLoading = false;
       });
     }
@@ -139,9 +145,11 @@ class _NetworkingPageState extends State<NetworkingPage> {
     }
 
     if (errorMessage != null) {
-      return ErrorView(
-        message: errorMessage,
-        onRetry: _fetchNetworking,
+      // Not the shared ErrorView: it shows generic copy in place of the
+      // message it is given.
+      return _NetworkingProblem(
+        message: errorMessage!,
+        onRetry: unavailable ? null : _fetchNetworking,
       );
     }
 
@@ -371,5 +379,42 @@ class _NetworkingPageState extends State<NetworkingPage> {
     if (hour12 == 0) hour12 = 12;
     String minute = dt.toLocal().minute.toString().padLeft(2, '0');
     return "$hour12:$minute $period";
+  }
+}
+
+/// Why the page has no one to show, and a retry when one could help.
+class _NetworkingProblem extends StatelessWidget {
+  final String message;
+  final VoidCallback? onRetry;
+
+  const _NetworkingProblem({required this.message, this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.people_outline, size: 56, color: Colors.grey[500]),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 15, color: Colors.grey[800]),
+            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Try again'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
