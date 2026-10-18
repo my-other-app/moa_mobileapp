@@ -23,15 +23,19 @@ final paymentRepositoryProvider = Provider<PaymentRepository>((ref) {
 /// 409 UPDATE_APP_TO_PAY becomes an [UpdateAppToPayFailure] carrying the
 /// server's words and `errors.web_url`; 409 ALREADY_PAID an
 /// [AlreadyPaidFailure] and 422 NOTHING_TO_PAY a [NothingToPayFailure].
-/// Anything else keeps the kind from [mapErrorToFailure] and the server's own
-/// `message` where there is one.
+/// Anything else keeps the kind from [mapErrorToFailure], the server's own
+/// `message` where there is one, and its `error_code` as the code (the
+/// HTTP status when there's none).
 @visibleForTesting
 Failure paymentFailureFrom(Object error) {
+  String? serverCode;
   if (error is DioException) {
     final data = error.response?.data;
     final inner = error.error;
     final innerCode = inner is ApiException ? inner.errorCode : null;
-    final code = innerCode ?? (data is Map ? data['error_code'] : null);
+    final bodyCode = data is Map ? data['error_code'] : null;
+    final code = innerCode ?? (bodyCode is String ? bodyCode : null);
+    serverCode = code;
     if (code == alreadyPaidCode) return const AlreadyPaidFailure();
     if (code == nothingToPayCode) {
       final message = data is Map ? data['message'] : null;
@@ -57,7 +61,7 @@ Failure paymentFailureFrom(Object error) {
       ? extractErrorMessage(error, defaultMessage: mapped.message)
       : mapped.message;
   final status = error is DioException ? error.response?.statusCode : null;
-  final code = mapped.code ?? status?.toString();
+  final code = serverCode ?? mapped.code ?? status?.toString();
 
   if (mapped is NetworkFailure) return NetworkFailure(message: message, code: code);
   if (mapped is AuthFailure) return AuthFailure(message: message, code: code);

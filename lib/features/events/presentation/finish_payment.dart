@@ -19,9 +19,15 @@ enum FinishPaymentResult {
   /// get back to the payment.
   needsForm,
 
-  /// Registering again was refused -- the event filled up, or registrations
-  /// closed. [FinishPaymentOutcome.refusal] says how to say so.
+  /// Registering again was refused -- the event filled up, say.
+  /// [FinishPaymentOutcome.refusal] says how to say so.
   refused,
+
+  /// The server won't take the payment because registration has closed.
+  /// Only the server decides this: the deadline passing isn't enough, as an
+  /// existing registration can still be paid for until the event ends.
+  /// [FinishPaymentOutcome.refusal] has the words.
+  closed,
 
   /// No order could be made. [FinishPaymentOutcome.failure] says why; an
   /// `UpdateAppToPayFailure` carries the website link and a
@@ -43,7 +49,12 @@ class FinishPaymentOutcome {
       FinishPaymentOutcome._(FinishPaymentResult.needsForm);
 
   factory FinishPaymentOutcome.refused(RegistrationRefusal refusal) =>
-      FinishPaymentOutcome._(FinishPaymentResult.refused, refusal: refusal);
+      FinishPaymentOutcome._(
+        refusal.closed
+            ? FinishPaymentResult.closed
+            : FinishPaymentResult.refused,
+        refusal: refusal,
+      );
 
   factory FinishPaymentOutcome.failed(Failure failure) =>
       FinishPaymentOutcome._(FinishPaymentResult.failed, failure: failure);
@@ -65,19 +76,21 @@ typedef PayCall = Future<Result<bool>> Function({
   required String phone,
 });
 
-/// Paying for a registration that already exists, the way the website does.
+/// Paying for a registration that already exists.
 ///
-/// `/events/info/{id}` says a registration is unpaid but not which one, and
-/// an order needs its `event_registration_id`. Registering again gets it: for
-/// a signed-in person's unpaid registration on a paid event the server
-/// answers with that same registration -- `event_registration_id` and
-/// `pay_amount` included -- instead of refusing, and changes nothing about
-/// it (the shelf picks are kept when `store` is left out). Then the order is
-/// made with `{source: "event_registration", payload: {event_id,
-/// event_registration_id}}` on `?checkout=2`, as after a first registration.
+/// The order is `{source: "event_registration", payload: {event_id,
+/// event_registration_id}}` on `?checkout=2`, as after a first registration,
+/// and needs the registration's id. `/events/info/{id}` sends it as
+/// `registration_id`; with it, the order is made straight away.
 ///
-/// The server checks the event's required questions before it looks for the
-/// registration, so an event that asks any goes back through the form.
+/// A server older than that field says a registration is unpaid but not
+/// which one. Registering again gets it, the way the website does: for a
+/// signed-in person's unpaid registration on a paid event the server answers
+/// with that same registration -- `event_registration_id` and `pay_amount`
+/// included -- instead of refusing, and changes nothing about it (the shelf
+/// picks are kept when `store` is left out). That server checks the event's
+/// required questions before it looks for the registration, so on that path
+/// an event that asks any goes back through the form.
 class FinishPayment {
   final RegisterCall register;
   final PayCall pay;
@@ -100,11 +113,25 @@ class FinishPayment {
     required String name,
     required String email,
     String? phone,
+    String? registrationId,
   }) async {
+    final phoneNumber = phone?.trim() ?? '';
+    final known = registrationId?.trim() ?? '';
+    if (known.isNotEmpty) {
+      // `registration_id` from /events/info: no need to register again, so
+      // no questions to answer either.
+      return _pay(
+        eventId: eventId,
+        registrationId: known,
+        name: name.trim(),
+        email: email.trim(),
+        phone: phoneNumber,
+      );
+    }
+
     if (needsForm(questions: questions, name: name, email: email)) {
       return FinishPaymentOutcome.needsForm;
     }
-    final phoneNumber = phone?.trim() ?? '';
 
     final Map<String, dynamic> registration;
     try {
@@ -128,23 +155,46 @@ class FinishPayment {
     final owed = due is num ? due.toDouble() : 0.0;
     if (owed <= 0) return FinishPaymentOutcome.paid;
 
-    final registrationId = registration['event_registration_id'];
-    if (registrationId is! String || registrationId.isEmpty) {
+    final found = registration['event_registration_id'];
+    if (found is! String || found.isEmpty) {
       return FinishPaymentOutcome.failed(const ServerFailure(
         message: "We couldn't start the payment. Try again in a moment.",
       ));
     }
 
-    final paid = await pay(
+    return _pay(
       eventId: eventId,
-      registrationId: registrationId,
+      registrationId: found,
       name: _string(registration['full_name'], name),
       email: _string(registration['email'], email),
       phone: _string(registration['phone'], phoneNumber),
     );
+  }
+
+  Future<FinishPaymentOutcome> _pay({
+    required int eventId,
+    required String registrationId,
+    required String name,
+    required String email,
+    required String phone,
+  }) async {
+    final paid = await pay(
+      eventId: eventId,
+      registrationId: registrationId,
+      name: name,
+      email: email,
+      phone: phone,
+    );
     if (paid.isLeft) {
       final failure = paid.left;
       if (failure is AlreadyPaidFailure) return FinishPaymentOutcome.paid;
+      if (failure.code == RegistrationErrorCodes.registrationsClosed) {
+        return FinishPaymentOutcome.refused(RegistrationRefusal(
+          title: 'Registrations are closed',
+          message: failure.message,
+          closed: true,
+        ));
+      }
       return FinishPaymentOutcome.failed(failure);
     }
     return paid.right

@@ -160,10 +160,23 @@ void main() {
     });
 
     test('anything else keeps what the server said', () async {
-      final r =
-          await refusal(400, {'message': 'Registration deadline has passed'});
-      expect(r.message, 'Registration deadline has passed');
+      final r = await refusal(400, {'message': 'Email does not match'});
+      expect(r.message, 'Email does not match');
       expect(r.action, isNull);
+      expect(r.closed, isFalse);
+    });
+
+    test('a closed registration is marked closed, coded or not', () async {
+      final coded = await refusal(400, {
+        'message': 'Registration deadline has passed',
+        'error_code': 'REGISTRATIONS_CLOSED',
+      });
+      final uncoded =
+          await refusal(400, {'message': 'Registration deadline has passed'});
+      expect(coded.closed, isTrue);
+      expect(uncoded.closed, isTrue);
+      expect(uncoded.title, 'Registrations are closed');
+      expect(uncoded.message, 'Registration deadline has passed.');
     });
   });
 }

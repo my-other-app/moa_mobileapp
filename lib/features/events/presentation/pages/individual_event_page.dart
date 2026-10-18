@@ -86,6 +86,15 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
   /// Registered for a paid event and not paid: no ticket until they pay.
   bool awaitingPayment = false;
 
+  /// The viewer's registration (`registration_id`), to pay for it directly.
+  /// Null when not registered, or from an older server.
+  String? registrationId;
+
+  /// The server refused the payment because registration has closed. Only
+  /// its word closes it: an unpaid registration can be paid for after the
+  /// deadline, until the event ends.
+  bool _paymentClosed = false;
+
   /// A payment for the registration is under way.
   bool _paying = false;
 
@@ -169,9 +178,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
         prizeAmount = eventInfo.prizeAmount;
         isOnline = eventInfo.isOnline;
         regStartDate = eventInfo.regStartDate;
-        // `reg_enddate` is optional. EventInfo reads a missing one as "now",
-        // which closed registration for every event without a deadline.
-        regEndDate = raw['reg_enddate'] == null ? null : eventInfo.regEndDate;
+        regEndDate = eventInfo.regEndDate;
         club = eventInfo.club;
         category = eventInfo.category;
         interests = eventInfo.interests;
@@ -191,6 +198,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
         isAttended = status == RegistrationStatus.attended;
         isRegistered = status != RegistrationStatus.none;
         awaitingPayment = status == RegistrationStatus.awaitingPayment;
+        registrationId = eventInfo.registrationId;
         // Only update URLs if API provides them
         if (eventInfo.ticketUrl != null && eventInfo.ticketUrl!.isNotEmpty) {
           ticketUrl = eventInfo.ticketUrl;
@@ -219,7 +227,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
       }
       if (_finishPaymentOnLoad) {
         _finishPaymentOnLoad = false;
-        if (awaitingPayment && !registrationClosed) unawaited(_finishPayment());
+        if (awaitingPayment && !_eventEnded) unawaited(_finishPayment());
       }
       await _fetchAgenda();
       await _fetchCatalog();
@@ -289,6 +297,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
         name: profile?.fullName ?? '',
         email: profile?.email ?? '',
         phone: phone,
+        registrationId: registrationId,
       );
       if (!mounted) return;
 
@@ -311,6 +320,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
           );
         case FinishPaymentResult.needsForm:
           await _openRegistrationForm();
+        case FinishPaymentResult.closed:
+          setState(() => _paymentClosed = true);
+          await showRegistrationRefusal(context, outcome.refusal!);
         case FinishPaymentResult.refused:
           await showRegistrationRefusal(context, outcome.refusal!);
           await _fetchData();
@@ -1757,11 +1769,32 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
     return _buildRegistrationBottomSheet(context);
   }
 
+  /// Whether the event is over: an unpaid registration can be paid for after
+  /// the registration deadline, but not once the event has ended.
+  bool get _eventEnded {
+    final start = eventDateTime;
+    if (start == null) return false;
+    return start.add(hoursToDuration(duration ?? 0)).isBefore(DateTime.now());
+  }
+
   /// Bottom sheet for a registration still waiting for its payment.
   ///
-  /// Registering again is how the payment is reached, and the server refuses
-  /// it once registration has closed, so then there is nothing to tap.
+  /// The registration deadline doesn't stop it: an existing registration
+  /// can be paid for until the event ends. Closed is shown only once the
+  /// server has refused the payment.
   Widget _buildFinishPaymentBottomSheet(BuildContext context) {
+    final String banner;
+    final String? blocked;
+    if (_paymentClosed) {
+      banner = 'Registration closed before your payment went through';
+      blocked = 'REGISTRATION CLOSED';
+    } else if (_eventEnded) {
+      banner = 'This event ended before your payment went through';
+      blocked = 'EVENT ENDED';
+    } else {
+      banner = 'Registered — finish the payment to get your ticket';
+      blocked = null;
+    }
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -1776,9 +1809,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              registrationClosed
-                  ? 'Registration closed before your payment went through'
-                  : 'Registered — finish the payment to get your ticket',
+              banner,
               textAlign: TextAlign.left,
               style: const TextStyle(
                 fontWeight: FontWeight.normal,
@@ -1791,8 +1822,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed:
-                  (_paying || registrationClosed) ? null : _finishPayment,
+              onPressed: (_paying || blocked != null) ? null : _finishPayment,
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF2C333D),
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1804,9 +1834,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage> {
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white),
                     )
-                  : Text(registrationClosed
-                      ? 'REGISTRATION CLOSED'
-                      : 'FINISH PAYMENT'),
+                  : Text(blocked ?? 'FINISH PAYMENT'),
             ),
           ),
           const SizedBox(height: 10),

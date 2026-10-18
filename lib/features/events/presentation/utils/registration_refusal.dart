@@ -26,10 +26,15 @@ class RegistrationRefusal {
   final String message;
   final RegistrationAction? action;
 
+  /// Registration is closed: the deadline passed, or the club's plan stops
+  /// it. Asking again won't change that.
+  final bool closed;
+
   const RegistrationRefusal({
     required this.title,
     required this.message,
     this.action,
+    this.closed = false,
   });
 
   /// The button for [action].
@@ -43,12 +48,16 @@ class RegistrationRefusal {
 final _eventFull = RegExp(r'event\s+is\s+full', caseSensitive: false);
 final _alreadyRegistered =
     RegExp(r'already\s+registered', caseSensitive: false);
+final _deadlinePassed = RegExp(
+    r'deadline\s+has\s+passed|registrations?\s+(is\s+|are\s+)?closed',
+    caseSensitive: false);
 
 /// Sorts a refusal from the register call by its `error_code`.
 ///
 /// "Event is full" has been refused without a code for as long as the app
 /// has existed, so its words are matched too; so are "already registered"
-/// from a server older than the codes.
+/// and "Registration deadline has passed" from a server older than the
+/// codes.
 RegistrationRefusal describeRegistrationError(Object? error) {
   final code = errorCodeOf(error);
   final said = serverMessageOf(error);
@@ -71,6 +80,7 @@ RegistrationRefusal describeRegistrationError(Object? error) {
       return const RegistrationRefusal(
         title: 'Registrations are closed',
         message: "This event isn't taking more registrations right now.",
+        closed: true,
       );
     case RegistrationErrorCodes.eventFull:
       return _full;
@@ -90,6 +100,13 @@ RegistrationRefusal describeRegistrationError(Object? error) {
   }
 
   if (said != null && _eventFull.hasMatch(said)) return _full;
+  if (said != null && _deadlinePassed.hasMatch(said)) {
+    return RegistrationRefusal(
+      title: 'Registrations are closed',
+      message: _sentence(said),
+      closed: true,
+    );
+  }
   if (said != null && _alreadyRegistered.hasMatch(said)) {
     return const RegistrationRefusal(
       title: "You're already registered",

@@ -170,4 +170,65 @@ void main() {
     expect(outcome.result, FinishPaymentResult.failed);
     expect(outcome.failure, isA<ServerFailure>());
   });
+
+  group('with registration_id from /events/info', () {
+    test('makes the order straight away: no registering, no form', () async {
+      final calls = _Calls();
+      final outcome = await _flow(calls).run(
+        eventId: 7,
+        // Required questions don't matter: nothing is sent again.
+        questions: [_question()],
+        name: 'Asha Menon',
+        email: 'asha@example.com',
+        phone: '9876543210',
+        registrationId: 'b6f1c2d4-uuid',
+      );
+      expect(outcome.result, FinishPaymentResult.paid);
+      expect(calls.registered, isEmpty);
+      expect(calls.paidFor, ['b6f1c2d4-uuid']);
+    });
+
+    test('an order refused as REGISTRATIONS_CLOSED is closed', () async {
+      final outcome = await _flow(_Calls(),
+          paid: Either.left(const ServerFailure(
+            message: "This event isn't taking payments any more.",
+            code: 'REGISTRATIONS_CLOSED',
+          ))).run(
+        eventId: 7,
+        questions: const [],
+        name: 'Asha Menon',
+        email: 'asha@example.com',
+        registrationId: 'b6f1c2d4-uuid',
+      );
+      expect(outcome.result, FinishPaymentResult.closed);
+      expect(outcome.refusal!.message,
+          "This event isn't taking payments any more.");
+    });
+
+    test('an empty registration_id falls back to registering again', () async {
+      final calls = _Calls();
+      await _flow(calls).run(
+        eventId: 7,
+        questions: const [],
+        name: 'Asha Menon',
+        email: 'asha@example.com',
+        registrationId: ' ',
+      );
+      expect(calls.registered, hasLength(1));
+      expect(calls.paidFor, ['reg-1']);
+    });
+  });
+
+  test('registering again refused as closed is closed, not just refused',
+      () async {
+    final outcome = await _run(_flow(_Calls(),
+        refusal: const ApiException(
+          message: 'Registration deadline has passed',
+          statusCode: 400,
+          serverMessage: 'Registration deadline has passed',
+          errorCode: 'REGISTRATIONS_CLOSED',
+        )));
+    expect(outcome.result, FinishPaymentResult.closed);
+    expect(outcome.refusal!.closed, isTrue);
+  });
 }

@@ -17,6 +17,9 @@ Map<String, dynamic> _info({
   bool attended = false,
   bool hasFee = true,
   String? regEnd,
+  String start = '2030-12-01T10:00:00Z',
+  String? registrationId,
+  List<Map<String, dynamic>> questions = const [],
   double rating = 0,
 }) =>
     {
@@ -24,7 +27,7 @@ Map<String, dynamic> _info({
       'name': 'Hack Night',
       'slug': 'hack-night',
       'poster': null,
-      'event_datetime': '2030-12-01T10:00:00Z',
+      'event_datetime': start,
       'duration': 2.5,
       'location_name': 'CET',
       'has_fee': hasFee,
@@ -35,14 +38,21 @@ Map<String, dynamic> _info({
       'reg_enddate': regEnd,
       'club': {'id': 3, 'name': 'Tinkerhub', 'slug': 'tinkerhub', 'logo': {}},
       'category': {'id': 1, 'name': 'Tech'},
-      'additional_details': [],
+      'additional_details': questions,
       'rating': rating,
       'total_rating': rating > 0 ? 4 : 0,
       'is_registered': registered,
       'is_attended': attended,
       'ticket_url': registered ? 'https://myotherapp.in/tickets/T-1' : null,
       if (isPaid != _absent) 'is_paid': isPaid,
+      if (registrationId != null) 'registration_id': registrationId,
     };
+
+Future<void> _settle(WidgetTester tester) async {
+  for (var i = 0; i < 5; i++) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}
 
 Future<FakePaymentRepository> _pump(WidgetTester tester,
     {String? initialStatus}) async {
@@ -77,18 +87,106 @@ void main() {
     expect(find.text('VIEW TICKET'), findsNothing);
   });
 
-  testWidgets('once registration has closed, an unpaid registration says so',
-      (tester) async {
-    // The server refuses to register again after the deadline, and that is
-    // the way to the payment.
-    api.on('GET', '/events/info/7',
-        _info(isPaid: false, regEnd: '2020-01-01T00:00:00Z'));
+  testWidgets(
+      'with registration_id, Finish payment makes the order straight away -- '
+      'no registering again, no form for the questions', (tester) async {
+    api
+      ..on(
+          'GET',
+          '/events/info/7',
+          _info(isPaid: false, registrationId: 'b6f1c2d4-uuid', questions: [
+            {
+              'key': 'college',
+              'label': 'College',
+              'field_type': 'text',
+              'required': true,
+            },
+          ]))
+      ..on('GET', '/events/info/7',
+          _info(isPaid: true, registrationId: 'b6f1c2d4-uuid'));
+    final payments = await _pump(tester);
+    payments.order = Either.left(const AlreadyPaidFailure());
+
+    await tester.tap(find.text('FINISH PAYMENT'));
+    await _settle(tester);
+
+    expect(api.sent('POST', '/events/registration/7/register'), isEmpty);
+    expect(payments.orders, [(7, 'b6f1c2d4-uuid')]);
+    expect(find.text('VIEW TICKET'), findsOneWidget);
+  });
+
+  testWidgets(
+      'after the deadline an unpaid registration can still be paid for; '
+      'closed only once the server says so', (tester) async {
+    // An older server: no registration_id, so it registers again, and that
+    // server refuses after the deadline.
+    api
+      ..on('GET', '/events/info/7',
+          _info(isPaid: false, regEnd: '2020-01-01T00:00:00Z'))
+      ..on(
+          'POST',
+          '/events/registration/7/register',
+          {
+            'message': 'Registration deadline has passed',
+            'error_code': 'REGISTRATIONS_CLOSED',
+          },
+          status: 400);
     await _pump(tester);
 
-    final button = tester.widget<FilledButton>(
+    final pay = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'FINISH PAYMENT'));
+    expect(pay.onPressed, isNotNull);
+    expect(find.text('REGISTRATION CLOSED'), findsNothing);
+
+    await tester.tap(find.text('FINISH PAYMENT'));
+    await _settle(tester);
+    expect(find.text('Registrations are closed'), findsOneWidget);
+    await tester.tap(find.text('OK'));
+    await _settle(tester);
+
+    final closed = tester.widget<FilledButton>(
         find.widgetWithText(FilledButton, 'REGISTRATION CLOSED'));
-    expect(button.onPressed, isNull);
+    expect(closed.onPressed, isNull);
     expect(find.text('VIEW TICKET'), findsNothing);
+  });
+
+  testWidgets('a registration paid for after the deadline gets its ticket',
+      (tester) async {
+    api
+      ..on(
+          'GET',
+          '/events/info/7',
+          _info(
+              isPaid: false,
+              regEnd: '2020-01-01T00:00:00Z',
+              registrationId: 'b6f1c2d4-uuid'))
+      ..on('GET', '/events/info/7',
+          _info(isPaid: true, regEnd: '2020-01-01T00:00:00Z'));
+    final payments = await _pump(tester);
+    payments.order = Either.left(const AlreadyPaidFailure());
+
+    await tester.tap(find.text('FINISH PAYMENT'));
+    await _settle(tester);
+
+    expect(payments.orders, [(7, 'b6f1c2d4-uuid')]);
+    expect(find.text('VIEW TICKET'), findsOneWidget);
+  });
+
+  testWidgets('once the event has ended there is nothing to pay',
+      (tester) async {
+    api.on(
+        'GET',
+        '/events/info/7',
+        _info(
+            isPaid: false,
+            start: '2020-01-01T10:00:00Z',
+            regEnd: '2019-12-31T00:00:00Z',
+            registrationId: 'b6f1c2d4-uuid'));
+    await _pump(tester);
+
+    final button = tester
+        .widget<FilledButton>(find.widgetWithText(FilledButton, 'EVENT ENDED'));
+    expect(button.onPressed, isNull);
   });
 
   testWidgets('a server without is_paid shows the ticket, as before',

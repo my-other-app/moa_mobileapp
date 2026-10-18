@@ -127,6 +127,8 @@ void main() {
       expect(failure, isA<ServerFailure>());
       expect(failure, isNot(isA<UpdateAppToPayFailure>()));
       expect(failure.message, contains("club's own Razorpay account"));
+      // The server's error_code, so a caller can branch on it.
+      expect(failure.code, 'GATEWAY_UNAVAILABLE');
     });
 
     test('409 ALREADY_PAID is an AlreadyPaidFailure, to be treated as paid', () async {

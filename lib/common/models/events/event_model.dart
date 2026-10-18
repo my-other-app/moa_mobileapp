@@ -16,7 +16,9 @@ class EventInfo {
   final int prizeAmount;
   final bool isOnline;
   final DateTime regStartDate;
-  final DateTime regEndDate;
+
+  /// When registration closes; null when the event has no deadline.
+  final DateTime? regEndDate;
   final Club club;
   final Category category;
   final List<Interest> interests;
@@ -38,6 +40,16 @@ class EventInfo {
   final String? positionLabel;
   final List<EventDownload> downloads;
 
+  /// Null when the viewer isn't registered; true for a free registration or
+  /// a paid one; false while a paid event's registration waits for payment.
+  /// Also null from a server older than the field.
+  final bool? isPaid;
+
+  /// The viewer's own registration (a UUID), for `POST /payments/orders`
+  /// when it isn't paid yet. Null when not registered, or from an older
+  /// server.
+  final String? registrationId;
+
   EventInfo({
     required this.id,
     required this.name,
@@ -53,7 +65,7 @@ class EventInfo {
     required this.prizeAmount,
     required this.isOnline,
     required this.regStartDate,
-    required this.regEndDate,
+    this.regEndDate,
     required this.club,
     required this.category,
     required this.interests,
@@ -72,6 +84,8 @@ class EventInfo {
     this.userPosition,
     this.positionLabel,
     this.downloads = const [],
+    this.isPaid,
+    this.registrationId,
   });
 
   factory EventInfo.fromJson(Map<String, dynamic> json) {
@@ -93,8 +107,9 @@ class EventInfo {
       isOnline: json['is_online'] as bool? ?? false,
       regStartDate: DateTime.tryParse(json['reg_startdate'] as String? ?? '') ??
           DateTime.now(),
-      regEndDate: DateTime.tryParse(json['reg_enddate'] as String? ?? '') ??
-          DateTime.now(),
+      // Optional on the server. Read as "now" when missing, it closed
+      // registration for every event without a deadline.
+      regEndDate: DateTime.tryParse(json['reg_enddate'] as String? ?? ''),
       club: Club.fromJson(json['club'] ?? {}),
       category: Category.fromJson(json['category'] ?? {}),
       interests: (json['interests'] as List<dynamic>?)
@@ -126,7 +141,16 @@ class EventInfo {
               ?.map((e) => EventDownload.fromJson(e))
               .toList() ??
           [],
+      isPaid: json['is_paid'] as bool?,
+      registrationId: _id(json['registration_id']),
     );
+  }
+
+  /// A registration id as text: the server sends a UUID string.
+  static String? _id(Object? value) {
+    if (value is String) return value.trim().isEmpty ? null : value.trim();
+    if (value is num) return value.toString();
+    return null;
   }
 
   /// Check if the event has ended
