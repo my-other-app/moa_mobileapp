@@ -27,6 +27,8 @@ class ClubListTile extends StatelessWidget {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       backgroundColor: Colors.white,
       context: context,
+      // As tall as its options, not capped at 9/16 of the screen.
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),

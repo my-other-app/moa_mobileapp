@@ -8,6 +8,7 @@ import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/auth/presentation/widgets/email_verification_banner.dart';
+import 'package:finnet/features/notifications/presentation/widgets/push_switches_section.dart';
 import 'package:finnet/features/profile/presentation/pages/settings/blocked_users_page.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
@@ -101,10 +102,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             const SizedBox(height: 8),
           ],
 
-          // Event Notification and Club Updates switches used to sit here.
-          // They changed nothing -- the server keeps no notification
-          // preferences -- so they are gone until it does. The system
-          // settings turn notifications off.
+          // The notification switches, which the server keeps: off stops
+          // that kind of push and takes this device out of its FCM topics.
+          // Nothing shows on a server that keeps none (the system settings
+          // still turn every notification off).
+          const PushSwitchesSection(),
 
           CustomOptionTile(
             key: const ValueKey('settings-blocked-users'),

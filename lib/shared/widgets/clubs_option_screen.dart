@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/common/widgets/custom_option_tile.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/features/notifications/data/repositories/push_settings_repository_impl.dart';
 
-class ClubsOptionScreen extends StatefulWidget {
+class ClubsOptionScreen extends ConsumerStatefulWidget {
   final String clubName;
   final String imageUrl;
   final int clubId;
@@ -21,19 +23,69 @@ class ClubsOptionScreen extends StatefulWidget {
   });
 
   @override
-  State<ClubsOptionScreen> createState() => _ClubsOptionScreenState();
+  ConsumerState<ClubsOptionScreen> createState() => _ClubsOptionScreenState();
 }
 
-class _ClubsOptionScreenState extends State<ClubsOptionScreen> {
+class _ClubsOptionScreenState extends ConsumerState<ClubsOptionScreen> {
   bool _isLoading = false;
   late bool _isPinned;
   late bool _isHidden;
+
+  /// Whether the club is muted; null until known, and on a server that
+  /// keeps no mutes (then there is no option to show).
+  bool? _isMuted;
 
   @override
   void initState() {
     super.initState();
     _isPinned = widget.isPinned;
     _isHidden = widget.isHidden;
+    _loadMuted();
+  }
+
+  Future<void> _loadMuted() async {
+    final result = await ref
+        .read(pushSettingsRepositoryProvider)
+        .isClubMuted(widget.clubId);
+    if (!mounted) return;
+    result.fold((_) {}, (muted) => setState(() => _isMuted = muted));
+  }
+
+  /// Mute or unmute: still following, but no pushes or inbox lines from the
+  /// club. The push service then takes this device out of (or back into) the
+  /// club's FCM topic.
+  Future<void> _toggleMute() async {
+    final muted = _isMuted;
+    if (_isLoading || muted == null) return;
+    setState(() => _isLoading = true);
+    final result = await ref
+        .read(pushSettingsRepositoryProvider)
+        .setClubMuted(widget.clubId, muted: !muted);
+    if (!mounted) return;
+    result.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to change notifications: ${failure.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isLoading = false);
+      },
+      (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(!muted
+                ? '${widget.clubName} muted'
+                : '${widget.clubName} unmuted'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        Navigator.pop(
+            context, {'action': 'mute', 'success': true, 'isMuted': !muted});
+      },
+    );
   }
 
   Future<void> _unfollowClub() async {
@@ -142,7 +194,9 @@ class _ClubsOptionScreenState extends State<ClubsOptionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // Scrolls when the options are taller than the sheet may be (a short
+    // screen, large text): four options and the header can be.
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -155,7 +209,12 @@ class _ClubsOptionScreenState extends State<ClubsOptionScreen> {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: Colors.white,
-                backgroundImage: NetworkImage(widget.imageUrl),
+                // A club without a logo has no address to load.
+                backgroundImage: widget.imageUrl.isEmpty
+                    ? null
+                    : NetworkImage(widget.imageUrl),
+                onBackgroundImageError:
+                    widget.imageUrl.isEmpty ? null : (_, __) {},
               ),
               const SizedBox(height: 8),
               Text(
@@ -195,6 +254,19 @@ class _ClubsOptionScreenState extends State<ClubsOptionScreen> {
                   title: Text(_isPinned ? 'Unpin' : 'Pin It'),
                   onTap: _togglePinClub,
                 ),
+                if (_isMuted != null) ...[
+                  const Divider(height: 0),
+                  CustomOptionTile(
+                    key: const ValueKey('club-option-mute'),
+                    leadingIcon: _isMuted!
+                        ? Icons.notifications_active_outlined
+                        : Icons.notifications_off_outlined,
+                    title: Text(_isMuted!
+                        ? 'Unmute notifications'
+                        : 'Mute notifications'),
+                    onTap: _toggleMute,
+                  ),
+                ],
               ],
             )
         ],
