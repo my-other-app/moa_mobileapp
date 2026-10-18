@@ -9,6 +9,7 @@ import 'package:finnet/features/profile/presentation/providers/profile_provider.
 import 'package:finnet/features/auth/presentation/pages/onboarding_details_page.dart'
     show Organization;
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/features/topics/presentation/widgets/interest_tags.dart';
 
 /// Edit Profile Page - fully migrated to Riverpod.
 class EditProfilePage extends ConsumerStatefulWidget {
@@ -276,7 +277,12 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     );
   }
 
+  /// "Edit Interests", with the interests chosen so far beneath it, each
+  /// marked with its topic's colour. Opens the topic-grouped picker.
   Widget _buildEditInterestsButton() {
+    final interests =
+        ref.watch(profileProvider.select((s) => s.profile?.interests)) ??
+            const [];
     return InkWell(
       onTap: () {
         context.push('/profile/interests');
@@ -286,12 +292,21 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         decoration: const BoxDecoration(
           border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Edit Interests', style: _inputTextStyle),
-            const Icon(Icons.arrow_forward_ios,
-                color: Color(0xFF2C333D), size: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Edit Interests', style: _inputTextStyle),
+                const Icon(Icons.arrow_forward_ios,
+                    color: Color(0xFF2C333D), size: 16),
+              ],
+            ),
+            if (interests.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              InterestTags(interests: interests),
+            ],
           ],
         ),
       ),
