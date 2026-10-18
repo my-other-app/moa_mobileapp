@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:finnet/features/volunteer/data/ticket_code.dart';
 import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
 
-/// Manual ticket entry page for volunteer check-in
+/// Check someone in by typing their ticket code, when the QR won't scan.
+///
+/// Only the ticket code (MOA-7K3QF-X9PWM) checks anyone in; the admission
+/// number printed beside the QR does not (see `data/ticket_code.dart`), and
+/// the page says so.
 class ManualTicketEntryPage extends ConsumerStatefulWidget {
   final int eventId;
   final String eventName;
@@ -26,6 +31,10 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
+  /// Why the last code was refused, shown under the field until it is
+  /// edited. A snackbar was gone before the longer reasons could be read.
+  String? _refusal;
+
   @override
   void dispose() {
     _ticketController.dispose();
@@ -35,7 +44,10 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
   Future<void> _submitTicket() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _refusal = null;
+    });
 
     final result = await ref
         .read(volunteerProvider.notifier)
@@ -43,7 +55,10 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
 
     if (!mounted) return;
 
-    setState(() => _isLoading = false);
+    setState(() {
+      _isLoading = false;
+      if (!result.success) _refusal = result.message;
+    });
 
     if (result.success) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -61,25 +76,12 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
       );
       // Clear the field for next entry
       _ticketController.clear();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error, color: Colors.white),
-              const SizedBox(width: 8),
-              Expanded(child: Text(result.message)),
-            ],
-          ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final refusal = _refusal;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -87,7 +89,7 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
         elevation: 0,
         foregroundColor: Colors.black,
         title: const Text(
-          'ACCESS EVENT USING TICKET ID',
+          'CHECK IN WITH A TICKET CODE',
           style: TextStyle(
             fontSize: 24,
             fontFamily: 'BebasNeue',
@@ -102,50 +104,97 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 24),
-              // Ticket ID label
-              const Text(
-                'Ticket ID',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black54,
+              // Scrolls, so a long refusal never pushes the button off a
+              // small screen with the keyboard up.
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Ticket code',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _ticketController,
+                        decoration: InputDecoration(
+                          hintText: 'e.g. $ticketCodeExample',
+                          hintStyle: const TextStyle(color: Colors.grey),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF2C333D), width: 2),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                        textCapitalization: TextCapitalization.characters,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Enter the ticket code';
+                          }
+                          return null;
+                        },
+                        onChanged: (_) {
+                          if (_refusal != null) {
+                            setState(() => _refusal = null);
+                          }
+                        },
+                        onFieldSubmitted: (_) => _submitTicket(),
+                      ),
+                      const SizedBox(height: 8),
+                      if (refusal != null)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.error_outline,
+                                color: Color(0xFFCC0000), size: 18),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                refusal,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFFCC0000),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        const Text(
+                          'Shown as Ticket ID on their ticket in the app. '
+                          "Admission numbers like MOA-0042-E12 can't check "
+                          'anyone in.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.black54,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
-              // Ticket ID input
-              TextFormField(
-                controller: _ticketController,
-                decoration: InputDecoration(
-                  hintText: 'Enter Ticket ID',
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF2C333D), width: 2),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-                textCapitalization: TextCapitalization.characters,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a ticket ID';
-                  }
-                  return null;
-                },
-                onFieldSubmitted: (_) => _submitTicket(),
-              ),
-              const Spacer(),
+              const SizedBox(height: 16),
               // Continue button
               SizedBox(
                 width: double.infinity,

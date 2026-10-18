@@ -36,7 +36,7 @@ class VolunteerRepositoryImpl implements VolunteerRepository {
       return _successFrom(body, ticketId);
     } catch (e) {
       debugPrint('VolunteerRepository.validate error: $e');
-      return classifyRefusal(e);
+      return classifyRefusal(e, entered: ticketId);
     }
   }
 
@@ -52,7 +52,7 @@ class VolunteerRepositoryImpl implements VolunteerRepository {
       );
     } catch (e) {
       debugPrint('VolunteerRepository.checkin error: $e');
-      return classifyRefusal(e);
+      return classifyRefusal(e, entered: ticketId);
     }
   }
 

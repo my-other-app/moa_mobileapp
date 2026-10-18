@@ -198,5 +198,25 @@ void main() {
       expect(result.success, isFalse);
       expect(result.type, CheckinResultType.unreachable);
     });
+
+    test('an admission number typed in is told the ticket code is needed',
+        () async {
+      // The server answers an admission number as a code that names no
+      // ticket: 400 REGISTRATION_NOT_FOUND.
+      dataSource.throws = const ApiException(
+        message: 'Registration not found',
+        statusCode: 400,
+        type: ApiExceptionType.badRequest,
+        serverMessage: 'Registration not found',
+        errorCode: 'REGISTRATION_NOT_FOUND',
+      );
+
+      final result = await repository.checkin(7, 'MOA-0042-E12');
+
+      expect(result.success, isFalse);
+      expect(result.type, CheckinResultType.notFound);
+      expect(result.message, contains('admission number'));
+      expect(result.message, contains('ticket code'));
+    });
   });
 }
