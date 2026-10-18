@@ -3,16 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
+import 'package:finnet/features/events/presentation/utils/question_answers.dart';
+import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
 import 'package:finnet/features/events/presentation/widgets/merch_picker.dart';
+import 'package:finnet/features/events/presentation/widgets/registration_feedback.dart';
 import 'package:finnet/features/payments/checkout.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
-import 'package:finnet/features/payments/domain/payment_failures.dart';
 import 'package:finnet/core/api/api_helper.dart';
-import 'package:finnet/core/error/failures.dart';
-import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 
@@ -40,6 +39,11 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   final Map<String, TextEditingController> _additionalTextControllers = {};
   final Map<String, String?> _additionalSelectValues = {};
 
+  /// Date and time answers, as sent ("2026-10-18", "09:05",
+  /// "2026-10-18T09:05"); their controllers hold what is shown.
+  final Map<String, String> _pickedAnswers = {};
+  final Map<String, DateTime> _pickedMoments = {};
+
   // Organization selection
   Organization? _selectedOrganization;
   bool _isOtherOrganization = false;
@@ -60,7 +64,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     // 'text' got one, so a 'tel' or 'textarea' field had nowhere to put a
     // value even once it rendered.
     for (var detail in widget.additionalDetails) {
-      if (_isTextual(detail.fieldType)) {
+      final control = questionControlOf(detail.fieldType);
+      if (control == QuestionControl.text || isPickerControl(control)) {
         _additionalTextControllers[detail.key] = TextEditingController();
       }
     }
@@ -143,7 +148,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                   overflow: TextOverflow.ellipsis,
                   color: Color(0xFF2C333D),
                   fontSize: 12,
-                  fontFamily: 'DM Sans',
+                  fontFamily: 'DMSans',
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -153,7 +158,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                   style: TextStyle(
                     color: Color(0xFFCC0000),
                     fontSize: 12,
-                    fontFamily: 'DM Sans',
+                    fontFamily: 'DMSans',
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -184,6 +189,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   /// the submission, and the server rejects the registration as missing a
   /// required field -- so an event using any other type could not be
   /// registered for at all, with nothing on screen to explain why.
+  ///
+  /// Dates and times are picked, not typed (see [questionControlOf]): typed
+  /// in, they arrived in whatever shape each person chose.
   static const _textKeyboards = <String, TextInputType>{
     'text': TextInputType.text,
     'textarea': TextInputType.multiline,
@@ -191,18 +199,197 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     'url': TextInputType.url,
     'tel': TextInputType.phone,
     'number': TextInputType.number,
-    'date': TextInputType.datetime,
-    'time': TextInputType.datetime,
-    'datetime': TextInputType.datetime,
   };
 
-  static bool _isTextual(String fieldType) =>
-      _textKeyboards.containsKey(fieldType) ||
-      // Anything unrecognised falls back to a text box rather than vanishing.
-      !const ['select', 'radio', 'checkbox'].contains(fieldType);
+  static const _valueStyle = TextStyle(
+    color: Color(0xFF1E1E1E),
+    fontSize: 16,
+    fontFamily: 'DMSans',
+    fontWeight: FontWeight.w500,
+  );
+
+  /// A date, a time, or both, from the platform pickers.
+  Future<void> _pick(AdditionalDetail detail, QuestionControl control) async {
+    FocusScope.of(context).unfocus();
+    final now = DateTime.now();
+    final current = _pickedMoments[detail.key];
+
+    DateTime? day;
+    if (control != QuestionControl.time) {
+      day = await showDatePicker(
+        context: context,
+        initialDate: current ?? now,
+        firstDate: DateTime(1900),
+        lastDate: DateTime(now.year + 20, 12, 31),
+      );
+      if (day == null || !mounted) return;
+    }
+    TimeOfDay? time;
+    if (control != QuestionControl.date) {
+      time = await showTimePicker(
+        context: context,
+        initialTime: current != null
+            ? TimeOfDay.fromDateTime(current)
+            : TimeOfDay.fromDateTime(now),
+      );
+      if (time == null || !mounted) return;
+    }
+
+    final moment = DateTime(
+      day?.year ?? now.year,
+      day?.month ?? now.month,
+      day?.day ?? now.day,
+      time?.hour ?? 0,
+      time?.minute ?? 0,
+    );
+    final (answer, label) = switch (control) {
+      QuestionControl.date => (dateAnswer(moment), dateLabel(moment)),
+      QuestionControl.time => (
+          timeAnswer(moment.hour, moment.minute),
+          timeLabel(moment.hour, moment.minute),
+        ),
+      _ => (dateTimeAnswer(moment), dateTimeLabel(moment)),
+    };
+    setState(() {
+      _pickedMoments[detail.key] = moment;
+      _pickedAnswers[detail.key] = answer;
+      _additionalTextControllers[detail.key]?.text = label;
+    });
+  }
+
+  Widget _buildPickerField(AdditionalDetail detail, QuestionControl control) {
+    final hint = switch (control) {
+      QuestionControl.date => 'Pick a date',
+      QuestionControl.time => 'Pick a time',
+      _ => 'Pick a date and time',
+    };
+    return _buildInputField(
+      label: detail.label,
+      isRequired: detail.requiredField,
+      child: TextFormField(
+        controller: _additionalTextControllers[detail.key],
+        readOnly: true,
+        onTap: () => _pick(detail, control),
+        style: _valueStyle,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: _valueStyle.copyWith(color: const Color(0xFFB4B4B4)),
+          suffixIcon: Icon(
+            control == QuestionControl.time
+                ? Icons.access_time
+                : Icons.calendar_today_outlined,
+            size: 18,
+            color: const Color(0xFF2C333D),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFF2C333D), width: 0.5),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFF2C333D), width: 0.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFF2C333D), width: 1),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFFCC0000), width: 0.5),
+          ),
+        ),
+        validator: (_) {
+          final picked = _pickedAnswers[detail.key];
+          if (detail.requiredField && (picked == null || picked.isEmpty)) {
+            return 'Please pick ${detail.label.toLowerCase()}';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  /// Radio buttons, or tick boxes for a checkbox question. The server keeps
+  /// one answer per question and it must be one of the options, so ticking a
+  /// box unticks the others; one box alone is an "I agree".
+  Widget _buildChoiceField(AdditionalDetail detail,
+      {required bool checkbox}) {
+    final values =
+        checkbox ? checkboxValues(detail.options) : detail.options;
+    final single = checkbox && values.length == 1;
+    return FormField<String>(
+      validator: (_) {
+        final picked = _additionalSelectValues[detail.key];
+        if (detail.requiredField && (picked == null || picked.isEmpty)) {
+          return single
+              ? 'Please tick this box'
+              : 'Please choose ${detail.label.toLowerCase()}';
+        }
+        return null;
+      },
+      builder: (field) {
+        final selected = _additionalSelectValues[detail.key];
+        void choose(String? value) {
+          setState(() => _additionalSelectValues[detail.key] = value);
+          field.didChange(value);
+        }
+
+        final Widget options;
+        if (checkbox) {
+          options = Column(
+            children: [
+              for (final option in values)
+                CheckboxListTile(
+                  value: selected == option,
+                  onChanged: (ticked) => choose(ticked == true ? option : null),
+                  title: Text(option, style: _valueStyle),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  activeColor: const Color(0xFF2C333D),
+                ),
+            ],
+          );
+        } else {
+          options = RadioGroup<String>(
+            groupValue: selected,
+            onChanged: choose,
+            child: Column(
+              children: [
+                for (final option in values)
+                  RadioListTile<String>(
+                    value: option,
+                    title: Text(option, style: _valueStyle),
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    activeColor: const Color(0xFF2C333D),
+                  ),
+              ],
+            ),
+          );
+        }
+        return _buildInputField(
+          label: detail.label,
+          isRequired: detail.requiredField,
+          errorText: field.errorText,
+          child: options,
+        );
+      },
+    );
+  }
 
   Widget _buildAdditionalField(AdditionalDetail detail) {
-    if (_isTextual(detail.fieldType)) {
+    final control = questionControlOf(detail.fieldType);
+    if (isPickerControl(control)) return _buildPickerField(detail, control);
+    if (control == QuestionControl.checkbox) {
+      return _buildChoiceField(detail, checkbox: true);
+    }
+    if (control == QuestionControl.radio) {
+      return _buildChoiceField(detail, checkbox: false);
+    }
+    if (control == QuestionControl.text) {
       return _buildInputField(
         label: detail.label,
         isRequired: detail.requiredField,
@@ -217,7 +404,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           style: TextStyle(
             color: Color(0xFF1E1E1E),
             fontSize: 16,
-            fontFamily: 'DM Sans',
+            fontFamily: 'DMSans',
             fontWeight: FontWeight.w500,
           ),
           decoration: InputDecoration(
@@ -225,7 +412,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             hintStyle: TextStyle(
               color: Color(0xFFB4B4B4),
               fontSize: 16,
-              fontFamily: 'DM Sans',
+              fontFamily: 'DMSans',
               fontWeight: FontWeight.w500,
             ),
             contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -254,9 +441,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           },
         ),
       );
-    } else if (detail.fieldType == 'select' ||
-        detail.fieldType == 'radio' ||
-        detail.fieldType == 'checkbox') {
+    } else if (control == QuestionControl.select) {
       return _buildInputField(
         label: detail.label,
         isRequired: detail.requiredField,
@@ -298,7 +483,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           style: TextStyle(
             color: Color(0xFF1E1E1E),
             fontSize: 16,
-            fontFamily: 'DM Sans',
+            fontFamily: 'DMSans',
             fontWeight: FontWeight.w500,
           ),
           decoration: InputDecoration(
@@ -306,7 +491,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             hintStyle: TextStyle(
               color: Color(0xFFB4B4B4),
               fontSize: 16,
-              fontFamily: 'DM Sans',
+              fontFamily: 'DMSans',
               fontWeight: FontWeight.w500,
             ),
             contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -339,7 +524,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                   style: TextStyle(
                     color: Color(0xFF1E1E1E),
                     fontSize: 16,
-                    fontFamily: 'DM Sans',
+                    fontFamily: 'DMSans',
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -411,7 +596,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             style: TextStyle(
               color: Color(0xFF1E1E1E),
               fontSize: 16,
-              fontFamily: 'DM Sans',
+              fontFamily: 'DMSans',
               fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
@@ -419,7 +604,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               hintStyle: TextStyle(
                 color: Color(0xFFB4B4B4),
                 fontSize: 16,
-                fontFamily: 'DM Sans',
+                fontFamily: 'DMSans',
                 fontWeight: FontWeight.w500,
               ),
               contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -447,7 +632,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                     style: TextStyle(
                       color: Color(0xFF1E1E1E),
                       fontSize: 16,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -461,7 +646,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                   style: TextStyle(
                     color: Color(0xFF1E1E1E),
                     fontSize: 16,
-                    fontFamily: 'DM Sans',
+                    fontFamily: 'DMSans',
                     fontWeight: FontWeight.w500,
                     fontStyle: FontStyle.italic,
                   ),
@@ -488,7 +673,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               style: TextStyle(
                 color: Color(0xFF1E1E1E),
                 fontSize: 16,
-                fontFamily: 'DM Sans',
+                fontFamily: 'DMSans',
                 fontWeight: FontWeight.w500,
               ),
               decoration: InputDecoration(
@@ -496,7 +681,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                 hintStyle: TextStyle(
                   color: Color(0xFFB4B4B4),
                   fontSize: 16,
-                  fontFamily: 'DM Sans',
+                  fontFamily: 'DMSans',
                   fontWeight: FontWeight.w500,
                 ),
                 contentPadding:
@@ -521,24 +706,14 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     );
   }
 
-  /// No order could be made, so nothing was charged. An event this build
-  /// can't pay (409 UPDATE_APP_TO_PAY) also offers its page on the website.
-  void _showPaymentFailure(Failure failure) {
-    final webUrl = failure is UpdateAppToPayFailure ? failure.webUrl : null;
-    final uri = webUrl == null ? null : Uri.tryParse(webUrl);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(failure.message),
-        showCloseIcon: uri != null,
-        action: uri == null
-            ? null
-            : SnackBarAction(
-                label: 'Open website',
-                onPressed: () =>
-                    launchUrl(uri, mode: LaunchMode.externalApplication),
-              ),
-      ),
-    );
+  /// Says why the registration was refused. When it offers the ticket or
+  /// the payment, the form closes with that choice for the event page to
+  /// act on.
+  Future<void> _showRefusal(Object error) async {
+    final action =
+        await showRegistrationRefusal(context, describeRegistrationError(error));
+    if (action == null || !mounted) return;
+    if (context.canPop()) context.pop(action);
   }
 
   Future<void> _submitForm() async {
@@ -551,11 +726,16 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         // Build additional details map
         Map<String, String> additionalDetailsMap = {};
 
-        // Add text field values
+        // Add text field values. A picked date or time is sent as picked,
+        // not as the words shown in its field.
         _additionalTextControllers.forEach((key, controller) {
+          if (_pickedMoments.containsKey(key)) return;
           if (controller.text.isNotEmpty) {
             additionalDetailsMap[key] = controller.text;
           }
+        });
+        _pickedAnswers.forEach((key, value) {
+          if (value.isNotEmpty) additionalDetailsMap[key] = value;
         });
 
         // Add select field values
@@ -593,18 +773,28 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           final data = response.data as Map<String, dynamic>;
           // The ticket, and whatever was picked from the shelf, are paid in one checkout.
           final due = (data['pay_amount'] as num?)?.toDouble() ?? 0;
+          final registrationId = data['event_registration_id'];
+          if (due > 0 && registrationId is! String) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                    "We couldn't start the payment. Try again in a moment."),
+              ),
+            );
+            return;
+          }
           if (due > 0) {
             final outcome = await RegistrationCheckout.pay(
               repository: ref.read(paymentRepositoryProvider),
               eventId: widget.eventId,
-              registrationId: data['event_registration_id'] as String,
+              registrationId: registrationId as String,
               name: _nameController.text.trim(),
               email: _emailController.text.trim(),
               phone: _phoneController.text.trim(),
             );
             if (!mounted) return;
             if (outcome.isLeft) {
-              _showPaymentFailure(outcome.left);
+              showPaymentFailure(context, outcome.left);
               return;
             }
             if (!outcome.right) {
@@ -633,12 +823,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(extractErrorMessage(e,
-                  defaultMessage: 'Registration failed')),
-            ),
-          );
+          // The form is usable again while the refusal is read.
+          setState(() => _isSubmitting = false);
+          await _showRefusal(e);
         }
       } finally {
         if (mounted) {
@@ -680,13 +867,17 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             children: [
               Row(
                 children: [
-                  Text(
-                    'Hop on and fill out this form! 📝✨',
-                    style: TextStyle(
-                      color: Color(0xFF1E1E1E),
-                      fontSize: 24,
-                      fontFamily: 'Bebas Neue',
-                      fontWeight: FontWeight.w400,
+                  // Flexible: on a narrow phone the heading wraps rather
+                  // than running off the edge.
+                  Flexible(
+                    child: Text(
+                      'Hop on and fill out this form! 📝✨',
+                      style: TextStyle(
+                        color: Color(0xFF1E1E1E),
+                        fontSize: 24,
+                        fontFamily: 'BebasNeue',
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                   ),
                 ],
@@ -705,7 +896,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                           style: TextStyle(
                             color: Color(0xFF1E1E1E),
                             fontSize: 16,
-                            fontFamily: 'DM Sans',
+                            fontFamily: 'DMSans',
                             fontWeight: FontWeight.w500,
                           ),
                           decoration: InputDecoration(
@@ -713,7 +904,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                             hintStyle: TextStyle(
                               color: Color(0xFFB4B4B4),
                               fontSize: 16,
-                              fontFamily: 'DM Sans',
+                              fontFamily: 'DMSans',
                               fontWeight: FontWeight.w500,
                             ),
                             contentPadding: EdgeInsets.symmetric(
@@ -763,7 +954,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                           style: TextStyle(
                             color: Color(0xFF6B7280), // Greyed out color
                             fontSize: 16,
-                            fontFamily: 'DM Sans',
+                            fontFamily: 'DMSans',
                             fontWeight: FontWeight.w500,
                           ),
                           decoration: InputDecoration(
@@ -771,7 +962,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                             hintStyle: TextStyle(
                               color: Color(0xFFB4B4B4),
                               fontSize: 16,
-                              fontFamily: 'DM Sans',
+                              fontFamily: 'DMSans',
                               fontWeight: FontWeight.w500,
                             ),
                             filled: true,
@@ -828,7 +1019,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                           style: TextStyle(
                             color: Color(0xFF1E1E1E),
                             fontSize: 16,
-                            fontFamily: 'DM Sans',
+                            fontFamily: 'DMSans',
                             fontWeight: FontWeight.w500,
                           ),
                           decoration: InputDecoration(
@@ -836,7 +1027,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                             hintStyle: TextStyle(
                               color: Color(0xFFB4B4B4),
                               fontSize: 16,
-                              fontFamily: 'DM Sans',
+                              fontFamily: 'DMSans',
                               fontWeight: FontWeight.w500,
                             ),
                             contentPadding: EdgeInsets.symmetric(
@@ -904,7 +1095,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                             style: TextStyle(
                               color: Color(0xFF1E1E1E),
                               fontSize: 16,
-                              fontFamily: 'DM Sans',
+                              fontFamily: 'DMSans',
                               fontWeight: FontWeight.w500,
                             ),
                             decoration: InputDecoration(
@@ -912,7 +1103,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                               hintStyle: TextStyle(
                                 color: Color(0xFFB4B4B4),
                                 fontSize: 16,
-                                fontFamily: 'DM Sans',
+                                fontFamily: 'DMSans',
                                 fontWeight: FontWeight.w500,
                               ),
                               contentPadding: EdgeInsets.symmetric(
@@ -972,7 +1163,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 24,
-                            fontFamily: 'Bebas Neue',
+                            fontFamily: 'BebasNeue',
                             fontWeight: FontWeight.w400,
                           ),
                         ),

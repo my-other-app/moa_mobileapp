@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/features/events/domain/registration_status.dart';
+import 'package:finnet/features/events/presentation/utils/event_errors.dart';
+import 'package:finnet/features/events/presentation/utils/event_feed.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
-import 'package:finnet/shared/widgets/event_cover.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/presentation/pages/no_registered_event_page.dart';
-import 'package:finnet/core/utils/error_utils.dart';
 
 class UpcomingEventsPage extends StatefulWidget {
   const UpcomingEventsPage({super.key});
@@ -70,10 +72,10 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = extractErrorMessage(
-          e,
-          defaultMessage: 'Could not load upcoming events.',
-        );
+          _errorMessage = readableError(
+            e,
+            fallback: 'Could not load upcoming events.',
+          );
           _isLoading = false;
         });
       }
@@ -112,6 +114,16 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage>
 
   Future<void> _refresh() async {
     await _fetchData();
+  }
+
+  /// Opens the event straight into paying; the list is fetched again after,
+  /// so a paid registration comes back with its ticket.
+  Future<void> _finishPayment(Map<String, dynamic> event) async {
+    final id = event['id'];
+    if (id is! num) return;
+    await context.push('/events/${id.toInt()}',
+        extra: {'status': finishPaymentStatus});
+    if (mounted) await _fetchData();
   }
 
   @override
@@ -177,29 +189,18 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage>
               );
             }
 
-            final event = _events[index];
-            return EventCard(
-              clubSlug: event['club']?['slug'] ?? '',
-              orgImage: event['club']?['logo']?['thumbnail'] ?? '',
-              title: event['name'] ?? 'No Title',
-              organizer: event['club']?['name'] ?? 'Unknown Organizer',
-              tags: [
-                event['category']?['name'] ?? '',
-                event['is_online'] == true ? 'Online' : 'Offline',
-                event['has_fee'] == true ? 'Paid' : 'Free',
-                '${event['duration']} Hours'
-              ],
-              onTap: () {},
-              poster: event['poster'],
-              categoryId: event['category']?['id'],
-              categoryName: event['category']?['name'],
-              startsAt: parseEventStart(event['event_datetime']),
-              isOnline: event['is_online'] == true,
-              eventId: event['id'],
-              clubId: event['club']['id'],
-              eventSlug: event['slug'],
-              status: EventCardStatus.registered,
-              ticketUrl: event['ticket_url'],
+            final event = Map<String, dynamic>.from(
+                _events[index] as Map? ?? const <String, dynamic>{});
+            // A registration still waiting for its payment has no ticket to
+            // view: its card says "Payment due" and offers FINISH PAYMENT,
+            // after which the list is fetched again.
+            return eventCardFromJson(
+              event,
+              status: registeredCardStatus(event),
+              ticketUrl: event['ticket_url'] is String
+                  ? event['ticket_url'] as String
+                  : null,
+              onFinishPayment: () => _finishPayment(event),
             );
           },
         ),

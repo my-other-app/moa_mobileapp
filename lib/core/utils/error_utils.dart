@@ -1,74 +1,74 @@
 import 'package:dio/dio.dart';
+import 'package:finnet/core/error/failures.dart';
+import 'package:finnet/core/network/api_exception.dart';
 
-/// Extracts a user-friendly error message from any exception,
-/// with special handling for DioException to get the actual API error message.
-String extractErrorMessage(dynamic error,
-    {String defaultMessage = 'An error occurred'}) {
-  if (error is DioException) {
-    // Try to extract message from response data
-    final responseData = error.response?.data;
-    if (responseData != null) {
-      if (responseData is Map) {
-        // Check for common error message fields
-        if (responseData['message'] != null) {
-          return responseData['message'].toString();
-        }
-        if (responseData['detail'] != null) {
-          // FastAPI validation errors have detail as a list
-          final detail = responseData['detail'];
-          if (detail is List && detail.isNotEmpty) {
-            // Get first validation error message
-            final firstError = detail.first;
-            if (firstError is Map && firstError['msg'] != null) {
-              return firstError['msg'].toString();
-            }
-            return detail.map((e) => e['msg'] ?? e.toString()).join(', ');
-          }
-          return detail.toString();
-        }
-        if (responseData['error'] != null) {
-          return responseData['error'].toString();
-        }
-      } else if (responseData is String && responseData.isNotEmpty) {
-        return responseData;
-      }
-    }
+/// The words to show a person for [error], whatever threw it.
+///
+/// - An API error -- an [ApiException] from `APIService.request`, or the
+///   [DioException] carrying one that a direct Dio call throws -- reads as
+///   [ApiException.userMessage]: the server's `message` (or an older route's
+///   `detail`) for a 4xx, friendly copy for a dropped connection, a timeout
+///   or a 5xx.
+/// - A [Failure] reads as its message; a [String] as itself.
+/// - `throw Exception('Words')` reads as "Words": that is app copy.
+/// - Anything else -- a [TypeError], a `PlatformException`, a custom
+///   exception's `toString()` -- reads as [defaultMessage]. It used to read as
+///   its `toString()`, which is how people saw
+///   "ApiException: ... (badRequest, code: 400)".
+///
+/// Never returns a class name or a status code.
+String extractErrorMessage(
+  Object? error, {
+  String defaultMessage = ApiException.genericMessage,
+}) {
+  if (error == null) return defaultMessage;
+  if (error is String) return _orDefault(error, defaultMessage);
+  if (error is Failure) return _orDefault(error.message, defaultMessage);
 
-    // Fall back to Dio's error message
-    if (error.message != null && error.message!.isNotEmpty) {
-      return error.message!;
-    }
-
-    // Handle common Dio exception types
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        return 'Connection timed out. Please try again.';
-      case DioExceptionType.connectionError:
-        return 'No internet connection. Please check your network.';
-      case DioExceptionType.cancel:
-        return 'Request was cancelled.';
-      case DioExceptionType.badResponse:
-        final statusCode = error.response?.statusCode;
-        if (statusCode == 401) return 'Session expired. Please login again.';
-        if (statusCode == 403) {
-          return 'You don\'t have permission for this action.';
-        }
-        if (statusCode == 404) return 'The requested resource was not found.';
-        if (statusCode == 500) return 'Server error. Please try again later.';
-        return 'Request failed with status $statusCode';
-      default:
-        return defaultMessage;
-    }
+  final api = apiExceptionOf(error);
+  if (api != null) {
+    final message = api.userMessage;
+    // "Something went wrong" is the last resort; a caller who knows what was
+    // being attempted ("Could not load this club") says it better.
+    return message == ApiException.genericMessage
+        ? defaultMessage
+        : _orDefault(message, defaultMessage);
   }
 
-  // For non-Dio exceptions, use toString but clean it up
-  final errorString = error.toString();
-  // Remove common prefixes that aren't user-friendly
-  if (errorString.startsWith('Exception:')) {
-    return errorString.substring(10).trim();
+  if (error is Exception) {
+    final text = error.toString();
+    if (text.startsWith('Exception: ')) {
+      return _orDefault(text.substring('Exception: '.length), defaultMessage);
+    }
   }
-
-  return errorString;
+  return defaultMessage;
 }
+
+/// The API error behind [error], from either shape the app throws.
+///
+/// `APIService.request` throws the [ApiException] itself; a data source that
+/// calls Dio directly throws the [DioException] that [ErrorInterceptor]
+/// packed it into. A [DioException] that never reached the interceptor is
+/// read the same way the interceptor would have read it. Anything else is
+/// not an API error, and gets null.
+ApiException? apiExceptionOf(Object? error) {
+  if (error is ApiException) return error;
+  if (error is DioException) {
+    final inner = error.error;
+    if (inner is ApiException) return inner;
+    return ApiException.fromDioException(error);
+  }
+  return null;
+}
+
+/// The backend's `error_code` for [error] (`ACCOUNT_SUSPENDED`,
+/// `TOTP_REQUIRED`, `UPDATE_APP_TO_PAY`...), or null.
+///
+/// Branch on this rather than on the message: codes are stable, prose is not.
+String? errorCodeOf(Object? error) => apiExceptionOf(error)?.errorCode;
+
+/// The HTTP status [error] came back with, or null when there was no answer.
+int? statusCodeOf(Object? error) => apiExceptionOf(error)?.statusCode;
+
+String _orDefault(String text, String defaultMessage) =>
+    text.trim().isEmpty ? defaultMessage : text.trim();

@@ -15,7 +15,6 @@ enum DioMethod { post, get, put, delete, patch }
 ///
 /// All requests automatically include:
 /// - Auth token injection + refresh-on-401 (via AuthInterceptor)
-/// - Certificate pinning (via CertPinningInterceptor, production only)
 /// - Error handling (via ErrorInterceptor), with API errors also logged
 ///   to analytics
 /// - Logging in debug mode (via LoggingInterceptor)

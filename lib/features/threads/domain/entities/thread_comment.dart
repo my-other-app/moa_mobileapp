@@ -12,6 +12,9 @@ class ThreadComment extends Equatable {
   final int? authorId;
   final String authorName;
 
+  /// The author's avatar, when the server sends one.
+  final String? authorAvatarUrl;
+
   /// Whether the club itself wrote it -- shown with a "Club" badge.
   final bool isClub;
   final DateTime createdAt;
@@ -21,6 +24,7 @@ class ThreadComment extends Equatable {
     required this.body,
     this.authorId,
     required this.authorName,
+    this.authorAvatarUrl,
     this.isClub = false,
     required this.createdAt,
   });
@@ -31,6 +35,15 @@ class ThreadComment extends Equatable {
   /// decides whether to offer the button.
   bool isBy(int? userId) => userId != null && authorId == userId;
 
+  /// Whether its author is a person who can be blocked.
+  ///
+  /// Not the club's own replies -- those speak for the club, which a reader
+  /// can unfollow or report -- and not a comment with no author id, which
+  /// gives nothing to block.
+  bool get authorCanBeBlocked =>
+      !isClub && authorId != null && authorId! > 0;
+
   @override
-  List<Object?> get props => [id, body, authorId, authorName, isClub, createdAt];
+  List<Object?> get props =>
+      [id, body, authorId, authorName, authorAvatarUrl, isClub, createdAt];
 }

@@ -1,6 +1,6 @@
-import 'package:dio/dio.dart';
 import 'package:finnet/core/error/failures.dart';
 import 'package:finnet/core/network/api_exception.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 
 /// Turn a transport-level [ApiException] into a domain [Failure].
 ///
@@ -49,37 +49,23 @@ Failure mapApiExceptionToFailure(ApiException e) {
 /// `catch` and became an [UnknownFailure]. An expired session looked the same
 /// as a parse bug, which is why nothing ever prompted a re-login.
 Failure mapErrorToFailure(Object error) {
-  if (error is ApiException) return mapApiExceptionToFailure(error);
-
-  if (error is DioException) {
-    final inner = error.error;
-    if (inner is ApiException) return mapApiExceptionToFailure(inner);
-
-    // A DioException that never reached ErrorInterceptor -- a cancellation,
-    // or one built by AuthInterceptor when a retry threw. Classify from the
-    // transport type rather than reporting it as unknown.
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-      case DioExceptionType.connectionError:
-        return NetworkFailure(message: error.message ?? 'Connection failed');
-      case DioExceptionType.badCertificate:
-        return NetworkFailure(
-          message: error.message ?? 'Certificate could not be verified',
-        );
-      case DioExceptionType.badResponse:
-      case DioExceptionType.cancel:
-      case DioExceptionType.unknown:
-        return UnknownFailure(message: error.message ?? error.toString());
-    }
-  }
+  // An ApiException, a DioException carrying one, or a DioException that
+  // never reached the interceptor (a cancellation, or one AuthInterceptor
+  // built when a retry threw) -- all read the same way, so the message is
+  // the friendly one rather than Dio's own ("The connection errored: ...").
+  final api = apiExceptionOf(error);
+  if (api != null) return mapApiExceptionToFailure(api);
 
   // A response that did not parse is the server breaking its contract, not an
   // unknown condition -- and it reads as one to whoever sees the message.
+  // The app throws these with words of its own ("The payment order came back
+  // without an id."), which are kept.
   if (error is FormatException) {
     return ServerFailure(message: error.message);
   }
 
-  return UnknownFailure(message: error.toString());
+  // Anything else is a bug, and its toString() -- "type 'Null' is not a
+  // subtype of type 'String'" -- is no message for a person. It is logged
+  // where it is caught.
+  return const UnknownFailure(message: ApiException.genericMessage);
 }

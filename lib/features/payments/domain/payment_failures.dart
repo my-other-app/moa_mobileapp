@@ -20,3 +20,26 @@ class UpdateAppToPayFailure extends Failure {
   @override
   List<Object?> get props => [message, code, webUrl];
 }
+
+/// The server's `error_code` for an order on a registration already paid.
+const alreadyPaidCode = 'ALREADY_PAID';
+
+/// The server's `error_code` for an order with nothing left to pay.
+const nothingToPayCode = 'NOTHING_TO_PAY';
+
+/// 409 ALREADY_PAID: the registration was paid -- in another tab, on the
+/// website, or by a checkout whose answer this phone never heard. Nothing is
+/// owed, so a caller treats it as a payment that went through and refreshes.
+class AlreadyPaidFailure extends Failure {
+  const AlreadyPaidFailure({
+    super.message = 'This registration is already paid for.',
+  }) : super(code: alreadyPaidCode);
+}
+
+/// 422 NOTHING_TO_PAY: the registration owes nothing, so there is no order to
+/// open checkout with.
+class NothingToPayFailure extends Failure {
+  const NothingToPayFailure({
+    super.message = "There's nothing left to pay for this registration.",
+  }) : super(code: nothingToPayCode);
+}

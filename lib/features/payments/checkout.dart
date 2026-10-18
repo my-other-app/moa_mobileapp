@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:finnet/core/config/env/env.dart';
 import 'package:finnet/core/error/either.dart';
+import 'package:finnet/features/payments/domain/payment_failures.dart';
 import 'package:finnet/features/payments/domain/repositories/payment_repository.dart';
 import 'package:finnet/features/payments/presentation/checkout_options.dart';
 
@@ -12,9 +13,11 @@ class RegistrationCheckout {
   /// Asks the API for a Razorpay order for this registration, opens the
   /// checkout with the order's own key, and verifies the payment.
   ///
-  /// Right(true) once verified; Right(false) when the person backed out or
-  /// the payment failed. Left when no order could be made -- among them an
-  /// `UpdateAppToPayFailure`, which carries the website link.
+  /// Right(true) once verified, or when the server says it is already paid
+  /// (409 ALREADY_PAID: nothing is owed, so there is nothing to open);
+  /// Right(false) when the person backed out or the payment failed. Left
+  /// when no order could be made -- among them an `UpdateAppToPayFailure`,
+  /// which carries the website link, and a `NothingToPayFailure`.
   static Future<Result<bool>> pay({
     required PaymentRepository repository,
     required int eventId,
@@ -27,7 +30,10 @@ class RegistrationCheckout {
       eventId: eventId,
       registrationId: registrationId,
     );
-    if (made.isLeft) return Either.left(made.left);
+    if (made.isLeft) {
+      if (made.left is AlreadyPaidFailure) return Either.right(true);
+      return Either.left(made.left);
+    }
     final order = made.right;
 
     final completer = Completer<bool>();

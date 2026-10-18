@@ -2,10 +2,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/features/events/domain/registration_status.dart';
+import 'package:finnet/features/events/presentation/utils/event_feed.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:finnet/core/config/app_config.dart';
 
 /// Status type for event cards
 enum EventCardStatus {
@@ -13,6 +15,51 @@ enum EventCardStatus {
   registered, // Registered but event not over - show "VIEW TICKET"
   attended, // Event over and attended - show "VIEW CERTIFICATE"
   notAttended, // Event over but not attended - show "Not Attended" badge
+  awaitingPayment, // Registered for a paid event, not paid - "FINISH PAYMENT"
+}
+
+/// The card status for an event this person is registered for:
+/// [EventCardStatus.awaitingPayment] when its fee is still owed
+/// ([isAwaitingPayment]: `has_fee` true and `is_paid` false; a missing
+/// `is_paid` is not read as unpaid), else [EventCardStatus.registered].
+EventCardStatus registeredCardStatus(Map<dynamic, dynamic> item) =>
+    isAwaitingPayment(item)
+        ? EventCardStatus.awaitingPayment
+        : EventCardStatus.registered;
+
+/// The small "Payment due" pill: on an awaiting-payment card, and on search
+/// results for an unpaid registration.
+class PaymentDueBadge extends StatelessWidget {
+  const PaymentDueBadge({super.key});
+
+  static const color = Color(0xFFFF9800);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('payment-due-badge'),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.payments_outlined, size: 14, color: Colors.white),
+          SizedBox(width: 4),
+          Text(
+            'Payment due',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class EventCard extends StatelessWidget {
@@ -43,6 +90,11 @@ class EventCard extends StatelessWidget {
   final String? certificateUrl;
   final bool showShareIcon;
 
+  /// What FINISH PAYMENT does on an [EventCardStatus.awaitingPayment] card,
+  /// when the list wants to know it happened (to fetch itself again after).
+  /// Without it the button opens the event page straight into paying.
+  final VoidCallback? onFinishPayment;
+
   const EventCard({
     super.key,
     required this.title,
@@ -63,7 +115,14 @@ class EventCard extends StatelessWidget {
     this.ticketUrl,
     this.certificateUrl,
     this.showShareIcon = true,
+    this.onFinishPayment,
   });
+
+  /// The event's public page, or null with neither a slug nor an id to
+  /// link to (the share button is then left out).
+  String? get _shareUrl => eventSlug.trim().isNotEmpty || eventId > 0
+      ? eventShareUrl(id: eventId, slug: eventSlug)
+      : null;
 
   @override
   Widget build(BuildContext context) {
@@ -155,16 +214,16 @@ class EventCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (showShareIcon)
-              GestureDetector(
-                onTap: () async {
-                  final Uri url =
-                      Uri.parse("${AppConfig.publicSiteUrl}/events/$eventSlug");
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0).copyWith(right: 0),
-                  child: SvgIcon(svgIconPath: AssetResources.share),
+            if (showShareIcon && _shareUrl != null)
+              // A Builder so the share sheet can anchor to the icon (iPad).
+              Builder(
+                builder: (iconContext) => GestureDetector(
+                  key: const ValueKey('event-share'),
+                  onTap: () => _share(iconContext),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0).copyWith(right: 0),
+                    child: SvgIcon(svgIconPath: AssetResources.share),
+                  ),
                 ),
               )
           ],
@@ -189,8 +248,10 @@ class EventCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10.0),
               ),
             ),
+            if (status == EventCardStatus.awaitingPayment)
+              const Positioned(top: 12, right: 12, child: PaymentDueBadge())
             // Status badge overlay
-            if (status != EventCardStatus.none)
+            else if (status != EventCardStatus.none)
               Positioned(
                 top: 12,
                 right: 12,
@@ -294,6 +355,22 @@ class EventCard extends StatelessWidget {
           ),
           child: const Text('VIEW EVENT'),
         );
+      case EventCardStatus.awaitingPayment:
+        return FilledButton(
+          key: const ValueKey('event-finish-payment'),
+          onPressed: onFinishPayment ??
+              () {
+                // The event page starts the payment when it arrives with
+                // this.
+                context.push('/events/$eventId',
+                    extra: {'status': finishPaymentStatus});
+              },
+          style: FilledButton.styleFrom(
+            backgroundColor: PaymentDueBadge.color,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('FINISH PAYMENT'),
+        );
       case EventCardStatus.none:
         return FilledButton(
           onPressed: () {
@@ -301,6 +378,28 @@ class EventCard extends StatelessWidget {
           },
           child: const Text('TAKE A CLOSER LOOK OF THE EVENT'),
         );
+    }
+  }
+
+  /// Share the event's public page through the system share sheet.
+  Future<void> _share(BuildContext iconContext) async {
+    final url = _shareUrl;
+    if (url == null) return;
+    final box = iconContext.findRenderObject() as RenderBox?;
+    final name = title.trim();
+    try {
+      await Share.share(
+        name.isEmpty ? url : '$name on MyOtherApp: $url',
+        subject: name.isEmpty ? null : name,
+        sharePositionOrigin:
+            box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+      );
+    } catch (e) {
+      debugPrint('Event share failed: $e');
+      if (!iconContext.mounted) return;
+      ScaffoldMessenger.maybeOf(iconContext)?.showSnackBar(
+        const SnackBar(content: Text("Couldn't open sharing. Try again.")),
+      );
     }
   }
 
@@ -322,6 +421,8 @@ class EventCard extends StatelessWidget {
         return const Color(0xFFFFD600); // Yellow
       case EventCardStatus.notAttended:
         return const Color(0xFFF44336); // Red
+      case EventCardStatus.awaitingPayment:
+        return PaymentDueBadge.color;
       case EventCardStatus.none:
         return Colors.transparent;
     }
@@ -336,6 +437,8 @@ class EventCard extends StatelessWidget {
         return Icons.confirmation_number;
       case EventCardStatus.notAttended:
         return Icons.cancel_outlined;
+      case EventCardStatus.awaitingPayment:
+        return Icons.payments_outlined;
       case EventCardStatus.none:
         return Icons.circle;
     }
@@ -346,6 +449,7 @@ class EventCard extends StatelessWidget {
     switch (status) {
       case EventCardStatus.attended:
       case EventCardStatus.notAttended:
+      case EventCardStatus.awaitingPayment:
         return Colors.white;
       case EventCardStatus.registered:
         return Colors.black87;
@@ -363,6 +467,8 @@ class EventCard extends StatelessWidget {
         return 'Registered';
       case EventCardStatus.notAttended:
         return 'Not Attended';
+      case EventCardStatus.awaitingPayment:
+        return 'Payment due';
       case EventCardStatus.none:
         return '';
     }

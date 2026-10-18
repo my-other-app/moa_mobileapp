@@ -1,3 +1,5 @@
+import 'package:finnet/shared/utils/image_url.dart';
+
 /// A certificate the user has earned by attending an event.
 ///
 /// There is no certificate table: a certificate exists when a registration
@@ -68,23 +70,22 @@ class Certificate {
     if (ticketId == null || ticketId.isEmpty) return null;
     if (json['is_attended'] != true) return null;
 
-    final club = json['club'] as Map<String, dynamic>?;
-    final clubLogo = club?['logo'] as Map<String, dynamic>?;
-    final category = json['category'] as Map<String, dynamic>?;
-    final poster = json['poster'] as Map<String, dynamic>?;
+    final club = json['club'] is Map ? json['club'] as Map : null;
+    final category = json['category'] is Map ? json['category'] as Map : null;
 
     return Certificate(
       ticketId: ticketId,
       eventId: (json['id'] as num?)?.toInt() ?? 0,
       eventName: json['name'] as String? ?? 'Event',
       clubName: club?['name'] as String?,
-      clubLogoUrl: clubLogo?['thumbnail'] as String?,
+      // A club with no logo sends null, an older row a bare URL; a cast to
+      // a map threw on the second and lost the whole certificate.
+      clubLogoUrl: imageUrlFrom(club?['logo']),
       eventType: category?['name'] as String?,
       issuedOn:
           DateTime.tryParse(json['event_datetime'] as String? ?? '')?.toLocal() ??
               DateTime.now(),
-      thumbnailUrl:
-          poster?['thumbnail'] as String? ?? poster?['medium'] as String?,
+      thumbnailUrl: imageUrlFrom(json['poster']),
     );
   }
 }

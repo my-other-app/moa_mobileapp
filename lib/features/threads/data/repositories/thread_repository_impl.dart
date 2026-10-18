@@ -24,7 +24,9 @@ final threadRepositoryProvider = Provider<ThreadRepository>((ref) {
 /// [AuthFailure]. The words come from [extractErrorMessage], which reads the
 /// server's own `message` ("Write something first", "That option is not on
 /// this poll") where [mapErrorToFailure] would substitute generic copy.
-@visibleForTesting
+///
+/// Shared with the moderation repository, whose callers branch on the same
+/// codes -- a '429' for a rate-limited report among them.
 Failure threadFailureFrom(Object error) {
   final mapped = mapErrorToFailure(error);
   // Only a transport error has a server message to prefer. Anything else --

@@ -1,3 +1,5 @@
+import 'package:finnet/shared/utils/image_url.dart';
+
 /// An event this user is a volunteer for.
 ///
 /// Mirrors `MyEventEventDetails` on the server
@@ -34,8 +36,8 @@ class VolunteerEvent {
 
   factory VolunteerEvent.fromJson(Map<String, dynamic> json) {
     final poster = json['poster'] as Map<String, dynamic>?;
-    final club = json['club'] as Map<String, dynamic>?;
-    final clubLogo = club?['logo'] as Map<String, dynamic>?;
+    final club = json['club'] is Map ? json['club'] as Map : null;
+    final clubName = club?['name'];
 
     return VolunteerEvent(
       id: json['id'] as int,
@@ -43,8 +45,9 @@ class VolunteerEvent {
       name: json['name'] as String,
       posterUrl: poster?['large'] as String? ?? poster?['medium'] as String?,
       poster: poster,
-      clubLogoUrl: clubLogo?['thumbnail'] as String?,
-      clubName: club?['name'] as String? ?? '',
+      // The S3 dict, an older row's bare URL, or a club without a logo.
+      clubLogoUrl: imageUrlFrom(club?['logo']),
+      clubName: clubName is String ? clubName : '',
       eventDatetime: DateTime.parse(json['event_datetime'] as String),
       hasFee: json['has_fee'] as bool? ?? false,
       regFee: (json['reg_fee'] as num?)?.toDouble() ?? 0.0,

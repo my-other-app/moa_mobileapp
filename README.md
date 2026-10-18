@@ -150,7 +150,6 @@ Loading placeholders for:
 
 ## 🔐 Security
 
-- **Certificate Pinning** - SSL pinning for API requests
 - **Secure Storage** - Tokens stored in encrypted keychain/keystore
 - **Auth Interceptor** - Automatic token injection and refresh
 

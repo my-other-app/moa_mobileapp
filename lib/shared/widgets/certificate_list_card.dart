@@ -91,7 +91,7 @@ class CertificateListCard extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 16,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w600,
                     ),
                     maxLines: 1,
@@ -106,7 +106,7 @@ class CertificateListCard extends StatelessWidget {
                         style: TextStyle(
                           color: Color(0xFF1E1E1E),
                           fontSize: 12,
-                          fontFamily: 'DM Sans',
+                          fontFamily: 'DMSans',
                           fontWeight: FontWeight.w400,
                         ),
                       ),
@@ -118,7 +118,7 @@ class CertificateListCard extends StatelessWidget {
                         style: TextStyle(
                           color: Color(0xFF1E1E1E),
                           fontSize: 12,
-                          fontFamily: 'DM Sans',
+                          fontFamily: 'DMSans',
                           fontWeight: FontWeight.w400,
                         ),
                       ),
@@ -130,7 +130,7 @@ class CertificateListCard extends StatelessWidget {
                         style: TextStyle(
                           color: Color(0xFF1E1E1E),
                           fontSize: 12,
-                          fontFamily: 'DM Sans',
+                          fontFamily: 'DMSans',
                           fontWeight: FontWeight.w400,
                         ),
                       ),

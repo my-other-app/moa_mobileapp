@@ -8,13 +8,26 @@ plugins {
 }
 
 import java.util.Properties
-import java.io.FileInputStream
 
+// Release signing comes from android/key.properties (gitignored, with
+// storeFile, storePassword, keyAlias, keyPassword). Without it -- a fresh
+// clone, a contributor's machine -- a release build is signed with the debug
+// key so it still configures and builds locally. That build cannot be
+// uploaded to Play, and on CI it is refused outright below.
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file("key.properties")
+def hasReleaseKey = false
 if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+    hasReleaseKey = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword']
+            .every { keystoreProperties[it] }
 }
+def isCi = System.getenv("CI") != null
+
+// The shared debug keystore whose SHA-1 is registered for Google Sign-In.
+// It is gitignored too; when it is missing, AGP's own ~/.android/debug.keystore
+// is used rather than failing the build on a file that is not there.
+def sharedDebugKeystore = file("debug-key.keystore")
 
 android {
     namespace = "app.myotherapp.com"
@@ -40,23 +53,28 @@ android {
     }
 
     signingConfigs {
-        debug {
-            keyAlias = "debug"
-            keyPassword = "myotherapp"
-            storeFile = file("debug-key.keystore")
-            storePassword = "myotherapp"
+        if (sharedDebugKeystore.exists()) {
+            debug {
+                keyAlias = "debug"
+                keyPassword = "myotherapp"
+                storeFile = sharedDebugKeystore
+                storePassword = "myotherapp"
+            }
         }
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile file(keystoreProperties['storeFile'])
-            storePassword keystoreProperties['storePassword']
+        if (hasReleaseKey) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            // The debug key only as a local stand-in; see the check below.
+            signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -66,6 +84,22 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Checked once the build knows what it is building, so a debug build or a
+// Gradle sync without key.properties still works and only a release build
+// hears about it.
+gradle.taskGraph.whenReady { graph ->
+    def buildsRelease = graph.allTasks.any { it.name.toLowerCase().contains("release") }
+    if (!buildsRelease || hasReleaseKey) return
+    if (isCi) {
+        throw new GradleException(
+            "android/key.properties is missing or incomplete. A CI release " +
+            "build must be signed with the upload key, never the debug key.")
+    }
+    logger.warn("WARNING: android/key.properties is missing or incomplete; " +
+        "this release build is signed with the DEBUG key. It runs locally " +
+        "but cannot be uploaded to Google Play.")
 }
 
 dependencies {

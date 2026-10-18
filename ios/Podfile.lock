@@ -6,14 +6,8 @@ PODS:
     - Flutter
   - flutter_secure_storage (6.0.0):
     - Flutter
-  - flutter_wallet_card (1.0.0):
-    - Flutter
-    - OpenSSL-Universal
-  - fluttertoast (0.0.2):
-    - Flutter
   - open_filex (0.0.2):
     - Flutter
-  - OpenSSL-Universal (3.3.3001)
   - sign_in_with_apple (0.0.1):
     - Flutter
 
@@ -22,14 +16,8 @@ DEPENDENCIES:
   - Flutter (from `Flutter`)
   - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
-  - flutter_wallet_card (from `.symlinks/plugins/flutter_wallet_card/ios`)
-  - fluttertoast (from `.symlinks/plugins/fluttertoast/ios`)
   - open_filex (from `.symlinks/plugins/open_filex/ios`)
   - sign_in_with_apple (from `.symlinks/plugins/sign_in_with_apple/ios`)
-
-SPEC REPOS:
-  trunk:
-    - OpenSSL-Universal
 
 EXTERNAL SOURCES:
   add_2_calendar:
@@ -40,10 +28,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_local_notifications/ios"
   flutter_secure_storage:
     :path: ".symlinks/plugins/flutter_secure_storage/ios"
-  flutter_wallet_card:
-    :path: ".symlinks/plugins/flutter_wallet_card/ios"
-  fluttertoast:
-    :path: ".symlinks/plugins/fluttertoast/ios"
   open_filex:
     :path: ".symlinks/plugins/open_filex/ios"
   sign_in_with_apple:
@@ -54,12 +38,9 @@ SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_local_notifications: 395056b3175ba4f08480a7c5de30cd36d69827e4
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
-  flutter_wallet_card: fa464b6f36c9c7ffda50f48b659b2b056d2eeaa8
-  fluttertoast: 2c67e14dce98bbdb200df9e1acf610d7a6264ea1
   open_filex: 432f3cd11432da3e39f47fcc0df2b1603854eff1
-  OpenSSL-Universal: 6082b0bf950e5636fe0d78def171184e2b3899c2
   sign_in_with_apple: c5dcc141574c8c54d5ac99dd2163c0c72ad22418
 
-PODFILE CHECKSUM: 1d82693cf2570d02b007cc2f4af239fe37abdd56
+PODFILE CHECKSUM: 369c39e9820851a53004a32f7ae25f77e00a8725
 
 COCOAPODS: 1.16.2

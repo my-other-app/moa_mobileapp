@@ -27,6 +27,9 @@ class ProfileCheckPage extends ConsumerStatefulWidget {
 class _ProfileCheckPageState extends ConsumerState<ProfileCheckPage> {
   late ProfileCubit _profileCubit;
 
+  /// Why the profile could not be loaded, while it could not.
+  ProfileFailure? _failure;
+
   @override
   void initState() {
     super.initState();
@@ -34,9 +37,26 @@ class _ProfileCheckPageState extends ConsumerState<ProfileCheckPage> {
     _profileCubit.onStateChanged = _handleProfileStateChange;
 
     // Fetch profile after widget is built
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _profileCubit.getProfile(widget.accessToken);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    if (mounted && _failure != null) setState(() => _failure = null);
+    await _profileCubit.getProfile(await _accessToken());
+  }
+
+  /// The session's access token. The one sign-in stored is the freshest:
+  /// the profile request may have refreshed it, and the redirect for a
+  /// signed-in person opening /auth/onboarding brings them here with none.
+  Future<String> _accessToken() async {
+    try {
+      final stored =
+          await ref.read(secureStorageServiceProvider).getAccessToken();
+      if (stored != null && stored.isNotEmpty) return stored;
+    } catch (e) {
+      debugPrint('ProfileCheck: could not read the stored token: $e');
+    }
+    return widget.accessToken;
   }
 
   void _handleProfileStateChange(ProfileState state) async {
@@ -47,12 +67,13 @@ class _ProfileCheckPageState extends ConsumerState<ProfileCheckPage> {
 
       try {
         final secureStorage = ref.read(secureStorageServiceProvider);
+        final accessToken = await _accessToken();
         final refreshToken = await secureStorage.getRefreshToken();
 
         if (mounted) {
           // Update Riverpod auth state
           await ref.read(authStateProvider.notifier).setAuthenticated(
-                accessToken: widget.accessToken,
+                accessToken: accessToken,
                 refreshToken: refreshToken ?? '',
               );
 
@@ -79,18 +100,58 @@ class _ProfileCheckPageState extends ConsumerState<ProfileCheckPage> {
         }
       }
     } else if (state is ProfileFailure) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Profile error: ${state.error}')),
-        );
-      }
+      // Said on the page, with a way on. It used to be a "Profile error: ..."
+      // snackbar over a spinner that never stopped.
+      if (mounted) setState(() => _failure = state);
     }
+  }
+
+  /// Leave a session that cannot go on, and start again at sign-in.
+  Future<void> _backToSignIn() async {
+    try {
+      await ref.read(secureStorageServiceProvider).clearTokens();
+    } catch (e) {
+      debugPrint('ProfileCheck: could not clear tokens: $e');
+    }
+    if (mounted) context.go('/auth/onboarding');
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+    final failure = _failure;
+    if (failure == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  failure.error,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: 24),
+                if (!failure.needsSignIn)
+                  FilledButton(
+                    onPressed: _load,
+                    child: const Text('Try again'),
+                  ),
+                TextButton(
+                  onPressed: _backToSignIn,
+                  child: const Text('Back to sign in'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -4,14 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/config/env/env.dart';
 import 'package:finnet/core/network/interceptors/auth_interceptor.dart';
-import 'package:finnet/core/network/interceptors/cert_pinning_interceptor.dart';
 import 'package:finnet/core/network/interceptors/error_interceptor.dart';
 import 'package:finnet/core/network/interceptors/logging_interceptor.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 
 /// Builds the single Dio instance used app-wide, with the full interceptor
-/// stack: auth token injection + refresh-on-401, cert pinning, error
-/// handling, and debug logging.
+/// stack: auth token injection + refresh-on-401, error handling, and debug
+/// logging.
+///
+/// There is no certificate pinning. The interceptor that claimed to pin
+/// installed a `badCertificateCallback`, which the platform only calls for a
+/// certificate it has already rejected -- so it could never pin a valid one,
+/// and with no fingerprints configured it did nothing at all.
 Dio buildAppDio() {
   final dio = Dio(
     BaseOptions(
@@ -32,10 +36,6 @@ Dio buildAppDio() {
     ErrorInterceptor(),
     if (kDebugMode) LoggingInterceptor(),
   ]);
-
-  if (!kDebugMode) {
-    configureCertPinning(dio);
-  }
 
   return dio;
 }

@@ -1,7 +1,17 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
   <!-- Needed for launching URLs -->
   <uses-permission android:name="android.permission.INTERNET"/>
+
+  <!-- open_filex declares these for opening files in shared storage. The app
+       only opens the ticket PDF it saved in its own documents directory,
+       which needs none of them, and Google Play rejects READ_MEDIA_IMAGES /
+       READ_MEDIA_VIDEO without a core need for the photo library. -->
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
+  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove"/>
+  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove"/>
+  <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove"/>
 
   <!-- REQUIRED FOR ANDROID 11+ to access external apps -->
   <queries>
@@ -17,6 +27,12 @@
 
       <!-- For launching WhatsApp -->
       <package android:name="com.whatsapp" />
+
+      <!-- For Settings > Contact Support (mailto:support@myotherapp.in) -->
+      <intent>
+          <action android:name="android.intent.action.SENDTO" />
+          <data android:scheme="mailto" />
+      </intent>
 
       <!-- For phone calls -->
       <intent>
@@ -38,7 +54,7 @@
   </queries>
 
   <application
-      android:label="myotherapp"
+      android:label="MyOtherApp"
       android:name="${applicationName}"
       android:icon="@mipmap/ic_launcher">
       

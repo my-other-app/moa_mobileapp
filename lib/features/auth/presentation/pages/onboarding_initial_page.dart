@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/features/auth/presentation/cubits/login_cubit.dart';
@@ -8,16 +9,22 @@ import 'package:finnet/features/auth/data/services/profile_service.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/auth/presentation/widgets/terms_consent.dart';
 
 /// Onboarding Initial Page with Google and Apple Sign In support.
-class OnboardingInitialPage extends StatefulWidget {
+///
+/// Also where an ended session lands: when the server ended it (expired,
+/// revoked, suspended) this screen says so once, on arrival.
+class OnboardingInitialPage extends ConsumerStatefulWidget {
   const OnboardingInitialPage({super.key});
 
   @override
-  State<OnboardingInitialPage> createState() => _OnboardingInitialPageState();
+  ConsumerState<OnboardingInitialPage> createState() =>
+      _OnboardingInitialPageState();
 }
 
-class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
+class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'openid'],
     serverClientId:
@@ -37,6 +44,23 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
     );
     _loginCubit.onStateChanged = _handleLoginStateChange;
     _checkAppleSignInAvailability();
+    // After the first frame: a snackbar needs the Scaffold, and the auth
+    // state may not be changed while the tree is building.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showSessionEndNotice());
+  }
+
+  /// Say why the last session ended, if the server ended it.
+  void _showSessionEndNotice() {
+    if (!mounted) return;
+    final notice = sessionEndNotice(ref.read(authStateProvider).endedBecause);
+    ref.read(authStateProvider.notifier).acknowledgeSessionEnd();
+    if (notice == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(notice),
+        duration: const Duration(seconds: 6),
+      ),
+    );
   }
 
   Future<void> _checkAppleSignInAvailability() async {
@@ -72,9 +96,16 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
         'profileUrl': state.photoUrl,
       });
     } else if (state is LoginFailure) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${state.error}')),
-      );
+      // Already worded for a person (signInErrorMessage); some of it -- a
+      // suspended or club account -- takes a moment to read.
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(state.error),
+            duration: const Duration(seconds: 6),
+          ),
+        );
     }
   }
 
@@ -148,13 +179,30 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
         );
       }
     } on SignInWithAppleAuthorizationException catch (e) {
+      // Apple's own message is for developers ("The operation couldn't be
+      // completed. (com.apple.AuthenticationServices.AuthorizationError
+      // error 1000.)"); it goes to the log, not on screen.
+      debugPrint('Apple sign in failed: ${e.code} ${e.message}');
       if (e.code != AuthorizationErrorCode.canceled && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Apple Sign In failed: ${e.message}')),
+          const SnackBar(
+              content: Text('Could not sign in with Apple. Please try again.')),
         );
       }
     } catch (error) {
       debugPrint('Error during Apple sign in: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              extractErrorMessage(
+                error,
+                defaultMessage: 'Could not sign in with Apple. Please try again.',
+              ),
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -164,25 +212,35 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
       backgroundColor: const Color(0xFFFFFFA0),
       body: Stack(
         children: [
-          Column(
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 80),
-                      _buildLogo(),
-                      const SizedBox(height: 48),
-                      _buildContent(),
-                      const Spacer(),
-                      _buildLoginButtons(),
-                      const SizedBox(height: 80),
-                    ],
+          // Scrolls when the screen is shorter than the page (an iPhone SE,
+          // or larger text); otherwise the Spacer keeps the buttons low.
+          LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 80),
+                        _buildLogo(),
+                        const SizedBox(height: 48),
+                        _buildContent(),
+                        const Spacer(),
+                        const SizedBox(height: 24),
+                        // Above the buttons, where it is read before
+                        // continuing and the grass below doesn't cover it.
+                        const TermsConsent(),
+                        const SizedBox(height: 16),
+                        _buildLoginButtons(),
+                        const SizedBox(height: 80),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
           Positioned(
             bottom: 0,
@@ -209,7 +267,7 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
           style: TextStyle(
             color: Color(0xFF9747FF),
             fontSize: 128,
-            fontFamily: 'Jaro',
+            fontFamily: 'BebasNeue',
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -221,7 +279,7 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
           style: TextStyle(
             color: Color(0xFFFFCC00),
             fontSize: 140,
-            fontFamily: 'Jaro',
+            fontFamily: 'BebasNeue',
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -303,7 +361,7 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
           style: TextStyle(
             color: Color(0xFF2C333D),
             fontSize: 48,
-            fontFamily: 'Bebas Neue',
+            fontFamily: 'BebasNeue',
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -314,7 +372,7 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
           style: TextStyle(
             color: Color(0xFF2C333D),
             fontSize: 16,
-            fontFamily: 'DM Sans',
+            fontFamily: 'DMSans',
             fontWeight: FontWeight.w300,
           ),
         ),
@@ -387,7 +445,7 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
                   isSignUp ? 'Create Account' : 'Sign In with Email',
                   style: const TextStyle(
                     fontSize: 28,
-                    fontFamily: 'Bebas Neue',
+                    fontFamily: 'BebasNeue',
                     fontWeight: FontWeight.w400,
                     color: Color(0xFF2C333D),
                   ),
@@ -487,13 +545,15 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
                       isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN',
                       style: const TextStyle(
                         fontSize: 20,
-                        fontFamily: 'Bebas Neue',
+                        fontFamily: 'BebasNeue',
                         color: Colors.white,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                const TermsConsent(),
+                const SizedBox(height: 4),
                 // Toggle between sign-in and sign-up
                 Center(
                   child: TextButton(
@@ -561,7 +621,7 @@ class _OnboardingInitialPageState extends State<OnboardingInitialPage> {
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
-                  fontFamily: 'Bebas Neue',
+                  fontFamily: 'BebasNeue',
                   fontWeight: FontWeight.w400,
                 ),
               ),

@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/core/api/api_helper.dart';
-import 'package:finnet/shared/widgets/event_card.dart';
-import 'package:finnet/shared/widgets/event_cover.dart';
+import 'package:finnet/features/events/presentation/utils/event_feed.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
@@ -277,35 +277,44 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
             );
           }
 
-          final event = _filteredEvents[index];
-          return EventCard(
-            clubSlug: event['club']?['slug'] ?? '',
-            // Use club logo from widget if event's club logo is missing
-            orgImage: event['club']?['logo']?['thumbnail'] ?? widget.clubLogo,
-            title: event['name'] ?? 'No Title',
-            organizer: event['club']?['name'] ?? widget.clubName,
-            tags: [
-              event['category']?['name'] ?? '',
-              event['is_online'] == true ? 'Online' : 'Offline',
-              event['has_fee'] == true ? 'Paid' : 'Free',
-              '${event['duration']} Hours'
-            ],
-            onTap: () {},
-            poster: event['poster'],
-            categoryId: event['category']?['id'],
-            categoryName: event['category']?['name'],
-            startsAt: parseEventStart(event['event_datetime']),
-            isOnline: event['is_online'] == true,
-            eventId: event['id'],
-            clubId: event['club']?['id'] ?? widget.clubId,
-            eventSlug: event['slug'] ?? '',
-            status: widget.isPastEvents
-                ? EventCardStatus.none
-                : EventCardStatus.none,
+          return eventCardFromJson(
+            clubEventWithClub(
+              _filteredEvents[index],
+              clubId: widget.clubId,
+              clubName: widget.clubName,
+              clubLogo: widget.clubLogo,
+            ),
             showShareIcon: !widget.isPastEvents,
           );
         },
       ),
     );
   }
+}
+
+/// [event] with the club whose page this is filled in where the item leaves
+/// it out. Every event here is this club's, so the page's own id, name and
+/// logo stand in for a missing (or logo-less) `club`; the card is then built
+/// by [eventCardFromJson] like every other list's.
+@visibleForTesting
+Map<String, dynamic> clubEventWithClub(
+  Map<String, dynamic> event, {
+  required int clubId,
+  required String clubName,
+  required String clubLogo,
+}) {
+  final club = event['club'] is Map
+      ? Map<String, dynamic>.from(event['club'] as Map)
+      : <String, dynamic>{};
+  final id = eventClubId(event);
+  final name = club['name'];
+  return {
+    ...event,
+    'club': {
+      ...club,
+      'id': id != 0 ? id : clubId,
+      'name': name is String && name.trim().isNotEmpty ? name : clubName,
+      'logo': imageUrlFrom(club['logo']) ?? clubLogo,
+    },
+  };
 }

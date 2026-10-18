@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/themes/color_resources.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/threads/domain/entities/moderation.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
 import 'package:finnet/features/threads/domain/entities/thread_comment.dart';
+import 'package:finnet/features/threads/presentation/providers/moderation_provider.dart';
 import 'package:finnet/features/threads/presentation/providers/threads_provider.dart';
+import 'package:finnet/features/threads/presentation/widgets/moderation_actions.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_comment_tile.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_feedback.dart';
@@ -92,6 +95,12 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
                   onLike: _like,
                   onVote: _vote,
                   onClubTap: () => _openClub(thread),
+                  onReport: () => reportContent(
+                    context,
+                    ref,
+                    target: ReportTarget.thread(thread.id),
+                    what: 'post',
+                  ),
                 ),
                 const SizedBox(height: 28),
                 Text(
@@ -142,7 +151,15 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
         onRetry: _notifier.load,
       );
     }
-    if (state.comments.isEmpty) {
+    // Blocked people's comments go the moment the block is confirmed; the
+    // refetch that follows has the server leave them out for good. The
+    // club's own replies speak for the club and are never hidden here.
+    final hidden = ref.watch(moderationProvider.select((s) => s.hiddenUserIds));
+    final comments = state.comments
+        .where((c) => c.isClub || !hidden.contains(c.authorId))
+        .toList();
+
+    if (comments.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Text(
@@ -155,7 +172,7 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
     final viewerId = ref.watch(threadViewerIdProvider);
     return Column(
       children: [
-        for (final comment in state.comments) ...[
+        for (final comment in comments) ...[
           ThreadCommentTile(
             key: ValueKey('comment-${comment.id}'),
             comment: comment,
@@ -163,6 +180,13 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
             canDelete: comment.isBy(viewerId),
             isDeleting: state.deleting.contains(comment.id),
             onDelete: () => _confirmDelete(comment),
+            onReport: () => reportContent(
+              context,
+              ref,
+              target: ReportTarget.comment(comment.id),
+              what: 'comment',
+            ),
+            onBlock: comment.authorCanBeBlocked ? () => _block(comment) : null,
           ),
           const SizedBox(height: 18),
         ],
@@ -220,6 +244,17 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
         onCancel: () => Navigator.of(dialogContext).pop(),
       ),
     );
+  }
+
+  Future<void> _block(ThreadComment comment) async {
+    final blocked = await confirmAndBlock(
+      context,
+      ref,
+      userId: comment.authorId!,
+      name: comment.authorName,
+      avatarUrl: comment.authorAvatarUrl,
+    );
+    if (blocked && mounted) await _notifier.load();
   }
 
   Future<void> _delete(ThreadComment comment) async {

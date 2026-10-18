@@ -2,10 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:dio/dio.dart';
 
-// Import your bloc file here
+/// Whether creating the profile failed only because one already exists --
+/// made on an earlier try, so onboarding can carry on.
+///
+/// The server's code (`PROFILE_EXISTS`) is preferred; servers from before
+/// the code existed say it only in words, so the words are still matched.
+@visibleForTesting
+bool isProfileAlreadyExists(Object error) {
+  final api = apiExceptionOf(error);
+  return api?.errorCode == 'PROFILE_EXISTS' ||
+      api?.serverMessage == 'Profile already exists';
+}
 
 // Organization model
 class Organization {
@@ -106,25 +117,33 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
         }
       }
     } catch (error) {
-      // Error handling without logging sensitive data
-
-      if (error is DioException &&
-          error.response?.data['message'] == 'Profile already exists' &&
-          mounted) {
-        context.go('/onboarding/interests', extra: {'isOnboarding': true});
+      // A profile made on an earlier try is fine: carry on. This used to
+      // test for a DioException, which APIService never throws, so it never
+      // matched and told the person their profile could not be created when
+      // it already had been.
+      if (isProfileAlreadyExists(error)) {
+        if (mounted) {
+          context.go('/onboarding/interests', extra: {'isOnboarding': true});
+        }
         return;
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('An error occurred during profile creation.')),
+          SnackBar(
+            content: Text(extractErrorMessage(
+              error,
+              defaultMessage: 'Could not save your details. Please try again.',
+            )),
+          ),
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -174,7 +193,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
                           style: TextStyle(
                             color: Color(0xFF1E1E1E),
                             fontSize: 24,
-                            fontFamily: 'Bebas Neue',
+                            fontFamily: 'BebasNeue',
                             fontWeight: FontWeight.w400,
                           ),
                         ),
@@ -263,7 +282,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           style: TextStyle(
             color: Color(0xFF2C333D),
             fontSize: 12,
-            fontFamily: 'DM Sans',
+            fontFamily: 'DMSans',
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -282,7 +301,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
             style: const TextStyle(
               color: Color(0xFF1E1E1E),
               fontSize: 16,
-              fontFamily: 'DM Sans',
+              fontFamily: 'DMSans',
               fontWeight: FontWeight.w500,
             ),
             decoration: const InputDecoration(
@@ -294,7 +313,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
               errorStyle: TextStyle(
                 color: Color(0xFFCC0000),
                 fontSize: 12,
-                fontFamily: 'DM Sans',
+                fontFamily: 'DMSans',
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -312,7 +331,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           style: TextStyle(
             color: Color(0xFFCC0000),
             fontSize: 12,
-            fontFamily: 'DM Sans',
+            fontFamily: 'DMSans',
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -329,7 +348,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           style: TextStyle(
             color: Color(0xFF2C333D),
             fontSize: 12,
-            fontFamily: 'DM Sans',
+            fontFamily: 'DMSans',
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -355,7 +374,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
                     style: TextStyle(
                       color: Color(0xFFB4B4B4),
                       fontSize: 16,
-                      fontFamily: 'DM Sans',
+                      fontFamily: 'DMSans',
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -368,7 +387,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
                           org.name,
                           style: const TextStyle(
                             fontSize: 16,
-                            fontFamily: 'DM Sans',
+                            fontFamily: 'DMSans',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -437,7 +456,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           style: TextStyle(
             color: Color(0xFF2C333D),
             fontSize: 12,
-            fontFamily: 'DM Sans',
+            fontFamily: 'DMSans',
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -461,7 +480,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
             style: const TextStyle(
               color: Color(0xFF1E1E1E),
               fontSize: 16,
-              fontFamily: 'DM Sans',
+              fontFamily: 'DMSans',
               fontWeight: FontWeight.w500,
             ),
             decoration: const InputDecoration(
@@ -473,7 +492,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
               errorStyle: TextStyle(
                 color: Color(0xFFCC0000),
                 fontSize: 12,
-                fontFamily: 'DM Sans',
+                fontFamily: 'DMSans',
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -494,7 +513,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           style: TextStyle(
             color: Color(0xFFCC0000),
             fontSize: 12,
-            fontFamily: 'DM Sans',
+            fontFamily: 'DMSans',
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -527,7 +546,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
-                    fontFamily: 'Bebas Neue',
+                    fontFamily: 'BebasNeue',
                     fontWeight: FontWeight.w400,
                   ),
                 ),

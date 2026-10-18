@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -34,8 +35,6 @@ import 'package:finnet/features/profile/presentation/pages/certificates/certific
 import 'package:finnet/features/profile/presentation/pages/certificates/certificate_page.dart';
 import 'package:finnet/features/profile/presentation/pages/badges/my_badges_page.dart';
 import 'package:finnet/features/profile/presentation/pages/notifications/notifications_page.dart';
-import 'package:finnet/features/profile/presentation/pages/settings/terms_and_condition_page.dart';
-import 'package:finnet/features/profile/presentation/pages/settings/privacy_policy_page.dart';
 import 'package:finnet/features/main/presentation/pages/main_shell.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 
@@ -44,59 +43,87 @@ import 'package:finnet/features/volunteer/presentation/pages/volunteer_events_pa
 import 'package:finnet/features/volunteer/presentation/pages/volunteer_scanner_page.dart';
 import 'package:finnet/features/volunteer/presentation/pages/manual_ticket_entry_page.dart';
 
-final _shellNavigatorKey = GlobalKey<NavigatorState>();
-/// The root navigator, so a tapped notification can open a page from outside the tree.
-final rootNavigatorKey = GlobalKey<NavigatorState>();
+GlobalKey<NavigatorState> _rootNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'root');
+
+/// The current router's root navigator, so a tapped notification can open a
+/// page from outside the tree. Each session's router has its own.
+GlobalKey<NavigatorState> get rootNavigatorKey => _rootNavigatorKey;
+
+/// Navigator observers for the router: analytics screen tracking. A provider
+/// so tests can leave it out -- the analytics observer needs Firebase.
+final routerObserversProvider = Provider<List<NavigatorObserver>>(
+  (ref) => [AnalyticsService.instance.observer],
+);
+
+/// Where the router sends someone at [location], or null to let them in.
+///
+/// Signed out, everything but the sign-in and onboarding screens leads to
+/// sign-in -- which is how an ended session reaches the screen: the auth
+/// state changes, the router re-runs this, and the person lands on sign-in.
+@visibleForTesting
+String? authRedirect(AuthState auth, String location) {
+  // The splash screen routes itself once the stored session has been read.
+  if (location == '/splash') return null;
+  if (!auth.isInitialized) return '/splash';
+
+  final isOnAuthRoute = location.startsWith('/auth');
+  final isOnOnboarding = location.startsWith('/onboarding');
+  if (!auth.isAuthenticated && !isOnAuthRoute && !isOnOnboarding) {
+    return '/auth/onboarding';
+  }
+  if (auth.isAuthenticated && location == '/auth/onboarding') {
+    return '/auth/profile-check';
+  }
+  return null;
+}
 
 /// GoRouter provider with auth-based redirects.
+///
+/// Built once per session (see `SessionScope`) and told about auth changes
+/// through `refreshListenable`. It used to `watch` the auth state, which
+/// built a whole new router -- back at the splash screen -- on every change:
+/// signing in threw away the profile check's own navigation, so a new
+/// account went straight home and never reached the onboarding details.
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
+  final auth = ValueNotifier<AuthState>(ref.read(authStateProvider));
+  ref.listen<AuthState>(authStateProvider, (_, next) => auth.value = next);
 
-  return GoRouter(
-    navigatorKey: rootNavigatorKey,
-    initialLocation: '/splash',
-    debugLogDiagnostics: true,
+  final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+  final shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
+  _rootNavigatorKey = rootKey;
+
+  final start = auth.value;
+  final router = GoRouter(
+    navigatorKey: rootKey,
+    // A session scope that starts after a sign-out already knows nobody is
+    // signed in: straight to sign-in, without the splash screen again.
+    initialLocation: start.isInitialized && !start.isAuthenticated
+        ? '/auth/onboarding'
+        : '/splash',
+    debugLogDiagnostics: kDebugMode,
+    refreshListenable: auth,
     // Add analytics observer for automatic screen tracking
-    observers: [AnalyticsService.instance.observer],
-    redirect: (context, state) {
-      final isLoggedIn = authState.isAuthenticated;
-      final isOnAuthRoute = state.matchedLocation.startsWith('/auth');
-      final isOnOnboarding = state.matchedLocation.startsWith('/onboarding');
-      final isOnSplash = state.matchedLocation == '/splash';
-
-      // Let splash screen handle its own navigation
-      if (isOnSplash) {
-        return null;
-      }
-
-      if (!authState.isInitialized) {
-        return '/splash';
-      }
-      if (!isLoggedIn && !isOnAuthRoute && !isOnOnboarding) {
-        return '/auth/onboarding';
-      }
-      if (isLoggedIn && state.matchedLocation == '/auth/onboarding') {
-        return '/auth/profile-check';
-      }
-      return null;
-    },
+    observers: ref.read(routerObserversProvider),
+    redirect: (context, state) =>
+        authRedirect(auth.value, state.matchedLocation),
     routes: [
       // Splash screen route
       GoRoute(
           path: '/splash',
           name: 'splash',
-          parentNavigatorKey: rootNavigatorKey,
+          parentNavigatorKey: rootKey,
           builder: (context, state) => const SplashScreen()),
       // Auth routes
       GoRoute(
           path: '/auth/onboarding',
           name: 'onboarding',
-          parentNavigatorKey: rootNavigatorKey,
+          parentNavigatorKey: rootKey,
           builder: (context, state) => const OnboardingInitialPage()),
       GoRoute(
           path: '/auth/profile-check',
           name: 'profileCheck',
-          parentNavigatorKey: rootNavigatorKey,
+          parentNavigatorKey: rootKey,
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
             return ProfileCheckPage(
@@ -110,7 +137,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/auth/verify-email',
           name: 'verifyEmail',
-          parentNavigatorKey: rootNavigatorKey,
+          parentNavigatorKey: rootKey,
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
             return VerifyEmailPage(
@@ -125,7 +152,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/onboarding/details',
           name: 'onboardingDetails',
-          parentNavigatorKey: rootNavigatorKey,
+          parentNavigatorKey: rootKey,
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
             return OnboardingDetailsPage(
@@ -136,7 +163,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/onboarding/interests',
           name: 'onboardingInterests',
-          parentNavigatorKey: rootNavigatorKey,
+          parentNavigatorKey: rootKey,
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
             return InterestsSelectionPage(
@@ -145,24 +172,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/onboarding/avatar',
           name: 'onboardingAvatar',
-          parentNavigatorKey: rootNavigatorKey,
+          parentNavigatorKey: rootKey,
           builder: (context, state) => const OnboardingAvatarPickerPage()),
       GoRoute(
           path: '/onboarding/complete',
           name: 'onboardingComplete',
-          parentNavigatorKey: rootNavigatorKey,
+          parentNavigatorKey: rootKey,
           builder: (context, state) => const OnboardingFinalPage()),
 
       // Volunteer routes
       GoRoute(
           path: '/volunteer/events',
           name: 'volunteerEvents',
-          parentNavigatorKey: rootNavigatorKey,
+          parentNavigatorKey: rootKey,
           builder: (context, state) => const VolunteerEventsPage()),
       GoRoute(
           path: '/volunteer/scanner/:eventId',
           name: 'volunteerScanner',
-          parentNavigatorKey: rootNavigatorKey,
+          parentNavigatorKey: rootKey,
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             return VolunteerScannerPage(
@@ -174,7 +201,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/volunteer/manual-entry/:eventId',
           name: 'volunteerManualEntry',
-          parentNavigatorKey: rootNavigatorKey,
+          parentNavigatorKey: rootKey,
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             return ManualTicketEntryPage(
@@ -190,14 +217,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/threads/:threadId',
           name: 'threadDetail',
-          parentNavigatorKey: rootNavigatorKey,
+          parentNavigatorKey: rootKey,
           builder: (context, state) => ThreadDetailPage(
                 threadId: state.pathParameters['threadId'] ?? '',
               )),
 
       // Main shell with bottom nav
       ShellRoute(
-        navigatorKey: _shellNavigatorKey,
+        navigatorKey: shellKey,
         builder: (context, state, child) => MainShell(child: child),
         routes: [
           GoRoute(
@@ -212,7 +239,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 GoRoute(
                     path: 'registration-success',
                     name: 'eventRegistrationSuccess',
-                    parentNavigatorKey: rootNavigatorKey,
+                    parentNavigatorKey: rootKey,
                     builder: (context, state) {
                       final extra = state.extra as Map<String, dynamic>?;
                       return RegSuccessfullPage(
@@ -226,7 +253,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 GoRoute(
                     path: ':eventId',
                     name: 'eventDetail',
-                    parentNavigatorKey: rootNavigatorKey,
+                    parentNavigatorKey: rootKey,
                     builder: (context, state) {
                       final extra = state.extra as Map<String, dynamic>?;
                       return IndividualEventPage(
@@ -242,7 +269,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       GoRoute(
                           path: 'register',
                           name: 'eventRegister',
-                          parentNavigatorKey: rootNavigatorKey,
+                          parentNavigatorKey: rootKey,
                           builder: (context, state) {
                             final extra = state.extra as Map<String, dynamic>?;
                             final additionalDetails =
@@ -266,7 +293,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 GoRoute(
                     path: 'explore',
                     name: 'exploreClubs',
-                    parentNavigatorKey: rootNavigatorKey,
+                    parentNavigatorKey: rootKey,
                     builder: (context, state) {
                       final extra = state.extra as Map<String, dynamic>?;
                       return ExploreMoreClubsPage(
@@ -279,7 +306,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 GoRoute(
                     path: ':clubId',
                     name: 'clubDetail',
-                    parentNavigatorKey: rootNavigatorKey,
+                    parentNavigatorKey: rootKey,
                     builder: (context, state) {
                       final extra = state.extra as Map<String, dynamic>?;
                       return ClubIndividualPage(
@@ -299,41 +326,32 @@ final routerProvider = Provider<GoRouter>((ref) {
                 GoRoute(
                     path: 'edit',
                     name: 'editProfile',
-                    parentNavigatorKey: rootNavigatorKey,
+                    parentNavigatorKey: rootKey,
                     builder: (context, state) => const EditProfilePage()),
                 GoRoute(
                     path: 'interests',
                     name: 'profileInterests',
-                    parentNavigatorKey: rootNavigatorKey,
+                    parentNavigatorKey: rootKey,
                     builder: (context, state) =>
                         const InterestsSelectionPage(isOnboarding: false)),
+                // Privacy Policy and Terms open myotherapp.in/privacy and
+                // /terms in the browser (shared/utils/external_links.dart);
+                // there are no in-app copies to keep in step.
                 GoRoute(
                     path: 'settings',
                     name: 'settings',
-                    parentNavigatorKey: rootNavigatorKey,
-                    builder: (context, state) => const SettingsPage(),
-                    routes: [
-                      GoRoute(
-                          path: 'terms',
-                          name: 'terms',
-                          parentNavigatorKey: rootNavigatorKey,
-                          builder: (context, state) => TermsAndConditionPage()),
-                      GoRoute(
-                          path: 'privacy',
-                          name: 'privacy',
-                          parentNavigatorKey: rootNavigatorKey,
-                          builder: (context, state) => PrivacyPolicyPage()),
-                    ]),
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => const SettingsPage()),
                 GoRoute(
                     path: 'certificates',
                     name: 'certificates',
-                    parentNavigatorKey: rootNavigatorKey,
+                    parentNavigatorKey: rootKey,
                     builder: (context, state) => CertificatePage(),
                     routes: [
                       GoRoute(
                           path: ':ticketId',
                           name: 'certificateDetail',
-                          parentNavigatorKey: rootNavigatorKey,
+                          parentNavigatorKey: rootKey,
                           builder: (context, state) {
                             final extra =
                                 state.extra as Map<String, dynamic>?;
@@ -353,12 +371,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                 GoRoute(
                     path: 'badges',
                     name: 'badges',
-                    parentNavigatorKey: rootNavigatorKey,
+                    parentNavigatorKey: rootKey,
                     builder: (context, state) => const MyBadgesPage()),
                 GoRoute(
                     path: 'notifications',
                     name: 'notifications',
-                    parentNavigatorKey: rootNavigatorKey,
+                    parentNavigatorKey: rootKey,
                     builder: (context, state) => NotificationsNewPage()),
               ]),
         ],
@@ -377,6 +395,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ])),
     ),
   );
+  ref.onDispose(() {
+    router.dispose();
+    auth.dispose();
+  });
+  return router;
 });
 
 class AppRoutes {
@@ -401,8 +424,6 @@ class AppRoutes {
   static const String editProfile = 'editProfile';
   static const String profileInterests = 'profileInterests';
   static const String settings = 'settings';
-  static const String terms = 'terms';
-  static const String privacy = 'privacy';
   static const String certificates = 'certificates';
   static const String badges = 'badges';
   static const String notifications = 'notifications';
