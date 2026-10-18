@@ -16,9 +16,6 @@ abstract class AuthRemoteDataSource {
     required String idToken,
     required String platform,
   });
-
-  /// Refresh access token.
-  Future<AuthTokensModel> refreshToken(String refreshToken);
 }
 
 /// Implementation of auth remote data source.
@@ -41,17 +38,5 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     );
 
     return GoogleSignInResponse.fromJson(response.data as Map<String, dynamic>);
-  }
-
-  @override
-  Future<AuthTokensModel> refreshToken(String refreshToken) async {
-    final response = await _dio.post(
-      '/auth/refresh',
-      data: {
-        'refresh_token': refreshToken,
-      },
-    );
-
-    return AuthTokensModel.fromJson(response.data as Map<String, dynamic>);
   }
 }
