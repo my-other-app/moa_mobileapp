@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:finnet/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:finnet/features/auth/domain/entities/user_entity.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/auth/presentation/sign_in_errors.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 
 /// State for login operations.
@@ -94,7 +95,7 @@ class LoginNotifier extends StateNotifier<LoginState> {
 
       return result.fold(
         (failure) {
-          state = LoginState(error: failure.message);
+          state = LoginState(error: signInErrorMessage(failure));
           return false;
         },
         (tokens) async {
@@ -113,7 +114,7 @@ class LoginNotifier extends StateNotifier<LoginState> {
       );
     } catch (e) {
       debugPrint('LoginNotifier: Error during Google sign in: $e');
-      state = LoginState(error: 'An error occurred during sign in: $e');
+      state = LoginState(error: signInErrorMessage(e));
       return false;
     }
   }

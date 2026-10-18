@@ -1,22 +1,41 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:finnet/core/auth/session_events.dart';
+import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
+
+/// Called when the server has ended the stored session.
+typedef SessionEndedCallback = void Function(SessionEndReason reason);
 
 /// Interceptor that automatically adds authentication token to requests.
 ///
 /// Handles:
 /// - Adding Bearer token to Authorization header
 /// - Skipping auth for specific requests (using 'skipAuth' extra)
-/// - Token refresh on 401 errors with request retry
+/// - Token refresh on 401 errors, then one retry of the request
+/// - Ending the session -- tokens deleted, [onSessionEnded] told -- when the
+///   refresh is refused or the account is suspended
 class AuthInterceptor extends Interceptor {
   final SecureStorageService _secureStorage;
   final Dio _dio;
+  final SessionEndedCallback _onSessionEnded;
 
-  // Lock to prevent concurrent refresh attempts
-  bool _isRefreshing = false;
-  final List<void Function()> _refreshQueue = [];
+  /// The refresh in flight, shared by every request that hit a 401 while it
+  /// runs. It used to be a busy-wait over a queue that was never drained
+  /// when the refresh failed, so those requests hung forever.
+  Future<_RefreshOutcome>? _refreshing;
 
-  AuthInterceptor(this._secureStorage, this._dio);
+  /// Marks a request already retried after a refresh, so a 401 that a fresh
+  /// token does not cure is reported rather than refreshed again. Without it
+  /// the volunteer check-in, which answers 401 for "not a volunteer here",
+  /// refreshed and retried until the rate limiter stopped it.
+  static const _retriedKey = 'authRetried';
+
+  AuthInterceptor(
+    this._secureStorage,
+    this._dio, {
+    SessionEndedCallback? onSessionEnded,
+  }) : _onSessionEnded = onSessionEnded ?? SessionEvents.reportRevoked;
 
   @override
   void onRequest(
@@ -43,153 +62,183 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
-    // Only handle 401 errors for non-auth endpoints
-    if (err.response?.statusCode == 401 &&
-        !err.requestOptions.path.contains('/auth/')) {
-      debugPrint(
-          'AuthInterceptor: 401 Unauthorized - Attempting token refresh');
+    final options = err.requestOptions;
+    final status = err.response?.statusCode;
+    // Sign-in calls and the refresh itself are sent with skipAuth: their 401
+    // means "wrong password" or "dead refresh token", not "refresh me".
+    final sentWithSession = options.extra['skipAuth'] != true;
 
-      try {
-        // If already refreshing, queue this request
-        if (_isRefreshing) {
-          debugPrint('AuthInterceptor: Refresh in progress, queuing request');
-          await _queueRequest(() async {
-            await _retryRequest(err.requestOptions, handler);
-          });
-          return;
-        }
-
-        // Start refresh process
-        _isRefreshing = true;
-
-        final refreshToken = await _secureStorage.getRefreshToken();
-
-        if (refreshToken == null || refreshToken.isEmpty) {
-          debugPrint('AuthInterceptor: No refresh token available');
-          _isRefreshing = false;
-          await _handleLogout();
-          handler.next(err);
-          return;
-        }
-
-        // Call refresh token endpoint. The backend expects this as
-        // multipart/form-data with a `token` field (FastAPI `Form(...)`),
-        // not a JSON body — sending JSON here would silently 422 and break
-        // every refresh attempt.
-        final response = await _dio.post(
-          '/auth/refresh',
-          data: FormData.fromMap({'token': refreshToken}),
-          options: Options(
-            extra: {'skipAuth': true}, // Skip auth for refresh call
-          ),
-        );
-
-        if (response.statusCode == 200) {
-          // Save new tokens
-          final newAccessToken = response.data['access_token'] as String?;
-          final newRefreshToken = response.data['refresh_token'] as String?;
-
-          if (newAccessToken != null && newRefreshToken != null) {
-            await _secureStorage.saveAccessToken(newAccessToken);
-            await _secureStorage.saveRefreshToken(newRefreshToken);
-
-            debugPrint('AuthInterceptor: Token refresh successful');
-
-            // Process queued requests
-            _isRefreshing = false;
-            await _processQueue();
-
-            // Retry original request
-            await _retryRequest(err.requestOptions, handler);
-            return;
-          }
-        }
-
-        // Refresh failed
-        debugPrint('AuthInterceptor: Token refresh failed');
-        _isRefreshing = false;
-        await _handleLogout();
-        handler.next(err);
-      } catch (e) {
-        debugPrint('AuthInterceptor: Error during token refresh: $e');
-        _isRefreshing = false;
-        _refreshQueue.clear();
-
-        // Only logout if refresh token is invalid, not on network errors
-        if (e is DioException && e.response?.statusCode == 401) {
-          await _handleLogout();
-        }
-
-        handler.next(err);
-      }
-    } else {
+    if (!sentWithSession) {
       handler.next(err);
+      return;
+    }
+
+    // Suspension bites on every request, and nothing the app can do lifts
+    // it: end the session so the person is shown why, not a broken screen.
+    if (status == 403 && _errorCode(err.response?.data) == 'ACCOUNT_SUSPENDED') {
+      await _endSession(SessionEndReason.suspended);
+      handler.next(err);
+      return;
+    }
+
+    if (status != 401 || options.extra[_retriedKey] == true) {
+      handler.next(err);
+      return;
+    }
+
+    debugPrint('AuthInterceptor: 401 on ${options.path}, refreshing');
+    final outcome = await (_refreshing ??= _refresh().whenComplete(() {
+      _refreshing = null;
+    }));
+
+    switch (outcome) {
+      case _RefreshOutcome.refreshed:
+        await _retry(options, handler);
+      case _RefreshOutcome.sessionEnded:
+        handler.next(_sessionEnded(err));
+      case _RefreshOutcome.unavailable:
+        // A network failure, or the server failing: the session may be fine,
+        // so it is kept and the original error reported.
+        handler.next(err);
     }
   }
 
-  Future<void> _retryRequest(
-    RequestOptions requestOptions,
+  Future<_RefreshOutcome> _refresh() async {
+    final refreshToken = await _readOrNull(_secureStorage.getRefreshToken);
+    if (refreshToken == null || refreshToken.isEmpty) {
+      debugPrint('AuthInterceptor: no refresh token');
+      await _endSession(SessionEndReason.expired);
+      return _RefreshOutcome.sessionEnded;
+    }
+
+    try {
+      // The backend expects multipart/form-data with a `token` field
+      // (FastAPI `Form(...)`), not a JSON body -- sending JSON would
+      // silently 422 and break every refresh.
+      final response = await _dio.post(
+        '/auth/refresh',
+        data: FormData.fromMap({'token': refreshToken}),
+        options: Options(extra: {'skipAuth': true}),
+      );
+      final data = response.data;
+      final access = data is Map ? data['access_token'] : null;
+      final refresh = data is Map ? data['refresh_token'] : null;
+      if (access is String &&
+          access.isNotEmpty &&
+          refresh is String &&
+          refresh.isNotEmpty) {
+        // Signed out (or in as someone else) while this was in flight --
+        // sign-out stops waiting on the server after a few seconds. Saving
+        // now would bring the ended session back to life.
+        final current = await _readOrNull(_secureStorage.getRefreshToken);
+        if (current != refreshToken) {
+          debugPrint('AuthInterceptor: session changed during refresh');
+          return _RefreshOutcome.unavailable;
+        }
+        await _secureStorage.saveAccessToken(access);
+        await _secureStorage.saveRefreshToken(refresh);
+        debugPrint('AuthInterceptor: token refreshed');
+        return _RefreshOutcome.refreshed;
+      }
+      debugPrint('AuthInterceptor: refresh answered without tokens');
+      return _RefreshOutcome.unavailable;
+    } on DioException catch (e) {
+      // 401 is the server saying the session is over: expired, signed out
+      // from the Security page, or revoked by a token_version bump.
+      if (e.response?.statusCode == 401) {
+        debugPrint('AuthInterceptor: refresh refused, session over');
+        await _endSession(SessionEndReason.expired);
+        return _RefreshOutcome.sessionEnded;
+      }
+      debugPrint('AuthInterceptor: refresh failed: ${e.type}');
+      return _RefreshOutcome.unavailable;
+    } catch (e) {
+      debugPrint('AuthInterceptor: refresh failed: $e');
+      return _RefreshOutcome.unavailable;
+    }
+  }
+
+  Future<void> _retry(
+    RequestOptions options,
     ErrorInterceptorHandler handler,
   ) async {
     try {
       final token = await _secureStorage.getAccessToken();
+      options.headers['Authorization'] = 'Bearer $token';
+      options.extra[_retriedKey] = true;
+      // A FormData body is consumed by the first send.
+      final data = options.data;
+      if (data is FormData) options.data = data.clone();
 
-      // Update request with new token
-      requestOptions.headers['Authorization'] = 'Bearer $token';
-
-      // Retry the request
-      final response = await _dio.fetch(requestOptions);
+      final response = await _dio.fetch(options);
       handler.resolve(response);
+    } on DioException catch (e) {
+      handler.next(e);
     } catch (e) {
-      debugPrint('AuthInterceptor: Error retrying request: $e');
-      if (e is DioException) {
-        handler.next(e);
-      } else {
-        handler.next(
-          DioException(
-            requestOptions: requestOptions,
-            error: e,
-          ),
-        );
-      }
+      debugPrint('AuthInterceptor: retry failed: $e');
+      handler.next(DioException(requestOptions: options, error: e));
     }
   }
 
-  Future<void> _queueRequest(void Function() callback) async {
-    _refreshQueue.add(callback);
-
-    // Wait for refresh to complete
-    while (_isRefreshing) {
-      await Future.delayed(const Duration(milliseconds: 100));
-    }
-  }
-
-  Future<void> _processQueue() async {
-    debugPrint(
-        'AuthInterceptor: Processing ${_refreshQueue.length} queued requests');
-
-    for (final callback in _refreshQueue) {
-      try {
-        callback();
-      } catch (e) {
-        debugPrint('AuthInterceptor: Error processing queued request: $e');
-      }
-    }
-
-    _refreshQueue.clear();
-  }
-
-  Future<void> _handleLogout() async {
-    debugPrint('AuthInterceptor: Handling logout due to auth failure');
-
+  /// Delete the tokens and, if there was a session to end, say so.
+  ///
+  /// A person who never signed in has no tokens; their 401 from a protected
+  /// endpoint must not be reported as "your session has ended".
+  Future<void> _endSession(SessionEndReason reason) async {
+    final hadSession =
+        ((await _readOrNull(_secureStorage.getAccessToken)) ?? '').isNotEmpty ||
+            ((await _readOrNull(_secureStorage.getRefreshToken)) ?? '')
+                .isNotEmpty;
     try {
       await _secureStorage.delete(key: 'access_token');
       await _secureStorage.delete(key: 'refresh_token');
-
-      // Note: Navigation to login should be handled by the app's auth state listener
-      // The auth provider will detect missing tokens and navigate appropriately
     } catch (e) {
-      debugPrint('AuthInterceptor: Error during logout: $e');
+      debugPrint('AuthInterceptor: could not delete tokens: $e');
+    }
+    if (hadSession) _onSessionEnded(reason);
+  }
+
+  /// The original 401, carrying words that fit: the screen that made the
+  /// request is about to be replaced by the sign-in screen, and "Could not
+  /// validate credentials" is no use to anyone.
+  DioException _sessionEnded(DioException err) {
+    final read = ApiException.fromResponse(
+      err.response?.statusCode,
+      err.response?.data,
+      originalError: err,
+    );
+    return DioException(
+      requestOptions: err.requestOptions,
+      response: err.response,
+      type: err.type,
+      message: err.message,
+      error: ApiException(
+        message: ApiException.sessionEndedMessage,
+        statusCode: read.statusCode,
+        type: ApiExceptionType.unauthorized,
+        originalError: err,
+        serverMessage: read.serverMessage,
+        errorCode: read.errorCode,
+        errors: read.errors,
+        fieldErrors: read.fieldErrors,
+        trackId: read.trackId,
+      ),
+    );
+  }
+
+  static String? _errorCode(Object? body) {
+    final code = body is Map ? body['error_code'] : null;
+    return code is String ? code : null;
+  }
+
+  static Future<String?> _readOrNull(Future<String?> Function() read) async {
+    try {
+      return await read();
+    } catch (e) {
+      debugPrint('AuthInterceptor: could not read token: $e');
+      return null;
     }
   }
 }
+
+enum _RefreshOutcome { refreshed, sessionEnded, unavailable }

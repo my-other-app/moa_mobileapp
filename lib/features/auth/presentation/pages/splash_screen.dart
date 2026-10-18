@@ -91,8 +91,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     } else {
       // A notification that launched the app is dropped when signed out, as
       // any protected link is: the redirect to sign-in does not remember
-      // where it was going. Cleared rather than left, because signing in
-      // rebuilds the router and runs this screen again.
+      // where it was going. Cleared rather than left: a route still held
+      // when this screen next runs would open out of nowhere.
       NotificationService.pendingLaunch.clear();
       // User not logged in, go to onboarding
       context.go('/auth/onboarding');
@@ -160,7 +160,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF2C333D), // Dark text on yellow background
-                  fontFamily: 'Bebas Neue',
+                  fontFamily: 'BebasNeue',
                   letterSpacing: 2,
                 ),
               ),
@@ -180,7 +180,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 style: TextStyle(
                   fontSize: 14,
                   color: Color(0xFF5A5A5A), // Gray text
-                  fontFamily: 'DM Sans',
+                  fontFamily: 'DMSans',
                   letterSpacing: 1,
                 ),
               ),
@@ -242,7 +242,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     fontSize: 64,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    fontFamily: 'Bebas Neue',
+                    fontFamily: 'BebasNeue',
                   ),
                 ),
               ),

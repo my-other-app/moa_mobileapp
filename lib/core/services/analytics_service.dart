@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 
 /// Comprehensive analytics and crash reporting service.
 ///
@@ -32,18 +35,31 @@ class AnalyticsService {
     // Enable crashlytics collection
     await _crashlytics.setCrashlyticsCollectionEnabled(!kDebugMode);
 
-    // Pass all uncaught Flutter errors to Crashlytics
+    // Pass all uncaught Flutter errors to Crashlytics. An image that failed
+    // to load is reported through FlutterError too, and every one of them
+    // used to be filed as a fatal crash: a bad poster URL on a slow network
+    // filled the crash-free-users figure with sessions that never crashed.
     FlutterError.onError = (errorDetails) {
-      _crashlytics.recordFlutterFatalError(errorDetails);
+      if (isNonFatalFlutterError(errorDetails)) {
+        _crashlytics.recordFlutterError(errorDetails);
+      } else {
+        _crashlytics.recordFlutterFatalError(errorDetails);
+      }
     };
 
     // Pass all uncaught asynchronous errors to Crashlytics
     PlatformDispatcher.instance.onError = (error, stack) {
-      _crashlytics.recordError(error, stack, fatal: true);
+      recordUncaughtError(error, stack);
       return true;
     };
 
     debugPrint('AnalyticsService: Initialized');
+  }
+
+  /// Record an error nothing caught. Fatal, unless it is a failed image or
+  /// network fetch that nothing awaited -- those leave the app running.
+  void recordUncaughtError(Object error, StackTrace stack) {
+    _crashlytics.recordError(error, stack, fatal: !isNonFatalError(error));
   }
 
   // ============================================================
@@ -355,4 +371,25 @@ class AnalyticsService {
     if (value.length <= maxLength) return value;
     return '${value.substring(0, maxLength - 3)}...';
   }
+}
+
+/// Whether a [FlutterError] should be recorded as non-fatal.
+///
+/// Images report their load failures through [FlutterError] with the library
+/// `image resource service` -- [NetworkImage] and `cached_network_image`
+/// alike -- and a poster that fails to load leaves a placeholder, not a
+/// crashed app.
+@visibleForTesting
+bool isNonFatalFlutterError(FlutterErrorDetails details) {
+  return details.library == 'image resource service' ||
+      isNonFatalError(details.exception);
+}
+
+/// Whether an uncaught error is a failed image or network fetch rather than
+/// a crash.
+@visibleForTesting
+bool isNonFatalError(Object error) {
+  return error is NetworkImageLoadException ||
+      error is HttpException ||
+      error is SocketException;
 }

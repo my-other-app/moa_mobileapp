@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/features/main/presentation/providers/navigation_index_provider.dart';
 
-/// Provider for tracking the current navigation index.
-final navigationIndexProvider = StateProvider<int>((ref) => 0);
+export 'package:finnet/features/main/presentation/providers/navigation_index_provider.dart';
 
 /// Main shell widget that contains the bottom navigation bar.
 ///
