@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:finnet/core/network/sse/sse_frame.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -118,6 +119,14 @@ void main() {
         'event: snapshot\nid: 2\ndata: {"half":',
       ]);
       expect(frames, const [SseFrame(event: 'ping', data: 'x')]);
+    });
+
+    test('reads a Stream<Uint8List>, as Dio gives the body', () async {
+      final body = Stream<Uint8List>.fromIterable([
+        Uint8List.fromList(utf8.encode('event: ping\ndata: 1\n\n')),
+      ]);
+      final frames = await const SseDecoder().bind(body).toList();
+      expect(frames, const [SseFrame(event: 'ping', data: '1')]);
     });
 
     test('hands each frame over as soon as its blank line arrives', () async {

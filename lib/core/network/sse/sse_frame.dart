@@ -57,14 +57,17 @@ class SseFrame {
 /// colon dropped, unknown fields ignored, an `id:` containing NUL ignored and
 /// a `retry:` that is not all digits ignored. A block the stream ends in the
 /// middle of is dropped, as the standard says: it may be half a snapshot.
+///
+/// Use [bind], not `stream.transform(...)`: Dio's body is a
+/// `Stream<Uint8List>`, whose `transform` only takes a transformer of
+/// `Uint8List` and rejects this one at run time.
 class SseDecoder extends StreamTransformerBase<List<int>, SseFrame> {
   const SseDecoder();
 
   @override
   Stream<SseFrame> bind(Stream<List<int>> stream) {
-    final lines = stream
-        .transform(const Utf8Decoder(allowMalformed: true))
-        .transform(const LineSplitter());
+    final text = const Utf8Decoder(allowMalformed: true).bind(stream);
+    final lines = const LineSplitter().bind(text);
     return Stream<SseFrame>.eventTransformed(lines, _SseSink.new);
   }
 }

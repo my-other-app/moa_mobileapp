@@ -250,7 +250,7 @@ class LiveStreamClient<T> {
     if (response.isEventStream) {
       _streamsSeen = true;
       _response = response;
-      _frames = response.body.transform(const SseDecoder()).listen(
+      _frames = const SseDecoder().bind(response.body).listen(
             (frame) => _frame(attempt, frame),
             onError: (Object _) => _ended(attempt),
             onDone: () => _ended(attempt),
