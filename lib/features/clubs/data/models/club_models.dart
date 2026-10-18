@@ -1,7 +1,15 @@
 import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
 import 'package:finnet/features/profile/data/models/profile_models.dart';
+import 'package:finnet/shared/utils/image_url.dart';
 
 /// Data model for club from API.
+
+/// A club's logo as the image dict the rest of the app reads.
+Map<String, dynamic>? _logoMap(dynamic value) {
+  if (value is Map) return Map<String, dynamic>.from(value);
+  final url = imageUrlFrom(value);
+  return url == null ? null : {'thumbnail': url, 'original': url};
+}
 
 /// Read a JSON number as an int, whatever shape it arrived in.
 ///
@@ -55,7 +63,9 @@ class ClubModel {
       id: _toInt(json['id']) ?? 0,
       name: json['name'] as String? ?? '',
       slug: json['slug'] as String? ?? '',
-      logo: json['logo'] as Map<String, dynamic>?,
+      // A dict, null for a club with no logo, or a bare URL on older rows --
+      // which a straight `as Map` cast threw on.
+      logo: _logoMap(json['logo']),
       locationName: json['location_name'] as String?,
       locationLink: json['location_link'] as String?,
       about: json['about'] as String?,

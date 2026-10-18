@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:finnet/shared/utils/image_url.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
@@ -378,7 +379,7 @@ class ClubSearchDelegate extends SearchDelegate<String> {
 
   Widget _buildClubTile(BuildContext context, dynamic club) {
     return ListTile(
-      leading: _clubAvatar(club['logo']?['thumbnail']),
+      leading: _clubAvatar(imageUrlFrom(club['logo'])),
       title: Text(club['name'] ?? 'Unnamed Club'),
       subtitle: Text('${club['followers_count'] ?? 0} followers'),
       onTap: () {

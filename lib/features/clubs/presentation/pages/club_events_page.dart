@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/event_cover.dart';
@@ -281,7 +282,10 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
           return EventCard(
             clubSlug: event['club']?['slug'] ?? '',
             // Use club logo from widget if event's club logo is missing
-            orgImage: event['club']?['logo']?['thumbnail'] ?? widget.clubLogo,
+            orgImage: (event['club'] is Map
+                    ? imageUrlFrom(event['club']['logo'])
+                    : null) ??
+                widget.clubLogo,
             title: event['name'] ?? 'No Title',
             organizer: event['club']?['name'] ?? widget.clubName,
             tags: [

@@ -37,6 +37,25 @@ void main() {
       expect(result.eventType, 'Hackathon');
     });
 
+    test('a club with no logo, or a bare URL for one, still makes one', () {
+      Map<String, dynamic> event(Object? logo) => {
+            'id': 7,
+            'name': 'Oasis Hackathon',
+            'ticket_id': 'MOA-1',
+            'is_attended': true,
+            'club': {'name': 'Tinkerhub', 'logo': logo},
+            'poster': 'https://img/poster.png',
+          };
+
+      final none = Certificate.fromEventJson(event(null));
+      final bare = Certificate.fromEventJson(event('https://img/logo.png'));
+
+      expect(none, isNotNull);
+      expect(none!.clubLogoUrl, isNull);
+      expect(bare!.clubLogoUrl, 'https://img/logo.png');
+      expect(bare.thumbnailUrl, 'https://img/poster.png');
+    });
+
     test('a registration without attendance does not', () {
       // The server refuses the PDF for these, so listing one would offer a
       // download that cannot succeed.
