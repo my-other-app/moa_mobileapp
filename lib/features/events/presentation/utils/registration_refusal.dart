@@ -17,6 +17,33 @@ abstract final class RegistrationErrorCodes {
   static const eventFull = 'EVENT_FULL';
   static const soldOut = 'SOLD_OUT';
   static const clubEmail = 'CLUB_EMAIL';
+
+  /// An answer to the event's own questions was refused: required and
+  /// missing, not one of the options, or not a number, email address, web
+  /// address or date where the question asks for one. `errors` maps each
+  /// question's key to what is wrong with its answer.
+  static const invalidAnswers = 'INVALID_ANSWERS';
+}
+
+/// What the server said is wrong with each answer, by question key, when it
+/// refused the registration for its answers (INVALID_ANSWERS) -- only the
+/// questions in [questionKeys], the ones this form shows. Null when the
+/// refusal is something else, or names no question the form can point at
+/// (an answer set too large, say), which is then said as any other refusal.
+Map<String, String>? invalidAnswersOf(
+    Object? error, Iterable<String> questionKeys) {
+  if (errorCodeOf(error) != RegistrationErrorCodes.invalidAnswers) return null;
+  final errors = apiExceptionOf(error)?.errors;
+  if (errors == null) return null;
+  final asked = questionKeys.toSet();
+  final found = <String, String>{
+    for (final entry in errors.entries)
+      if (asked.contains(entry.key) &&
+          entry.value is String &&
+          (entry.value as String).trim().isNotEmpty)
+        entry.key: (entry.value as String).trim(),
+  };
+  return found.isEmpty ? null : found;
 }
 
 /// A refused registration, said for a person: what happened, and the one

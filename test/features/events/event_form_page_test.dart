@@ -1,5 +1,6 @@
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:finnet/common/models/events/event_model.dart';
+import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
 import 'package:finnet/features/events/presentation/utils/question_answers.dart';
 import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
@@ -31,8 +32,16 @@ final _questions = [
   _q('size', 'T-shirt', 'select', required: false, options: ['S', 'M']),
 ];
 
+/// Questions answered by typing, which the server checks for their type.
+final _typed = [
+  _q('age', 'Age', 'number'),
+  _q('site', 'Website', 'url', required: false),
+  _q('track', 'Track', 'radio', options: ['AI', 'Web']),
+];
+
 /// The form, pushed from a page that keeps what it was closed with.
-Future<List<Object?>> _pump(WidgetTester tester) async {
+Future<List<Object?>> _pump(WidgetTester tester,
+    {List<AdditionalDetail>? questions}) async {
   tester.view.physicalSize = const Size(800, 3200);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -54,7 +63,7 @@ Future<List<Object?>> _pump(WidgetTester tester) async {
     GoRoute(
       path: '/form',
       builder: (_, __) =>
-          EventFormPage(eventId: 7, additionalDetails: _questions),
+          EventFormPage(eventId: 7, additionalDetails: questions ?? _questions),
     ),
     GoRoute(
       path: '/events/registration-success',
@@ -222,5 +231,151 @@ void main() {
 
     expect(find.text("This event isn't taking more registrations right now."),
         findsOneWidget);
+  });
+
+  group('answers the server refuses (INVALID_ANSWERS)', () {
+    void refuse(Map<String, String> errors, {String? message}) => api.on(
+        'POST',
+        '/events/registration/7/register',
+        {
+          'message': message ?? 'Check your answers: Age, Track.',
+          'error_code': 'INVALID_ANSWERS',
+          'errors': errors,
+        },
+        status: 400);
+
+    Future<void> answerAndSend(WidgetTester tester) async {
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Enter age'), 'twenty');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Enter website'), 'my site');
+      await tester.tap(find.text('AI'));
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('each reason is shown under its own question', (tester) async {
+      refuse({
+        'age': 'Enter a number.',
+        'site': 'Enter a web address, like example.com.',
+      }, message: 'Check your answers: Age, Website.');
+      await _pump(tester, questions: _typed);
+
+      await answerAndSend(tester);
+
+      expect(find.text('Enter a number.'), findsOneWidget);
+      expect(
+          find.text('Enter a web address, like example.com.'), findsOneWidget);
+      // No dialog to read and dismiss; the form stays open, and says what
+      // the server said as a whole.
+      expect(find.text("We couldn't register you"), findsNothing);
+      expect(find.text('Check your answers: Age, Website.'), findsOneWidget);
+      expect(find.text('Registered!'), findsNothing);
+
+      // The reason under each question sits below that question's box.
+      final ageBox =
+          tester.getRect(find.widgetWithText(TextFormField, 'Enter age'));
+      final ageReason = tester.getRect(find.text('Enter a number.'));
+      final siteBox =
+          tester.getRect(find.widgetWithText(TextFormField, 'Enter website'));
+      expect(ageReason.top, greaterThanOrEqualTo(ageBox.bottom));
+      expect(ageReason.bottom, lessThanOrEqualTo(siteBox.top));
+    });
+
+    testWidgets('changing an answer clears what was said about it, only it',
+        (tester) async {
+      refuse({
+        'age': 'Enter a number.',
+        'track': 'Invalid option selected',
+      });
+      await _pump(tester, questions: _typed);
+      await answerAndSend(tester);
+      expect(find.text('Invalid option selected'), findsOneWidget);
+
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Enter age'), '20');
+      await tester.pump();
+      expect(find.text('Enter a number.'), findsNothing);
+      expect(find.text('Invalid option selected'), findsOneWidget);
+
+      await tester.tap(find.text('Web'));
+      await tester.pump();
+      expect(find.text('Invalid option selected'), findsNothing);
+    });
+
+    testWidgets('sent again, the corrected answers go as typed',
+        (tester) async {
+      refuse({'age': 'Enter a number.'});
+      api.on('POST', '/events/registration/7/register', {
+        'event_id': 7,
+        'event_name': 'Hack Night',
+        'event_registration_id': 'reg-1',
+        'pay_amount': 0,
+        'ticket_id': 'T-1',
+        'event_datetime': '2030-12-01T10:00:00Z',
+        'full_name': 'Asha Menon',
+      });
+      await _pump(tester, questions: _typed);
+      await answerAndSend(tester);
+
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Enter age'), '20');
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      final sent = api.sent('POST', '/events/registration/7/register');
+      expect((sent.last.data as Map)['additional_details'],
+          {'age': '20', 'site': 'my site', 'track': 'AI'});
+      expect(find.text('Registered!'), findsOneWidget);
+    });
+
+    testWidgets('a refusal that names no question on the form is a dialog',
+        (tester) async {
+      refuse({'additional_details': 'The answers are too long.'},
+          message: 'The answers are too long.');
+      await _pump(tester, questions: _typed);
+
+      await answerAndSend(tester);
+
+      expect(find.text("We couldn't register you"), findsOneWidget);
+      expect(find.text('The answers are too long.'), findsOneWidget);
+    });
+  });
+
+  group('invalidAnswersOf', () {
+    ApiException refusal(Map<String, dynamic> body) =>
+        ApiException.fromResponse(400, body);
+
+    test('reads the reasons for the questions the form asks', () {
+      final e = refusal({
+        'message': 'Check your answers: Age.',
+        'error_code': 'INVALID_ANSWERS',
+        'errors': {'age': 'Enter a number.', 'other': 'Not asked here'},
+      });
+
+      expect(invalidAnswersOf(e, ['age', 'site']), {'age': 'Enter a number.'});
+    });
+
+    test('is null for any other refusal, or none it can place', () {
+      expect(
+          invalidAnswersOf(
+              refusal({
+                'message': 'Event is full',
+                'error_code': 'EVENT_FULL',
+                'errors': {'age': 'x'},
+              }),
+              ['age']),
+          isNull);
+      expect(
+          invalidAnswersOf(
+              refusal({
+                'message': 'Too many answers: at most 50.',
+                'error_code': 'INVALID_ANSWERS',
+                'errors': {'additional_details': 'At most 50 answers.'},
+              }),
+              ['age']),
+          isNull);
+    });
   });
 }
