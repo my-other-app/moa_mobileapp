@@ -1,0 +1,2 @@
+# wrangler's local state (made by `wrangler deploy` and `wrangler dev`)
+.wrangler/

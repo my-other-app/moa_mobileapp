@@ -23,6 +23,8 @@ export const RESERVED = new Set([
   "mail", "email", "send", "rsend", "smtp", "imap", "pop", "mx", "app", "apps", "staging",
   "api-staging", "dev", "status", "help", "support", "docs", "blog", "static", "cdn", "assets",
   "m", "go", "link", "links", "auth", "login", "account", "accounts", "dashboard",
+  // The media CDN, a Worker of its own (infra/cloudflare/media) on a more specific route.
+  "media",
 ]);
 
 // One DNS label: letters, digits, inner hyphens. A dot means a deeper name, which is never a club.
