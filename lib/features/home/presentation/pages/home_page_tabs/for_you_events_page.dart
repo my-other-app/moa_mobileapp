@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:finnet/core/api/api_helper.dart';
-import 'package:finnet/shared/widgets/event_card.dart';
-import 'package:finnet/shared/widgets/event_cover.dart';
+import 'package:finnet/features/events/presentation/utils/event_errors.dart';
+import 'package:finnet/features/events/presentation/utils/event_feed.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
-import 'package:finnet/core/utils/error_utils.dart';
 
 class ForYouEventsPage extends StatefulWidget {
   const ForYouEventsPage({super.key});
@@ -71,10 +70,8 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = extractErrorMessage(
-            e,
-            defaultMessage: 'Could not load your feed.',
-          );
+          _errorMessage =
+              readableError(e, fallback: 'Could not load your feed.');
           _isLoading = false;
         });
       }
@@ -190,28 +187,9 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
               );
             }
 
-            final event = _events[index];
-            return EventCard(
-              clubSlug: event['club']?['slug'] ?? '',
-              orgImage: event['club']?['logo']?['thumbnail'] ?? '',
-              title: event['name'] ?? 'No Title',
-              organizer: event['club']?['name'] ?? 'Unknown Organizer',
-              tags: [
-                event['category']?['name'] ?? '',
-                event['is_online'] == true ? 'Online' : 'Offline',
-                event['has_fee'] == true ? 'Paid' : 'Free',
-                '${event['duration']} Hours'
-              ],
-              onTap: () {},
-              poster: event['poster'],
-              categoryId: event['category']?['id'],
-              categoryName: event['category']?['name'],
-              startsAt: parseEventStart(event['event_datetime']),
-              isOnline: event['is_online'] == true,
-              eventId: event['id'],
-              clubId: event['club']['id'],
-              eventSlug: event['slug'],
-            );
+            final event = Map<String, dynamic>.from(
+                _events[index] as Map? ?? const <String, dynamic>{});
+            return eventCardFromJson(event);
           },
         ),
       ),
