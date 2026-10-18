@@ -13,6 +13,8 @@ void main() {
         'quiz': {'live': true, 'title': 'Warm-up'},
       });
       expect(feed.eventId, 68);
+      expect(feed.eventStatus, 'live');
+      expect(feed.isEventLive, isTrue);
       expect(feed.isActive, isTrue);
       expect(feed.headline, 'Demos move to Lab 3B');
       expect(feed.quizLive, isTrue);
@@ -28,7 +30,18 @@ void main() {
         'quiz': {'live': false, 'title': null},
       });
       expect(feed.isActive, isFalse);
+      expect(feed.isEventLive, isFalse, reason: 'no status: not live');
       expect(LiveFeed.empty.isActive, isFalse);
+      expect(LiveFeed.empty.isEventLive, isFalse);
+    });
+
+    test('only status live is live', () {
+      for (final status in ['published', 'closed', 'archived', 'draft']) {
+        final feed = LiveFeed.fromJson(<String, dynamic>{
+          'event': {'id': 68, 'status': status},
+        });
+        expect(feed.isEventLive, isFalse, reason: status);
+      }
     });
 
     test('the headline falls back from the banner to the quiz to the poll', () {
