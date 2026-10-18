@@ -71,7 +71,7 @@ const resolves = () => calls.filter((u) => u.includes("/sites/resolve?"));
 describe("classify", () => {
   test("our own names pass through; clubs, the fallback and custom domains are told apart", () => {
     assert.deepEqual(classify("myotherapp.in"), { kind: "own", host: "myotherapp.in" });
-    for (const name of ["www", "api", "admin-next", "clubs-next", "events", "club", "r", "mail"]) {
+    for (const name of ["www", "api", "admin-next", "clubs-next", "events", "club", "r", "mail", "media"]) {
       assert.equal(classify(`${name}.myotherapp.in`).kind, "own", name);
     }
     assert.deepEqual(classify("Circuit-A1B2C3.myotherapp.in"), { kind: "club", host: "circuit-a1b2c3.myotherapp.in", name: "circuit-a1b2c3" });
