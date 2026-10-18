@@ -21,16 +21,24 @@ final paymentRepositoryProvider = Provider<PaymentRepository>((ref) {
 /// Turn whatever a payments call threw into a [Failure] a person can read.
 ///
 /// 409 UPDATE_APP_TO_PAY becomes an [UpdateAppToPayFailure] carrying the
-/// server's words and `errors.web_url`. Anything else keeps the kind from
-/// [mapErrorToFailure] and the server's own `message` where there is one.
+/// server's words and `errors.web_url`; 409 ALREADY_PAID an
+/// [AlreadyPaidFailure] and 422 NOTHING_TO_PAY a [NothingToPayFailure].
+/// Anything else keeps the kind from [mapErrorToFailure] and the server's own
+/// `message` where there is one.
 @visibleForTesting
 Failure paymentFailureFrom(Object error) {
   if (error is DioException) {
     final data = error.response?.data;
     final inner = error.error;
-    final code = inner is ApiException
-        ? inner.errorCode
-        : (data is Map ? data['error_code'] : null);
+    final innerCode = inner is ApiException ? inner.errorCode : null;
+    final code = innerCode ?? (data is Map ? data['error_code'] : null);
+    if (code == alreadyPaidCode) return const AlreadyPaidFailure();
+    if (code == nothingToPayCode) {
+      final message = data is Map ? data['message'] : null;
+      return message is String && message.trim().isNotEmpty
+          ? NothingToPayFailure(message: message.trim())
+          : const NothingToPayFailure();
+    }
     if (code == updateAppToPayCode) {
       final errors = data is Map ? data['errors'] : null;
       final webUrl = errors is Map ? errors['web_url'] : null;

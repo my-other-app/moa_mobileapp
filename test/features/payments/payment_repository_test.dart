@@ -129,6 +129,28 @@ void main() {
       expect(failure.message, contains("club's own Razorpay account"));
     });
 
+    test('409 ALREADY_PAID is an AlreadyPaidFailure, to be treated as paid', () async {
+      adapter
+        ..status = 409
+        ..body = {'message': 'This registration is already paid for.', 'error_code': 'ALREADY_PAID'};
+
+      final failure = (await repository.createRegistrationOrder(eventId: 62, registrationId: 'reg-1')).left;
+
+      expect(failure, isA<AlreadyPaidFailure>());
+      expect(failure.code, 'ALREADY_PAID');
+    });
+
+    test('422 NOTHING_TO_PAY is a NothingToPayFailure with the server words', () async {
+      adapter
+        ..status = 422
+        ..body = {'message': 'There is nothing to pay for this registration.', 'error_code': 'NOTHING_TO_PAY'};
+
+      final failure = (await repository.createRegistrationOrder(eventId: 62, registrationId: 'reg-1')).left;
+
+      expect(failure, isA<NothingToPayFailure>());
+      expect(failure.message, 'There is nothing to pay for this registration.');
+    });
+
     test('an order with no razorpay_order_id is a ServerFailure, not a crash', () async {
       adapter.body = {'id': 'o-1', 'amount': 250.0};
       final failure = (await repository.createRegistrationOrder(eventId: 62, registrationId: 'reg-1')).left;
