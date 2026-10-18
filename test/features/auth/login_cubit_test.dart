@@ -167,6 +167,8 @@ void main() {
 
       expect(failureOf(states), clubAccountMessage);
       expect(revoker.revoked, ['access']);
+      // Not the app's stored session: its token is sent by hand.
+      expect(revoker.stored, [false]);
       expect(storage.values, isEmpty);
     });
 

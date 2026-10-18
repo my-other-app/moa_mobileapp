@@ -127,6 +127,14 @@ class AuthInterceptor extends Interceptor {
           access.isNotEmpty &&
           refresh is String &&
           refresh.isNotEmpty) {
+        // Signed out (or in as someone else) while this was in flight --
+        // sign-out stops waiting on the server after a few seconds. Saving
+        // now would bring the ended session back to life.
+        final current = await _readOrNull(_secureStorage.getRefreshToken);
+        if (current != refreshToken) {
+          debugPrint('AuthInterceptor: session changed during refresh');
+          return _RefreshOutcome.unavailable;
+        }
         await _secureStorage.saveAccessToken(access);
         await _secureStorage.saveRefreshToken(refresh);
         debugPrint('AuthInterceptor: token refreshed');

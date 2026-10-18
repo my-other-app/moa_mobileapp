@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:dio/dio.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/services/pending_notification_route.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
+import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/app/router/app_router.dart';
 import 'package:go_router/go_router.dart';
 
@@ -143,12 +145,27 @@ class NotificationService {
     }
   }
 
+  /// Tell the server to forget this device's push token, while the session
+  /// that registered it is still good. Best effort -- never throws.
+  ///
+  /// Call before the session is revoked and before [unregister], which
+  /// forgets the token.
+  Future<void> unregisterOnServer() async {
+    try {
+      final token = _fcmToken ?? await _messaging.getToken();
+      if (token == null || token.isEmpty) return;
+      await deletePushTokenOnServer(APIService.instance.dio, token);
+    } catch (e) {
+      debugPrint('NotificationService: could not read the push token: $e');
+    }
+  }
+
   /// Stop this device receiving the signed-out person's notifications.
   ///
-  /// The backend has no way to delete a registered token
-  /// (`/user/fcm-token` takes POST only), so the token itself is deleted:
-  /// FCM then refuses sends to it, and the next person to sign in on this
-  /// device registers a fresh one. Best effort -- never throws.
+  /// The token itself is deleted: FCM then refuses sends to it, even where
+  /// the server still holds it (an older server, or a session that ended
+  /// before [unregisterOnServer] could run), and the next person to sign in
+  /// on this device registers a fresh one. Best effort -- never throws.
   Future<void> unregister() async {
     _fcmToken = null;
     final deletion = _messaging.deleteToken().timeout(
@@ -412,5 +429,24 @@ class NotificationService {
   Future<void> unsubscribeFromTopic(String topic) async {
     await _messaging.unsubscribeFromTopic(topic);
     debugPrint('Unsubscribed from topic: $topic');
+  }
+}
+
+/// `DELETE /user/fcm-token {"token": ...}`: the server stops sending this
+/// device the signed-out person's notifications.
+///
+/// Idempotent on the server (204 whether or not it held the token). A server
+/// from before the endpoint existed answers 404 or 405; that is ignored, and
+/// [NotificationService.unregister] deleting the token covers it. Never
+/// throws.
+@visibleForTesting
+Future<void> deletePushTokenOnServer(Dio dio, String token) async {
+  try {
+    await dio.delete('/user/fcm-token', data: {'token': token});
+    debugPrint('NotificationService: push token removed on the server');
+  } catch (e) {
+    final status = statusCodeOf(e);
+    if (status == 404 || status == 405) return;
+    debugPrint('NotificationService: could not remove the push token: $e');
   }
 }

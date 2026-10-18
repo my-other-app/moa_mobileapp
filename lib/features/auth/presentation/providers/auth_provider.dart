@@ -78,6 +78,11 @@ class AuthState extends Equatable {
 /// it already knows nobody is signed in, and why.
 final authSeedProvider = Provider<AuthState?>((ref) => null);
 
+/// How long sign-out waits on the server before it carries on regardless.
+/// A provider so tests can shorten it.
+final signOutServerTimeoutProvider =
+    Provider<Duration>((ref) => const Duration(seconds: 3));
+
 /// Provider for the authentication state.
 final authStateProvider =
     StateNotifierProvider<AuthStateNotifier, AuthState>((ref) {
@@ -88,6 +93,11 @@ final authStateProvider =
 class AuthStateNotifier extends StateNotifier<AuthState> {
   final Ref _ref;
   StreamSubscription<SessionEndReason>? _revocations;
+
+  /// Set while [logout] talks to the server. A refresh it sets off may be
+  /// refused, which the interceptor reports as an expired session; that
+  /// must not turn the person's own sign-out into "your session has ended".
+  bool _signingOut = false;
 
   AuthStateNotifier(this._ref, {AuthState? seed})
       : super(seed ?? const AuthState()) {
@@ -166,29 +176,52 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     debugPrint('AuthStateNotifier: User profile updated');
   }
 
-  /// Sign out: end the session on the server, stop this device receiving
-  /// the person's pushes, delete the tokens.
+  /// Sign out: tell the server to forget this device's push token, end the
+  /// session on the server, delete the FCM token, delete the tokens.
   ///
-  /// The server calls are best effort and not awaited -- a sign-out never
-  /// waits on the network or fails because of it. Setting the state is the
-  /// last step: `SessionScope` sees it and replaces every provider, so the
-  /// next person to sign in starts with nothing of this one's.
+  /// The server calls go first, while the tokens are still stored, so an
+  /// access token that has expired can be refreshed once on the way -- the
+  /// revoke used to run after the refresh token was cleared, and failed
+  /// silently for anyone signed in longer than an access token lasts. They
+  /// are best effort and capped ([signOutServerTimeoutProvider], 3 s): a
+  /// sign-out never waits long on the network or fails because of it.
+  ///
+  /// Setting the state is the last step: `SessionScope` sees it and replaces
+  /// every provider, so the next person to sign in starts with nothing of
+  /// this one's.
   Future<void> logout() async {
     final storage = _ref.read(secureStorageServiceProvider);
-    String? accessToken;
+    final push = _ref.read(pushRegistrationProvider);
+    final revoker = _ref.read(sessionRevokerProvider);
+    final cap = _ref.read(signOutServerTimeoutProvider);
+    _signingOut = true;
     try {
-      accessToken = await storage.getAccessToken();
-    } catch (e) {
-      debugPrint('AuthStateNotifier: could not read the token: $e');
-    }
-    if (accessToken != null && accessToken.isNotEmpty) {
-      unawaited(_ref.read(sessionRevokerProvider).revoke(accessToken));
-    }
-    unawaited(_ref.read(pushRegistrationProvider).onSignedOut());
-    try {
-      await storage.clearTokens();
-    } catch (e) {
-      debugPrint('AuthStateNotifier: Error during logout: $e');
+      String? accessToken;
+      try {
+        accessToken = await storage.getAccessToken();
+      } catch (e) {
+        debugPrint('AuthStateNotifier: could not read the token: $e');
+      }
+      if (accessToken != null && accessToken.isNotEmpty) {
+        final token = accessToken;
+        try {
+          await () async {
+            await push.unregisterOnServer();
+            await revoker.revoke(token, stored: true);
+          }()
+              .timeout(cap);
+        } catch (e) {
+          debugPrint('AuthStateNotifier: server sign-out cut short: $e');
+        }
+      }
+      unawaited(push.onSignedOut());
+      try {
+        await storage.clearTokens();
+      } catch (e) {
+        debugPrint('AuthStateNotifier: Error during logout: $e');
+      }
+    } finally {
+      _signingOut = false;
     }
     if (!mounted) return;
     state = const AuthState(
@@ -201,7 +234,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
   /// The server refused the stored session. The interceptor has deleted the
   /// tokens; take the person to sign-in and say why.
   Future<void> _onRevoked(SessionEndReason reason) async {
-    if (!state.isAuthenticated) return;
+    if (_signingOut || !state.isAuthenticated) return;
     debugPrint('AuthStateNotifier: session ended by the server ($reason)');
     unawaited(_ref.read(pushRegistrationProvider).onSignedOut());
     try {

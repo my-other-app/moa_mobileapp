@@ -6,7 +6,17 @@ import 'package:finnet/core/utils/error_utils.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:dio/dio.dart';
 
-// Import your bloc file here
+/// Whether creating the profile failed only because one already exists --
+/// made on an earlier try, so onboarding can carry on.
+///
+/// The server's code (`PROFILE_EXISTS`) is preferred; servers from before
+/// the code existed say it only in words, so the words are still matched.
+@visibleForTesting
+bool isProfileAlreadyExists(Object error) {
+  final api = apiExceptionOf(error);
+  return api?.errorCode == 'PROFILE_EXISTS' ||
+      api?.serverMessage == 'Profile already exists';
+}
 
 // Organization model
 class Organization {
@@ -107,12 +117,11 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
         }
       }
     } catch (error) {
-      // A profile made on an earlier try is fine: carry on. APIService
-      // throws the ApiException itself, not a DioException -- this used to
-      // test for a DioException, never matched, and told the person their
-      // profile could not be created when it already had been. The server
-      // sends no error code for this one, so its words are what there is.
-      if (apiExceptionOf(error)?.serverMessage == 'Profile already exists') {
+      // A profile made on an earlier try is fine: carry on. This used to
+      // test for a DioException, which APIService never throws, so it never
+      // matched and told the person their profile could not be created when
+      // it already had been.
+      if (isProfileAlreadyExists(error)) {
         if (mounted) {
           context.go('/onboarding/interests', extra: {'isOnboarding': true});
         }

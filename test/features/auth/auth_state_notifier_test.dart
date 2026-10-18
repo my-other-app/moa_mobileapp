@@ -78,18 +78,31 @@ void main() {
   });
 
   group('logout', () {
-    test('ends the session on the server, the push token and the tokens',
-        () async {
+    test('asks the server first, while the tokens are still stored', () async {
+      // The revoke used to run after the refresh token was cleared, so an
+      // expired access token could not be refreshed and it failed silently.
       final token = tokenWithSid('s-1');
       storage.values.addAll({'access_token': token, 'refresh_token': 'r'});
+      final seenByServerCalls = <Map<String, String>>[];
+      push.onServerUnregister =
+          () async => seenByServerCalls.add({...storage.values});
+      revoker.during = () async => seenByServerCalls.add({...storage.values});
       final container = containerWith();
       container.read(authStateProvider);
       await settle();
 
       await container.read(authStateProvider.notifier).logout();
 
+      // FCM token off the server, then the session, then the token itself.
+      expect(push.calls, ['restored', 'serverUnregistered', 'signedOut']);
       expect(revoker.revoked, [token]);
-      expect(push.calls, ['restored', 'signedOut']);
+      // Through the normal path, so the interceptor can refresh once.
+      expect(revoker.stored, [true]);
+      expect(seenByServerCalls, [
+        {'access_token': token, 'refresh_token': 'r'},
+        {'access_token': token, 'refresh_token': 'r'},
+      ]);
+      // Then everything is cleared.
       expect(storage.values, isEmpty);
       final state = container.read(authStateProvider);
       expect(state.isAuthenticated, isFalse);
@@ -99,12 +112,15 @@ void main() {
       expect(sessionEndNotice(state.endedBecause), isNull);
     });
 
-    test('never waits on the server', () async {
+    test('waits on the server no longer than the cap', () async {
       storage.values.addAll({'access_token': 'a', 'refresh_token': 'r'});
+      revoker.during = () => Future<void>.delayed(const Duration(days: 1));
       final container = ProviderContainer(overrides: [
         secureStorageServiceProvider.overrideWithValue(storage),
         pushRegistrationProvider.overrideWithValue(push),
-        sessionRevokerProvider.overrideWithValue(_NeverRevoker()),
+        sessionRevokerProvider.overrideWithValue(revoker),
+        signOutServerTimeoutProvider
+            .overrideWithValue(const Duration(milliseconds: 50)),
       ]);
       addTearDown(container.dispose);
       container.read(authStateProvider);
@@ -113,9 +129,43 @@ void main() {
       await container
           .read(authStateProvider.notifier)
           .logout()
-          .timeout(const Duration(seconds: 1));
+          .timeout(const Duration(seconds: 2));
 
+      expect(storage.values, isEmpty);
+      expect(push.calls.last, 'signedOut');
       expect(container.read(authStateProvider).isAuthenticated, isFalse);
+    });
+
+    test('is still a sign-out when the refresh it set off is refused',
+        () async {
+      // An expired access token is refreshed on the way out; if the session
+      // is already dead the interceptor reports it as expired. The person
+      // chose to sign out, and is not told their session ended.
+      storage.values.addAll({'access_token': 'a', 'refresh_token': 'r'});
+      revoker.during = () async {
+        SessionEvents.reportRevoked(SessionEndReason.expired);
+        await settle();
+      };
+      final container = containerWith();
+      container.read(authStateProvider);
+      await settle();
+
+      await container.read(authStateProvider.notifier).logout();
+      await settle();
+
+      expect(container.read(authStateProvider).endedBecause,
+          SessionEndReason.signedOut);
+    });
+
+    test('with no stored session, asks the server nothing', () async {
+      final container = containerWith();
+      container.read(authStateProvider);
+      await settle();
+
+      await container.read(authStateProvider.notifier).logout();
+
+      expect(push.calls, ['signedOut']);
+      expect(revoker.revoked, isEmpty);
     });
   });
 
@@ -182,11 +232,4 @@ void main() {
 
     expect(container.read(authStateProvider).endedBecause, isNull);
   });
-}
-
-class _NeverRevoker implements SessionRevoker {
-  @override
-  Future<void> revoke(String accessToken) => Future<void>.delayed(
-        const Duration(days: 1),
-      );
 }

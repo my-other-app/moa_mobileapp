@@ -253,6 +253,25 @@ void main() {
       expect(t.calls['/auth/refresh'], 1);
     });
 
+    test('a refresh that lands after sign-out does not bring the session back',
+        () async {
+      // Sign-out stops waiting on the server after a few seconds and clears
+      // the tokens; a refresh still in flight must not save new ones.
+      late MemoryStorage storage;
+      final t = setUp({
+        '/protected': (_) => json('{"message":"Token has expired"}', 401),
+        '/auth/refresh': (_) {
+          storage.values.clear();
+          return json('{"access_token":"new","refresh_token":"new-r"}', 200);
+        },
+      });
+      storage = t.storage;
+
+      await expectLater(t.dio.get('/protected'), throwsA(isA<DioException>()));
+      expect(t.storage.values, isEmpty);
+      expect(t.calls['/protected'], 1);
+    });
+
     test('a suspended account ends the session', () async {
       final t = setUp({
         '/protected': (_) => json(

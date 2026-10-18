@@ -12,6 +12,10 @@ abstract class PushRegistration {
   /// A stored session was restored at start-up: register, asking nothing.
   Future<void> onSessionRestored();
 
+  /// Signing out, while the session is still good: ask the server to forget
+  /// this device's push token. Runs before the session is revoked.
+  Future<void> unregisterOnServer();
+
   /// The session ended: stop this device receiving that person's pushes.
   Future<void> onSignedOut();
 }
@@ -31,6 +35,10 @@ class NotificationPushRegistration implements PushRegistration {
       _guard(() => NotificationService().syncToken());
 
   @override
+  Future<void> unregisterOnServer() =>
+      _guard(() => NotificationService().unregisterOnServer());
+
+  @override
   Future<void> onSignedOut() => _guard(() => NotificationService().unregister());
 
   Future<void> _guard(Future<void> Function() call) async {
@@ -45,7 +53,12 @@ class NotificationPushRegistration implements PushRegistration {
 /// Ends a session on the server.
 abstract class SessionRevoker {
   /// End the session [accessToken] belongs to. Best effort; never throws.
-  Future<void> revoke(String accessToken);
+  ///
+  /// [stored]: [accessToken] is the app's stored session, so the call goes
+  /// the normal way and the interceptor can refresh it once if it has
+  /// expired. Otherwise -- a session sign-in opened and is refusing (a club
+  /// account) -- the token is sent by hand and nothing is refreshed.
+  Future<void> revoke(String accessToken, {bool stored = false});
 }
 
 /// `DELETE /auth/sessions/{sid}`, the session id read from the token.
@@ -59,7 +72,7 @@ class ApiSessionRevoker implements SessionRevoker {
   static const _timeout = Duration(seconds: 8);
 
   @override
-  Future<void> revoke(String accessToken) async {
+  Future<void> revoke(String accessToken, {bool stored = false}) async {
     final sid = sessionIdOf(accessToken);
     // Tokens from before sessions existed carry no id. Ending every session
     // (`DELETE /auth/sessions`) would sign the person out on all devices,
@@ -70,16 +83,12 @@ class ApiSessionRevoker implements SessionRevoker {
           .request(
             '/auth/sessions/${Uri.encodeComponent(sid)}',
             DioMethod.delete,
-            // The stored tokens are being cleared as this runs, so the token
-            // is sent by hand, and a 401 is not worth a refresh.
-            skipAuth: true,
-            headers: {'Authorization': 'Bearer $accessToken'},
+            skipAuth: !stored,
+            headers: stored ? null : {'Authorization': 'Bearer $accessToken'},
           )
           .timeout(_timeout);
       debugPrint('SessionRevoker: session ended on the server');
     } catch (e) {
-      // An access token that has already expired gets a 401 here; the
-      // refresh token that could have renewed it is gone from the phone.
       debugPrint('SessionRevoker: could not end the session: $e');
     }
   }

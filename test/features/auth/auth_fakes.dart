@@ -56,11 +56,21 @@ class MemoryStorage extends SecureStorageService {
 class FakePushRegistration implements PushRegistration {
   final List<String> calls = [];
 
+  /// Runs when the server is asked to forget the token, to look at the
+  /// state of things at that moment.
+  Future<void> Function()? onServerUnregister;
+
   @override
   Future<void> onSignedIn() async => calls.add('signedIn');
 
   @override
   Future<void> onSessionRestored() async => calls.add('restored');
+
+  @override
+  Future<void> unregisterOnServer() async {
+    calls.add('serverUnregistered');
+    await onServerUnregister?.call();
+  }
 
   @override
   Future<void> onSignedOut() async => calls.add('signedOut');
@@ -69,9 +79,17 @@ class FakePushRegistration implements PushRegistration {
 /// Records which sessions were ended on the server.
 class FakeSessionRevoker implements SessionRevoker {
   final List<String> revoked = [];
+  final List<bool> stored = [];
+
+  /// Runs inside [revoke], to look at -- or delay -- what happens then.
+  Future<void> Function()? during;
 
   @override
-  Future<void> revoke(String accessToken) async => revoked.add(accessToken);
+  Future<void> revoke(String accessToken, {bool stored = false}) async {
+    revoked.add(accessToken);
+    this.stored.add(stored);
+    await during?.call();
+  }
 }
 
 /// A JWT-shaped token whose payload carries [sid]. Unsigned: the app never
