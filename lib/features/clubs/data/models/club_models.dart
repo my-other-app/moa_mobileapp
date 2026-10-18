@@ -1,5 +1,7 @@
 import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
 import 'package:finnet/features/profile/data/models/profile_models.dart';
+import 'package:finnet/features/topics/data/models/topic_model.dart';
+import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 
 /// Data model for club from API.
@@ -33,6 +35,9 @@ class ClubModel {
   final int? totalRating;
   final SocialLinksModel? socials;
   final List<InterestModel>? interests;
+
+  /// `topics` as sent; null from a server that sends none.
+  final List<Topic>? topics;
   final int? followersCount;
   final String? contactPhone;
   final String? contactEmail;
@@ -51,6 +56,7 @@ class ClubModel {
     this.totalRating,
     this.socials,
     this.interests,
+    this.topics,
     this.followersCount,
     this.contactPhone,
     this.contactEmail,
@@ -81,6 +87,7 @@ class ClubModel {
       interests: (json['interests'] as List<dynamic>?)
           ?.map((e) => InterestModel.fromJson(e as Map<String, dynamic>))
           .toList(),
+      topics: TopicModel.declaredIn(json),
       followersCount: _toInt(json['followers_count']),
       contactPhone: json['contact_phone'] as String?,
       contactEmail: json['contact_email'] as String?,
@@ -107,6 +114,7 @@ class ClubModel {
       'total_ratings': totalRating,
       'socials': socials?.toJson(),
       'interests': interests?.map((e) => e.toJson()).toList(),
+      if (topics != null) 'topics': topics!.map(topicRefJson).toList(),
       'followers_count': followersCount,
       'contact_phone': contactPhone,
       'contact_email': contactEmail,
@@ -128,6 +136,7 @@ class ClubModel {
       totalRatings: totalRating ?? 0,
       socials: socials?.toEntity(),
       interests: interests?.map((e) => e.toEntity()).toList() ?? [],
+      topics: topics,
       followersCount: followersCount ?? 0,
       contactPhone: contactPhone,
       contactEmail: contactEmail,
@@ -144,6 +153,7 @@ class ClubModel {
       logo: logo != null ? ImageUrlsModel.fromJson(logo!).toEntity() : null,
       followersCount: followersCount ?? 0,
       interests: interests?.map((e) => e.toEntity()).toList() ?? [],
+      topics: topics,
       isFollowing: userData?.isFollowing ?? false,
       isPinned: userData?.isPinned ?? false,
     );

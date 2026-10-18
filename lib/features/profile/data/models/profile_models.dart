@@ -263,25 +263,44 @@ class ImageUrlsModel {
 }
 
 /// Data model for interest.
+///
+/// `slug`, `category_id`, `sort_order` and `upcoming_events` came with
+/// topics; each is optional, so a payload from before them still reads.
 class InterestModel {
   final int? id;
   final String? name;
   final String? icon;
   final String? iconType;
+  final String? slug;
+  final int? categoryId;
+  final int? sortOrder;
+  final int? upcomingEvents;
 
   const InterestModel({
     this.id,
     this.name,
     this.icon,
     this.iconType,
+    this.slug,
+    this.categoryId,
+    this.sortOrder,
+    this.upcomingEvents,
   });
 
-  factory InterestModel.fromJson(Map<String, dynamic> json) {
+  /// [categoryId] is the topic the interest was listed under, for a payload
+  /// that nests interests in their topic rather than naming it on each.
+  factory InterestModel.fromJson(Map<String, dynamic> json,
+      {int? categoryId}) {
     return InterestModel(
-      id: json['id'] as int?,
+      // `as int?` throws on 3.0; JSON does not promise which one arrives.
+      id: _jsonInt(json['id']),
       name: json['name'] as String?,
-      icon: json['icon'] as String?,
-      iconType: json['icon_type'] as String?,
+      icon: _jsonString(json['icon']),
+      iconType: _jsonString(json['icon_type']),
+      slug: _jsonString(json['slug']),
+      categoryId: _jsonInt(json['category_id']) ?? categoryId,
+      sortOrder: _jsonInt(json['sort_order']),
+      upcomingEvents: _jsonInt(json['upcoming_events']),
     );
   }
 
@@ -291,6 +310,10 @@ class InterestModel {
       'name': name,
       'icon': icon,
       'icon_type': iconType,
+      if (slug != null) 'slug': slug,
+      if (categoryId != null) 'category_id': categoryId,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (upcomingEvents != null) 'upcoming_events': upcomingEvents,
     };
   }
 
@@ -300,9 +323,22 @@ class InterestModel {
       name: name ?? '',
       icon: icon,
       iconType: iconType,
+      slug: slug,
+      categoryId: categoryId,
+      sortOrder: sortOrder,
+      upcomingEvents: upcomingEvents,
     );
   }
 }
+
+int? _jsonInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
+String? _jsonString(Object? value) => value is String ? value : null;
 
 /// Request model for creating profile.
 class CreateProfileRequest {

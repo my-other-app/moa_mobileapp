@@ -108,13 +108,27 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     return UserProfileModel.fromJson(response.data as Map<String, dynamic>);
   }
 
+  /// Every interest, flattened out of its topic.
+  ///
+  /// `/interests/list` is a list of topics (interest categories), each with
+  /// its `interests`. It used to be read as a list of interests, which gave
+  /// back the topics themselves: one "interest" called "arts" with the
+  /// category's id, and none of the real ones.
   @override
   Future<List<InterestModel>> getInterests() async {
     final response = await _dio.get('/interests/list');
-    final List<dynamic> data = response.data as List<dynamic>? ?? [];
-    return data
-        .map((e) => InterestModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final List<dynamic> data = _listFrom(response.data);
+    return [
+      for (final topic in data.whereType<Map<String, dynamic>>())
+        if (topic['interests'] is List)
+          for (final e in (topic['interests'] as List)
+              .whereType<Map<String, dynamic>>())
+            InterestModel.fromJson(e,
+                categoryId: (topic['id'] as num?)?.toInt())
+        else
+          // Not a topic: an interest listed bare.
+          InterestModel.fromJson(topic),
+    ];
   }
 
   @override

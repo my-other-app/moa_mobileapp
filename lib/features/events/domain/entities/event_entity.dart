@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/domain/topic_rules.dart';
 
 /// Event entity representing an event in the system.
 class Event extends Equatable {
@@ -21,6 +23,10 @@ class Event extends Equatable {
   final ClubSummary club;
   final Category category;
   final List<Interest> interests;
+
+  /// The payload's `topics`; null from a server that does not send them --
+  /// see [topicsIn].
+  final List<Topic>? topics;
   final List<EventField> additionalFields;
   final double rating;
   final int totalRatings;
@@ -48,6 +54,7 @@ class Event extends Equatable {
     required this.club,
     required this.category,
     this.interests = const [],
+    this.topics,
     this.additionalFields = const [],
     this.rating = 0,
     this.totalRatings = 0,
@@ -79,6 +86,11 @@ class Event extends Equatable {
   /// Check if the event is free.
   bool get isFree => !hasFee || registrationFee == 0;
 
+  /// Its topics: the server's, else worked out from its interests against
+  /// [catalogue] (`/interests/list`).
+  List<Topic> topicsIn(List<Topic> catalogue) => resolveTopics(
+      declared: topics, interests: interests, catalogue: catalogue);
+
   @override
   List<Object?> get props => [
         id,
@@ -99,6 +111,7 @@ class Event extends Equatable {
         club,
         category,
         interests,
+        topics,
         additionalFields,
         rating,
         totalRatings,
@@ -192,6 +205,9 @@ class EventListItem extends Equatable {
   final ClubSummary club;
   final Category category;
 
+  /// The payload's `topics`; null from a server that does not send them.
+  final List<Topic>? topics;
+
   const EventListItem({
     required this.id,
     required this.name,
@@ -204,6 +220,7 @@ class EventListItem extends Equatable {
     this.registrationFee = 0,
     required this.club,
     required this.category,
+    this.topics,
   });
 
   @override
@@ -219,5 +236,6 @@ class EventListItem extends Equatable {
         registrationFee,
         club,
         category,
+        topics,
       ];
 }

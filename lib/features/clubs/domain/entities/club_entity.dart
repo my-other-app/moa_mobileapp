@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/domain/topic_rules.dart';
 
 /// Club entity representing a club/organization.
 class Club extends Equatable {
@@ -14,6 +16,10 @@ class Club extends Equatable {
   final int totalRatings;
   final SocialLinks? socials;
   final List<Interest> interests;
+
+  /// The payload's `topics`; null from a server that does not send them --
+  /// see [topicsIn].
+  final List<Topic>? topics;
   final int followersCount;
   final String? contactPhone;
   final String? contactEmail;
@@ -32,6 +38,7 @@ class Club extends Equatable {
     this.totalRatings = 0,
     this.socials,
     this.interests = const [],
+    this.topics,
     this.followersCount = 0,
     this.contactPhone,
     this.contactEmail,
@@ -44,6 +51,11 @@ class Club extends Equatable {
 
   /// Check if the current user has pinned this club.
   bool get isPinned => userData?.isPinned ?? false;
+
+  /// Its topics: the server's, else worked out from its interests against
+  /// [catalogue] (`/interests/list`).
+  List<Topic> topicsIn(List<Topic> catalogue) => resolveTopics(
+      declared: topics, interests: interests, catalogue: catalogue);
 
   @override
   List<Object?> get props => [
@@ -58,6 +70,7 @@ class Club extends Equatable {
         totalRatings,
         socials,
         interests,
+        topics,
         followersCount,
         contactPhone,
         contactEmail,
@@ -128,6 +141,9 @@ class ClubListItem extends Equatable {
   final ImageUrls? logo;
   final int followersCount;
   final List<Interest> interests;
+
+  /// The payload's `topics`; null from a server that does not send them.
+  final List<Topic>? topics;
   final bool isFollowing;
   final bool isPinned;
 
@@ -138,9 +154,15 @@ class ClubListItem extends Equatable {
     this.logo,
     this.followersCount = 0,
     this.interests = const [],
+    this.topics,
     this.isFollowing = false,
     this.isPinned = false,
   });
+
+  /// Its topics: the server's, else worked out from its interests against
+  /// [catalogue] (`/interests/list`).
+  List<Topic> topicsIn(List<Topic> catalogue) => resolveTopics(
+      declared: topics, interests: interests, catalogue: catalogue);
 
   ClubListItem copyWith({
     int? id,
@@ -149,6 +171,7 @@ class ClubListItem extends Equatable {
     ImageUrls? logo,
     int? followersCount,
     List<Interest>? interests,
+    List<Topic>? topics,
     bool? isFollowing,
     bool? isPinned,
   }) {
@@ -159,6 +182,7 @@ class ClubListItem extends Equatable {
       logo: logo ?? this.logo,
       followersCount: followersCount ?? this.followersCount,
       interests: interests ?? this.interests,
+      topics: topics ?? this.topics,
       isFollowing: isFollowing ?? this.isFollowing,
       isPinned: isPinned ?? this.isPinned,
     );
@@ -172,6 +196,7 @@ class ClubListItem extends Equatable {
         logo,
         followersCount,
         interests,
+        topics,
         isFollowing,
         isPinned,
       ];

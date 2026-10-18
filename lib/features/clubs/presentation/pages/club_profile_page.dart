@@ -12,6 +12,10 @@ import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart'
+    as entity;
+import 'package:finnet/features/topics/data/models/topic_model.dart';
+import 'package:finnet/features/topics/domain/entities/topic.dart';
 
 class ClubProfilePage extends StatefulWidget {
   final int id;
@@ -742,6 +746,10 @@ class ClubInfo {
   final int totalRatings;
   final Map<String, dynamic> socials;
   final List<Interest> interests;
+
+  /// The club's `topics`; null from a server that does not send them, when
+  /// they are worked out from [interests] instead.
+  final List<Topic>? topics;
   final int followersCount;
   final String contactPhone;
   final String contactEmail;
@@ -760,6 +768,7 @@ class ClubInfo {
     required this.totalRatings,
     required this.socials,
     required this.interests,
+    this.topics,
     required this.followersCount,
     required this.contactPhone,
     required this.contactEmail,
@@ -787,6 +796,7 @@ class ClubInfo {
               ?.map((e) => Interest.fromJson(e))
               .toList() ??
           [],
+      topics: TopicModel.declaredIn(json),
       followersCount: (json['followers_count'] as num?)?.toInt() ?? 0,
       contactPhone: json['contact_phone'] ?? '',
       contactEmail: json['contact_email'] ?? '',
@@ -811,11 +821,15 @@ class Interest {
   final String icon;
   final String iconType;
 
+  /// Its topic; null from a server that does not say.
+  final int? categoryId;
+
   Interest({
     required this.id,
     required this.name,
     required this.icon,
     required this.iconType,
+    this.categoryId,
   });
 
   factory Interest.fromJson(Map<String, dynamic> json) {
@@ -824,8 +838,17 @@ class Interest {
       name: json['name'] ?? '',
       icon: json['icon'] ?? '',
       iconType: json['icon_type'] ?? '',
+      categoryId: (json['category_id'] as num?)?.toInt(),
     );
   }
+
+  entity.Interest toEntity() => entity.Interest(
+        id: id,
+        name: name,
+        icon: icon.isEmpty ? null : icon,
+        iconType: iconType.isEmpty ? null : iconType,
+        categoryId: categoryId,
+      );
 }
 
 class Org {
