@@ -59,20 +59,41 @@ class SseResponse {
   /// closes the response.
   Future<String?> readErrorCode({
     Duration timeout = const Duration(seconds: 5),
-  }) async {
-    try {
-      final bytes = <int>[];
-      await for (final chunk in body.timeout(timeout)) {
+  }) {
+    final done = Completer<String?>();
+    final bytes = <int>[];
+    StreamSubscription<List<int>>? reading;
+    Timer? limit;
+
+    void finish({required bool read}) {
+      if (done.isCompleted) return;
+      limit?.cancel();
+      reading?.cancel();
+      close();
+      done.complete(read ? _errorCodeIn(bytes) : null);
+    }
+
+    // A Timer rather than Stream.timeout, which stays open in fake time.
+    limit = Timer(timeout, () => finish(read: false));
+    reading = body.listen(
+      (chunk) {
         bytes.addAll(chunk);
-        if (bytes.length > 16 * 1024) break;
-      }
+        if (bytes.length > 16 * 1024) finish(read: false);
+      },
+      onError: (Object _) => finish(read: false),
+      onDone: () => finish(read: true),
+      cancelOnError: true,
+    );
+    return done.future;
+  }
+
+  static String? _errorCodeIn(List<int> bytes) {
+    try {
       final json = jsonDecode(utf8.decode(bytes, allowMalformed: true));
       final code = json is Map ? json['error_code'] : null;
       return code is String ? code : null;
     } catch (_) {
       return null;
-    } finally {
-      close();
     }
   }
 

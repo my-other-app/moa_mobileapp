@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:finnet/core/network/interceptors/error_interceptor.dart';
 import 'package:finnet/core/network/sse/sse_transport.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -109,6 +110,27 @@ void main() {
     expect(res.statusCode, 503);
     expect(res.retryAfter, const Duration(seconds: 60));
     expect(await res.readErrorCode(), 'LIVE_STREAM_FULL');
+  });
+
+  test('a refusal whose body never ends gives no code, and is let go', () {
+    fakeAsync((async) {
+      final body = StreamController<List<int>>();
+      var closed = false;
+      final res = SseResponse(
+        statusCode: 503,
+        body: body.stream,
+        onClose: () => closed = true,
+      );
+      String? code = 'unread';
+      res.readErrorCode().then((c) => code = c);
+      body.add(utf8.encode('{"error_code": "LIVE_STR'));
+      async.elapse(const Duration(seconds: 4));
+      expect(code, 'unread');
+      async.elapse(const Duration(seconds: 1));
+      expect(code, isNull);
+      expect(closed, isTrue);
+      expect(body.hasListener, isFalse);
+    });
   });
 
   test('a 2xx that is not a stream is not taken for one', () async {
