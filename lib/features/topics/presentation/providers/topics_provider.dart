@@ -1,8 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/topics/data/repositories/topic_repository_impl.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
-import 'package:finnet/features/topics/domain/topic_rules.dart';
 
 /// Every topic with its interests, from `/interests/list` -- once a
 /// session (the server caches it too). The interest picker, and working out
@@ -25,9 +23,4 @@ final topicDirectoryProvider = FutureProvider<List<Topic>>((ref) async {
   final result = await ref.watch(topicRepositoryProvider).getDirectory();
   if (result.isRight) return result.right;
   return ref.watch(topicCatalogueProvider.future);
-});
-
-/// Every interest, in topic order, each with its topic as `categoryId`.
-final allInterestsProvider = FutureProvider<List<Interest>>((ref) async {
-  return interestsOf(await ref.watch(topicCatalogueProvider.future));
 });

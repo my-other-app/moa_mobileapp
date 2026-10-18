@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:finnet/core/network/interceptors/error_interceptor.dart';
 import 'package:finnet/features/topics/data/datasources/topic_remote_datasource.dart';
+import 'package:finnet/features/topics/domain/topic_rules.dart';
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,7 +41,7 @@ void main() {
 
       await container.read(topicCatalogueProvider.future);
       await container.read(topicCatalogueProvider.future);
-      await container.read(allInterestsProvider.future);
+      await container.read(topicDirectoryProvider.future); // its fallback
 
       expect(api.sent('GET', '/interests/list'), hasLength(1));
     });
@@ -55,7 +56,8 @@ void main() {
     test('every interest, flattened, knows its topic', () async {
       api.on('GET', '/interests/list', productionListBody);
 
-      final interests = await container.read(allInterestsProvider.future);
+      final interests =
+          interestsOf(await container.read(topicCatalogueProvider.future));
 
       expect(interests.map((i) => i.name),
           ['Coding', 'UI/UX', 'Photography', 'Music']);
