@@ -36,7 +36,7 @@ class NoRegisteredEventPage extends ConsumerWidget {
                   style: TextStyle(
                     color: Colors.black,
                     fontSize: 12,
-                    fontFamily: 'DM Sans',
+                    fontFamily: 'DMSans',
                     fontWeight: FontWeight.w300,
                   ),
                 ),
