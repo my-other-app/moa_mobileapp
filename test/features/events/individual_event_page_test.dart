@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
@@ -315,5 +319,122 @@ void main() {
     expect(find.byTooltip('Share event'), findsOneWidget);
     expect(find.text('4.5 RATED'), findsOneWidget);
     expect(find.text('View All Reviews'), findsNothing);
+  });
+
+  group('the live strip', () {
+    Map<String, dynamic> room(String banner) => {
+          'event': {'id': 7},
+          'banner': {'kind': 'room', 'text': banner},
+          'poll': null,
+          'questions': <dynamic>[],
+          'quiz': {'live': false, 'title': null},
+        };
+
+    Uint8List snapshot(String banner, {required int id}) =>
+        Uint8List.fromList(utf8.encode(
+            'id: $id\nevent: snapshot\ndata: ${jsonEncode(room(banner))}\n\n'));
+
+    testWidgets(
+        'today\'s server, whose stream is a 404: the one poll the page always '
+        'made, and nothing on a timer', (tester) async {
+      api
+        ..on('GET', '/events/info/7', _info())
+        ..on('GET', '/events/7/live', room('Demos move to Lab 3B'));
+      await _pump(tester);
+
+      expect(find.text('LIVE NOW'), findsOneWidget);
+      expect(find.text('Demos move to Lab 3B'), findsOneWidget);
+      expect(api.sent('GET', '/events/7/live/stream'), hasLength(1));
+      expect(api.sent('GET', '/events/7/live'), hasLength(1));
+
+      await tester.pump(const Duration(minutes: 9));
+      expect(api.sent('GET', '/events/7/live'), hasLength(1));
+      expect(api.sent('GET', '/events/7/live/stream'), hasLength(1));
+
+      // The stream is asked once more at ten minutes, and that is all.
+      await tester.pump(const Duration(minutes: 1));
+      await tester.pump(const Duration(hours: 2));
+      expect(api.sent('GET', '/events/7/live/stream'), hasLength(2));
+      expect(api.sent('GET', '/events/7/live'), hasLength(1));
+      expect(find.text('Demos move to Lab 3B'), findsOneWidget);
+    });
+
+    testWidgets('a room with nothing up shows no strip, as before',
+        (tester) async {
+      api.on('GET', '/events/info/7', _info());
+      await _pump(tester);
+      expect(find.text('LIVE NOW'), findsNothing);
+    });
+
+    testWidgets('a server that streams: the strip follows it, with no poll',
+        (tester) async {
+      final body = StreamController<Uint8List>();
+      api
+        ..on('GET', '/events/info/7', _info())
+        ..stream('/events/7/live/stream', () => body.stream);
+      await _pump(tester);
+      expect(find.text('LIVE NOW'), findsNothing);
+
+      body.add(Uint8List.fromList(utf8.encode('retry: 3000\n\n')));
+      body.add(snapshot('Demos move to Lab 3B', id: 1));
+      await _settle(tester);
+      expect(find.text('Demos move to Lab 3B'), findsOneWidget);
+
+      body.add(snapshot('Doors close at 9', id: 2));
+      await _settle(tester);
+      expect(find.text('Doors close at 9'), findsOneWidget);
+      expect(find.text('Demos move to Lab 3B'), findsNothing);
+
+      final sent = api.sent('GET', '/events/7/live/stream').single;
+      expect(sent.queryParameters, {'view': 'room'});
+      expect(api.sent('GET', '/events/7/live'), isEmpty);
+    });
+
+    testWidgets(
+        'in the background the stream closes; back, it resumes from the '
+        'last snapshot', (tester) async {
+      final bodies = <StreamController<Uint8List>>[];
+      api
+        ..on('GET', '/events/info/7', _info())
+        ..stream('/events/7/live/stream', () {
+          final body = StreamController<Uint8List>();
+          bodies.add(body);
+          return body.stream;
+        });
+      await _pump(tester);
+      bodies.single.add(snapshot('Demos move to Lab 3B', id: 41));
+      await _settle(tester);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump(const Duration(seconds: 29));
+      expect(bodies.single.hasListener, isTrue);
+      await tester.pump(const Duration(seconds: 1));
+      expect(bodies.single.hasListener, isFalse, reason: 'closed after 30 s');
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await _settle(tester);
+      final streams = api.sent('GET', '/events/7/live/stream');
+      expect(streams, hasLength(2));
+      expect(streams.last.headers['Last-Event-ID'], '41');
+      expect(find.text('Demos move to Lab 3B'), findsOneWidget,
+          reason: 'the strip stays while the stream reopens');
+      expect(api.sent('GET', '/events/7/live'), isEmpty);
+    });
+
+    testWidgets('leaving the page closes the stream', (tester) async {
+      final body = StreamController<Uint8List>();
+      api
+        ..on('GET', '/events/info/7', _info())
+        ..stream('/events/7/live/stream', () => body.stream);
+      await _pump(tester);
+      body.add(snapshot('Demos', id: 1));
+      await _settle(tester);
+      expect(find.text('Demos'), findsOneWidget);
+      expect(body.hasListener, isTrue);
+
+      await tester.pumpWidget(const SizedBox());
+      await _settle(tester);
+      expect(body.hasListener, isFalse);
+    });
   });
 }
