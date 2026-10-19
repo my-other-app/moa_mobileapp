@@ -40,6 +40,9 @@ class AnalyticsService {
     // used to be filed as a fatal crash: a bad poster URL on a slow network
     // filled the crash-free-users figure with sessions that never crashed.
     FlutterError.onError = (errorDetails) {
+      // Collection is off in debug builds, so without this a developer saw
+      // nothing at all in the console for a build or layout error.
+      if (kDebugMode) FlutterError.presentError(errorDetails);
       if (isNonFatalFlutterError(errorDetails)) {
         _crashlytics.recordFlutterError(errorDetails);
       } else {

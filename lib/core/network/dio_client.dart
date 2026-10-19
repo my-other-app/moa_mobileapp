@@ -6,11 +6,14 @@ import 'package:finnet/core/config/env/env.dart';
 import 'package:finnet/core/network/interceptors/auth_interceptor.dart';
 import 'package:finnet/core/network/interceptors/error_interceptor.dart';
 import 'package:finnet/core/network/interceptors/logging_interceptor.dart';
+import 'package:finnet/core/network/interceptors/retry_interceptor.dart';
 import 'package:finnet/core/network/interceptors/topic_change_interceptor.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 
 /// Builds the single Dio instance used app-wide, with the full interceptor
-/// stack: auth token injection + refresh-on-401, error handling, and debug
+/// stack: one retry for a GET that never reached the server, the offline
+/// state, auth token injection + refresh-on-401, error handling, and debug
 /// logging.
 ///
 /// There is no certificate pinning. The interceptor that claimed to pin
@@ -21,9 +24,12 @@ Dio buildAppDio() {
   final dio = Dio(
     BaseOptions(
       baseUrl: Env.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 30),
+      // 15 s to connect, then one retry for a read (RetryInterceptor): a
+      // dead network is reported in about half a minute, not a minute.
+      connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 30),
-      sendTimeout: const Duration(seconds: 30),
+      // Uploads (a profile picture, a post's photo) on a slow uplink.
+      sendTimeout: const Duration(seconds: 60),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -31,8 +37,14 @@ Dio buildAppDio() {
     ),
   );
 
-  // Add interceptors - order matters!
+  NetworkStatus.instance.probeTarget = Uri.tryParse(Env.apiBaseUrl);
+
+  // Add interceptors - order matters! Errors pass through them in this
+  // order: a connection failure on a GET is retried first, and only a
+  // failure that survives the retry tells the app it is offline.
   dio.interceptors.addAll([
+    RetryInterceptor(dio),
+    NetworkStatusInterceptor(),
     AuthInterceptor(SecureStorageService(), dio),
     ErrorInterceptor(),
     TopicChangeInterceptor(),

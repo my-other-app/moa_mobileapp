@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,14 +41,14 @@ class APIService {
   static Dio _buildDio() {
     final dio = buildAppDio();
 
-    // Log API errors to analytics, in addition to the shared ErrorInterceptor
+    // Log API errors to analytics, in addition to the shared ErrorInterceptor.
+    // Never awaited and never allowed to throw: this used to await the log
+    // before passing the error on, so when Firebase had failed to start
+    // (AnalyticsService.instance throws) every failed request hung forever
+    // instead of failing.
     dio.interceptors.add(InterceptorsWrapper(
-      onError: (error, handler) async {
-        await AnalyticsService.instance.logApiError(
-          error.requestOptions.path,
-          error.response?.statusCode,
-          error.message,
-        );
+      onError: (error, handler) {
+        logApiErrorQuietly(error);
         handler.next(error);
       },
     ));
@@ -146,6 +148,29 @@ class APIService {
     } catch (e) {
       return ApiResult.failure('An unexpected error occurred');
     }
+  }
+}
+
+/// Report a failed request to analytics without waiting on it or letting
+/// its failure reach the request.
+@visibleForTesting
+void logApiErrorQuietly(
+  DioException error, {
+  Future<void> Function(String path, int? status, String? message)? log,
+}) {
+  try {
+    final report = log ??
+        (path, status, message) =>
+            AnalyticsService.instance.logApiError(path, status, message);
+    unawaited(report(
+      error.requestOptions.path,
+      error.response?.statusCode,
+      error.message,
+    ).catchError((Object e) {
+      debugPrint('APIService: could not log the API error: $e');
+    }));
+  } catch (e) {
+    debugPrint('APIService: could not log the API error: $e');
   }
 }
 
