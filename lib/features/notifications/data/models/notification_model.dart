@@ -1,3 +1,5 @@
+import 'package:finnet/core/utils/json_read.dart';
+
 /// Brief event info included in notifications
 class NotificationEventBrief {
   final int id;
@@ -10,8 +12,8 @@ class NotificationEventBrief {
 
   factory NotificationEventBrief.fromJson(Map<String, dynamic> json) {
     return NotificationEventBrief(
-      id: json['id'] as int,
-      name: json['name'] as String,
+      id: jsonInt(json['id']) ?? 0,
+      name: jsonText(json['name']),
     );
   }
 
@@ -38,15 +40,16 @@ class NotificationClubBrief {
     final logoData = json['logo'];
 
     if (logoData is Map) {
-      logoUrl =
-          logoData['thumbnail'] ?? logoData['original'] ?? logoData['medium'];
+      logoUrl = jsonString(logoData['thumbnail']) ??
+          jsonString(logoData['original']) ??
+          jsonString(logoData['medium']);
     } else if (logoData is String) {
       logoUrl = logoData;
     }
 
     return NotificationClubBrief(
-      id: json['id'] as int,
-      name: json['name'] as String,
+      id: jsonInt(json['id']) ?? 0,
+      name: jsonText(json['name']),
       logo: logoUrl,
     );
   }
@@ -138,25 +141,25 @@ class NotificationModel {
         updatedAt: DateTime.now(),
       );
 
+  /// Read field by field: one unexpected value (a `user_id` sent as a
+  /// string, a missing `updated_at`) used to throw and lose the whole page.
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    final fromClub = jsonObject(json['from_club']);
+    final event = jsonObject(json['event']);
+    final createdAt = jsonDate(json['created_at']) ?? DateTime.now();
     return NotificationModel(
-      id: json['id'] as String,
-      userId: json['user_id'] as int,
-      title: json['title'] as String,
-      description: json['description'] as String? ?? '',
-      type: json['type'] as String,
-      status: json['status'] as String,
-      fromClub: json['from_club'] != null
-          ? NotificationClubBrief.fromJson(
-              json['from_club'] as Map<String, dynamic>)
-          : null,
-      event: json['event'] != null
-          ? NotificationEventBrief.fromJson(
-              json['event'] as Map<String, dynamic>)
-          : null,
-      data: json['data'] as Map<String, dynamic>?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      id: jsonText(json['id']),
+      userId: jsonInt(json['user_id']) ?? 0,
+      title: jsonText(json['title']),
+      description: jsonText(json['description']),
+      type: jsonText(json['type']),
+      status: jsonText(json['status'], 'unread'),
+      fromClub:
+          fromClub == null ? null : NotificationClubBrief.fromJson(fromClub),
+      event: event == null ? null : NotificationEventBrief.fromJson(event),
+      data: jsonObject(json['data']),
+      createdAt: createdAt,
+      updatedAt: jsonDate(json['updated_at']) ?? createdAt,
     );
   }
 

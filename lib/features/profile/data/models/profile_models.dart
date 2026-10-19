@@ -1,4 +1,5 @@
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/core/utils/json_read.dart';
 
 /// Data model for user profile from API.
 class UserProfileModel {
@@ -28,20 +29,19 @@ class UserProfileModel {
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
     return UserProfileModel(
-      id: json['id'] as int? ?? 0,
-      fullName: json['full_name'] as String?,
-      email: json['email'] as String?,
-      phone: json['phone'] as String?,
-      username: json['username'] as String?,
-      userType: json['user_type'] as String?,
-      profile: json['profile'] != null
-          ? ProfileDetailsModel.fromJson(
-              json['profile'] as Map<String, dynamic>)
+      id: jsonInt(json['id']) ?? 0,
+      fullName: jsonString(json['full_name']),
+      email: jsonString(json['email']),
+      phone: jsonString(json['phone']),
+      username: jsonString(json['username']),
+      userType: jsonString(json['user_type']),
+      profile: jsonObject(json['profile']) == null
+          ? null
+          : ProfileDetailsModel.fromJson(jsonObject(json['profile'])!),
+      interests: json['interests'] is List
+          ? jsonObjects(json['interests']).map(InterestModel.fromJson).toList()
           : null,
-      interests: (json['interests'] as List<dynamic>?)
-          ?.map((e) => InterestModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      emailVerified: json['email_verified'] as bool?,
+      emailVerified: jsonBool(json['email_verified']),
     );
   }
 
@@ -102,15 +102,15 @@ class ProfileDetailsModel {
 
   factory ProfileDetailsModel.fromJson(Map<String, dynamic> json) {
     return ProfileDetailsModel(
-      fullName: json['full_name'] as String?,
-      whatsapp: json['whatsapp'] as String?,
-      org: json['org'] != null
-          ? OrganizationModel.fromJson(json['org'] as Map<String, dynamic>)
-          : null,
-      avatar: json['avatar'] != null
-          ? AvatarModel.fromJson(json['avatar'] as Map<String, dynamic>)
-          : null,
-      profilePic: json['profile_pic'] as Map<String, dynamic>?,
+      fullName: jsonString(json['full_name']),
+      whatsapp: jsonString(json['whatsapp']),
+      org: jsonObject(json['org']) == null
+          ? null
+          : OrganizationModel.fromJson(jsonObject(json['org'])!),
+      avatar: jsonObject(json['avatar']) == null
+          ? null
+          : AvatarModel.fromJson(jsonObject(json['avatar'])!),
+      profilePic: jsonObject(json['profile_pic']),
     );
   }
 
@@ -147,15 +147,15 @@ class OrganizationModel {
 
   factory OrganizationModel.fromJson(Map<String, dynamic> json) {
     return OrganizationModel(
-      id: json['id'] as int?,
-      name: json['name'] as String?,
-      type: json['type'] as String?,
-      logo: json['logo'] != null
-          ? ImageUrlsModel.fromJson(json['logo'] as Map<String, dynamic>)
+      id: jsonInt(json['id']),
+      name: jsonString(json['name']),
+      type: jsonString(json['type']),
+      logo: jsonObject(json['logo']) != null
+          ? ImageUrlsModel.fromJson(jsonObject(json['logo'])!)
           : null,
-      address: json['address'] as String?,
-      phone: json['phone'] as String?,
-      email: json['email'] as String?,
+      address: jsonString(json['address']),
+      phone: jsonString(json['phone']),
+      email: jsonString(json['email']),
     );
   }
 
@@ -197,10 +197,10 @@ class AvatarModel {
 
   factory AvatarModel.fromJson(Map<String, dynamic> json) {
     return AvatarModel(
-      id: json['id'] as int? ?? 0,
-      name: json['name'] as String? ?? '',
+      id: jsonInt(json['id']) ?? 0,
+      name: jsonString(json['name']) ?? '',
       image:
-          ImageUrlsModel.fromJson(json['image'] as Map<String, dynamic>? ?? {}),
+          ImageUrlsModel.fromJson(jsonObject(json['image']) ?? {}),
     );
   }
 
@@ -237,10 +237,10 @@ class ImageUrlsModel {
 
   factory ImageUrlsModel.fromJson(Map<String, dynamic> json) {
     return ImageUrlsModel(
-      thumbnail: json['thumbnail'] as String?,
-      medium: json['medium'] as String?,
-      large: json['large'] as String?,
-      original: json['original'] as String?,
+      thumbnail: jsonString(json['thumbnail']),
+      medium: jsonString(json['medium']),
+      large: jsonString(json['large']),
+      original: jsonString(json['original']),
     );
   }
 
@@ -294,7 +294,7 @@ class InterestModel {
     return InterestModel(
       // `as int?` throws on 3.0; JSON does not promise which one arrives.
       id: _jsonInt(json['id']),
-      name: json['name'] as String?,
+      name: jsonString(json['name']),
       icon: _jsonString(json['icon']),
       iconType: _jsonString(json['icon_type']),
       slug: _jsonString(json['slug']),

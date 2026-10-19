@@ -3,6 +3,7 @@ import 'package:finnet/features/profile/domain/entities/profile_entity.dart'
     as entity;
 import 'package:finnet/features/topics/data/models/topic_model.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/core/utils/json_read.dart';
 
 class EventInfo {
   final int id;
@@ -99,61 +100,58 @@ class EventInfo {
 
   factory EventInfo.fromJson(Map<String, dynamic> json) {
     return EventInfo(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      name: json['name'] as String? ?? '',
-      slug: json['slug'] as String? ?? '',
-      poster: json['poster'] ?? {},
+      id: jsonInt(json['id']) ?? 0,
+      name: jsonString(json['name']) ?? '',
+      slug: jsonString(json['slug']) ?? '',
+      // The S3 dict; an older row's bare URL is kept as its original.
+      poster: jsonObject(json['poster']) ??
+          (jsonString(json['poster'])?.trim().isNotEmpty ?? false
+              ? <String, dynamic>{'original': jsonString(json['poster'])!.trim()}
+              : <String, dynamic>{}),
       eventDateTime:
-          DateTime.tryParse(json['event_datetime'] as String? ?? '') ??
+          DateTime.tryParse(jsonString(json['event_datetime']) ?? '') ??
               DateTime.now(),
-      duration: (json['duration'] as num?)?.toDouble() ?? 0,
-      locationName: json['location_name'] as String? ?? '',
-      locationLink: json['location_link'] as String? ?? '',
-      hasFee: json['has_fee'] as bool? ?? false,
-      regFee: (json['reg_fee'] as num?)?.toInt() ?? 0,
-      hasPrize: json['has_prize'] as bool? ?? false,
-      prizeAmount: (json['prize_amount'] as num?)?.toInt() ?? 0,
-      isOnline: json['is_online'] as bool? ?? false,
-      regStartDate: DateTime.tryParse(json['reg_startdate'] as String? ?? '') ??
+      duration: jsonDouble(json['duration']) ?? 0,
+      locationName: jsonString(json['location_name']) ?? '',
+      locationLink: jsonString(json['location_link']) ?? '',
+      hasFee: jsonBool(json['has_fee']) ?? false,
+      regFee: jsonInt(json['reg_fee']) ?? 0,
+      hasPrize: jsonBool(json['has_prize']) ?? false,
+      prizeAmount: jsonInt(json['prize_amount']) ?? 0,
+      isOnline: jsonBool(json['is_online']) ?? false,
+      regStartDate: DateTime.tryParse(jsonString(json['reg_startdate']) ?? '') ??
           DateTime.now(),
       // Optional on the server. Read as "now" when missing, it closed
       // registration for every event without a deadline.
-      regEndDate: DateTime.tryParse(json['reg_enddate'] as String? ?? ''),
-      club: Club.fromJson(json['club'] is Map<String, dynamic>
-          ? json['club'] as Map<String, dynamic>
-          : const <String, dynamic>{}),
-      category: Category.fromJson(json['category'] ?? {}),
-      interests: (json['interests'] as List<dynamic>?)
-              ?.map((e) => Interest.fromJson(e))
-              .toList() ??
-          [],
+      regEndDate: DateTime.tryParse(jsonString(json['reg_enddate']) ?? ''),
+      club: Club.fromJson(jsonObject(json['club']) ?? const <String, dynamic>{}),
+      category:
+          Category.fromJson(jsonObject(json['category']) ?? const <String, dynamic>{}),
+      interests: jsonObjects(json['interests']).map(Interest.fromJson).toList(),
       topics: TopicModel.declaredIn(json),
-      additionalDetails: (json['additional_details'] as List<dynamic>?)
-              ?.map((e) => AdditionalDetail.fromJson(e))
-              .toList() ??
-          [],
+      additionalDetails: jsonObjects(json['additional_details'])
+          .map(AdditionalDetail.fromJson)
+          .toList(),
       // The server sends a float (app/api/events/schemas.py). Reading it
       // as an int silently truncated 4.5 to 4, so half a star went missing
       // before anything got as far as drawing it.
-      rating: (json['rating'] as num?)?.toDouble() ?? 0,
-      totalRating: (json['total_rating'] as num?)?.toInt() ?? 0,
-      about: json['about'] as String? ?? '',
-      contactPhone: json['contact_phone'] as String? ?? '',
-      contactEmail: json['contact_email'] as String? ?? '',
-      url: json['url'] as String? ?? '',
+      rating: jsonDouble(json['rating']) ?? 0,
+      totalRating: jsonInt(json['total_rating']) ?? 0,
+      about: jsonString(json['about']) ?? '',
+      contactPhone: jsonString(json['contact_phone']) ?? '',
+      contactEmail: jsonString(json['contact_email']) ?? '',
+      url: jsonString(json['url']) ?? '',
       // New registration/attendance fields
-      isRegistered: json['is_registered'] as bool? ?? false,
-      isAttended: json['is_attended'] as bool? ?? false,
-      ticketUrl: json['ticket_url'] as String?,
-      certificateUrl: json['certificate_url'] as String?,
-      userRating: (json['user_rating'] as num?)?.toDouble(),
-      userPosition: (json['user_position'] as num?)?.toInt(),
-      positionLabel: json['position_label'] as String?,
-      downloads: (json['downloads'] as List<dynamic>?)
-              ?.map((e) => EventDownload.fromJson(e))
-              .toList() ??
-          [],
-      isPaid: json['is_paid'] as bool?,
+      isRegistered: jsonBool(json['is_registered']) ?? false,
+      isAttended: jsonBool(json['is_attended']) ?? false,
+      ticketUrl: jsonString(json['ticket_url']),
+      certificateUrl: jsonString(json['certificate_url']),
+      userRating: jsonDouble(json['user_rating']),
+      userPosition: jsonInt(json['user_position']),
+      positionLabel: jsonString(json['position_label']),
+      downloads:
+          jsonObjects(json['downloads']).map(EventDownload.fromJson).toList(),
+      isPaid: jsonBool(json['is_paid']),
       registrationId: _id(json['registration_id']),
     );
   }
@@ -185,8 +183,8 @@ class EventDownload {
 
   factory EventDownload.fromJson(Map<String, dynamic> json) {
     return EventDownload(
-      name: json['name'] as String? ?? '',
-      url: json['url'] as String? ?? '',
+      name: jsonString(json['name']) ?? '',
+      url: jsonString(json['url']) ?? '',
     );
   }
 }
@@ -207,9 +205,9 @@ class Club {
   factory Club.fromJson(Map<String, dynamic> json) {
     final logo = json['logo'];
     return Club(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
+      id: jsonInt(json['id']) ?? 0,
+      name: jsonText(json['name']),
+      slug: jsonText(json['slug']),
       // The S3 dict. An older row's bare URL is kept as its thumbnail, and a
       // club that never uploaded a logo (null) has none -- reading either as
       // a map threw and took the event page down.
@@ -237,10 +235,10 @@ class Category {
 
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      icon: json['icon'] ?? '',
-      iconType: json['icon_type'] ?? '',
+      id: jsonInt(json['id']) ?? 0,
+      name: jsonText(json['name']),
+      icon: jsonText(json['icon']),
+      iconType: jsonText(json['icon_type']),
     );
   }
 }
@@ -264,11 +262,11 @@ class Interest {
 
   factory Interest.fromJson(Map<String, dynamic> json) {
     return Interest(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      name: json['name'] as String? ?? '',
-      icon: json['icon'] as String? ?? '',
-      iconType: json['icon_type'] as String? ?? '',
-      categoryId: (json['category_id'] as num?)?.toInt(),
+      id: jsonInt(json['id']) ?? 0,
+      name: jsonString(json['name']) ?? '',
+      icon: jsonString(json['icon']) ?? '',
+      iconType: jsonString(json['icon_type']) ?? '',
+      categoryId: jsonInt(json['category_id']),
     );
   }
 
@@ -298,14 +296,13 @@ class AdditionalDetail {
 
   factory AdditionalDetail.fromJson(Map<String, dynamic> json) {
     return AdditionalDetail(
-      key: json['key'] ?? '',
-      label: json['label'] ?? '',
-      fieldType: json['field_type'] ?? '',
-      requiredField: json['required'] ?? false,
-      options: (json['options'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
+      key: jsonText(json['key']),
+      label: jsonText(json['label']),
+      fieldType: jsonText(json['field_type']),
+      requiredField: jsonBool(json['required']) ?? false,
+      options: json['options'] is List
+          ? [for (final option in json['options'] as List) '$option']
+          : const <String>[],
     );
   }
 }

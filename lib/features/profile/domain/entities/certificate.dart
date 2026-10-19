@@ -1,4 +1,5 @@
 import 'package:finnet/shared/utils/image_url.dart';
+import 'package:finnet/core/utils/json_read.dart';
 
 /// A certificate the user has earned by attending an event.
 ///
@@ -63,27 +64,27 @@ class Certificate {
   }
 
   static Certificate? fromEventJson(Map<String, dynamic> json) {
-    final ticketId = json['ticket_id'] as String?;
+    final ticketId = jsonString(json['ticket_id']);
     // No ticket, or never checked in, means no certificate to show. The
     // server refuses the PDF for those, so listing them would offer a
     // download that cannot succeed.
     if (ticketId == null || ticketId.isEmpty) return null;
     if (json['is_attended'] != true) return null;
 
-    final club = json['club'] is Map ? json['club'] as Map : null;
-    final category = json['category'] is Map ? json['category'] as Map : null;
+    final club = jsonObject(json['club']);
+    final category = jsonObject(json['category']);
 
     return Certificate(
       ticketId: ticketId,
-      eventId: (json['id'] as num?)?.toInt() ?? 0,
-      eventName: json['name'] as String? ?? 'Event',
-      clubName: club?['name'] as String?,
+      eventId: jsonInt(json['id']) ?? 0,
+      eventName: jsonString(json['name']) ?? 'Event',
+      clubName: jsonString(club?['name']),
       // A club with no logo sends null, an older row a bare URL; a cast to
       // a map threw on the second and lost the whole certificate.
       clubLogoUrl: imageUrlFrom(club?['logo']),
-      eventType: category?['name'] as String?,
+      eventType: jsonString(category?['name']),
       issuedOn:
-          DateTime.tryParse(json['event_datetime'] as String? ?? '')?.toLocal() ??
+          DateTime.tryParse(jsonString(json['event_datetime']) ?? '')?.toLocal() ??
               DateTime.now(),
       thumbnailUrl: imageUrlFrom(json['poster']),
     );
