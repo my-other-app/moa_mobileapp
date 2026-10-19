@@ -11,8 +11,8 @@ enum CachedAnswer {
   /// The server answered 304: the saved copy is current.
   revalidated,
 
-  /// The server could not be reached: the saved copy, of unknown age
-  /// (at most [ApiCache.maxAge]).
+  /// The server could not be reached, never answered, or was down: the
+  /// saved copy, of unknown age (at most [ApiCache.maxAge]).
   offline,
 }
 
@@ -25,7 +25,11 @@ enum CachedAnswer {
 /// - A 200 with a JSON body is saved, with its `ETag` and `Last-Modified`.
 /// - When the server cannot be reached at all, the saved copy is the
 ///   answer, marked [CachedAnswer.offline] -- after [RetryInterceptor] has
-///   had its one try.
+///   had its one try. So it is when the connection opened and no answer
+///   came before the receive timeout (a weak signal), which is not retried:
+///   the person has waited long enough. And so it is when the gateway
+///   answers for a server that is down (502, 503, 504: a deploy, an
+///   overloaded box) -- the saved copy is a better answer than an error.
 /// - A POST, PUT, PATCH or DELETE, a stream, a request without a policy,
 ///   and anything [ApiCache.isCacheablePath] refuses pass straight through.
 class ApiCacheInterceptor extends Interceptor {
@@ -128,7 +132,10 @@ class ApiCacheInterceptor extends Interceptor {
     final data = response.data;
     if (status == 200 && (data is Map || data is List)) {
       final etag = response.headers.value('etag');
-      final unchanged = recent && saved.etag == etag && _same(saved.data, data);
+      final unchanged = recent &&
+          saved.etag == etag &&
+          saved.keep == policy.keep &&
+          _same(saved.data, data);
       if (!unchanged) {
         await cache.write(
           key,
@@ -138,6 +145,7 @@ class ApiCacheInterceptor extends Interceptor {
             savedAt: cache.now(),
             etag: etag,
             lastModified: response.headers.value('last-modified'),
+            keep: policy.keep,
           ),
           epoch: epoch,
         );
@@ -154,15 +162,28 @@ class ApiCacheInterceptor extends Interceptor {
     }
   }
 
+  /// Whether [error] means no answer came at all: the server was never
+  /// reached, or it was and said nothing before the receive timeout.
+  static bool gotNoAnswer(DioException error) =>
+      error.response == null &&
+      (RetryInterceptor.isConnectionFailure(error) ||
+          error.type == DioExceptionType.receiveTimeout);
+
+  /// Whether [error] is the gateway answering for a server that is down.
+  static bool serverDown(DioException error) {
+    final status = error.response?.statusCode;
+    return status == 502 || status == 503 || status == 504;
+  }
+
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     final options = err.requestOptions;
     final saved = options.extra[_entryKey];
     if (_policyFor(options) != null &&
         saved is CacheEntry &&
-        err.response == null &&
-        RetryInterceptor.isConnectionFailure(err)) {
-      debugPrint('ApiCacheInterceptor: offline, answering ${options.path} '
+        (gotNoAnswer(err) || serverDown(err))) {
+      debugPrint('ApiCacheInterceptor: no answer (${err.type}, '
+          '${err.response?.statusCode}), answering ${options.path} '
           'with the copy saved ${saved.savedAt.toLocal()}');
       handler.resolve(_fromSaved(options, saved, CachedAnswer.offline));
       return;

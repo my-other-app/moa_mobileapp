@@ -84,7 +84,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
       // The first page is saved, encrypted: the inbox opens at once, and
       // offline. Later pages are only ever fresh.
       options: firstPage
-          ? Options(extra: CachePolicy.personal.extra)
+          ? Options(extra: CachePolicy.personalKept.extra)
           : null,
     );
     return pageFrom(response.data);
