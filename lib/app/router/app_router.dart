@@ -38,6 +38,7 @@ import 'package:finnet/features/profile/presentation/pages/certificates/certific
 import 'package:finnet/features/profile/presentation/pages/badges/my_badges_page.dart';
 import 'package:finnet/features/profile/presentation/pages/notifications/notifications_page.dart';
 import 'package:finnet/features/main/presentation/pages/main_shell.dart';
+import 'package:finnet/features/discover/presentation/discover_routes.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 
 // Volunteer pages
@@ -235,6 +236,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     true,
               )),
 
+      ...discoverRoutes, // Batch A: find events, clubs, posts, topics
       // Main shell with bottom nav
       ShellRoute(
         navigatorKey: shellKey,
