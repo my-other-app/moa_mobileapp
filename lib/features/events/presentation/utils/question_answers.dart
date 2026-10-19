@@ -92,3 +92,45 @@ String timeLabel(int hour, int minute) =>
 /// "18 Oct 2026, 9:05 AM".
 String dateTimeLabel(DateTime moment) =>
     '${dateLabel(moment)}, ${timeLabel(moment.hour, moment.minute)}';
+
+// What counts as an answer of each typed kind: the website's checks
+// (`validateAnswer` in moa_eventwebsite `src/utils/register.js`) and the
+// server's words for them (`app/api/events/registration/answers.py`), so a
+// typo is caught here rather than refused after sending.
+
+final _email = RegExp(r'^[^\s@]+@[^\s@.]+(\.[^\s@.]+)*\.[^\s@.]{2,}$');
+final _number = RegExp(r'^-?\d+([.,]\d+)?$');
+
+bool _looksLikeUrl(String text) {
+  final v = text.trim();
+  if (v.isEmpty || RegExp(r'\s').hasMatch(v)) return false;
+  final hasScheme = RegExp(r'^[a-z][a-z0-9+.-]*:', caseSensitive: false);
+  final uri = Uri.tryParse(hasScheme.hasMatch(v) ? v : 'https://$v');
+  return uri != null &&
+      (uri.isScheme('http') || uri.isScheme('https')) &&
+      uri.host.contains('.');
+}
+
+/// What is wrong with [value] as an answer to a question of [fieldType]
+/// (email, url, tel, number); null when it will do, or for any other type.
+/// A blank answer is the required check's business, not this.
+String? typedAnswerProblem(String fieldType, String value) {
+  final v = value.trim();
+  if (v.isEmpty) return null;
+  switch (fieldType.trim().toLowerCase()) {
+    case 'email':
+      return _email.hasMatch(v)
+          ? null
+          : 'Enter an email address, like name@example.com.';
+    case 'url':
+      return _looksLikeUrl(v) ? null : 'Enter a web address, like example.com.';
+    case 'tel':
+      final digits = v.replaceAll(RegExp(r'\D'), '').length;
+      return RegExp(r'[^\d\s()+.-]').hasMatch(v) || digits < 6 || digits > 15
+          ? 'Enter a phone number.'
+          : null;
+    case 'number':
+      return _number.hasMatch(v) ? null : 'Enter a number.';
+  }
+  return null;
+}
