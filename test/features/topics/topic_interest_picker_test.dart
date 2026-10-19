@@ -190,7 +190,7 @@ void main() {
             find.descendant(of: _chip(id), matching: find.byType(Opacity)))
         .opacity;
 
-    expect(pill(15).color, AppColors.softGrey);
+    expect(pill(15).color, Colors.transparent);
     expect(opacity(15), lessThan(1));
     expect(pill(6).color, AppColors.paleYellow);
     expect(opacity(6), 1);

@@ -161,9 +161,11 @@ class _TopicInterestPickerState extends State<TopicInterestPicker> {
   Widget _chips(List<Interest> interests, Topic? topic) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
+      // Plain chips, as in the owner's design: the padding is the gap, so
+      // the row packs like a line of words.
       child: Wrap(
-        spacing: 10,
-        runSpacing: 12,
+        spacing: 4,
+        runSpacing: 6,
         children: [
           for (final interest in interests)
             InterestChip(
@@ -171,6 +173,7 @@ class _TopicInterestPickerState extends State<TopicInterestPicker> {
               label: interest.name,
               glyph: interest.emoji,
               idleColor: widget.idleColor,
+              plain: true,
               topicLabel: topic?.label,
               selected: widget.selectedIds.contains(interest.id),
               enabled: !_full || widget.selectedIds.contains(interest.id),

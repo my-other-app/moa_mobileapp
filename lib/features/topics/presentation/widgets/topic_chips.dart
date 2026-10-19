@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:finnet/features/discover/presentation/widgets/discover_format.dart'
+    show formatCount;
 import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
 
@@ -112,6 +114,10 @@ class InterestChip extends StatelessWidget {
   /// yellow of onboarding.
   final Color? idleColor;
 
+  /// The Interests screen's look, after the owner's design: not chosen, just
+  /// the emoji and the name, no fill and no edge; chosen, the yellow pill.
+  final bool plain;
+
   const InterestChip({
     super.key,
     required this.label,
@@ -124,11 +130,13 @@ class InterestChip extends StatelessWidget {
     this.topicLabel,
     this.compact = false,
     this.idleColor,
+    this.plain = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final look = ChipLook.of(context, idle: idleColor);
+    final idle = plain ? Colors.transparent : look.idle;
 
     return Semantics(
       container: true,
@@ -144,10 +152,11 @@ class InterestChip extends StatelessWidget {
       onTap: onTap,
       excludeSemantics: true,
       child: _Pill(
-        background: selected ? look.chosen : look.idle,
-        edge: selected ? look.edge : look.idle,
+        background: selected ? look.chosen : idle,
+        edge: selected ? look.edge : idle,
         onTap: onTap,
         compact: compact,
+        plain: plain,
         // Past the limit the name and emoji fade; the fill stays, so a
         // faded chip is never mistaken for a chosen one.
         faded: !enabled && !selected,
@@ -252,6 +261,7 @@ class _Pill extends StatelessWidget {
   final int? count;
   final Color countColor;
   final bool faded;
+  final bool plain;
 
   const _Pill({
     super.key,
@@ -266,6 +276,7 @@ class _Pill extends StatelessWidget {
     required this.count,
     required this.countColor,
     this.faded = false,
+    this.plain = false,
   });
 
   static final _radius = BorderRadius.circular(60);
@@ -281,7 +292,9 @@ class _Pill extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           padding: compact
               ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
-              : const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              : plain
+                  ? const EdgeInsets.symmetric(horizontal: 10, vertical: 8)
+                  : const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             color: background,
             borderRadius: _radius,
@@ -306,7 +319,7 @@ class _Pill extends StatelessWidget {
                 ),
                 if (count != null) ...[
                   const SizedBox(width: 6),
-                  Text('$count',
+                  Text(formatCount(count!),
                       style: TextStyle(
                           fontSize: compact ? 12 : 13, color: countColor)),
                 ],

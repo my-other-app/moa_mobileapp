@@ -112,12 +112,12 @@ void main() {
           reason: 'interest $id');
     }
 
-    // Chosen: the app's yellow with a thin ink edge; not chosen: the soft
-    // grey, no edge to see.
+    // Chosen: the app's yellow with a thin ink edge; not chosen, as in the
+    // owner's design, just the emoji and the name: no fill, no edge.
     expect(_pill(tester, 6).color, AppColors.paleYellow);
     expect((_pill(tester, 6).border! as Border).top.color, AppColors.ink);
-    expect(_pill(tester, 3).color, AppColors.softGrey);
-    expect((_pill(tester, 3).border! as Border).top.color, AppColors.softGrey);
+    expect(_pill(tester, 3).color, Colors.transparent);
+    expect((_pill(tester, 3).border! as Border).top.color, Colors.transparent);
 
     // CONTINUE, the full width, below the list.
     final button = find.byKey(const ValueKey('interests-continue'));
@@ -131,12 +131,12 @@ void main() {
             tester.getBottomLeft(find.byType(SingleChildScrollView)).dy - 1));
   });
 
-  testWidgets('in onboarding the chips are white on the yellow',
+  testWidgets('in onboarding the chips sit plain on the yellow',
       (tester) async {
     api.on('GET', '/interests/list', contractListBody);
     await _pump(tester, onboarding: true);
 
-    expect(_pill(tester, 3).color, Colors.white);
+    expect(_pill(tester, 3).color, Colors.transparent);
   });
 
   testWidgets(
