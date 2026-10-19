@@ -54,8 +54,8 @@ class WherePill extends StatelessWidget {
         key: const ValueKey('discover-where'),
         borderRadius: BorderRadius.circular(20),
         onTap: () async {
-          final picked = await showWhereSheet(context,
-              where: where, place: place);
+          final picked =
+              await showWhereSheet(context, where: where, place: place);
           if (picked != null && picked != place) onChanged(picked);
         },
         child: Container(
@@ -305,7 +305,8 @@ class _ChipRow extends StatelessWidget {
 }
 
 class _RemovableChip extends StatelessWidget {
-  const _RemovableChip({super.key, required this.label, required this.onRemove});
+  const _RemovableChip(
+      {super.key, required this.label, required this.onRemove});
 
   final String label;
   final VoidCallback onRemove;
@@ -614,8 +615,8 @@ class _EventFilterSheetState extends State<_EventFilterSheet> {
                           key: const ValueKey('sheet-go-near'),
                           onPressed: () =>
                               _set(_draft.withPlace(DiscoverPlace.near)),
-                          child: Text(
-                              'Show what is ${nearPhrase(widget.where)}'),
+                          child:
+                              Text('Show what is ${nearPhrase(widget.where)}'),
                         ),
                       ],
                     ),
@@ -767,8 +768,8 @@ class _ClubFilterSheetState extends State<_ClubFilterSheet> {
                 else
                   TextButton(
                     key: const ValueKey('sheet-go-near'),
-                    onPressed: () => _set(_draft.copyWith(
-                        place: DiscoverPlace.near)),
+                    onPressed: () =>
+                        _set(_draft.copyWith(place: DiscoverPlace.near)),
                     child: Text('Show clubs ${nearPhrase(widget.where)}, '
                         'to sort by distance'),
                   ),
@@ -814,13 +815,15 @@ class _ClubFilterSheetState extends State<_ClubFilterSheet> {
 
 /// "Sort: Date ▾", offering what makes sense now.
 class EventSortMenu extends StatelessWidget {
-  const EventSortMenu({super.key, required this.filters, required this.onChanged});
+  const EventSortMenu(
+      {super.key, required this.filters, required this.onChanged});
 
   final EventFilters filters;
   final ValueChanged<EventFilters> onChanged;
 
   EventSort get _current =>
-      filters.sort ?? (filters.q.isNotEmpty ? EventSort.relevance : EventSort.date);
+      filters.sort ??
+      (filters.q.isNotEmpty ? EventSort.relevance : EventSort.date);
 
   @override
   Widget build(BuildContext context) {

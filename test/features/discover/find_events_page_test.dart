@@ -73,7 +73,8 @@ void main() {
     expect(find.text('Hack Night'), findsOneWidget);
     expect(find.text('Design Jam'), findsOneWidget);
     expect(
-        tester.widget<Text>(find.byKey(const ValueKey('discover-events-count')))
+        tester
+            .widget<Text>(find.byKey(const ValueKey('discover-events-count')))
             .textSpan!
             .toPlainText(),
         '2 events');
@@ -89,7 +90,8 @@ void main() {
   testWidgets('filters from the address are chips; a chip takes itself off',
       (tester) async {
     final h = await _pump(tester,
-        location: '/discover/events?when=this_week&price=free&topic=development&interest=6');
+        location:
+            '/discover/events?when=this_week&price=free&topic=development&interest=6');
 
     final first = _last(h.repo);
     expect([first.when, first.price, first.topic, first.interest],
@@ -98,7 +100,8 @@ void main() {
     expect(find.text('This week'), findsWidgets);
     expect(find.text('Development'), findsWidgets);
     // The topic's interests, with the chosen one on.
-    expect(find.byKey(const ValueKey('discover-interest-chips')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('discover-interest-chips')), findsOneWidget);
 
     await tester.tap(find.descendant(
         of: find.byKey(const ValueKey('filter-chip-price')),
@@ -155,7 +158,8 @@ void main() {
   testWidgets('back from an event finds the filters as they were',
       (tester) async {
     final h = await _pump(tester, location: '/discover/events?price=paid');
-    await tester.enterText(find.byKey(const ValueKey('discover-search')), 'robots');
+    await tester.enterText(
+        find.byKey(const ValueKey('discover-search')), 'robots');
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await settle(tester);
     final calls = h.repo.eventCalls.length;
@@ -212,7 +216,8 @@ void main() {
     final repo = FakeDiscoverRepository()
       ..onEvents = (f, __) => Either.right(parseEventResults(eventsPage(
           f.activeCount > 0 ? const [] : [eventCard(1, name: 'Hack Night')])));
-    final h = await _pump(tester, repo: repo, location: '/discover/events?price=paid');
+    final h = await _pump(tester,
+        repo: repo, location: '/discover/events?price=paid');
 
     expect(find.byKey(const ValueKey('discover-events-empty')), findsOneWidget);
     await tester.tap(find.text('Clear search and filters'));
@@ -229,8 +234,8 @@ void main() {
     await _pump(tester, repo: repo);
 
     expect(find.text('Try Again'), findsOneWidget);
-    repo.onEvents = (_, __) =>
-        Either.right(parseEventResults(eventsPage([eventCard(1, name: 'Back')])));
+    repo.onEvents = (_, __) => Either.right(
+        parseEventResults(eventsPage([eventCard(1, name: 'Back')])));
     await tester.tap(find.text('Try Again'));
     await settle(tester);
     expect(find.text('Back'), findsOneWidget);
@@ -267,19 +272,24 @@ void main() {
       expect(find.byKey(const ValueKey('discover-calendar')), findsOneWidget);
       expect(h.repo.calendarCalls.single.$2, '2030-10');
       expect(h.repo.calendarCalls.single.$1.price, EventPrice.free);
-      expect(find.byKey(const ValueKey('calendar-dot-2030-10-24')), findsOneWidget);
-      expect(find.byKey(const ValueKey('calendar-dot-2030-10-25')), findsOneWidget);
-      expect(find.byKey(const ValueKey('calendar-dot-2030-10-26')), findsNothing);
+      expect(find.byKey(const ValueKey('calendar-dot-2030-10-24')),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('calendar-dot-2030-10-25')),
+          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('calendar-dot-2030-10-26')), findsNothing);
 
       final day = h.repo.eventCalls.last.$1;
-      expect([day.from, day.to, day.price], ['2030-10-24', '2030-10-24', EventPrice.free]);
+      expect([day.from, day.to, day.price],
+          ['2030-10-24', '2030-10-24', EventPrice.free]);
       expect(find.text('2 events'), findsOneWidget);
     });
 
     testWidgets('a tapped day lists that day; the arrows change month',
         (tester) async {
       final h = await _pump(tester,
-          repo: busy(), location: '/discover/events?view=calendar&month=2030-10');
+          repo: busy(),
+          location: '/discover/events?view=calendar&month=2030-10');
 
       await tester.tap(find.byKey(const ValueKey('calendar-day-2030-10-25')));
       await settle(tester);
@@ -294,7 +304,8 @@ void main() {
     testWidgets('the toggle switches between list and calendar',
         (tester) async {
       final h = await _pump(tester, repo: busy());
-      expect(find.byKey(const ValueKey('discover-events-list')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('discover-events-list')), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('discover-view-toggle')));
       await settle(tester);

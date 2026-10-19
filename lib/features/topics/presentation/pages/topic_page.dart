@@ -67,9 +67,8 @@ class _TopicPageState extends ConsumerState<TopicPage> {
       );
     } else {
       // Only one of its own interests narrows it.
-      final interest = topic.interests
-          .where((i) => i.id == _interest)
-          .firstOrNull;
+      final interest =
+          topic.interests.where((i) => i.id == _interest).firstOrNull;
       body = _TopicBody(
         topic: topic,
         interestId: interest?.id,
@@ -240,8 +239,7 @@ class _TopicBody extends ConsumerWidget {
                       count: i.upcomingEvents,
                       topicLabel: topic.label,
                       selected: interestId == i.id,
-                      onTap: () =>
-                          onInterest(interestId == i.id ? null : i.id),
+                      onTap: () => onInterest(interestId == i.id ? null : i.id),
                     ),
                   ],
                 ],
@@ -256,8 +254,7 @@ class _TopicBody extends ConsumerWidget {
                 : Text(
                     plural(events.total, 'event'),
                     key: const ValueKey('topic-events-count'),
-                    style:
-                        TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                   ),
             onSeeAll: events.items.isEmpty
                 ? null

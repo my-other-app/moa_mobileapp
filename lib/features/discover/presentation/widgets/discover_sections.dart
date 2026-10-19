@@ -124,7 +124,8 @@ class EventRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shown = events.take(limit).toList();
-    final scale = (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.6);
+    final scale =
+        (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.6);
     return SizedBox(
       height: 140 + 160 * scale,
       child: ListView.separated(
@@ -151,7 +152,8 @@ class ClubRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shown = clubs.take(limit).toList();
-    final scale = (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.6);
+    final scale =
+        (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.6);
     return SizedBox(
       height: 76 + 112 * scale,
       child: ListView.separated(
@@ -285,7 +287,8 @@ class DiscoverEmpty extends StatelessWidget {
             FilledButton(
               onPressed: onAction,
               style: FilledButton.styleFrom(
-                textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                textStyle:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
               child: Text(actionLabel!),
             ),

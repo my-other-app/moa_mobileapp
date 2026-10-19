@@ -90,7 +90,6 @@ class DiscoverRepositoryImpl implements DiscoverRepository {
       _guard('followingEvents', () => _remote.followingEvents(limit: limit));
 
   @override
-  Future<List<DiscoverEvent>?> savedFollowingEvents({int limit = 10}) =>
-      _saved('savedFollowingEvents',
-          () => _remote.savedFollowingEvents(limit: limit));
+  Future<List<DiscoverEvent>?> savedFollowingEvents({int limit = 10}) => _saved(
+      'savedFollowingEvents', () => _remote.savedFollowingEvents(limit: limit));
 }

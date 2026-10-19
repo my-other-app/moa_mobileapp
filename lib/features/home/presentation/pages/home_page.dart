@@ -87,7 +87,10 @@ class _HomePageState extends ConsumerState<HomePage>
                     ? null
                     : () => controller.animateTo(following),
               ),
-              if (signedIn) ...const [ForYouEventsPage(), FollowingEventsPage()],
+              if (signedIn) ...const [
+                ForYouEventsPage(),
+                FollowingEventsPage()
+              ],
             ],
             searchHintText: 'Search for Events, Interests, Locations....',
             onSearch: (index) => _search(index, titles),

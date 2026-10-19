@@ -39,7 +39,12 @@ Map<String, dynamic> eventCard(
       'url': 'https://myotherapp.in/events/event-$id',
       'summary': 'A hands-on evening.',
       'topics': [
-        {'id': 2, 'slug': 'development', 'name': 'Development', 'color': '#2563EB'},
+        {
+          'id': 2,
+          'slug': 'development',
+          'name': 'Development',
+          'color': '#2563EB'
+        },
       ],
     };
 
@@ -59,7 +64,9 @@ Map<String, dynamic> clubCard(int id, {String? name, num? distanceKm}) => {
       'topics': [],
     };
 
-Map<String, dynamic> threadOut(String id, {String body = 'Hello from the club'}) => {
+Map<String, dynamic> threadOut(String id,
+        {String body = 'Hello from the club'}) =>
+    {
       'id': id,
       'club': {'id': 3, 'name': 'Tinkerhub', 'slug': 'tinkerhub', 'logo': null},
       'body': body,
@@ -145,8 +152,20 @@ Map<String, dynamic> eventsPage(
         {'id': 5, 'name': 'Talk', 'upcoming': 4},
       ],
       'topics': [
-        {'id': 2, 'slug': 'development', 'name': 'Development', 'color': '#2563EB', 'upcoming': 12},
-        {'id': 4, 'slug': 'arts', 'name': 'Arts', 'color': '#EA580C', 'upcoming': 3},
+        {
+          'id': 2,
+          'slug': 'development',
+          'name': 'Development',
+          'color': '#2563EB',
+          'upcoming': 12
+        },
+        {
+          'id': 4,
+          'slug': 'arts',
+          'name': 'Arts',
+          'color': '#EA580C',
+          'upcoming': 3
+        },
       ],
       if (cursored) 'next_cursor': nextCursor,
     };
@@ -194,7 +213,12 @@ const developmentTopicBody = {
   'upcoming_events': 12,
   'clubs': 30,
   'interests': [
-    {'id': 3, 'slug': 'web-development', 'name': 'Web Development', 'upcoming_events': 4},
+    {
+      'id': 3,
+      'slug': 'web-development',
+      'name': 'Web Development',
+      'upcoming_events': 4
+    },
     {'id': 6, 'slug': 'coding', 'name': 'Coding', 'upcoming_events': 8},
   ],
 };

@@ -39,8 +39,8 @@ class FakeDiscoverRepository implements DiscoverRepository {
           ])));
   Result<DiscoverPage<Thread>> Function(PageRequest) onThreads =
       (_) => Either.right(parseThreadsPage(threadsPage([threadOut('t-1')])));
-  Result<Topic> Function(String) onTopic = (slug) =>
-      Either.right(parseTopic(developmentTopicBody)!);
+  Result<Topic> Function(String) onTopic =
+      (slug) => Either.right(parseTopic(developmentTopicBody)!);
   Result<List<DiscoverEvent>> following = Either.right([
     parseListEvent({
       'id': 50,
@@ -74,7 +74,8 @@ class FakeDiscoverRepository implements DiscoverRepository {
   Future<DiscoverHome?> savedHome() async => savedHomeValue;
 
   @override
-  Future<Result<EventResults>> events(EventFilters filters, PageRequest page) async {
+  Future<Result<EventResults>> events(
+      EventFilters filters, PageRequest page) async {
     eventCalls.add((filters, page));
     await _wait();
     return onEvents(filters, page);
@@ -84,18 +85,21 @@ class FakeDiscoverRepository implements DiscoverRepository {
   Future<EventResults?> savedEvents(EventFilters filters) async => null;
 
   @override
-  Future<Result<CalendarMonth>> calendar(EventFilters filters, String month) async {
+  Future<Result<CalendarMonth>> calendar(
+      EventFilters filters, String month) async {
     calendarCalls.add((filters, month));
     await _wait();
     return onCalendar(filters, month);
   }
 
   @override
-  Future<CalendarMonth?> savedCalendar(EventFilters filters, String month) async =>
+  Future<CalendarMonth?> savedCalendar(
+          EventFilters filters, String month) async =>
       null;
 
   @override
-  Future<Result<ClubResults>> clubs(ClubFilters filters, PageRequest page) async {
+  Future<Result<ClubResults>> clubs(
+      ClubFilters filters, PageRequest page) async {
     clubCalls.add((filters, page));
     await _wait();
     return onClubs(filters, page);
@@ -171,5 +175,7 @@ Future<void> tapVisible(
 }
 
 /// The scrollable inside the widget with [key].
-Finder scrollableIn(String key) => find.descendant(
-    of: find.byKey(ValueKey(key)), matching: find.byType(Scrollable)).first;
+Finder scrollableIn(String key) => find
+    .descendant(
+        of: find.byKey(ValueKey(key)), matching: find.byType(Scrollable))
+    .first;

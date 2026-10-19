@@ -50,7 +50,8 @@ List<RouteBase> get discoverRoutes => [
             name: 'topic',
             builder: (context, state) => TopicPage(
               slug: state.pathParameters['slug'] ?? '',
-              interest: int.tryParse(state.uri.queryParameters['interest'] ?? ''),
+              interest:
+                  int.tryParse(state.uri.queryParameters['interest'] ?? ''),
             ),
           ),
         ],

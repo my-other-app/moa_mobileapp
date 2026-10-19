@@ -103,8 +103,7 @@ void main() {
       });
     });
 
-    test('calendar, clubs, threads and a topic go where they belong',
-        () async {
+    test('calendar, clubs, threads and a topic go where they belong', () async {
       api
         ..on('GET', '/discover/calendar', {
           'month': '2026-11',
@@ -115,10 +114,9 @@ void main() {
         ..on('GET', '/interests/topics/development', developmentTopicBody);
       final repo = container.read(discoverRepositoryProvider);
 
-      final month =
-          (await repo.calendar(EventFilters.none, '2026-11')).right;
-      final clubs = (await repo.clubs(
-              const ClubFilters(sort: ClubSort.newest), const PageRequest.first()))
+      final month = (await repo.calendar(EventFilters.none, '2026-11')).right;
+      final clubs = (await repo.clubs(const ClubFilters(sort: ClubSort.newest),
+              const PageRequest.first()))
           .right;
       final threads = (await repo.threads(const PageRequest.first())).right;
       final topic = (await repo.topic('development')).right;
@@ -145,10 +143,16 @@ void main() {
   group('paging', () {
     test('the next page starts after the cursor, with no offset', () async {
       api
-        ..on('GET', '/discover/events',
-            eventsPage([eventCard(1), eventCard(2)], total: 5, nextCursor: 'c1'))
-        ..on('GET', '/discover/events',
-            eventsPage([eventCard(3), eventCard(4)], total: 5, nextCursor: 'c2'))
+        ..on(
+            'GET',
+            '/discover/events',
+            eventsPage([eventCard(1), eventCard(2)],
+                total: 5, nextCursor: 'c1'))
+        ..on(
+            'GET',
+            '/discover/events',
+            eventsPage([eventCard(3), eventCard(4)],
+                total: 5, nextCursor: 'c2'))
         ..on('GET', '/discover/events',
             eventsPage([eventCard(5)], total: 5, nextCursor: null));
       const filters = EventFilters(price: EventPrice.free);
@@ -186,7 +190,8 @@ void main() {
       const filters = EventFilters(q: 'x');
       await loaded(filters);
       await container.read(eventSearchProvider(filters).notifier).loadMore();
-      expect(container.read(eventSearchProvider(filters)).items.map((e) => e.id),
+      expect(
+          container.read(eventSearchProvider(filters)).items.map((e) => e.id),
           [1, 2, 3]);
     });
 
@@ -278,9 +283,8 @@ void main() {
       final keys = shared.values.keys;
       expect(keys.where((k) => k.contains('/discover/events')), hasLength(1));
       expect(keys.any((k) => k.contains('after=')), isFalse);
-      final saved = await container
-          .read(discoverRepositoryProvider)
-          .savedEvents(filters);
+      final saved =
+          await container.read(discoverRepositoryProvider).savedEvents(filters);
       expect(saved!.page.items.single.id, 1);
     });
 

@@ -89,7 +89,8 @@ class ClubResults extends Equatable {
 
 /// The numbers on the front page.
 class DiscoverStats extends Equatable {
-  const DiscoverStats({this.upcomingEvents = 0, this.clubs = 0, this.cities = 0});
+  const DiscoverStats(
+      {this.upcomingEvents = 0, this.clubs = 0, this.cities = 0});
 
   final int upcomingEvents;
   final int clubs;
@@ -139,8 +140,17 @@ class DiscoverHome extends Equatable {
       where.isPlaced && clubs.any((c) => c.distanceKm != null);
 
   @override
-  List<Object?> get props =>
-      [where, near, thisWeek, online, popular, categories, clubs, threads, stats];
+  List<Object?> get props => [
+        where,
+        near,
+        thisWeek,
+        online,
+        popular,
+        categories,
+        clubs,
+        threads,
+        stats
+      ];
 }
 
 /// How many events each day of a month has (`/discover/calendar`): days in

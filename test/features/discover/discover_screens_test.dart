@@ -21,8 +21,8 @@ import 'discover_fixtures.dart';
 class _Threads implements ThreadRepository {
   final likes = <String>[];
   final reads = <String>[];
-  Result<Thread> thread = Either.left(
-      const ServerFailure(message: 'Not found', code: '404'));
+  Result<Thread> thread =
+      Either.left(const ServerFailure(message: 'Not found', code: '404'));
 
   @override
   Future<Result<Thread>> getThread(String threadId) async {
@@ -107,7 +107,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('discover-filters')));
       await settle(tester);
       // Nearby needs a place: not offered everywhere.
-      expect(find.byKey(const ValueKey('sheet-club-sort-nearby')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('sheet-club-sort-nearby')), findsNothing);
       await tester.tap(find.byKey(const ValueKey('sheet-club-sort-newest')));
       await tapVisible(tester, find.byKey(const ValueKey('topic-chip-arts')),
           scrollable: scrollableIn('topic-filter-row'));
@@ -141,9 +142,11 @@ void main() {
 
     testWidgets('nothing matches', (tester) async {
       final repo = FakeDiscoverRepository()
-        ..onClubs = (_, __) => Either.right(parseClubResults(clubsPage(const [])));
+        ..onClubs =
+            (_, __) => Either.right(parseClubResults(clubsPage(const [])));
       await _pump(tester, '/discover/clubs?topic=arts', repo: repo);
-      expect(find.byKey(const ValueKey('discover-clubs-empty')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('discover-clubs-empty')), findsOneWidget);
       expect(find.text('Clear search and filters'), findsOneWidget);
     });
   });
@@ -160,7 +163,8 @@ void main() {
 
     testWidgets('back from a post, its card is read again', (tester) async {
       final h = await _pump(tester, '/discover/threads');
-      h.threads.thread = Either.right(parseThread(threadOut('t-1', body: 'Edited'))!);
+      h.threads.thread =
+          Either.right(parseThread(threadOut('t-1', body: 'Edited'))!);
       await tester.tap(find.text('Hello from the club'));
       await settle(tester);
       h.router.pop();
@@ -169,14 +173,15 @@ void main() {
       expect(find.text('Edited'), findsOneWidget);
 
       // Removed meanwhile: the card goes.
-      h.threads.thread = Either.left(
-          const ServerFailure(message: 'Not found', code: '404'));
+      h.threads.thread =
+          Either.left(const ServerFailure(message: 'Not found', code: '404'));
       await tester.tap(find.text('Edited'));
       await settle(tester);
       h.router.pop();
       await settle(tester, 12);
       expect(find.text('Edited'), findsNothing);
-      expect(find.byKey(const ValueKey('discover-threads-empty')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('discover-threads-empty')), findsOneWidget);
     });
 
     testWidgets('signed out, a like asks to sign in and sends nothing',
@@ -198,16 +203,19 @@ void main() {
 
     testWidgets('no posts yet', (tester) async {
       final repo = FakeDiscoverRepository()
-        ..onThreads = (_) => Either.right(parseThreadsPage(threadsPage(const [])));
+        ..onThreads =
+            (_) => Either.right(parseThreadsPage(threadsPage(const [])));
       await _pump(tester, '/discover/threads', repo: repo);
-      expect(find.byKey(const ValueKey('discover-threads-empty')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('discover-threads-empty')), findsOneWidget);
     });
   });
 
   group('topics', () {
     testWidgets('every topic as a card; a card opens its page', (tester) async {
       final h = await _pump(tester, '/topics');
-      expect(find.byKey(const ValueKey('topic-card-development')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('topic-card-development')), findsOneWidget);
       expect(find.byKey(const ValueKey('topic-card-arts')), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('topic-card-development')));
@@ -266,7 +274,8 @@ void main() {
 
     testWidgets('no events in it: says so, with a way on', (tester) async {
       final repo = FakeDiscoverRepository()
-        ..onEvents = (_, __) => Either.right(parseEventResults(eventsPage(const [])));
+        ..onEvents =
+            (_, __) => Either.right(parseEventResults(eventsPage(const [])));
       await _pump(tester, '/topics/development', repo: repo);
       expect(find.byKey(const ValueKey('topic-events-empty')), findsOneWidget);
       expect(find.text('Browse all events'), findsOneWidget);
@@ -274,8 +283,8 @@ void main() {
 
     testWidgets('a topic nobody has: the page says so', (tester) async {
       final repo = FakeDiscoverRepository()
-        ..onTopic = (_) => Either.left(
-            const ServerFailure(message: 'Not found', code: '404'));
+        ..onTopic = (_) =>
+            Either.left(const ServerFailure(message: 'Not found', code: '404'));
       await _pump(tester, '/topics/nope', repo: repo);
       expect(find.byKey(const ValueKey('topic-missing')), findsOneWidget);
     });
@@ -283,8 +292,8 @@ void main() {
     testWidgets('a server without the route: the directory has it',
         (tester) async {
       final repo = FakeDiscoverRepository()
-        ..onTopic = (_) => Either.left(
-            const ServerFailure(message: 'Not found', code: '404'));
+        ..onTopic = (_) =>
+            Either.left(const ServerFailure(message: 'Not found', code: '404'));
       await _pump(tester, '/topics/arts', repo: repo);
       expect(find.byKey(const ValueKey('topic-missing')), findsNothing);
       expect(find.text('ARTS'), findsOneWidget);
@@ -325,6 +334,7 @@ void main() {
         '/discover/events?view=calendar&month=2026-11');
     expect(clubsDirectoryLocation(const ClubFilters(topic: 'arts')),
         '/discover/clubs?topic=arts');
-    expect(topicLocation('deep-tech', interest: 2), '/topics/deep-tech?interest=2');
+    expect(topicLocation('deep-tech', interest: 2),
+        '/topics/deep-tech?interest=2');
   });
 }

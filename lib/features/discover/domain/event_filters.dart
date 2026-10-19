@@ -39,7 +39,8 @@ int? _radius(Object? value) {
   return radiusOptions.contains(n) ? n : null;
 }
 
-T? _pick<T extends Enum>(List<T> values, String? Function(T) param, Object? raw) {
+T? _pick<T extends Enum>(
+    List<T> values, String? Function(T) param, Object? raw) {
   for (final v in values) {
     if (param(v) == raw) return v;
   }
@@ -105,7 +106,16 @@ enum EventSort {
 }
 
 /// What a removable chip under the search stands for.
-enum EventFilterKey { when, dates, format, price, category, topic, interest, radius }
+enum EventFilterKey {
+  when,
+  dates,
+  format,
+  price,
+  category,
+  topic,
+  interest,
+  radius
+}
 
 /// What a list is about: everywhere, or near the person.
 ///
@@ -274,16 +284,21 @@ class EventFilters extends Equatable {
   }
 
   /// Every filter off; the words, the order and the place stay.
-  EventFilters cleared() => EventFilters(q: q, sort: sort, place: place).normalized();
+  EventFilters cleared() =>
+      EventFilters(q: q, sort: sort, place: place).normalized();
 
   /// The query for `GET /discover/events`.
-  Map<String, dynamic> eventsQuery([PageRequest paging = const PageRequest.first()]) {
+  Map<String, dynamic> eventsQuery(
+      [PageRequest paging = const PageRequest.first()]) {
     final f = normalized();
     final range = f.days;
     return {
       ..._shared(f),
-      if (range != null) ...{'from': range.from, 'to': range.to}
-      else if (f.when != null) 'when': f.when!.param,
+      if (range != null) ...{
+        'from': range.from,
+        'to': range.to
+      } else if (f.when != null)
+        'when': f.when!.param,
       if (f.sort != null) 'sort': f.sort!.param,
       ...paging.query,
     };
@@ -305,7 +320,10 @@ class EventFilters extends Equatable {
         if (f.price != null) 'price': f.price!.param,
         // Everywhere is radius 0. Near sends none of its own unless one was
         // picked: the server's 50 km around where it placed the caller.
-        if (!f.isNear) 'radius_km': 0 else if (f.radiusKm != null) 'radius_km': f.radiusKm,
+        if (!f.isNear)
+          'radius_km': 0
+        else if (f.radiusKm != null)
+          'radius_km': f.radiusKm,
       };
 
   /// The filters as the screen's address carries them: only what is set,
@@ -420,8 +438,7 @@ class ClubFilters extends Equatable {
         q: _text(q),
         topic: topicParam(topic),
         interest: interest != null && interest! > 0 ? interest : null,
-        sort: sort == ClubSort.popular ||
-                (sort == ClubSort.nearby && !isNear)
+        sort: sort == ClubSort.popular || (sort == ClubSort.nearby && !isNear)
             ? null
             : sort,
         radiusKm: isNear && radiusOptions.contains(radiusKm) ? radiusKm : null,
@@ -469,16 +486,21 @@ class ClubFilters extends Equatable {
     }
   }
 
-  ClubFilters cleared() => ClubFilters(q: q, sort: sort, place: place).normalized();
+  ClubFilters cleared() =>
+      ClubFilters(q: q, sort: sort, place: place).normalized();
 
   /// The query for `GET /discover/clubs`.
-  Map<String, dynamic> clubsQuery([PageRequest paging = const PageRequest.first()]) {
+  Map<String, dynamic> clubsQuery(
+      [PageRequest paging = const PageRequest.first()]) {
     final f = normalized();
     return {
       if (f.q.isNotEmpty) 'q': f.q,
       if (f.topic != null) 'topic': f.topic,
       if (f.interest != null) 'interest': f.interest,
-      if (!f.isNear) 'radius_km': 0 else if (f.radiusKm != null) 'radius_km': f.radiusKm,
+      if (!f.isNear)
+        'radius_km': 0
+      else if (f.radiusKm != null)
+        'radius_km': f.radiusKm,
       if (f.sort != null) 'sort': f.sort!.param,
       ...paging.query,
     };

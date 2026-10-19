@@ -66,7 +66,8 @@ class DiscoverClubCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      ClubLogo(url: imageUrlFrom(club.logo), size: 44, radius: 8),
+                      ClubLogo(
+                          url: imageUrlFrom(club.logo), size: 44, radius: 8),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
@@ -107,8 +108,7 @@ class DiscoverClubCard extends StatelessWidget {
                             place,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style:
-                                const TextStyle(fontSize: 12, color: _muted),
+                            style: const TextStyle(fontSize: 12, color: _muted),
                           ),
                         ),
                       ],

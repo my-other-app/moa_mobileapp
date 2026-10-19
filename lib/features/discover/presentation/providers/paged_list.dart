@@ -110,7 +110,8 @@ abstract class PagedNotifier<T, M> extends StateNotifier<PagedState<T, M>> {
   /// What makes two rows the same row.
   Object keyOf(T item);
 
-  PagedState<T, M> _firstPage(PageWithMeta<T, M> answer, {required bool saved}) {
+  PagedState<T, M> _firstPage(PageWithMeta<T, M> answer,
+      {required bool saved}) {
     final (page, meta) = answer;
     final seen = <Object>{};
     final items = [
@@ -173,10 +174,7 @@ abstract class PagedNotifier<T, M> extends StateNotifier<PagedState<T, M>> {
   /// Append the next page, if there is one and nothing else is loading.
   Future<void> loadMore() async {
     final next = state.next;
-    if (next == null ||
-        _refreshing ||
-        state.isLoading ||
-        state.isLoadingMore) {
+    if (next == null || _refreshing || state.isLoading || state.isLoadingMore) {
       return;
     }
     state = state.copyWith(isLoadingMore: true, clearLoadMoreError: true);
@@ -204,7 +202,8 @@ abstract class PagedNotifier<T, M> extends StateNotifier<PagedState<T, M>> {
           clearNext: after == null,
           // At the end the count is what was shown; before it, the
           // server's (a floor when it stopped counting).
-          total: after == null ? items.length : math.max(page.total, items.length),
+          total:
+              after == null ? items.length : math.max(page.total, items.length),
           capped: after != null && page.capped,
         );
       },

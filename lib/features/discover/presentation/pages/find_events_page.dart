@@ -63,8 +63,8 @@ class FindEventsPage extends ConsumerStatefulWidget {
 class _FindEventsPageState extends ConsumerState<FindEventsPage> {
   late EventFilters _filters = widget.initialFilters.normalized();
   late bool _calendar = widget.calendar;
-  late String _month = widget.month ??
-      monthOf(_filters.days?.from ?? widget.today ?? istDay());
+  late String _month =
+      widget.month ?? monthOf(_filters.days?.from ?? widget.today ?? istDay());
   String? _day;
   late final TextEditingController _search =
       TextEditingController(text: _filters.q);
@@ -178,8 +178,7 @@ class _FindEventsPageState extends ConsumerState<FindEventsPage> {
                     filters: _filters,
                     state: state,
                     onChanged: _apply,
-                    onClear: () =>
-                        _apply(EventFilters(place: _filters.place)),
+                    onClear: () => _apply(EventFilters(place: _filters.place)),
                   ),
           ),
         ],
@@ -345,7 +344,9 @@ class _CategoryChips extends StatelessWidget {
             const SizedBox(width: 8),
             chip(
               c.id,
-              c.upcoming == null ? c.name : '${c.name} ${formatCount(c.upcoming!)}',
+              c.upcoming == null
+                  ? c.name
+                  : '${c.name} ${formatCount(c.upcoming!)}',
               key: ValueKey('category-chip-${c.id}'),
             ),
           ],
@@ -388,7 +389,8 @@ class _Results extends ConsumerWidget {
               message: narrowed
                   ? 'Try another day, a wider distance or fewer filters.'
                   : 'Nothing is listed here yet. Clubs add new events all the time.',
-              actionLabel: narrowed ? 'Clear search and filters' : 'Browse clubs',
+              actionLabel:
+                  narrowed ? 'Clear search and filters' : 'Browse clubs',
               onAction: narrowed
                   ? onClear
                   : () => context.push(clubsDirectoryLocation()),

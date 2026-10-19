@@ -41,7 +41,8 @@ class ThreadsFeedPage extends ConsumerWidget {
             key: const ValueKey('discover-threads-empty'),
             icon: Icons.forum_outlined,
             title: 'No posts yet',
-            message: 'When clubs post news, photos and polls, they show up here.',
+            message:
+                'When clubs post news, photos and polls, they show up here.',
             actionLabel: 'Browse clubs',
             onAction: () => context.push(clubsDirectoryLocation()),
           ),

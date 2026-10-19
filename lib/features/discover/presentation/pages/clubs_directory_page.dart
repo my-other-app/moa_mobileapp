@@ -23,7 +23,8 @@ class ClubsDirectoryPage extends ConsumerStatefulWidget {
 
   factory ClubsDirectoryPage.fromParams(Map<String, String> params,
           {Key? key}) =>
-      ClubsDirectoryPage(key: key, initialFilters: ClubFilters.fromParams(params));
+      ClubsDirectoryPage(
+          key: key, initialFilters: ClubFilters.fromParams(params));
 
   final ClubFilters initialFilters;
 
@@ -74,7 +75,8 @@ class _ClubsDirectoryPageState extends ConsumerState<ClubsDirectoryPage> {
             message: narrowed
                 ? 'Try another interest, a wider distance or a shorter search.'
                 : 'No clubs are listed here yet.',
-            actionLabel: narrowed ? 'Clear search and filters' : 'Browse events',
+            actionLabel:
+                narrowed ? 'Clear search and filters' : 'Browse events',
             onAction: narrowed
                 ? () => _apply(ClubFilters(place: _filters.place))
                 : () => context.push(findEventsLocation(EventFilters.none)),
@@ -89,8 +91,7 @@ class _ClubsDirectoryPageState extends ConsumerState<ClubsDirectoryPage> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           itemCount: state.items.length + 2,
-          separatorBuilder: (_, i) =>
-              SizedBox(height: i == 0 ? 4 : 12),
+          separatorBuilder: (_, i) => SizedBox(height: i == 0 ? 4 : 12),
           itemBuilder: (context, i) {
             if (i == 0) {
               return Text.rich(
@@ -143,8 +144,7 @@ class _ClubsDirectoryPageState extends ConsumerState<ClubsDirectoryPage> {
                 hintText: 'Search clubs by name',
                 counterText: '',
                 isDense: true,
-                prefixIcon:
-                    const Icon(Icons.search, color: Color(0xFF979797)),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF979797)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: const BorderSide(color: _ink, width: 0.5),
@@ -187,7 +187,9 @@ class _ClubsDirectoryPageState extends ConsumerState<ClubsDirectoryPage> {
           ClubFilterChips(filters: _filters, names: names, onChanged: _apply),
           _InterestChips(
             interests: state.meta?.interests ?? const [],
-            topicInterests: names.topic(_filters.topic)?.interests
+            topicInterests: names
+                    .topic(_filters.topic)
+                    ?.interests
                     .map((i) => (i.id, i.name))
                     .toList() ??
                 const [],

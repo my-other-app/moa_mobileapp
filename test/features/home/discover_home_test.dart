@@ -30,7 +30,9 @@ Future<_Harness> _pump(
 }) async {
   tallScreen(tester);
   final api = useFakeApi();
-  api.on('GET', '/events/list?is_following=true&is_ended=false&offset=0&limit=10',
+  api.on(
+      'GET',
+      '/events/list?is_following=true&is_ended=false&offset=0&limit=10',
       {'items': []});
   final r = repo ?? FakeDiscoverRepository();
   final went = <String>[];
@@ -67,9 +69,8 @@ Future<_Harness> _pump(
 
 Finder _rail(String name) => find.byKey(ValueKey('rail-$name'));
 
-Future<void> _scrollTo(WidgetTester tester, Finder target) =>
-    tester.scrollUntilVisible(target, 300,
-        scrollable: scrollableIn('discover-home'));
+Future<void> _scrollTo(WidgetTester tester, Finder target) => tester
+    .scrollUntilVisible(target, 300, scrollable: scrollableIn('discover-home'));
 
 void main() {
   group('signed out', () {
@@ -116,7 +117,8 @@ void main() {
       await tester.pageBack();
       await settle(tester, 16);
 
-      await tester.ensureVisible(find.byKey(const ValueKey('discover-club-club-5')));
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('discover-club-club-5')));
       await settle(tester);
       await tester.tap(find.byKey(const ValueKey('discover-club-club-5')));
       await settle(tester);
@@ -187,7 +189,8 @@ void main() {
       final repo = FakeDiscoverRepository()..hold = Completer<void>();
       await _pump(tester, repo: repo, settleIt: false);
       await tester.pump();
-      expect(find.byKey(const ValueKey('discover-home-loading')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('discover-home-loading')), findsOneWidget);
       repo.hold!.complete();
       await settle(tester);
       expect(find.text('Hack Night'), findsOneWidget);
@@ -223,8 +226,8 @@ void main() {
     testWidgets('offline with a saved copy: the copy, no error',
         (tester) async {
       final repo = FakeDiscoverRepository()
-        ..savedHomeValue = parseHome(homeBody(
-            near: [eventCard(9, name: 'Saved Night', distanceKm: 1)]))
+        ..savedHomeValue = parseHome(
+            homeBody(near: [eventCard(9, name: 'Saved Night', distanceKm: 1)]))
         ..homeResult = Either.left(offline);
       await _pump(tester, repo: repo);
 
@@ -235,8 +238,8 @@ void main() {
     testWidgets('a saved copy is drawn first, then the fresh one',
         (tester) async {
       final repo = FakeDiscoverRepository()
-        ..savedHomeValue = parseHome(homeBody(
-            near: [eventCard(9, name: 'Saved Night', distanceKm: 1)]))
+        ..savedHomeValue = parseHome(
+            homeBody(near: [eventCard(9, name: 'Saved Night', distanceKm: 1)]))
         ..hold = Completer<void>();
       await _pump(tester, repo: repo);
       expect(find.text('Saved Night'), findsOneWidget);

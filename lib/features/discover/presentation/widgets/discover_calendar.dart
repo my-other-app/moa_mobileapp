@@ -13,7 +13,8 @@ import 'package:finnet/shared/widgets/error_view.dart';
 const _ink = Color(0xFF1E1E1E);
 const _weekdays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 const _weekdayNames = [
-  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', //
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+  'Sunday', //
 ];
 
 /// The day a month opens on: today in this month; otherwise its first day
@@ -186,8 +187,8 @@ class _MonthGrid extends StatelessWidget {
                     child: Text(
                       _weekdays[i],
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade600),
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                   ),
                 ),
@@ -238,9 +239,8 @@ class _DayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final number = int.parse(day.substring(8, 10));
-    final ink = isSelected
-        ? Colors.white
-        : (isPast ? Colors.grey.shade500 : _ink);
+    final ink =
+        isSelected ? Colors.white : (isPast ? Colors.grey.shade500 : _ink);
     return Semantics(
       button: true,
       selected: isSelected,
@@ -272,8 +272,9 @@ class _DayCell extends StatelessWidget {
                   '$number',
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight:
-                        count > 0 || isToday ? FontWeight.w700 : FontWeight.w400,
+                    fontWeight: count > 0 || isToday
+                        ? FontWeight.w700
+                        : FontWeight.w400,
                     color: ink,
                   ),
                 ),

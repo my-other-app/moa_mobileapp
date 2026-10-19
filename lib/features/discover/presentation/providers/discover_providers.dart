@@ -140,9 +140,8 @@ class ClubSearchNotifier extends PagedNotifier<DiscoverClub, ClubResults> {
 typedef ThreadsFeedState = PagedState<Thread, Object?>;
 
 /// Every club's newest posts (`/discover/threads`), with likes and votes.
-final discoverThreadsProvider =
-    StateNotifierProvider.autoDispose<DiscoverThreadsNotifier, ThreadsFeedState>(
-        (ref) {
+final discoverThreadsProvider = StateNotifierProvider.autoDispose<
+    DiscoverThreadsNotifier, ThreadsFeedState>((ref) {
   return DiscoverThreadsNotifier(
     ref.watch(discoverRepositoryProvider),
     ref.watch(threadRepositoryProvider),

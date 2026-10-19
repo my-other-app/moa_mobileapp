@@ -124,7 +124,8 @@ class DiscoverRemoteDataSourceImpl implements DiscoverRemoteDataSource {
       );
 
   @override
-  Future<CalendarMonth?> savedCalendar(EventFilters filters, String month) async {
+  Future<CalendarMonth?> savedCalendar(
+      EventFilters filters, String month) async {
     final data = await _read(calendarPath, filters.calendarQuery(month));
     return data == null ? null : parseCalendar(data, month: month);
   }
@@ -182,7 +183,8 @@ class DiscoverRemoteDataSourceImpl implements DiscoverRemoteDataSource {
       _following(await _get(followingPath, query: followingQuery(limit)));
 
   @override
-  Future<List<DiscoverEvent>?> savedFollowingEvents({required int limit}) async {
+  Future<List<DiscoverEvent>?> savedFollowingEvents(
+      {required int limit}) async {
     final data = await _read(followingPath, followingQuery(limit));
     return data == null ? null : _following(data);
   }

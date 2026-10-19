@@ -42,15 +42,20 @@ void main() {
   });
 
   test('a row without an id is dropped, the list kept', () {
-    final page = parseEventResults(
-        eventsPage([eventCard(1), {'name': 'no id'}, eventCard(2)]));
+    final page = parseEventResults(eventsPage([
+      eventCard(1),
+      {'name': 'no id'},
+      eventCard(2)
+    ]));
     expect(page.page.items.map((e) => e.id), [1, 2]);
   });
 
   test('a page knows whether the server pages by cursor', () {
-    expect(parseEventResults(eventsPage([eventCard(1)], nextCursor: 'x'))
-        .page
-        .cursor, 'x');
+    expect(
+        parseEventResults(eventsPage([eventCard(1)], nextCursor: 'x'))
+            .page
+            .cursor,
+        'x');
     final last = parseEventResults(eventsPage([eventCard(1)])).page;
     expect([last.cursored, last.cursor], [true, null]);
     expect(
@@ -70,7 +75,8 @@ void main() {
     final w = parseWhere(whereTvm);
     expect(w.source, WhereSource.ip);
     expect(w.label, 'Near Thiruvananthapuram');
-    expect(w.explanation, 'We guessed Thiruvananthapuram from your connection.');
+    expect(
+        w.explanation, 'We guessed Thiruvananthapuram from your connection.');
     final none = parseWhere(whereNowhere);
     expect(none.isPlaced, isFalse);
     expect(none.label, 'Everywhere');
@@ -89,7 +95,12 @@ void main() {
   test('a club reads interests as names', () {
     final c = parseClub({
       'slug': 'robo',
-      'interests': ['Coding', {'name': 'Robotics'}, 3, ''],
+      'interests': [
+        'Coding',
+        {'name': 'Robotics'},
+        3,
+        ''
+      ],
     })!;
     expect(c.id, 0);
     expect(c.name, 'A club');

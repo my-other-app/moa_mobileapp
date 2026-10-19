@@ -42,9 +42,25 @@ void main() {
     test('weeks start on Monday, with blanks around the month', () {
       // 1 October 2026 is a Thursday.
       final weeks = monthWeeks('2026-10');
-      expect(weeks.first, [null, null, null, '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04']);
+      expect(weeks.first, [
+        null,
+        null,
+        null,
+        '2026-10-01',
+        '2026-10-02',
+        '2026-10-03',
+        '2026-10-04'
+      ]);
       expect(weeks.last.first, '2026-10-26');
-      expect(weeks.last, ['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31', null]);
+      expect(weeks.last, [
+        '2026-10-26',
+        '2026-10-27',
+        '2026-10-28',
+        '2026-10-29',
+        '2026-10-30',
+        '2026-10-31',
+        null
+      ]);
       expect(weeks.every((w) => w.length == 7), isTrue);
       expect(weeks.expand((w) => w).whereType<String>(), hasLength(31));
     });

@@ -101,9 +101,7 @@ class _TopicCard extends StatelessWidget {
     final palette = TopicPalette.of(context, topic);
     final surface = TopicSurface.of(context);
     final count = topic.upcomingEvents;
-    final countText = count == null || count <= 0
-        ? null
-        : '$count upcoming';
+    final countText = count == null || count <= 0 ? null : '$count upcoming';
 
     return Semantics(
       container: true,

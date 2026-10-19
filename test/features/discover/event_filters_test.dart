@@ -54,7 +54,9 @@ void main() {
               .containsKey('from'),
           isFalse);
       expect(
-          const EventFilters(from: '2026-02-30').eventsQuery().containsKey('from'),
+          const EventFilters(from: '2026-02-30')
+              .eventsQuery()
+              .containsKey('from'),
           isFalse);
       // One end alone is that day.
       final one = const EventFilters(from: '2026-11-05').eventsQuery();
@@ -96,8 +98,11 @@ void main() {
     });
 
     test('a bad topic slug is dropped rather than sent', () {
-      expect(const EventFilters(topic: 'not a slug!').eventsQuery()
-          .containsKey('topic'), isFalse);
+      expect(
+          const EventFilters(topic: 'not a slug!')
+              .eventsQuery()
+              .containsKey('topic'),
+          isFalse);
     });
 
     test('a later page goes by cursor, with no offset', () {
@@ -170,12 +175,15 @@ void main() {
       );
       final f = filters.cleared();
       expect(f.activeCount, 0);
-      expect([f.q, f.sort, f.place], ['jam', EventSort.popular, DiscoverPlace.near]);
+      expect([f.q, f.sort, f.place],
+          ['jam', EventSort.popular, DiscoverPlace.near]);
     });
 
     test('a calendar day is the same search for that day', () {
-      const filters =
-          EventFilters(when: EventWhen.thisMonth, sort: EventSort.popular, price: EventPrice.free);
+      const filters = EventFilters(
+          when: EventWhen.thisMonth,
+          sort: EventSort.popular,
+          price: EventPrice.free);
       final day = filters.forDay('2026-11-14');
       expect([day.from, day.to, day.when, day.sort],
           ['2026-11-14', '2026-11-14', null, null]);
@@ -233,7 +241,8 @@ void main() {
       expect(f, EventFilters.none);
     });
 
-    test("the website's near=lat,lng and sort=distance mean near the person", () {
+    test("the website's near=lat,lng and sort=distance mean near the person",
+        () {
       expect(EventFilters.fromParams({'near': '8.52,76.94'}).isNear, isTrue);
       final f = EventFilters.fromParams({'sort': 'distance'});
       expect([f.isNear, f.sort], [true, EventSort.distance]);
@@ -259,7 +268,12 @@ void main() {
           eventSortChoices(
                   const EventFilters(q: 'x', place: DiscoverPlace.near))
               .map((c) => c.$1),
-          [EventSort.relevance, EventSort.date, EventSort.distance, EventSort.popular]);
+          [
+            EventSort.relevance,
+            EventSort.date,
+            EventSort.distance,
+            EventSort.popular
+          ]);
     });
   });
 
@@ -273,7 +287,8 @@ void main() {
     });
 
     test('nearby needs near; topic, interest and radius go along', () {
-      expect(const ClubFilters(sort: ClubSort.nearby).normalized().sort, isNull);
+      expect(
+          const ClubFilters(sort: ClubSort.nearby).normalized().sort, isNull);
       const near = ClubFilters(
         q: 'robo',
         topic: 'deep-tech',

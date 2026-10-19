@@ -111,14 +111,16 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
         DiscoverSection(
           key: const ValueKey('rail-this-week'),
           title: 'This week',
-          onSeeAll: () => context.push(findEventsLocation(
-              const EventFilters(when: EventWhen.thisWeek))),
+          onSeeAll: () => context.push(
+              findEventsLocation(const EventFilters(when: EventWhen.thisWeek))),
           child: EventRail(events: data.thisWeek),
         ),
       if (data.clubs.isNotEmpty)
         DiscoverSection(
           key: const ValueKey('rail-clubs'),
-          title: data.clubsAreNear ? 'Clubs ${nearPhrase(where)}' : 'Popular clubs',
+          title: data.clubsAreNear
+              ? 'Clubs ${nearPhrase(where)}'
+              : 'Popular clubs',
           onSeeAll: () => context.push(clubsDirectoryLocation(data.clubsAreNear
               ? const ClubFilters(
                   place: DiscoverPlace.near, sort: ClubSort.nearby)
@@ -137,8 +139,8 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
         DiscoverSection(
           key: const ValueKey('rail-popular'),
           title: 'Popular',
-          onSeeAll: () => context.push(findEventsLocation(
-              const EventFilters(sort: EventSort.popular))),
+          onSeeAll: () => context.push(
+              findEventsLocation(const EventFilters(sort: EventSort.popular))),
           child: EventRail(events: data.popular),
         ),
       // The existing row, opening the topic pages.

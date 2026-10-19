@@ -35,8 +35,7 @@ class DiscoverWhere extends Equatable {
   final WhereSource source;
 
   /// The server knows a point for them.
-  bool get isPlaced =>
-      lat != null && lng != null && source != WhereSource.none;
+  bool get isPlaced => lat != null && lng != null && source != WhereSource.none;
 
   /// "Near Thiruvananthapuram", "Near you", or "Everywhere".
   String get label {
