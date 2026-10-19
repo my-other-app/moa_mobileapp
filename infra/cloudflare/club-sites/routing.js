@@ -20,6 +20,8 @@ export const FALLBACK = "sites";
 // Cloudflare, it passes straight through to its origin instead of being taken.
 export const RESERVED = new Set([
   "www", "api", "admin", "admin-next", "club", "clubs", "clubs-next", "event", "events", "r",
+  // The dashboards (clubs-next and admin-next now redirect to these).
+  "club-dashboard", "main-portal", "admin-dashboard",
   "mail", "email", "send", "rsend", "smtp", "imap", "pop", "mx", "app", "apps", "staging",
   "api-staging", "dev", "status", "help", "support", "docs", "blog", "static", "cdn", "assets",
   "m", "go", "link", "links", "auth", "login", "account", "accounts", "dashboard",

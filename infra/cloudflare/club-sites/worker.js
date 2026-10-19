@@ -2,8 +2,8 @@
  * Club websites at {name}.myotherapp.in, and at a club's own domain.
  *
  * DNS has a proxied wildcard (*.myotherapp.in, AAAA 100::) and this Worker is
- * routed on *.myotherapp.in/*. Named records (api, events, www, clubs-next,
- * admin-next, mail...) are DNS-only, so their traffic never reaches Cloudflare's
+ * routed on *.myotherapp.in/*. Named records (api, events, www, club-dashboard,
+ * main-portal, mail...) are DNS-only, so their traffic never reaches Cloudflare's
  * proxy or this Worker; only names that exist nowhere else arrive here.
  *
  * A club's own domain (www.theirclub.org) is a Cloudflare for SaaS custom

@@ -1,5 +1,7 @@
 # Domains, club sites and mail — plan
 
+> **2026-10-19:** the dashboards live at `club-dashboard.myotherapp.in` (clubs) and `main-portal.myotherapp.in` (admin), not the `club.` and `admin.` names planned below. `clubs-next`, `admin-next` and `admin-dashboard` redirect there (308, path kept), set on the Vercel domains.
+
 Written 2026-10-16. Nothing here is built yet. Each phase below is one integration step, shipped and verified before the next.
 
 **Decided 2026-10-16**: DNS moves to Cloudflare — done the same day. No mail server of our own and no mail subscription (section 3.2): staff mail on a free hosted mailbox; club mail built into MyOtherApp, received and sent through SES.

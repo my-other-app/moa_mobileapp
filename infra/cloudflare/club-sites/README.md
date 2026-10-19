@@ -4,7 +4,7 @@ A Cloudflare Worker that serves each club's published website at its own subdoma
 
 ## How it fits together
 
-- **DNS:** one proxied wildcard record, `*.myotherapp.in AAAA 100::`. The named records (`api`, `events`, `www`, `clubs-next`, `admin-next`, the mail records) are DNS-only, so their traffic never reaches Cloudflare's proxy or this Worker.
+- **DNS:** one proxied wildcard record, `*.myotherapp.in AAAA 100::`. The named records (`api`, `events`, `www`, `club-dashboard`, `main-portal`, the old `clubs-next` and `admin-next` that redirect to them, the mail records) are DNS-only, so their traffic never reaches Cloudflare's proxy or this Worker.
 - **Route:** `*.myotherapp.in/*` → `club-sites`.
 - **Page:** the backend stores each club's published site as one HTML page at `GET /api/v1/sites/{name}`. The Worker fetches it, caches it for 5 minutes, and serves it with a strict Content-Security-Policy.
 - **Analytics:** on its own address the page counts its own visits (`POST /api/v1/sites/{name}/visit`), so nothing extra is needed here.
