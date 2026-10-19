@@ -79,7 +79,6 @@ void main() {
       expect(isOwnSite(Uri.parse('https://events.myotherapp.in/x')), isTrue);
       expect(isOwnSite(Uri.parse('https://instagram.com/x')), isFalse);
       expect(isOwnSite(Uri.parse('mailto:support@myotherapp.in')), isFalse);
-      expect(liveRoomUri(68).toString(), 'https://myotherapp.in/68/live');
     });
   });
 

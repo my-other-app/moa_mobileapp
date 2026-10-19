@@ -1,0 +1,367 @@
+import 'package:finnet/app/router/link_pages.dart';
+import 'package:finnet/app/router/pending_location.dart';
+import 'package:finnet/app/router/route_access.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/shared/utils/external_links.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+
+class _FakeAuth extends StateNotifier<AuthState> implements AuthStateNotifier {
+  _FakeAuth(super.state);
+
+  void set(AuthState next) => state = next;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName} not needed here');
+}
+
+const _signedIn = AuthState(accessToken: 'token', isInitialized: true);
+const _signedOut = AuthState(isInitialized: true);
+
+/// A small app: home, an event, the profile tab and sign-in, with the
+/// pieces under test wired in as the real router wires them.
+class _App {
+  _App(AuthState start) {
+    auth = _FakeAuth(start);
+    container = ProviderContainer(overrides: [
+      authStateProvider.overrideWith((ref) => auth),
+      linkLauncherProvider.overrideWithValue((uri) async {
+        opened.add(uri);
+        return true;
+      }),
+    ]);
+    authValue = ValueNotifier(start);
+    container.listen<AuthState>(
+        authStateProvider, (_, next) => authValue.value = next);
+    router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (_, __) => const _Page('home'), routes: [
+          GoRoute(
+              path: 'events/:ref',
+              builder: (context, s) => Consumer(
+                    builder: (context, ref, _) => Scaffold(
+                      appBar: AppBar(),
+                      body: Column(children: [
+                        Text('event ${s.pathParameters['ref']}'),
+                        TextButton(
+                          onPressed: () {
+                            if (ensureSignedIn(
+                                context, ref, 'Sign in to follow clubs.')) {
+                              followed++;
+                            }
+                          },
+                          child: const Text('Follow'),
+                        ),
+                      ]),
+                    ),
+                  )),
+        ]),
+        GoRoute(path: '/profile', builder: (_, __) => const _Page('profile')),
+        GoRoute(
+            path: signInPath,
+            builder: (_, s) => SignInPageFrame(
+                  location: s.uri,
+                  child: const _Page('sign in'),
+                )),
+      ],
+    );
+    listener = openPendingOnHome(
+        router, authValue, container.read(pendingLocationProvider));
+  }
+
+  late final _FakeAuth auth;
+  late final ValueNotifier<AuthState> authValue;
+  late final ProviderContainer container;
+  late final GoRouter router;
+  late final VoidCallback listener;
+  final opened = <Uri>[];
+  int followed = 0;
+
+  PendingLocation get pending => container.read(pendingLocationProvider);
+
+  /// On the sign-in screen, as the sign-in flow is before it ends at Home.
+  Future<void> signIn(WidgetTester tester) async {
+    router.go(signInPath);
+    await tester.pumpAndSettle();
+  }
+
+  String get location => router.state.uri.toString();
+
+  Future<void> pump(WidgetTester tester) async {
+    addTearDown(() {
+      router.routerDelegate.removeListener(listener);
+      router.dispose();
+      container.dispose();
+    });
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp.router(routerConfig: router),
+    ));
+    await tester.pumpAndSettle();
+  }
+}
+
+class _Page extends StatelessWidget {
+  const _Page(this.name);
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) =>
+      Scaffold(appBar: AppBar(), body: Text(name));
+}
+
+void main() {
+  group('a sign-in comes back to where it started', () {
+    testWidgets('once signed in, the router landing on Home opens the page',
+        (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      await app.signIn(tester);
+      app.pending.holdReturn('/events/12');
+
+      // The sign-in flow ends with go('/'), signed in.
+      app.auth.set(_signedIn);
+      app.router.go('/');
+      await tester.pumpAndSettle();
+
+      expect(find.text('event 12'), findsOneWidget);
+      expect(app.pending.location, isNull);
+      // Over Home: Back returns there.
+      app.router.pop();
+      await tester.pumpAndSettle();
+      expect(find.text('home'), findsOneWidget);
+    });
+
+    testWidgets('a tab comes back as the tab, not above Home', (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      await app.signIn(tester);
+      app.pending.holdReturn('/profile');
+      app.auth.set(_signedIn);
+      app.router.go('/');
+      await tester.pumpAndSettle();
+
+      expect(app.location, '/profile');
+      expect(app.router.canPop(), isFalse);
+    });
+
+    testWidgets('signed out, a sign-in\'s return waits', (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      await app.signIn(tester);
+      app.pending.holdReturn('/events/12');
+      app.router.go('/');
+      await tester.pumpAndSettle();
+
+      expect(find.text('home'), findsOneWidget);
+      expect(app.pending.location, '/events/12');
+    });
+
+    testWidgets('a public link that opened the app opens signed out',
+        (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      // As the splash screen hands over.
+      await app.signIn(tester);
+      app.pending.holdLaunch('/events/hack-night-04');
+      app.router.go('/');
+      await tester.pumpAndSettle();
+
+      expect(find.text('event hack-night-04'), findsOneWidget);
+    });
+
+    testWidgets('a private link that opened the app waits for sign-in',
+        (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      await app.signIn(tester);
+      app.pending.holdLaunch('/profile');
+      app.router.go('/');
+      await tester.pumpAndSettle();
+
+      expect(find.text('home'), findsOneWidget);
+      expect(app.pending.location, '/profile');
+    });
+  });
+
+  group('the sign-in screen', () {
+    testWidgets('holds its "from", and "Not now" forgets it and goes home',
+        (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      app.router.go(signInLocation('/profile'));
+      await tester.pumpAndSettle();
+      expect(app.pending.location, '/profile');
+
+      await tester.tap(find.byKey(const ValueKey('sign-in-not-now')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('home'), findsOneWidget);
+      expect(app.pending.location, isNull);
+    });
+
+    testWidgets('opened over a page, "Not now" returns to it', (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      app.router.push('/events/12');
+      await tester.pumpAndSettle();
+      app.router.push(signInLocation('/events/12'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Not now'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('event 12'), findsOneWidget);
+      expect(app.pending.location, isNull);
+    });
+
+    testWidgets('Back forgets the return too', (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      app.router.push(signInLocation('/events/12'));
+      await tester.pumpAndSettle();
+      expect(app.pending.location, '/events/12');
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(app.pending.location, isNull);
+    });
+
+    testWidgets('with nothing underneath, Back goes home rather than out',
+        (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      app.router.go(signInLocation('/profile'));
+      await tester.pumpAndSettle();
+      expect(app.router.canPop(), isFalse);
+
+      // The system's Back, as Android sends it.
+      final handled = await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(handled, isTrue);
+      expect(find.text('home'), findsOneWidget);
+      expect(app.pending.location, isNull);
+    });
+
+    testWidgets('ignores a "from" that leaves the app', (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      app.router.go('$signInPath?from=https%3A%2F%2Fevil.example');
+      await tester.pumpAndSettle();
+      expect(app.pending.location, isNull);
+      expect(
+          returnTarget(Uri.parse('$signInPath?from=//evil.example')), isNull);
+      expect(
+          returnTarget(Uri.parse(signInLocation('/auth/onboarding'))), isNull);
+    });
+  });
+
+  group('ensureSignedIn', () {
+    testWidgets('signed in, it says yes and asks nothing', (tester) async {
+      final app = _App(_signedIn);
+      await app.pump(tester);
+      app.router.push('/events/12');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Follow'));
+      await tester.pumpAndSettle();
+
+      expect(app.followed, 1);
+      expect(find.byKey(const ValueKey('sign-in-prompt')), findsNothing);
+    });
+
+    testWidgets('signed out, it asks; "Not now" leaves things as they were',
+        (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      app.router.push('/events/12');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Follow'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('sign-in-prompt')), findsOneWidget);
+      expect(find.text('Sign in to follow clubs.'), findsOneWidget);
+
+      await tester.tap(find.text('Not now'));
+      await tester.pumpAndSettle();
+
+      expect(app.followed, 0);
+      expect(find.text('event 12'), findsOneWidget);
+      expect(app.pending.location, isNull);
+    });
+
+    testWidgets('"Sign in" opens sign-in over the page, to come back to it',
+        (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      app.router.push('/events/12');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Follow'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('sign-in-prompt-go')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('sign in'), findsOneWidget);
+      expect(app.location, signInLocation('/events/12'));
+      expect(app.pending.location, '/events/12');
+      expect(app.followed, 0);
+
+      // Signed in, the flow lands on Home and the event opens again.
+      app.auth.set(_signedIn);
+      app.router.go('/');
+      await tester.pumpAndSettle();
+      expect(find.text('event 12'), findsOneWidget);
+    });
+  });
+
+  group('a link the app cannot show', () {
+    testWidgets('is a friendly page that offers the website and home',
+        (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      app.router.push('/events/12');
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: app.container,
+        child: const MaterialApp(
+          home: LinkNotFoundPage(location: '/events/x/y?z=1'),
+        ),
+      ));
+
+      expect(find.text('This page isn\'t in the app'), findsOneWidget);
+      // Never the address, never an error's words.
+      expect(find.textContaining('/events/x/y'), findsNothing);
+      expect(find.textContaining('not found:'), findsNothing);
+
+      await tester.tap(find.text('Open in browser'));
+      expect(
+          app.opened.single.toString(), 'https://myotherapp.in/events/x/y?z=1');
+      expect(find.text('Go to Home'), findsOneWidget);
+    });
+
+    testWidgets('a certificate, signed out, is its public page',
+        (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: app.container,
+        child: const MaterialApp(
+          home: CertificateLinkPage(ticketId: 'abc-123'),
+        ),
+      ));
+
+      await tester.tap(find.text('View certificate'));
+      expect(app.opened.single.toString(),
+          'https://myotherapp.in/certificates/abc-123');
+    });
+  });
+}

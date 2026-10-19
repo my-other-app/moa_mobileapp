@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/app/router/route_access.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+
+// The one check of a way back, shared with the router.
+export 'package:finnet/app/router/route_access.dart' show safeReturnPath;
 
 /// Reading is open to anyone; acting -- following a club, liking, voting,
 /// commenting, reporting -- needs an account. This is where the two meet.
@@ -18,25 +22,7 @@ import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 /// `/auth/onboarding?from=X` to `/auth/profile-check?from=X`.
 
 /// The query parameter that carries the page to come back to.
-const signInFromParam = 'from';
-
-/// [from] when it is a page of this app to go to: a path that starts with
-/// a single `/`, with no scheme or host, and not a sign-in step (which
-/// would go round in a circle). Null for anything else -- including
-/// `//evil.example`, `https://...` and `javascript:...`.
-String? safeReturnPath(String? from) {
-  final path = from?.trim() ?? '';
-  if (!path.startsWith('/') || path.startsWith('//')) return null;
-  if (path.contains('\\')) return null;
-  final uri = Uri.tryParse(path);
-  if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
-  if (uri.path == '/splash' ||
-      uri.path.startsWith('/auth') ||
-      uri.path.startsWith('/onboarding')) {
-    return null;
-  }
-  return path;
-}
+const signInFromParam = returnParameter;
 
 /// [path] with `?from=` [from] added, when [from] is safe to go back to;
 /// [path] as it is otherwise.
@@ -64,11 +50,16 @@ String? signInFromOf(BuildContext context) {
 
 /// Whether this person may do something that needs an account. If not, asks
 /// them to sign in -- saying [reason] -- and answers false; the action is
-/// not done, and they can do it once they are back. Signed in, it answers
-/// true and asks nothing.
-bool ensureSignedIn(BuildContext context, WidgetRef ref, String reason) {
+/// not done, and they can do it once they are back (at [returnTo], by
+/// default this page). Signed in, it answers true and asks nothing.
+bool ensureSignedIn(
+  BuildContext context,
+  WidgetRef ref,
+  String reason, {
+  String? returnTo,
+}) {
   if (ref.read(isAuthenticatedProvider)) return true;
-  askToSignIn(context, ref, reason);
+  askToSignIn(context, ref, reason, returnTo: returnTo);
   return false;
 }
 
@@ -77,8 +68,9 @@ bool ensureSignedIn(BuildContext context, WidgetRef ref, String reason) {
 Future<void> askToSignIn(
   BuildContext context,
   WidgetRef ref,
-  String reason,
-) async {
+  String reason, {
+  String? returnTo,
+}) async {
   final go = await showModalBottomSheet<bool>(
     context: context,
     backgroundColor: Colors.white,
@@ -87,15 +79,19 @@ Future<void> askToSignIn(
     ),
     builder: (sheetContext) => SignInPromptSheet(reason: reason),
   );
-  if (go == true && context.mounted) startSignIn(context, ref);
+  if (go == true && context.mounted) {
+    startSignIn(context, ref, returnTo: returnTo);
+  }
 }
 
 /// Open the sign-in screen over the current page:
-/// `/auth/onboarding?from=<the page>`, so signing in comes back to it.
-void startSignIn(BuildContext context, WidgetRef ref) {
+/// `/auth/onboarding?from=<the page>`, so signing in comes back to it (or
+/// to [returnTo]).
+void startSignIn(BuildContext context, WidgetRef ref, {String? returnTo}) {
   final router = GoRouter.maybeOf(context);
   if (router == null) return;
-  router.push(withSignInFrom('/auth/onboarding', _here(context, router)));
+  router.push(
+      withSignInFrom(signInPath, returnTo ?? _here(context, router)));
 }
 
 /// Where the person is, as an address to come back to.

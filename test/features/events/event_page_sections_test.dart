@@ -368,10 +368,10 @@ void main() {
 
       await tester.tap(find.widgetWithText(FilledButton, 'REGISTER NOW'));
       await _settle(tester);
-      expect(find.text('Sign in to continue'), findsOneWidget);
+      expect(find.byKey(const ValueKey('sign-in-prompt')), findsOneWidget);
       expect(h.went, isEmpty, reason: 'not to the form');
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+      await tester.tap(find.byKey(const ValueKey('sign-in-prompt-go')));
       await _settle(tester);
       expect(h.went.single.$1, '/auth/onboarding?from=%2Fevents%2F7');
       expect(signInLocationFrom(h.went.single.$1), '/events/7');

@@ -512,7 +512,7 @@ void main() {
     expect(find.text('Continue'), findsNothing);
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pumpAndSettle();
-    expect(find.text('Sign in to continue'), findsOneWidget);
+    expect(find.byKey(const ValueKey('sign-in-prompt')), findsOneWidget);
   });
 
   group('a paid online event', () {

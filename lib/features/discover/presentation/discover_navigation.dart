@@ -39,16 +39,18 @@ void openDiscoverEvent(BuildContext context, int eventId) {
   context.push('/events/$eventId');
 }
 
-/// The club's page. A club without an id cannot be opened by the app's
-/// club page, so nothing happens.
+/// The club's page, by id, or by slug for a club the server sent without
+/// one (the page finds it). With neither, nothing happens.
 void openDiscoverClub(
   BuildContext context, {
   required int id,
   String? slug,
   required String name,
 }) {
-  if (id <= 0) return;
-  context.push('/clubs/$id', extra: {'clubSlug': slug ?? '', 'clubName': name});
+  final s = slug?.trim() ?? '';
+  if (id <= 0 && s.isEmpty) return;
+  final ref = id > 0 ? '$id' : Uri.encodeComponent(s);
+  context.push('/clubs/$ref', extra: {'clubSlug': s, 'clubName': name});
 }
 
 /// A post, with its comments.
