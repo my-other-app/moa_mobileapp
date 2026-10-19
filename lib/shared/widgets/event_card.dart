@@ -6,11 +6,11 @@ import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart'
     show ticketRoute;
 import 'package:finnet/features/events/presentation/utils/event_feed.dart';
+import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// Status type for event cards
 enum EventCardStatus {
@@ -325,9 +325,14 @@ class EventCard extends StatelessWidget {
       case EventCardStatus.attended:
         return FilledButton(
           onPressed: () async {
-            if (certificateUrl != null && certificateUrl!.isNotEmpty) {
-              final Uri url = Uri.parse(certificateUrl!);
-              await launchUrl(url, mode: LaunchMode.externalApplication);
+            final url = Uri.tryParse(certificateUrl ?? '');
+            if (url != null && url.hasScheme) {
+              // The site's certificate page: inside the app.
+              if (isOwnSite(url)) {
+                await openInAppThenBrowser(url);
+              } else {
+                await openExternally(url);
+              }
             } else {
               context.push('/events/$eventId', extra: _getNavigationExtras());
             }

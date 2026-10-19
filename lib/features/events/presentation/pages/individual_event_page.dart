@@ -29,6 +29,7 @@ import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
@@ -45,12 +46,18 @@ class IndividualEventPage extends ConsumerStatefulWidget {
   final String? initialTicketUrl;
   final String? initialCertificateUrl;
 
+  /// Open the live room as soon as the page is up: a tapped "join now"
+  /// push (`event_live_join`) lands here, so closing the room returns to
+  /// the event.
+  final bool openLiveRoom;
+
   const IndividualEventPage({
     super.key,
     required this.eventId,
     this.initialStatus,
     this.initialTicketUrl,
     this.initialCertificateUrl,
+    this.openLiveRoom = false,
   });
 
   @override
@@ -164,6 +171,11 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     );
     WidgetsBinding.instance.addObserver(this);
     _fetchData();
+    if (widget.openLiveRoom) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openLiveRoom();
+      });
+    }
   }
 
   @override
@@ -458,10 +470,17 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// it was: the room is optional; the event itself has loaded.
   late final LiveStreamClient<LiveFeed> _live;
 
-  /// The room is the web page, so voting, polls and the quiz are the same on every phone.
+  /// The room is the web page, so voting, polls and the quiz are the same
+  /// on every phone. It opens inside the app (SFSafariViewController /
+  /// Custom Tabs), so closing it comes back here; the browser if it cannot.
   Future<void> _openLiveRoom() async {
-    final url = Uri.parse('${AppConfig.publicSiteUrl}/${widget.eventId}/live');
-    await launchUrl(url, mode: LaunchMode.inAppBrowserView);
+    final opened =
+        await ref.read(linkLauncherProvider)(liveRoomUri(widget.eventId));
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't open the live room")),
+      );
+    }
   }
 
   Widget _buildLiveStrip(BuildContext context) {
@@ -2082,8 +2101,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                   }
                   // else: Already a full URL, use as-is
 
-                  final Uri url = Uri.parse(finalUrl);
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                  // The site's certificate page, inside the app.
+                  await ref.read(linkLauncherProvider)(Uri.parse(finalUrl));
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(

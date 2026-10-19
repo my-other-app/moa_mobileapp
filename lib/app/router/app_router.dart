@@ -289,6 +289,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                         initialStatus: extra?['status'],
                         initialTicketUrl: extra?['ticketUrl'],
                         initialCertificateUrl: extra?['certificateUrl'],
+                        // ?live=quiz|poll|room: a "join now" push.
+                        openLiveRoom:
+                            state.uri.queryParameters.containsKey('live'),
                       );
                     },
                     routes: [

@@ -79,6 +79,7 @@ enum NotificationType {
   nearbyEvent('nearby_event'),
   clubAnnouncement('club_announcement'),
   clubThread('club_thread'),
+  eventLiveJoin('event_live_join'),
   volunteerAdded('volunteer_added'),
   volunteerRemoved('volunteer_removed');
 
@@ -193,9 +194,18 @@ class NotificationModel {
     return (id == null || id.isEmpty) ? null : id;
   }
 
+  /// The event a "join now" row (`event_live_join`) is about: the row's
+  /// event, else the push's `event_id`.
+  int? get liveEventId => event?.id ?? jsonInt(data?['event_id']);
+
+  /// `quiz` or `poll`, from the push's `what`.
+  String? get liveWhat => jsonString(data?['what']);
+
   /// Get display icon based on notification type
   String get iconEmoji {
     switch (type) {
+      case 'event_live_join':
+        return liveWhat == 'quiz' ? '🧠' : '📊';
       case 'certificate_generated':
         return '🏆';
       case 'event_checkin':
