@@ -133,7 +133,9 @@ class DiscoverClubCard extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                line(tagline),
+                                // Without one, the name sits centred by
+                                // the logo.
+                                if (tagline.isNotEmpty) line(tagline),
                               ],
                             ),
                           ),

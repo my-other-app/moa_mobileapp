@@ -106,6 +106,7 @@ class _TopicCard extends StatelessWidget {
     final surface = TopicSurface.of(context);
     final count = topic.upcomingEvents;
     final countText = count == null || count <= 0 ? null : '$count upcoming';
+    final emoji = interestGlyph(topic.icon, topic.iconType) != null;
 
     return Semantics(
       container: true,
@@ -133,8 +134,10 @@ class _TopicCard extends StatelessWidget {
                   Container(
                     width: _disc,
                     height: _disc,
+                    // An emoji keeps its own colours, on white; an icon is
+                    // drawn white on the topic's colour.
                     decoration: BoxDecoration(
-                      color: palette.accent,
+                      color: emoji ? Colors.white : palette.accent,
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
