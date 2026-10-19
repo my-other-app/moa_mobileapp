@@ -42,8 +42,8 @@ void main() {
       expect(authRedirect(_signedOut, '/events'),
           '/auth/onboarding?from=%2Fevents');
       // The query comes back too.
-      expect(authRedirect(_signedOut, '/events/12/register?x=1'),
-          '/auth/onboarding?from=%2Fevents%2F12%2Fregister%3Fx%3D1');
+      expect(authRedirect(_signedOut, '/profile/badges?x=1'),
+          '/auth/onboarding?from=%2Fprofile%2Fbadges%3Fx%3D1');
     });
 
     test('signed out, the public pages open', () {
@@ -59,6 +59,15 @@ void main() {
         '/tickets/abc-123',
         '/certificates/abc-123',
         '/topics/development',
+        // Each asks for an account at its own action.
+        '/events/hack-night-04/register',
+        '/events/hack-night-04/compete',
+        '/feedback/12/34?k=abc',
+        // Batch A's pages.
+        '/discover/events?when=this_week',
+        '/discover/clubs',
+        '/discover/threads',
+        '/topics',
       ]) {
         expect(authRedirect(_signedOut, location), isNull, reason: location);
       }
@@ -77,7 +86,14 @@ void main() {
       expect(authRedirect(_signedIn, '/events/12'), isNull);
       expect(authRedirect(_signedIn, '/profile/settings'), isNull);
       expect(authRedirect(_signedIn, '/auth/onboarding'), '/auth/profile-check');
+      // Signed in on sign-in with a way back: the profile check takes an
+      // existing account straight there.
       expect(authRedirect(_signedIn, '/auth/onboarding?from=%2Fprofile'),
+          '/auth/profile-check?from=%2Fprofile');
+      // Never anywhere outside the app.
+      expect(
+          authRedirect(_signedIn,
+              '/auth/onboarding?from=${Uri.encodeComponent('https://evil.example/x')}'),
           '/auth/profile-check');
     });
 
@@ -203,7 +219,7 @@ void main() {
       test('an event and a club open by slug as well as by id', () {
         expect(nameOf('/events/hack-night-04'), AppRoutes.eventDetail);
         expect(nameOf('/events/123'), AppRoutes.eventDetail);
-        expect(matchOf('/events/hack-night-04').pathParameters['eventRef'],
+        expect(matchOf('/events/hack-night-04').pathParameters['eventId'],
             'hack-night-04');
         expect(nameOf('/clubs/circuit-society'), AppRoutes.clubDetail);
         expect(nameOf('/clubs/42'), AppRoutes.clubDetail);

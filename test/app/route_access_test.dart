@@ -19,16 +19,22 @@ void main() {
       '/tickets/abc-123',
       '/certificates/abc-123',
       '/topics/development',
-      // A screen a feature adds later is open unless listed.
-      '/discover',
+      // Open, each asking for an account at its own action.
+      '/events/12/register',
+      '/events/hack-night-04/register',
+      '/events/hack-night-04/compete',
+      '/feedback/12/34',
+      // Batch A's pages; and any screen a feature adds is open unless listed.
+      '/discover/events',
+      '/discover/clubs',
+      '/discover/threads',
+      '/topics',
       '/threads',
     ];
     const private = [
       '/events',
       '/events/',
       '/events/registration-success',
-      '/events/12/register',
-      '/events/hack-night-04/register',
       '/clubs',
       '/profile',
       '/profile/edit',
@@ -66,10 +72,19 @@ void main() {
     expect(returnTarget(Uri.parse(location)), '/events/12/register?x=1');
   });
 
+  test('profileCheckLocation passes a safe way back on', () {
+    expect(profileCheckLocation('/events/12'),
+        '/auth/profile-check?from=%2Fevents%2F12');
+    expect(profileCheckLocation(null), '/auth/profile-check');
+    expect(profileCheckLocation('https://evil.example'), '/auth/profile-check');
+    expect(safeReturn('/\\evil.example'), isNull);
+    expect(safeReturn('/events/12?x=1'), '/events/12?x=1');
+  });
+
   test('returnTarget only comes back inside the app', () {
     expect(returnTarget(Uri.parse('/auth/onboarding')), isNull);
-    expect(
-        returnTarget(Uri.parse(signInLocation('https://evil.example'))), isNull);
+    expect(returnTarget(Uri.parse(signInLocation('https://evil.example'))),
+        isNull);
     expect(returnTarget(Uri.parse(signInLocation('//evil.example'))), isNull);
     expect(returnTarget(Uri.parse(signInLocation('/auth/onboarding'))), isNull);
     expect(returnTarget(Uri.parse(signInLocation('/'))), '/');

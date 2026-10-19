@@ -49,6 +49,7 @@ import 'package:finnet/features/volunteer/presentation/pages/manual_ticket_entry
 import 'package:finnet/app/router/link_pages.dart';
 import 'package:finnet/app/router/pending_location.dart';
 import 'package:finnet/app/router/route_access.dart';
+import 'package:finnet/app/router/web_links.dart';
 
 GlobalKey<NavigatorState> _rootNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -86,7 +87,9 @@ String? authRedirect(AuthState auth, String location, {String? launchLink}) {
   if (!auth.isInitialized) return '/splash';
 
   if (auth.isAuthenticated) {
-    return path == signInPath ? '/auth/profile-check' : null;
+    // Signed in on the sign-in screen: on to the profile check, which
+    // takes an existing account straight back to `from`.
+    return path == signInPath ? profileCheckLocation(returnTarget(uri)) : null;
   }
   if (isAuthFlow(path)) {
     if (path == signInPath && launchLink != null && returnTarget(uri) == null) {
@@ -136,16 +139,29 @@ List<RouteBase> overHome(
   ];
 }
 
-/// The event's id or slug from an `/events/{ref}...` address.
-String _eventRef(GoRouterState state) => state.pathParameters['eventRef'] ?? '';
+/// The event's id or slug from an `/events/{eventId}...` address. The
+/// parameter keeps its old name; it is a string ref now, so the website's
+/// `/events/hack-night-04` and the app's `/events/123` are the same route.
+String _eventRef(GoRouterState state) => state.pathParameters['eventId'] ?? '';
 
 /// The event's own page, for a sub-address of it.
 String _eventLocation(GoRouterState state) =>
     '/events/${Uri.encodeComponent(_eventRef(state))}';
 
-/// `/events/{ref}`: the event's page. [EventRefPage] finds the id behind a
-/// website slug; the page itself takes the id.
-Widget _eventPage(GoRouterState state) {
+/// An Explore screen, keeping the topic or interest a Find link carried.
+String _explore(String path, Map<String, String> query) {
+  final keep = {
+    for (final key in const ['topic', 'interest'])
+      if (query[key]?.isNotEmpty ?? false) key: query[key]!,
+  };
+  return Uri(path: path, queryParameters: keep.isEmpty ? null : keep)
+      .toString();
+}
+
+/// `/events/{eventId}`: the event's page, by id or slug. [EventRefPage]
+/// finds the id behind a slug for the page, which takes an id. Batch B's
+/// `buildEventPage` takes the slug itself and replaces this at merge.
+Widget _buildEventPage(BuildContext context, GoRouterState state) {
   final extra = state.extra as Map<String, dynamic>?;
   return EventRefPage(
     eventRef: _eventRef(state),
@@ -157,6 +173,21 @@ Widget _eventPage(GoRouterState state) {
       // ?live=quiz|poll|room: a "join now" push, or the website's room.
       openLiveRoom: state.uri.queryParameters.containsKey('live'),
     ),
+  );
+}
+
+/// `/events/{eventId}/register`. The form here needs the event's questions,
+/// which the event's page hands over; opened without them (a link, or the
+/// way back from sign-in) it shows the event, whose Register starts again.
+/// Batch B's `buildEventRegisterPage` loads them itself and replaces this.
+Widget _buildEventRegisterPage(BuildContext context, GoRouterState state) {
+  final extra = state.extra as Map<String, dynamic>?;
+  final questions = extra?['additionalDetails'] as List<AdditionalDetail>?;
+  if (questions == null) return _buildEventPage(context, state);
+  return EventRefPage(
+    eventRef: _eventRef(state),
+    page: (eventId) =>
+        EventFormPage(eventId: eventId, additionalDetails: questions),
   );
 }
 
@@ -189,6 +220,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     // Add analytics observer for automatic screen tracking
     observers: ref.read(routerObserversProvider),
     redirect: (context, state) {
+      // A universal link or an App Link arrives as the whole URL: the
+      // website's address, read as the app's (web_links.dart).
+      final fromWebsite = appLocationForLink(state.uri);
+      if (fromWebsite != null) return fromWebsite;
       final location = state.uri.toString();
       final now = auth.value;
       // A link that opened the app arrives while the splash screen reads
@@ -306,9 +341,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             );
           }),
 
-      // Main shell with bottom nav. The tabs first: Home's pages come
-      // last, so `/events/explore` is not taken for an event called
-      // "explore".
+      // Feature routes: full screen, outside the tabs, and matched before
+      // them, so their addresses win over the fallbacks under Home below.
+      // Batches A, B and C spread theirs here, one line each
+      // (...discoverRoutes, ...eventsRoutes, ...).
+
+      // Main shell with bottom nav
+      // The tabs first: Home's pages come last, so `/events/explore` is not
+      // taken for an event called "explore".
       ShellRoute(
         navigatorKey: shellKey,
         builder: (context, state, child) => MainShell(child: child),
@@ -411,16 +451,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               name: 'home',
               builder: (context, state) => const HomePage(),
               routes: [
-                // The features' own routes first: a fixed word in a path
-                // ("explore") must win over an event's or a club's slug.
-                // Batches A, B and C: one line each, on the marked line.
-                ...overHome(rootKey, [
-                  // Batch A (discover): ...discoverRoutes,
-
-                  // Batch B (events): ...eventRoutes,
-
-                  // Batch C (clubs, threads, auth, profile): ...clubRoutes,
-                ]),
+                // (A feature that wants its own pages here, over Home, can
+                // spread them as `...overHome(rootKey, routes)`.)
                 GoRoute(
                     path: 'events/explore',
                     name: 'exploreEvents',
@@ -456,44 +488,25 @@ final routerProvider = Provider<GoRouter>((ref) {
                     }),
                 // An event, by id or by the website's slug.
                 GoRoute(
-                    path: 'events/:eventRef',
+                    path: 'events/:eventId',
                     name: 'eventDetail',
                     parentNavigatorKey: rootKey,
-                    builder: (context, state) => _eventPage(state),
+                    builder: _buildEventPage, // merge: buildEventPage (B)
                     routes: [
                       GoRoute(
                           path: 'register',
                           name: 'eventRegister',
                           parentNavigatorKey: rootKey,
-                          // The form needs the event's questions, which
-                          // the event page hands over. A link (or a return
-                          // from sign-in) has none: it opens the event,
-                          // whose Register starts again from there.
-                          redirect: (context, state) => state.extra == null
-                              ? _eventLocation(state)
-                              : null,
-                          builder: (context, state) {
-                            final extra = state.extra as Map<String, dynamic>?;
-                            final additionalDetails =
-                                extra?['additionalDetails']
-                                        as List<AdditionalDetail>? ??
-                                    [];
-                            return EventRefPage(
-                              eventRef: _eventRef(state),
-                              page: (eventId) => EventFormPage(
-                                eventId: eventId,
-                                additionalDetails: additionalDetails,
-                              ),
-                            );
-                          }),
+                          builder: _buildEventRegisterPage, // merge: buildEventRegisterPage (B)
+                          ),
                       // The website's live room: the event, with the room
                       // open on top (as a "join now" push opens it).
                       GoRoute(
                           path: 'live',
                           redirect: (context, state) =>
                               '${_eventLocation(state)}?live=room'),
-                      // The website's team and submission pages: the event,
-                      // until the app has its own.
+                      // The competition: the event, until batch B's route
+                      // (matched first, above) takes it.
                       GoRoute(
                           path: 'compete',
                           redirect: (context, state) =>
@@ -546,8 +559,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => CertificateLinkPage(
                           ticketId: state.pathParameters['ticketId'] ?? '',
                         )),
-                // A topic: Explore, filtered to it, until there is a topic
-                // page (whose route, above, then wins).
+                // Until batch A's pages (matched first, above) take these:
+                // a topic is Explore filtered to it; Find events and the
+                // clubs directory are the Explore screens; the topics and
+                // every club's posts are Home.
                 GoRoute(
                     path: 'topics/:topicSlug',
                     redirect: (context, state) => Uri(
@@ -556,6 +571,30 @@ final routerProvider = Provider<GoRouter>((ref) {
                             'topic': state.pathParameters['topicSlug'] ?? '',
                           },
                         ).toString()),
+                GoRoute(path: 'topics', redirect: (context, state) => '/'),
+                GoRoute(
+                    path: 'discover/events',
+                    redirect: (context, state) => _explore(
+                        '/events/explore', state.uri.queryParameters)),
+                GoRoute(
+                    path: 'discover/clubs',
+                    redirect: (context, state) => _explore(
+                        '/clubs/explore', state.uri.queryParameters)),
+                GoRoute(
+                    path: 'discover/threads',
+                    redirect: (context, state) => '/'),
+                // The feedback survey from the email: the website's, until
+                // batch B's own (matched first, above) takes it.
+                GoRoute(
+                    path: 'feedback/:eventId/:registrationId',
+                    name: 'feedbackOnWeb',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => LinkNotFoundPage(
+                          location: state.uri.toString(),
+                          title: 'Tell the organisers how it went',
+                          message: 'The survey opens on the website, from '
+                              'the link in your email.',
+                        )),
               ]),
         ],
       ),

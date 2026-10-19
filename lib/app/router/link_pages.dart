@@ -265,7 +265,8 @@ class _CertificateOnWeb extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final page = websiteUriFor('/certificates/${Uri.encodeComponent(ticketId)}');
+    final page =
+        websiteUriFor('/certificates/${Uri.encodeComponent(ticketId)}');
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: _bar(context, title: 'Certificate'),
@@ -345,10 +346,17 @@ class _SignInGateState extends ConsumerState<SignInGate> {
 
   @override
   Widget build(BuildContext context) {
+    // With nothing underneath (the app opened here, or a tab sent the
+    // person here), Back is "Not now" rather than closing the app.
+    final canPop = GoRouter.maybeOf(context)?.canPop() ?? true;
     return PopScope(
+      canPop: canPop,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop && !ref.read(authStateProvider).isAuthenticated) {
+        if (ref.read(authStateProvider).isAuthenticated) return;
+        if (didPop) {
           ref.read(pendingLocationProvider).clear();
+        } else {
+          _notNow();
         }
       },
       child: Stack(

@@ -66,30 +66,27 @@ class _App {
     router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(
-            path: '/',
-            builder: (_, __) => const _Page('home'),
-            routes: [
-              GoRoute(
-                  path: 'events/:ref',
-                  builder: (context, s) => Consumer(
-                        builder: (context, ref, _) => Scaffold(
-                          appBar: AppBar(),
-                          body: Column(children: [
-                            Text('event ${s.pathParameters['ref']}'),
-                            TextButton(
-                              onPressed: () async {
-                                if (await requireSignIn(context, ref,
-                                    reason: 'Sign in to follow clubs.')) {
-                                  followed++;
-                                }
-                              },
-                              child: const Text('Follow'),
-                            ),
-                          ]),
+        GoRoute(path: '/', builder: (_, __) => const _Page('home'), routes: [
+          GoRoute(
+              path: 'events/:ref',
+              builder: (context, s) => Consumer(
+                    builder: (context, ref, _) => Scaffold(
+                      appBar: AppBar(),
+                      body: Column(children: [
+                        Text('event ${s.pathParameters['ref']}'),
+                        TextButton(
+                          onPressed: () async {
+                            if (await requireSignIn(context, ref,
+                                reason: 'Sign in to follow clubs.')) {
+                              followed++;
+                            }
+                          },
+                          child: const Text('Follow'),
                         ),
-                      )),
-            ]),
+                      ]),
+                    ),
+                  )),
+        ]),
         GoRoute(path: '/profile', builder: (_, __) => const _Page('profile')),
         GoRoute(
             path: signInPath,
@@ -118,6 +115,7 @@ class _App {
     router.go(signInPath);
     await tester.pumpAndSettle();
   }
+
   String get location => router.state.uri.toString();
 
   Future<void> pump(WidgetTester tester) async {
@@ -262,16 +260,33 @@ void main() {
       expect(app.pending.location, isNull);
     });
 
+    testWidgets('with nothing underneath, Back goes home rather than out',
+        (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      app.router.go(signInLocation('/profile'));
+      await tester.pumpAndSettle();
+      expect(app.router.canPop(), isFalse);
+
+      // The system's Back, as Android sends it.
+      final handled = await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(handled, isTrue);
+      expect(find.text('home'), findsOneWidget);
+      expect(app.pending.location, isNull);
+    });
+
     testWidgets('ignores a "from" that leaves the app', (tester) async {
       final app = _App(_signedOut);
       await app.pump(tester);
       app.router.go('$signInPath?from=https%3A%2F%2Fevil.example');
       await tester.pumpAndSettle();
       expect(app.pending.location, isNull);
-      expect(returnTarget(Uri.parse('$signInPath?from=//evil.example')),
-          isNull);
-      expect(returnTarget(Uri.parse(signInLocation('/auth/onboarding'))),
-          isNull);
+      expect(
+          returnTarget(Uri.parse('$signInPath?from=//evil.example')), isNull);
+      expect(
+          returnTarget(Uri.parse(signInLocation('/auth/onboarding'))), isNull);
     });
   });
 
@@ -382,8 +397,7 @@ void main() {
       return fake;
     }
 
-    testWidgets('an id opens the page at once, asking nothing',
-        (tester) async {
+    testWidgets('an id opens the page at once, asking nothing', (tester) async {
       final fake = await pumpEvent(tester, '12');
       expect(find.text('event page 12'), findsOneWidget);
       expect(fake.asked, 0);
@@ -446,8 +460,8 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
-      expect(find.text('club 7 circuit-society Circuit Society'),
-          findsOneWidget);
+      expect(
+          find.text('club 7 circuit-society Circuit Society'), findsOneWidget);
     });
   });
 
@@ -471,8 +485,8 @@ void main() {
       expect(find.textContaining('not found:'), findsNothing);
 
       await tester.tap(find.text('Open in browser'));
-      expect(app.opened.single.toString(),
-          'https://myotherapp.in/events/x/y?z=1');
+      expect(
+          app.opened.single.toString(), 'https://myotherapp.in/events/x/y?z=1');
       expect(find.text('Go to Home'), findsOneWidget);
     });
 

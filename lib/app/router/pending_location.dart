@@ -80,7 +80,14 @@ VoidCallback openPendingOnHome(
     final location = pending.location;
     if (location == null) return;
     final here = router.routerDelegate.currentConfiguration;
-    if (here.isEmpty || here.uri.path != '/') return;
+    if (here.isEmpty) return;
+    // Already there: the profile check took the person straight back to
+    // `from` (an existing account), so there is nothing left to open.
+    if (_same(here.uri, Uri.parse(location))) {
+      pending.clear();
+      return;
+    }
+    if (here.uri.path != '/') return;
     final now = auth.value;
     final ready = now.isAuthenticated ||
         (now.isInitialized && pending.fromLaunch && !needsAccount(location));
@@ -103,3 +110,7 @@ VoidCallback openPendingOnHome(
   router.routerDelegate.addListener(open);
   return open;
 }
+
+bool _same(Uri a, Uri b) =>
+    a.path.toLowerCase() == b.path.toLowerCase() &&
+    mapEquals(a.queryParameters, b.queryParameters);

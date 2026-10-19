@@ -2,30 +2,36 @@ import 'package:finnet/core/config/app_config.dart';
 
 /// The website's addresses, and the app's screen for each.
 ///
-/// The app's routes use the website's own paths wherever they can, so a
-/// universal link (iOS) or an App Link (Android) for
-/// `https://myotherapp.in/events/hack-night-04` opens the route
-/// `/events/hack-night-04` as it is. The site claims these for the apps in
-/// `/.well-known/` (moa_eventwebsite, `src/seo/appLinks.js`):
+/// A universal link (iOS) or an App Link (Android) reaches the router as the
+/// whole URL, `https://myotherapp.in/events/hack-night-04`; the router's
+/// redirect hands it to [webLocation], and goes where that says. The site
+/// claims these for the apps in `/.well-known/` (moa_eventwebsite,
+/// `src/seo/appLinks.js`):
 ///
-/// | Website                        | App                                  |
-/// | ------------------------------ | ------------------------------------ |
-/// | `/events/{slug or id}`         | the event's page                     |
-/// | `/events/{ref}/live`           | the event, with its live room open   |
-/// | `/events/{ref}/register`       | the event's page (Register is there) |
-/// | `/events/{ref}/compete`        | the event's page                     |
-/// | `/clubs/{slug or id}`          | the club                             |
-/// | `/threads/{id}`                | the post                             |
-/// | `/tickets/{id}`                | the ticket (its QR works offline)    |
-/// | `/certificates/{id}`           | the certificate                      |
-/// | `/topics/{slug}`               | the topic                            |
+/// | Website                          | App                                   |
+/// | -------------------------------- | ------------------------------------- |
+/// | `/events?…`                      | `/discover/events?…` (Find events)    |
+/// | `/events/{slug or id}`           | the event's page                      |
+/// | `/events/{ref}/live`             | the event, with its live room open    |
+/// | `/events/{ref}/register`         | registration                          |
+/// | `/events/{ref}/compete`          | the competition                       |
+/// | `/clubs?…`                       | `/discover/clubs?…` (the directory)   |
+/// | `/clubs/{slug or id}`            | the club                              |
+/// | `/threads`                       | `/discover/threads` (every club's)    |
+/// | `/threads/{id}`                  | the post                              |
+/// | `/tickets/{id}`                  | the ticket (its QR works offline)     |
+/// | `/certificates/{id}`             | the certificate                       |
+/// | `/topics`, `/topics/{slug}`      | the topics, a topic                   |
+/// | `/feedback/{event}/{reg}?k=`     | the feedback survey                   |
 ///
-/// iPhone leaves the live room and the competition pages in the browser
-/// (the site's file excludes them); Android's intent filters cannot leave a
-/// path out, so the app handles those too.
+/// The app's own `/events` and `/clubs` are the person's events and clubs
+/// (the tabs); the website's are the directories, which is why a link is
+/// read here first rather than matched as it is.
 ///
-/// [webLocation] also reads the few addresses the site has that are not
-/// claimed (the old `/{id}` event links, the directories, `/me/...`), for a
+/// iPhone leaves the live room in the browser (the site's file excludes
+/// it); Android's intent filters cannot leave a path out, so the app
+/// handles that too. [webLocation] also reads the addresses the site has
+/// that are not claimed (the old `/{id}` event links, `/me/...`), for a
 /// link that reaches the app some other way: a push's `url`.
 
 /// The hosts that are this site: the apex, and the two that redirect to it.
@@ -67,29 +73,37 @@ String? webLocation(Uri uri) {
 
   switch (head) {
     case 'events':
-      if (rest.isEmpty) return at('/events/explore');
+      // The directory: Find events, with the site's own filters.
+      if (rest.isEmpty) return at('/discover/events');
       final ref = one(rest.first);
       if (rest.length == 1) return at('/events/$ref');
       if (rest.length == 2) {
         switch (rest[1].toLowerCase()) {
           case 'live':
             return at('/events/$ref', const {'live': 'room'});
-          // Registering starts from the event's page, which has the form's
-          // questions; the page's Register asks for sign-in when needed.
           case 'register':
+            return at('/events/$ref/register');
           case 'compete':
-            return at('/events/$ref');
+            return at('/events/$ref/compete');
         }
       }
       return null;
     case 'clubs':
-      if (rest.isEmpty) return at('/clubs/explore');
+      if (rest.isEmpty) return at('/discover/clubs');
       return rest.length == 1 ? at('/clubs/${one(rest.first)}') : null;
     case 'threads':
+      if (rest.isEmpty) return at('/discover/threads');
+      return rest.length == 1 ? at('/threads/${one(rest.first)}') : null;
+    case 'topics':
+      if (rest.isEmpty) return at('/topics');
+      return rest.length == 1 ? at('/topics/${one(rest.first)}') : null;
     case 'tickets':
     case 'certificates':
-    case 'topics':
       return rest.length == 1 ? at('/$head/${one(rest.first)}') : null;
+    case 'feedback':
+      return rest.length == 2
+          ? at('/feedback/${one(rest[0])}/${one(rest[1])}')
+          : null;
     case 'me':
       if (rest.length != 1) return null;
       switch (rest.first.toLowerCase()) {
@@ -110,6 +124,23 @@ String? webLocation(Uri uri) {
     }
   }
   return null;
+}
+
+/// Where the router goes for a [uri] it was handed: a link to the website
+/// becomes the app's location for it ([webLocation]); a page of the site
+/// the app does not have becomes its path, which no route matches, so the
+/// friendly page offers it in the browser. Null for anything else -- an
+/// address inside the app, or another app's callback -- left as it is.
+String? appLocationForLink(Uri uri) {
+  if (!uri.hasScheme || !(uri.isScheme('https') || uri.isScheme('http'))) {
+    return null;
+  }
+  if (!isSiteHost(uri.host)) return null;
+  return webLocation(uri) ??
+      Uri(
+              path: uri.path.isEmpty ? '/' : uri.path,
+              query: uri.hasQuery ? uri.query : null)
+          .toString();
 }
 
 /// The website's page for an app [location] (a path and query): what "Open

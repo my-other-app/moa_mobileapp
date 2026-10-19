@@ -95,8 +95,8 @@ class SignInPromptSheet extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               reason ?? defaultReason,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: Colors.grey[700]),
+              style:
+                  theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
             ),
             const SizedBox(height: 24),
             FilledButton(
