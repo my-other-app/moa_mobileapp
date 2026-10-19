@@ -15,6 +15,12 @@ class CertificateListCard extends StatelessWidget {
   /// NetworkImage with an empty url drew nothing at all.
   final Widget? leading;
 
+  /// How wide [leading]'s slot is; it is always 48 high.
+  final double leadingWidth;
+
+  /// A slot the shape of a landscape certificate (800 x 519).
+  static const documentWidth = 74.0;
+
   final VoidCallback? onTap;
 
   const CertificateListCard({
@@ -25,6 +31,7 @@ class CertificateListCard extends StatelessWidget {
     required this.date,
     required this.imageUrl,
     this.leading,
+    this.leadingWidth = 48,
     this.onTap,
   });
 
@@ -64,7 +71,7 @@ class CertificateListCard extends StatelessWidget {
           children: [
             // Certificate Image
             SizedBox(
-              width: 48,
+              width: leadingWidth,
               height: 48,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(4),
@@ -100,28 +107,37 @@ class CertificateListCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 11),
-                  // Details Row
+                  // Details Row. The club and the type give way (an
+                  // ellipsis) to a long name rather than overflowing.
                   Row(
                     children: [
-                      Text(
-                        organization,
-                        style: TextStyle(
-                          color: Color(0xFF1E1E1E),
-                          fontSize: 12,
-                          fontFamily: 'DMSans',
-                          fontWeight: FontWeight.w400,
+                      Flexible(
+                        child: Text(
+                          organization,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Color(0xFF1E1E1E),
+                            fontSize: 12,
+                            fontFamily: 'DMSans',
+                            fontWeight: FontWeight.w400,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       _buildStarIcon(),
                       const SizedBox(width: 8),
-                      Text(
-                        type,
-                        style: TextStyle(
-                          color: Color(0xFF1E1E1E),
-                          fontSize: 12,
-                          fontFamily: 'DMSans',
-                          fontWeight: FontWeight.w400,
+                      Flexible(
+                        child: Text(
+                          type,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Color(0xFF1E1E1E),
+                            fontSize: 12,
+                            fontFamily: 'DMSans',
+                            fontWeight: FontWeight.w400,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),

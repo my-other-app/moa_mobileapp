@@ -13,6 +13,7 @@ import 'package:finnet/features/profile/presentation/providers/certificates_prov
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/utils/certificate_share.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/rendered_document_image.dart';
 
 /// One certificate, to the design: preview, title, id, club, two facts,
 /// a pin action, the status banner and the download button.
@@ -124,22 +125,18 @@ class CertificateDetailPage extends ConsumerWidget {
                 children: [
                   _PreviewPanel(
                     background: _preview,
-                    child: AspectRatio(
-                      // The shape the server crops the certificate to, so it
-                      // fills the panel rather than letterboxing inside it.
-                      aspectRatio: 800 / 519,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: AppNetworkImage(
-                          url: certificate.imageUrl(Env.apiBaseUrl),
-                          fit: BoxFit.contain,
-                          // Carries the person's name: emptied on sign-out.
-                          privacy: ImagePrivacy.private,
-                          placeholder: (_) => placeholder,
-                          // Falls back to the drawn version rather than an
-                          // empty panel if the render fails.
-                          errorWidget: (_) => placeholder,
-                        ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      // At the render's own shape, once it is in: a layered
+                      // design is not always the classic 800 x 519, and a
+                      // fixed shape cropped or letterboxed it. Kept on the
+                      // phone (private: it carries the person's name, and
+                      // is emptied at sign-out), so it opens offline.
+                      child: RenderedDocumentImage(
+                        url: certificate.imageUrl(Env.apiBaseUrl),
+                        // Held while it loads, and used if it cannot be
+                        // rendered at all, rather than an empty panel.
+                        placeholder: placeholder,
                       ),
                     ),
                   ),
