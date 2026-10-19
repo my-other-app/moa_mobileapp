@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/core/error/failures.dart';
 import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
 import 'package:finnet/features/payments/domain/payment_failures.dart';
+import 'package:finnet/shared/utils/external_links.dart';
 
 /// Says why a registration was refused, with its one way forward when there
 /// is one. Resolves to that action when the person takes it.
@@ -46,8 +46,9 @@ void showPaymentFailure(BuildContext context, Failure failure) {
           ? null
           : SnackBarAction(
               label: 'Open website',
-              onPressed: () =>
-                  launchUrl(uri, mode: LaunchMode.externalApplication),
+              // Paying on the website stays in the browser, where the
+              // payment apps it hands over to are reachable. Never throws.
+              onPressed: () => openExternally(uri),
             ),
     ),
   );

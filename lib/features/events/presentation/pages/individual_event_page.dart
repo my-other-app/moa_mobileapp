@@ -27,7 +27,6 @@ import 'package:intl/intl.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/themes/app_colors.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/utils/image_url.dart';
@@ -933,7 +932,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                       return;
                     }
                     final Uri url = Uri.parse(mapsUrl);
-                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                    // Never throws: no maps app is a no-op, not a crash.
+                    await openExternally(url);
                   },
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF2C333D),
@@ -1283,6 +1283,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         },
       );
 
+      if (!mounted) return;
       setState(() {
         // The picker offers whole stars; the field holds the
         // server's float, so widen rather than narrow.
@@ -1659,8 +1660,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                       ...downloads.map((download) => InkWell(
                             onTap: () async {
                               final Uri url = Uri.parse(download.url);
-                              await launchUrl(url,
-                                  mode: LaunchMode.externalApplication);
+                              await openExternally(url);
                             },
                             child: Text(
                               download.name.isEmpty
@@ -1816,7 +1816,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               onTap: () async {
                 if (contactPhone != null && contactPhone!.isNotEmpty) {
                   final Uri url = Uri.parse('tel:$contactPhone');
-                  await launchUrl(url);
+                  await openExternally(url);
                 }
               },
               child: Text(

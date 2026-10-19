@@ -5,7 +5,7 @@ import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_events_page.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
@@ -393,10 +393,9 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
                 final phoneNumber =
                     contactPhone ?? ''; // contactPhone from your model.
                 final telUrl = 'tel:$phoneNumber';
-                if (await canLaunchUrl(Uri.parse(telUrl))) {
-                  await launchUrl(Uri.parse(telUrl));
-                } else {
-                  // Handle the error, e.g. show a message to the user.
+                // Never throws: a phone without a dialler (a tablet) used
+                // to raise a PlatformException from this tap.
+                if (!await openExternally(Uri.parse(telUrl))) {
                   debugPrint('Could not launch $telUrl');
                 }
               },
@@ -583,7 +582,7 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
                       return;
                     }
                     final Uri url = Uri.parse(mapsUrl);
-                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                    await openExternally(url);
                   },
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF2C333D),
@@ -705,11 +704,14 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
   Widget _buildSocialCard(String url, String assetPath) {
     return InkWell(
       onTap: () async {
-        if (await canLaunchUrl(Uri.parse(url))) {
-          await launchUrl(Uri.parse(url));
-        } else {
-          // You might want to handle the error gracefully.
-          throw 'Could not launch $url';
+        // It threw a String when the link would not open: an uncaught
+        // error from a tap, filed as a crash.
+        final link = Uri.tryParse(url);
+        if (link == null || !await openExternally(link)) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Couldn't open that link")),
+          );
         }
       },
       child: Container(
