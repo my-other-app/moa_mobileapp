@@ -36,6 +36,7 @@ class SavedTicket {
     this.posterUrl,
     this.clubName,
     this.status = RegistrationStatus.registered,
+    this.revoked = false,
   });
 
   /// The ticket code, which the QR encodes.
@@ -53,6 +54,12 @@ class SavedTicket {
   /// [RegistrationStatus.registered] or, once checked in,
   /// [RegistrationStatus.attended].
   final RegistrationStatus status;
+
+  /// The organiser revoked it: the door refuses it. Kept on the phone so
+  /// the ticket screen can say so offline, never shown as a usable ticket.
+  /// From the list's `ticket_revoked`; a server without the field (or a
+  /// null) means not revoked.
+  final bool revoked;
 
   /// When the event is over, as far as the phone can tell: its start plus
   /// its length (a day when the length is unknown).
@@ -97,6 +104,7 @@ class SavedTicket {
       status: jsonBool(item['is_attended']) == true
           ? RegistrationStatus.attended
           : RegistrationStatus.registered,
+      revoked: isTicketRevoked(item),
     );
   }
 
@@ -112,6 +120,7 @@ class SavedTicket {
         if (posterUrl != null) 'poster_url': posterUrl,
         if (clubName != null) 'club_name': clubName,
         'status': status.name,
+        if (revoked) 'revoked': true,
       };
 
   /// Null for anything that cannot be a saved ticket.
@@ -135,6 +144,7 @@ class SavedTicket {
       status: json['status'] == RegistrationStatus.attended.name
           ? RegistrationStatus.attended
           : RegistrationStatus.registered,
+      revoked: jsonBool(json['revoked']) == true,
     );
   }
 }

@@ -19,16 +19,21 @@ enum EventCardStatus {
   attended, // Event over and attended - show "VIEW CERTIFICATE"
   notAttended, // Event over but not attended - show "Not Attended" badge
   awaitingPayment, // Registered for a paid event, not paid - "FINISH PAYMENT"
+  ticketRevoked, // The organiser revoked the ticket - "TICKET REVOKED"
 }
 
 /// The card status for an event this person is registered for:
-/// [EventCardStatus.awaitingPayment] when its fee is still owed
-/// ([isAwaitingPayment]: `has_fee` true and `is_paid` false; a missing
-/// `is_paid` is not read as unpaid), else [EventCardStatus.registered].
-EventCardStatus registeredCardStatus(Map<dynamic, dynamic> item) =>
-    isAwaitingPayment(item)
-        ? EventCardStatus.awaitingPayment
-        : EventCardStatus.registered;
+/// [EventCardStatus.ticketRevoked] when the organiser revoked the ticket
+/// ([isTicketRevoked]), [EventCardStatus.awaitingPayment] when its fee is
+/// still owed ([isAwaitingPayment]: `has_fee` true and `is_paid` false; a
+/// missing `is_paid` is not read as unpaid), else
+/// [EventCardStatus.registered].
+EventCardStatus registeredCardStatus(Map<dynamic, dynamic> item) {
+  if (isTicketRevoked(item)) return EventCardStatus.ticketRevoked;
+  return isAwaitingPayment(item)
+      ? EventCardStatus.awaitingPayment
+      : EventCardStatus.registered;
+}
 
 /// The small "Payment due" pill: on an awaiting-payment card, and on search
 /// results for an unpaid registration.
@@ -322,6 +327,24 @@ class EventCard extends StatelessWidget {
           ),
           child: const Text('VIEW TICKET'),
         );
+      case EventCardStatus.ticketRevoked:
+        return FilledButton(
+          key: const ValueKey('event-ticket-revoked'),
+          // The ticket screen, which says it was revoked and shows no QR.
+          onPressed: () {
+            final code = ticketCodeFromUrl(ticketUrl);
+            if (code != null) {
+              context.push(ticketRoute(code), extra: {'revoked': true});
+            } else {
+              context.push('/events/$eventId', extra: _getNavigationExtras());
+            }
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.grey.shade600,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('TICKET REVOKED'),
+        );
       case EventCardStatus.attended:
         return FilledButton(
           onPressed: () async {
@@ -420,6 +443,8 @@ class EventCard extends StatelessWidget {
         return const Color(0xFFF44336); // Red
       case EventCardStatus.awaitingPayment:
         return PaymentDueBadge.color;
+      case EventCardStatus.ticketRevoked:
+        return const Color(0xFF616161); // Grey
       case EventCardStatus.none:
         return Colors.transparent;
     }
@@ -436,6 +461,8 @@ class EventCard extends StatelessWidget {
         return Icons.cancel_outlined;
       case EventCardStatus.awaitingPayment:
         return Icons.payments_outlined;
+      case EventCardStatus.ticketRevoked:
+        return Icons.block;
       case EventCardStatus.none:
         return Icons.circle;
     }
@@ -447,6 +474,7 @@ class EventCard extends StatelessWidget {
       case EventCardStatus.attended:
       case EventCardStatus.notAttended:
       case EventCardStatus.awaitingPayment:
+      case EventCardStatus.ticketRevoked:
         return Colors.white;
       case EventCardStatus.registered:
         return Colors.black87;
@@ -466,6 +494,8 @@ class EventCard extends StatelessWidget {
         return 'Not Attended';
       case EventCardStatus.awaitingPayment:
         return 'Payment due';
+      case EventCardStatus.ticketRevoked:
+        return 'Ticket revoked';
       case EventCardStatus.none:
         return '';
     }

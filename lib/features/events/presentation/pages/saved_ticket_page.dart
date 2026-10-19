@@ -16,9 +16,13 @@ String ticketRoute(String code) => '/tickets/${Uri.encodeComponent(code)}';
 /// saved ticket, and the QR is drawn from the code. A code the phone knows
 /// nothing more about still shows its QR.
 class SavedTicketPage extends ConsumerWidget {
-  const SavedTicketPage({super.key, required this.code});
+  const SavedTicketPage({super.key, required this.code, this.revoked = false});
 
   final String code;
+
+  /// The screen that opened this already knows the ticket is revoked (a
+  /// list fresher than the saved tickets).
+  final bool revoked;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,6 +39,7 @@ class SavedTicketPage extends ConsumerWidget {
       durationHours: ticket?.durationHours,
       ticketUrl: ticket?.ticketUrl,
       posterUrl: ticket?.posterUrl,
+      revoked: revoked || (ticket?.revoked ?? false),
     );
   }
 }
@@ -95,14 +100,20 @@ class _SavedTicketTile extends StatelessWidget {
         contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
         title: Text(ticket.eventName,
             style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text([when, if (where.isNotEmpty) where].join('\n')),
-        isThreeLine: where.isNotEmpty,
+        subtitle: Text([
+          when,
+          if (where.isNotEmpty) where,
+          if (ticket.revoked) 'Revoked by the organiser',
+        ].join('\n')),
+        isThreeLine: where.isNotEmpty || ticket.revoked,
         trailing: FilledButton(
           onPressed: () => context.push(ticketRoute(ticket.code)),
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF2C333D),
+            backgroundColor: ticket.revoked
+                ? Colors.grey.shade600
+                : const Color(0xFF2C333D),
           ),
-          child: const Text('VIEW TICKET'),
+          child: Text(ticket.revoked ? 'REVOKED' : 'VIEW TICKET'),
         ),
       ),
     );

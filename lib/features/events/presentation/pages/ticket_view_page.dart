@@ -35,6 +35,14 @@ class TicketViewPage extends StatefulWidget {
   /// ticket.
   final NetworkStatus? networkStatus;
 
+  /// The organiser revoked this ticket. The screen says so instead of
+  /// showing a QR -- online or offline -- and offers nothing to download,
+  /// share or add to a wallet: the door would refuse it.
+  final bool revoked;
+
+  static const revokedKey = ValueKey('ticket-revoked');
+  static const revokedMessage = 'This ticket was revoked by the organiser';
+
   /// The drawn card's QR, keyed by what it encodes.
   static Key qrKeyFor(String data) => ValueKey('ticket-qr:$data');
 
@@ -54,6 +62,7 @@ class TicketViewPage extends StatefulWidget {
     this.ticketType,
     this.posterUrl,
     this.networkStatus,
+    this.revoked = false,
   });
 
   @override
@@ -115,9 +124,12 @@ class _TicketViewPageState extends State<TicketViewPage>
   @override
   void initState() {
     super.initState();
-    // Known to be offline: straight to the drawn card, without a spinner
-    // waiting on a request that cannot succeed.
-    if ((widget.networkStatus ?? NetworkStatus.instance).isOffline) {
+    if (widget.revoked) {
+      // Revoked: no QR of any kind, so nothing to fetch.
+      _ticketImageFailed = true;
+    } else if ((widget.networkStatus ?? NetworkStatus.instance).isOffline) {
+      // Known to be offline: straight to the drawn card, without a spinner
+      // waiting on a request that cannot succeed.
       _offline = true;
       _ticketImageFailed = true;
     } else {
@@ -538,13 +550,69 @@ class _TicketViewPageState extends State<TicketViewPage>
                 child: Column(
                   children: [
                     const SizedBox(height: 8),
-                    if (_offline) _buildOfflineNotice(),
-                    _buildTicketCard(),
-                    const SizedBox(height: 28),
-                    _buildActionButtons(),
+                    if (widget.revoked)
+                      _buildRevokedCard()
+                    else ...[
+                      if (_offline) _buildOfflineNotice(),
+                      _buildTicketCard(),
+                      const SizedBox(height: 28),
+                      _buildActionButtons(),
+                    ],
                   ],
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// In place of the ticket: what happened, the event it was for, and no
+  /// QR -- a revoked ticket must not look like one that gets you in.
+  Widget _buildRevokedCard() {
+    return Container(
+      key: TicketViewPage.revokedKey,
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.red.shade300.withAlpha(120), width: 1.5),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.block, size: 44, color: Colors.red.shade300),
+          const SizedBox(height: 16),
+          const Text(
+            TicketViewPage.revokedMessage,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${widget.eventName} · ${widget.ticketId}',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              fontSize: 13,
+              color: Colors.white.withAlpha(170),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'It will not be accepted at the door. If you think this is a '
+            'mistake, contact the organiser.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              fontSize: 13,
+              color: Colors.white.withAlpha(170),
             ),
           ),
         ],
@@ -603,7 +671,8 @@ class _TicketViewPageState extends State<TicketViewPage>
         ],
       ),
       actions: [
-        _buildAppBarButton(Icons.share_outlined, _shareTicket),
+        if (!widget.revoked)
+          _buildAppBarButton(Icons.share_outlined, _shareTicket),
         const SizedBox(width: 8),
       ],
     );

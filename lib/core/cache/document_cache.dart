@@ -85,7 +85,8 @@ class DocumentCache {
     final meta = await _readMeta(metaFile);
     final kept = await file.exists() && await file.length() > 0;
 
-    if (kept && version != null && meta['version'] == version) {
+    final keptFinal = kept && meta['final'] == true;
+    if (keptFinal && version != null && meta['version'] == version) {
       return SavedDocument(file: file, current: true);
     }
 
@@ -129,13 +130,19 @@ class DocumentCache {
     final temp = File('${file.path}.tmp');
     await temp.writeAsBytes(bytes, flush: true);
     await temp.rename(file.path);
+    final etag = response.headers.value('etag');
     await metaFile.writeAsString(jsonEncode({
-      if (response.headers.value('etag') != null)
-        'etag': response.headers.value('etag'),
-      if (response.headers.value('last-modified') != null)
+      // Kept verbatim: a strong tag goes back exactly as it came.
+      if (etag != null) 'etag': etag,
+      if (etag != null && response.headers.value('last-modified') != null)
         'last_modified': response.headers.value('last-modified'),
       if (version != null) 'version': version,
+      // No tag: rendered without one of its images. Not final.
+      'final': etag != null,
     }));
+    if (etag == null) {
+      debugPrint('DocumentCache: $name came without an ETag; not final');
+    }
     return SavedDocument(file: file, current: true);
   }
 

@@ -54,6 +54,10 @@ class EventInfo {
   /// Also null from a server older than the field.
   final bool? isPaid;
 
+  /// The organiser revoked this person's ticket (`ticket_revoked`); false
+  /// when the server does not say.
+  final bool ticketRevoked;
+
   /// The viewer's own registration (a UUID), for `POST /payments/orders`
   /// when it isn't paid yet. Null when not registered, or from an older
   /// server.
@@ -95,6 +99,7 @@ class EventInfo {
     this.positionLabel,
     this.downloads = const [],
     this.isPaid,
+    this.ticketRevoked = false,
     this.registrationId,
   });
 
@@ -152,6 +157,7 @@ class EventInfo {
       downloads:
           jsonObjects(json['downloads']).map(EventDownload.fromJson).toList(),
       isPaid: jsonBool(json['is_paid']),
+      ticketRevoked: jsonBool(json['ticket_revoked']) == true,
       registrationId: _id(json['registration_id']),
     );
   }

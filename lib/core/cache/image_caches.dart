@@ -66,6 +66,7 @@ class AppImageCaches {
           'moaImagesPrivate',
           stalePeriod: stalePeriod,
           maxNrOfCacheObjects: 400,
+          fileService: DocumentImageFileService(HttpFileService()),
         ),
       );
 
@@ -165,4 +166,64 @@ List<T> overBudget<T>(
     total -= size(object);
   }
   return remove;
+}
+
+/// Whether [url] is a rendered ticket or certificate (`/events/tickets/{id}
+/// /image`, `/events/certificates/{id}/image`).
+bool isRenderedDocumentImage(String url) {
+  final path = Uri.tryParse(url)?.path ?? '';
+  return RegExp(r'/events/(tickets|certificates)/[^/]+/image$').hasMatch(path);
+}
+
+/// Fetches pictures as [inner] does, except that a rendered ticket or
+/// certificate that came without an ETag is due again at once.
+///
+/// The server leaves the tag off a render that came out without one of its
+/// images. Such a picture is shown (and kept for offline), but not as the
+/// final one: the next time it is shown, it is fetched again.
+class DocumentImageFileService extends FileService {
+  DocumentImageFileService(this._inner);
+
+  final FileService _inner;
+
+  @override
+  int get concurrentFetches => _inner.concurrentFetches;
+
+  @override
+  set concurrentFetches(int value) => _inner.concurrentFetches = value;
+
+  @override
+  Future<FileServiceResponse> get(String url,
+      {Map<String, String>? headers}) async {
+    final response = await _inner.get(url, headers: headers);
+    final unfinished = response.statusCode == 200 &&
+        (response.eTag == null || response.eTag!.isEmpty) &&
+        isRenderedDocumentImage(url);
+    return unfinished ? _DueNow(response) : response;
+  }
+}
+
+class _DueNow implements FileServiceResponse {
+  _DueNow(this._response);
+
+  final FileServiceResponse _response;
+  final DateTime _now = DateTime.now();
+
+  @override
+  Stream<List<int>> get content => _response.content;
+
+  @override
+  int? get contentLength => _response.contentLength;
+
+  @override
+  int get statusCode => _response.statusCode;
+
+  @override
+  DateTime get validTill => _now;
+
+  @override
+  String? get eTag => _response.eTag;
+
+  @override
+  String get fileExtension => _response.fileExtension;
 }

@@ -120,6 +120,8 @@ void main() {
   });
 
   test('a version from the API that matches skips the network', () async {
+    // A final copy: it came with its tag.
+    server.etag = '"3-0123456789abcdef01234567"';
     await cache.fetch(certificate, name: 'c.pdf', version: '3');
     final count = server.requests.length;
 
@@ -127,7 +129,9 @@ void main() {
     expect(again.current, isTrue);
     expect(server.requests.length, count);
 
-    server.content = 'v4';
+    server
+      ..content = 'v4'
+      ..etag = '"4-0123456789abcdef01234567"';
     final newer = await cache.fetch(certificate, name: 'c.pdf', version: '4');
     expect(await newer.file.readAsString(), 'v4');
   });

@@ -231,6 +231,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           parentNavigatorKey: rootKey,
           builder: (context, state) => SavedTicketPage(
                 code: state.pathParameters['code'] ?? '',
+                revoked: (state.extra as Map<String, dynamic>?)?['revoked'] ==
+                    true,
               )),
 
       // Main shell with bottom nav

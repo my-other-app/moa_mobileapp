@@ -34,6 +34,7 @@ import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
+import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/pages/networking_page.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/core/config/app_config.dart';
@@ -102,6 +103,22 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
 
   /// Registered for a paid event and not paid: no ticket until they pay.
   bool awaitingPayment = false;
+
+  /// The organiser revoked this person's ticket (the event's own
+  /// `ticket_revoked`).
+  bool ticketRevoked = false;
+
+  /// Revoked by the event's word, or by the saved tickets' (the list
+  /// carries `ticket_revoked`; an event page from an older server may not).
+  bool get _ticketRevoked {
+    if (ticketRevoked) return true;
+    final code = ticketCodeFromUrl(ticketUrl);
+    if (code == null) return false;
+    for (final saved in ref.read(savedTicketsProvider)) {
+      if (saved.code == code) return saved.revoked;
+    }
+    return false;
+  }
 
   /// The viewer's registration (`registration_id`), to pay for it directly.
   /// Null when not registered, or from an older server.
@@ -293,6 +310,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       isAttended = status == RegistrationStatus.attended;
       isRegistered = status != RegistrationStatus.none;
       awaitingPayment = status == RegistrationStatus.awaitingPayment;
+      ticketRevoked = eventInfo.ticketRevoked;
       registrationId = eventInfo.registrationId;
       // Only update URLs if API provides them
       if (eventInfo.ticketUrl != null && eventInfo.ticketUrl!.isNotEmpty) {
@@ -2003,6 +2021,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           locationName: locationName,
           durationHours: duration,
           ticketUrl: url,
+          revoked: _ticketRevoked,
         ),
       ),
     );
@@ -2010,6 +2029,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
 
   /// Bottom sheet for ticket state (registered but event not over)
   Widget _buildTicketBottomSheet(BuildContext context) {
+    final revoked = _ticketRevoked;
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -2022,16 +2042,18 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             height: 25,
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF9C4),
+              color: revoked ? const Color(0xFFEEEEEE) : const Color(0xFFFFF9C4),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text(
-              'Registered and Generated Ticket',
+            child: Text(
+              revoked
+                  ? 'Your ticket was revoked by the organiser'
+                  : 'Registered and Generated Ticket',
               textAlign: TextAlign.left,
               style: TextStyle(
                 fontWeight: FontWeight.normal,
                 fontSize: 12,
-                color: Color(0xFF5D4037),
+                color: revoked ? const Color(0xFF424242) : const Color(0xFF5D4037),
               ),
             ),
           ),
@@ -2041,10 +2063,11 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             child: FilledButton(
               onPressed: _openTicket,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2C333D),
+                backgroundColor:
+                    revoked ? Colors.grey.shade600 : const Color(0xFF2C333D),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              child: const Text('VIEW TICKET'),
+              child: Text(revoked ? 'TICKET REVOKED' : 'VIEW TICKET'),
             ),
           ),
           const SizedBox(height: 10),
