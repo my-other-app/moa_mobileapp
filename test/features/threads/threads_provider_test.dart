@@ -55,6 +55,14 @@ class _FakeRepository implements ThreadRepository {
   }
 
   @override
+  Future<Result<ThreadPage>> getFollowingFeed(
+          {String? after, int limit = 20}) async =>
+      Either.right(const ThreadPage());
+
+  @override
+  Future<ThreadPage?> savedFollowingFeed({int limit = 20}) async => null;
+
+  @override
   Future<Result<Thread>> getThread(String threadId) async => thread;
 
   @override

@@ -13,6 +13,7 @@ import 'package:finnet/features/threads/presentation/widgets/moderation_actions.
 import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_comment_tile.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_feedback.dart';
+import 'package:finnet/features/threads/presentation/widgets/thread_share.dart';
 import 'package:finnet/shared/widgets/confirmation_dialog.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
@@ -60,6 +61,18 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
         surfaceTintColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        actions: [
+          if (state.thread != null)
+            // A Builder, so the share sheet can point at this button.
+            Builder(
+              builder: (buttonContext) => IconButton(
+                key: const ValueKey('thread-detail-share'),
+                tooltip: 'Share post',
+                icon: const Icon(Icons.ios_share),
+                onPressed: () => shareThread(buttonContext, ref, state.thread!),
+              ),
+            ),
+        ],
       ),
       body: _body(state),
     );
@@ -102,6 +115,7 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
                     target: ReportTarget.thread(thread.id),
                     what: 'post',
                   ),
+                  onShare: (button) => shareThread(button, ref, thread),
                 ),
                 const SizedBox(height: 28),
                 Text(

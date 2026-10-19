@@ -8,6 +8,8 @@ import 'package:finnet/features/threads/presentation/providers/threads_provider.
 import 'package:finnet/features/threads/presentation/widgets/moderation_actions.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_feedback.dart';
+import 'package:finnet/features/threads/presentation/widgets/thread_list_footer.dart';
+import 'package:finnet/features/threads/presentation/widgets/thread_share.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 
@@ -104,7 +106,7 @@ class _ThreadList extends ConsumerWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 20),
       itemBuilder: (context, index) {
         if (index == threads.length) {
-          return _Footer(
+          return ThreadListFooter(
             state: state,
             onLoadMore: notifier.loadMore,
           );
@@ -122,6 +124,7 @@ class _ThreadList extends ConsumerWidget {
             target: ReportTarget.thread(thread.id),
             what: 'post',
           ),
+          onShare: (button) => shareThread(button, ref, thread),
         );
       },
     );
@@ -154,75 +157,6 @@ class _ThreadList extends ConsumerWidget {
     if (failure != null && context.mounted) {
       showThreadFailure(context, ref, failure);
     }
-  }
-}
-
-/// The row under the last post.
-class _Footer extends StatefulWidget {
-  final ClubThreadsState state;
-  final VoidCallback onLoadMore;
-
-  const _Footer({required this.state, required this.onLoadMore});
-
-  @override
-  State<_Footer> createState() => _FooterState();
-}
-
-class _FooterState extends State<_Footer> {
-  @override
-  void initState() {
-    super.initState();
-    _maybeLoadMore();
-  }
-
-  @override
-  void didUpdateWidget(covariant _Footer oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _maybeLoadMore();
-  }
-
-  /// Being built means being near the bottom -- the list builds a little
-  /// past the screen -- so that is when the next page is asked for. This also
-  /// covers a first page too short to scroll, which a scroll listener would
-  /// never see.
-  void _maybeLoadMore() {
-    final s = widget.state;
-    if (!s.hasMore || s.isLoadingMore || s.loadMoreError != null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.onLoadMore();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final error = widget.state.loadMoreError;
-    if (error != null) {
-      return Column(
-        children: [
-          Text(
-            "Couldn't load more posts",
-            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-          ),
-          TextButton(
-            onPressed: widget.onLoadMore,
-            child: const Text('Try again'),
-          ),
-        ],
-      );
-    }
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 12),
-      child: Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: ThreadCard.ink,
-          ),
-        ),
-      ),
-    );
   }
 }
 

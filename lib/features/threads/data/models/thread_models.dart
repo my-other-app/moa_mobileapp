@@ -237,11 +237,16 @@ class ThreadPageModel {
   final int? limit;
   final int? offset;
 
+  /// Where the next page starts, on the lists that page by cursor (the
+  /// follower's feed); null on the last page and on offset-paged lists.
+  final String? nextCursor;
+
   const ThreadPageModel({
     this.items = const [],
     this.total,
     this.limit,
     this.offset,
+    this.nextCursor,
   });
 
   /// The list is under `items` -- `ThreadPage` in the backend's schemas,
@@ -256,8 +261,12 @@ class ThreadPageModel {
       total: _int(json?['total']),
       limit: _int(json?['limit']),
       offset: _int(json?['offset']),
+      nextCursor: _cursor(json?['next_cursor']),
     );
   }
+
+  static String? _cursor(Object? value) =>
+      value is String && value.trim().isNotEmpty ? value : null;
 
   ThreadPage toEntity({
     required int requestedOffset,
@@ -273,6 +282,7 @@ class ThreadPageModel {
           (count >= requestedLimit ? start + count + 1 : start + count),
       limit: limit ?? requestedLimit,
       offset: start,
+      nextCursor: nextCursor,
     );
   }
 }

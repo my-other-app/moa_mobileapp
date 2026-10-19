@@ -35,6 +35,10 @@ class ThreadCard extends StatelessWidget {
   /// Report the post. When set, the header has a "…" menu offering it.
   final VoidCallback? onReport;
 
+  /// Share the post's page on the website. Given the button's own context,
+  /// which the share sheet points at on an iPad.
+  final ValueChanged<BuildContext>? onShare;
+
   /// Show the whole text rather than the first few lines.
   final bool expanded;
 
@@ -47,6 +51,7 @@ class ThreadCard extends StatelessWidget {
     this.onComments,
     this.onClubTap,
     this.onReport,
+    this.onShare,
     this.expanded = false,
   });
 
@@ -108,6 +113,7 @@ class ThreadCard extends StatelessWidget {
                 thread: thread,
                 onLike: onLike,
                 onComments: onComments ?? onTap,
+                onShare: onShare,
               ),
             ],
           ),
@@ -466,8 +472,14 @@ class _Actions extends StatelessWidget {
   final Thread thread;
   final VoidCallback? onLike;
   final VoidCallback? onComments;
+  final ValueChanged<BuildContext>? onShare;
 
-  const _Actions({required this.thread, this.onLike, this.onComments});
+  const _Actions({
+    required this.thread,
+    this.onLike,
+    this.onComments,
+    this.onShare,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -493,6 +505,26 @@ class _Actions extends StatelessWidget {
           semanticLabel: 'Comments',
           onTap: onComments,
         ),
+        if (onShare != null) ...[
+          const SizedBox(width: 12),
+          // A Builder, so the share sheet can point at this very button.
+          Builder(
+            builder: (buttonContext) => Semantics(
+              button: true,
+              label: 'Share post',
+              excludeSemantics: true,
+              child: InkWell(
+                key: const ValueKey('thread-share'),
+                onTap: () => onShare!(buttonContext),
+                customBorder: const StadiumBorder(),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                  child: Icon(Icons.ios_share, size: 22, color: ThreadCard.ink),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
