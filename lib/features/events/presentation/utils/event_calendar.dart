@@ -7,7 +7,8 @@ import 'package:finnet/shared/utils/external_links.dart';
 /// Hands [entry] to the phone's calendar app; answers whether it opened.
 typedef CalendarAdder = Future<bool> Function(CalendarEntry entry);
 
-Future<bool> _addWithPlugin(CalendarEntry entry) {
+/// The phone's calendar app, through add_2_calendar.
+Future<bool> addWithCalendarApp(CalendarEntry entry) {
   return cal.Add2Calendar.addEvent2Cal(cal.Event(
     title: entry.title,
     description: entry.description,
@@ -21,7 +22,8 @@ Future<bool> _addWithPlugin(CalendarEntry entry) {
 
 /// The phone's calendar (add_2_calendar). A provider so tests need no
 /// platform channel.
-final calendarAdderProvider = Provider<CalendarAdder>((ref) => _addWithPlugin);
+final calendarAdderProvider =
+    Provider<CalendarAdder>((ref) => addWithCalendarApp);
 
 /// How adding to the calendar went.
 enum CalendarOutcome {

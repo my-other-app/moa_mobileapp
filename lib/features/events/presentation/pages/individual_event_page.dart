@@ -2396,6 +2396,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           durationHours: duration,
           ticketUrl: url,
           revoked: _ticketRevoked,
+          eventId: _eventId,
         ),
       ),
     );

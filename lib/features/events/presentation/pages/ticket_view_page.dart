@@ -2,7 +2,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:add_2_calendar/add_2_calendar.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:open_filex/open_filex.dart';
@@ -12,9 +13,12 @@ import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/cache/document_cache.dart';
 import 'package:finnet/core/network/interceptors/retry_interceptor.dart';
 import 'package:finnet/core/network/network_status.dart';
+import 'package:finnet/features/events/domain/event_page_rules.dart';
+import 'package:finnet/features/events/presentation/providers/event_page_provider.dart';
+import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
+import 'package:finnet/shared/utils/external_links.dart';
 import 'package:apple_passkit/apple_passkit.dart';
-import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/core/config/app_config.dart';
 
 /// Premium ticket page with stunning glow effects and Apple Wallet-like design.
@@ -40,6 +44,10 @@ class TicketViewPage extends StatefulWidget {
   /// share or add to a wallet: the door would refuse it.
   final bool revoked;
 
+  /// The event's id, when known: an event that runs a competition gets
+  /// "Your team" here, as the website's ticket has.
+  final int? eventId;
+
   static const revokedKey = ValueKey('ticket-revoked');
   static const revokedMessage = 'This ticket was revoked by the organiser';
 
@@ -49,6 +57,9 @@ class TicketViewPage extends StatefulWidget {
   /// The note shown while offline.
   static const offlineNoticeKey = ValueKey('ticket-offline-notice');
   static const offlineNotice = 'Offline — showing your saved ticket';
+
+  /// "Your team and submission", for an event with a competition.
+  static const teamKey = ValueKey('ticket-your-team');
 
   const TicketViewPage({
     super.key,
@@ -63,6 +74,7 @@ class TicketViewPage extends StatefulWidget {
     this.posterUrl,
     this.networkStatus,
     this.revoked = false,
+    this.eventId,
   });
 
   @override
@@ -216,29 +228,30 @@ class _TicketViewPageState extends State<TicketViewPage>
 
   Future<void> _addToCalendar() async {
     HapticFeedback.lightImpact();
-    if (widget.eventDateTime == null) {
+    final start = widget.eventDateTime;
+    if (start == null) {
       _showErrorSnackBar('Event date not available');
       return;
     }
-
-    final Event event = Event(
-      title: widget.eventName,
+    final base = calendarEntryFor(
+      name: widget.eventName,
+      startsAt: start,
+      durationHours: widget.durationHours,
+      locationName: widget.locationName,
+    )!;
+    final entry = CalendarEntry(
+      title: base.title,
+      start: base.start,
+      end: base.end,
+      location: base.location,
       description: 'Ticket: ${widget.ticketId}\n$_ticketWebUrl',
-      location: widget.locationName ?? '',
-      startDate: widget.eventDateTime!,
-      endDate:
-          widget.eventDateTime!.add(hoursToDuration(widget.durationHours ?? 2)),
-      iosParams: const IOSParams(reminder: Duration(hours: 1)),
-      androidParams: const AndroidParams(emailInvites: []),
     );
-
-    // A platform failure (no calendar app, permission refused) was thrown
-    // from a tap handler, unhandled.
-    try {
-      await Add2Calendar.addEvent2Cal(event);
-    } catch (e) {
-      debugPrint('Add to calendar failed: $e');
-      if (mounted) _showErrorSnackBar("Couldn't open your calendar");
+    // The phone's calendar; Google Calendar's page when no calendar app
+    // takes it. Never throws.
+    final outcome = await addToCalendar(entry,
+        add: addWithCalendarApp, open: openExternally);
+    if (outcome == CalendarOutcome.failed && mounted) {
+      _showErrorSnackBar("Couldn't open your calendar");
     }
   }
 
@@ -1139,6 +1152,29 @@ class _TicketViewPageState extends State<TicketViewPage>
           ],
         ),
 
+        // An event with a competition: the team and submission, as the
+        // website's ticket links to.
+        if (widget.eventId != null)
+          Consumer(builder: (context, ref, _) {
+            final enabled = ref
+                    .watch(competitionEnabledProvider(widget.eventId!))
+                    .valueOrNull ??
+                false;
+            if (!enabled) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: _ActionButton(
+                key: TicketViewPage.teamKey,
+                icon: Icons.groups_2_outlined,
+                label: 'Your team and submission',
+                accentColor: _accentGreen,
+                onPressed: () => GoRouter.maybeOf(context)?.push(
+                    '/events/${widget.eventId}/compete',
+                    extra: {'eventName': widget.eventName}),
+              ),
+            );
+          }),
+
         // Apple Wallet, on iOS only: there is no Android pass to add.
         if (walletSupported) ...[
           const SizedBox(height: 12),
@@ -1196,6 +1232,7 @@ class _ActionButton extends StatelessWidget {
   final Color accentColor;
 
   const _ActionButton({
+    super.key,
     required this.icon,
     required this.label,
     required this.accentColor,
