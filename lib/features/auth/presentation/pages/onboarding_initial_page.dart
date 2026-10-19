@@ -533,7 +533,28 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
+                if (!isSignUp)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      key: const ValueKey('forgot-password'),
+                      onPressed: () {
+                        // The page's context, not the sheet's: the sheet
+                        // closes first.
+                        Navigator.pop(context);
+                        this.context.push('/auth/forgot-password',
+                            extra: {'email': emailController.text.trim()});
+                      },
+                      child: const Text(
+                        'Forgot password?',
+                        style: TextStyle(
+                          color: Color(0xFF17A58F),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                SizedBox(height: isSignUp ? 24 : 8),
                 SizedBox(
                   width: double.infinity,
                   height: 56,
