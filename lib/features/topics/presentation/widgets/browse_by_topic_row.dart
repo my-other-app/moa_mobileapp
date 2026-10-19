@@ -3,15 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/domain/topic_rules.dart';
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
 import 'package:finnet/shared/widgets/section_header.dart';
 
-/// "Browse by topic" on Home: a tile per topic in its own colour, with how
-/// many events are coming up under it when the server counts, each opening
-/// the topic's page (its events and clubs, readable signed out); "See all"
-/// opens Topics.
+/// "Browse by topic" on Home: a tile per topic in its own colour, its emoji
+/// large, a glimpse of its interests' emoji, and how many events are coming
+/// up under it when the server counts, each opening the topic's page (its
+/// events and clubs, readable signed out); "See all" opens Topics.
 ///
 /// Nothing while the topics load or if they fail -- it is a way in, not the
 /// feed -- and nothing on a server with one topic holding everything.
@@ -77,8 +78,9 @@ class BrowseByTopicRow extends ConsumerWidget {
   }
 }
 
-/// A topic as a tile: its colour as a wash, its icon on a disc of the
-/// colour itself, then its name and how many events are coming up.
+/// A topic as a tile: a wash of its colour, its emoji large on a white
+/// disc, then its name, a glimpse of its interests' emoji, and how many
+/// events are coming up.
 class _TopicCard extends StatelessWidget {
   final Topic topic;
   final double width;
@@ -86,8 +88,15 @@ class _TopicCard extends StatelessWidget {
   const _TopicCard({required this.topic, required this.width});
 
   static const _padding = 12.0;
-  static const _disc = 34.0;
+  static const _disc = 44.0;
   static const _gap = 10.0;
+
+  /// The interests' emoji: one line, not scaled with the text.
+  static const _emojiRow = 18.0;
+  static const _emojiGap = 3.0;
+
+  /// The most interests' emoji shown; the line clips any that do not fit.
+  static const _emojiShown = 5;
 
   /// Wide enough for "Development" at the text size.
   static double widthFor(TextScaler scale) =>
@@ -98,6 +107,9 @@ class _TopicCard extends StatelessWidget {
       _disc +
       _gap +
       scale.scale(14) * 1.3 +
+      _emojiGap +
+      _emojiRow +
+      _emojiGap +
       scale.scale(12) * 1.3;
 
   @override
@@ -106,7 +118,11 @@ class _TopicCard extends StatelessWidget {
     final surface = TopicSurface.of(context);
     final count = topic.upcomingEvents;
     final countText = count == null || count <= 0 ? null : '$count upcoming';
-    final emoji = interestGlyph(topic.icon, topic.iconType) != null;
+    final emoji = topic.emoji != null;
+    final glimpse = [
+      for (final i in topic.interests)
+        if (i.emoji != null) i.emoji!,
+    ].take(_emojiShown).join(' ');
 
     return Semantics(
       container: true,
@@ -142,7 +158,7 @@ class _TopicCard extends StatelessWidget {
                     ),
                     alignment: Alignment.center,
                     child:
-                        TopicIcon(topic: topic, size: 18, color: Colors.white),
+                        TopicIcon(topic: topic, size: 26, color: Colors.white),
                   ),
                   const Spacer(),
                   Text(
@@ -157,6 +173,20 @@ class _TopicCard extends StatelessWidget {
                       color: palette.onTint,
                     ),
                   ),
+                  const SizedBox(height: _emojiGap),
+                  SizedBox(
+                    height: _emojiRow,
+                    child: Text(
+                      glimpse,
+                      key: ValueKey('browse-topic-emoji-${topic.slug}'),
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.clip,
+                      textScaler: TextScaler.noScaling,
+                      style: const TextStyle(fontSize: 13, height: 1.3),
+                    ),
+                  ),
+                  const SizedBox(height: _emojiGap),
                   Text(
                     countText ?? '',
                     maxLines: 1,

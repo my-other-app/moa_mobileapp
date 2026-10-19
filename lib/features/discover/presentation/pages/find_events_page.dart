@@ -14,9 +14,9 @@ import 'package:finnet/features/discover/presentation/widgets/discover_format.da
 import 'package:finnet/features/discover/presentation/widgets/discover_sections.dart';
 import 'package:finnet/features/discover/presentation/widgets/filter_widgets.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
-import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 
 const _ink = Color(0xFF1E1E1E);
@@ -274,7 +274,6 @@ class _InterestChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = topic;
     if (t == null || t.interests.isEmpty) return const SizedBox.shrink();
-    final accent = topicColor(t);
     return SizedBox(
       height: 44,
       child: ListView(
@@ -285,7 +284,7 @@ class _InterestChips extends StatelessWidget {
           InterestChip(
             key: const ValueKey('interest-chip-all'),
             label: 'All ${t.label}',
-            accent: accent,
+            compact: true,
             selected: interest == null,
             onTap: () => onChanged(null),
           ),
@@ -294,8 +293,8 @@ class _InterestChips extends StatelessWidget {
             InterestChip(
               key: ValueKey('interest-chip-${i.id}'),
               label: i.name,
-              glyph: interestGlyph(i.icon, i.iconType),
-              accent: accent,
+              glyph: i.emoji,
+              compact: true,
               count: i.upcomingEvents,
               topicLabel: t.label,
               selected: interest == i.id,

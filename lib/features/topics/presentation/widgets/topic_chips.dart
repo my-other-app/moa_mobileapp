@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
 
+// The chips topics and interests are drawn as, after the Interests screen:
+// an emoji, then the name, on a soft pill with no edge; chosen, the app's
+// yellow with a thin ink edge. One look for the Interests screen, the
+// explore filters, a topic's page and Discover.
+
 /// A topic as a chip.
 ///
-/// With [selected] set it is a filter, filled with the topic's colour when
-/// on. Without, it is a tag: a wash of the colour with its icon -- on an
-/// event's or a club's page.
+/// With [selected] set it is a filter, in the shared chip look. Without, it
+/// is a tag -- on an event's or a club's page: a wash of the topic's colour
+/// with its emoji.
 class TopicChip extends StatelessWidget {
   final Topic topic;
   final bool? selected;
@@ -29,29 +34,28 @@ class TopicChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = TopicPalette.of(context, topic);
-    final surface = TopicSurface.of(context);
     final isFilter = selected != null;
     final on = selected ?? false;
+    final look = ChipLook.of(context);
+    final palette = TopicPalette.of(context, topic);
 
     final Color background;
     final Color foreground;
-    final Color border;
+    final Color edge;
     if (!isFilter) {
       background = palette.tint;
       foreground = palette.onTint;
-      border = palette.tint;
+      edge = palette.tint;
     } else if (on) {
-      background = palette.accent;
-      foreground = Colors.white;
-      border = palette.accent;
+      background = look.chosen;
+      foreground = look.onChosen;
+      edge = look.edge;
     } else {
-      background = surface.background;
-      foreground = surface.ink;
-      border = surface.outline;
+      background = look.idle;
+      foreground = look.ink;
+      edge = look.idle;
     }
 
-    final countText = count == null ? null : '$count';
     return Semantics(
       container: true,
       button: onTap != null,
@@ -62,106 +66,69 @@ class TopicChip extends StatelessWidget {
       ].join(', '),
       onTap: onTap,
       excludeSemantics: true,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          key: ValueKey('topic-chip-${topic.slug}'),
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: border),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isFilter && !on)
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: palette.accent,
-                      shape: BoxShape.circle,
-                    ),
-                  )
-                else
-                  TopicIcon(
-                    topic: topic,
-                    size: 14,
-                    color: on ? Colors.white : palette.onTint,
-                  ),
-                const SizedBox(width: 6),
-                Text(
-                  topic.label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: foreground,
-                    fontWeight: on || !isFilter
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                  ),
-                ),
-                if (countText != null) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    countText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: on
-                          ? Colors.white.withValues(alpha: 0.85)
-                          : surface.muted,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
+      child: _Pill(
+        key: ValueKey('topic-chip-${topic.slug}'),
+        background: background,
+        edge: edge,
+        onTap: onTap,
+        compact: true,
+        leading: TopicIcon(topic: topic, size: 15, color: palette.accent),
+        label: topic.label,
+        labelColor: foreground,
+        labelWeight: isFilter ? FontWeight.w400 : FontWeight.w600,
+        count: count,
+        countColor: isFilter ? look.muted : palette.onTint,
       ),
     );
   }
 }
 
-/// An interest as a chip, edged in its topic's colour when chosen.
+/// An interest as a chip to choose: its emoji and name, in the shared chip
+/// look.
 class InterestChip extends StatelessWidget {
   final String label;
 
-  /// Its emoji, when it has one.
+  /// Its emoji -- the server's, else the default tree's (see
+  /// `interestEmoji`); none for "All".
   final String? glyph;
-
-  /// The colour of the topic it sits under.
-  final Color accent;
   final bool selected;
 
-  /// False once the limit is reached: drawn faded; a tap still reaches
+  /// False once the limit is reached: its name drawn faded; a tap still reaches
   /// [onTap], so the screen can say why nothing happened.
   final bool enabled;
   final VoidCallback? onTap;
   final int? count;
 
+  /// What [count] counts, for screen readers: "12 upcoming", "30 clubs".
+  final String countUnit;
+
   /// The topic, for screen readers ("Coding, Development").
   final String? topicLabel;
+
+  /// Smaller, for a row of filters; the full size is the Interests screen's.
+  final bool compact;
+
+  /// The fill when not chosen, in place of the soft grey: white on the
+  /// yellow of onboarding.
+  final Color? idleColor;
 
   const InterestChip({
     super.key,
     required this.label,
-    required this.accent,
     this.glyph,
     this.selected = false,
     this.enabled = true,
     this.onTap,
     this.count,
+    this.countUnit = 'upcoming',
     this.topicLabel,
+    this.compact = false,
+    this.idleColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final surface = TopicSurface.of(context);
-    final palette = TopicPalette.forColor(context, accent);
+    final look = ChipLook.of(context, idle: idleColor);
 
     return Semantics(
       container: true,
@@ -171,55 +138,179 @@ class InterestChip extends StatelessWidget {
       label: [
         label,
         if (topicLabel != null && topicLabel!.isNotEmpty) topicLabel!,
-        if (count != null) '$count upcoming',
+        if (count != null) '$count $countUnit',
       ].join(', '),
       hint: !enabled && !selected ? 'Limit reached' : null,
       onTap: onTap,
       excludeSemantics: true,
-      child: Opacity(
-        opacity: enabled || selected ? 1 : 0.45,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(60),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: EdgeInsets.symmetric(
-                  horizontal: selected ? 11 : 12, vertical: selected ? 6 : 7),
-              decoration: BoxDecoration(
-                color: selected ? palette.tint : surface.background,
-                borderRadius: BorderRadius.circular(60),
-                border: Border.all(
-                  color: selected ? palette.accent : surface.outline,
-                  width: selected ? 2 : 1,
-                ),
+      child: _Pill(
+        background: selected ? look.chosen : look.idle,
+        edge: selected ? look.edge : look.idle,
+        onTap: onTap,
+        compact: compact,
+        // Past the limit the name and emoji fade; the fill stays, so a
+        // faded chip is never mistaken for a chosen one.
+        faded: !enabled && !selected,
+        leading:
+            glyph == null ? null : EmojiGlyph(glyph!, size: compact ? 15 : 19),
+        label: label,
+        labelColor: selected ? look.onChosen : look.ink,
+        count: count,
+        countColor: look.muted,
+      ),
+    );
+  }
+}
+
+/// An interest as a read-only tag: its emoji and name on one of the app's
+/// pastels -- on a club's page and card, an event's page, the profile.
+class InterestTag extends StatelessWidget {
+  final String label;
+
+  /// Its emoji, when it has one.
+  final String? glyph;
+
+  /// The fill; [pastelAt] gives the app's pastels in turn.
+  final Color color;
+
+  /// What a screen reader says, when more than [label]: "Coding,
+  /// Development".
+  final String? semanticLabel;
+
+  /// The name's size; the tag grows around it.
+  final double fontSize;
+
+  const InterestTag({
+    super.key,
+    required this.label,
+    required this.color,
+    this.glyph,
+    this.semanticLabel,
+    this.fontSize = 12,
+  });
+
+  /// The pastels interest tags take in turn, so neighbours differ.
+  static const pastels = [
+    Color(0xFFE1C9FF),
+    Color(0xFFF9FFA1),
+    Color(0xFFB8DFF2),
+    Color(0xFFFFC84A),
+    Color(0xFFFFDEDD),
+  ];
+
+  /// The pastel for the tag at [index].
+  static Color pastelAt(int index) => pastels[index % pastels.length];
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: semanticLabel ?? label,
+      excludeSemantics: true,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+            horizontal: fontSize * 2 / 3, vertical: fontSize / 3),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (glyph != null) ...[
+              EmojiGlyph(glyph!, size: fontSize + 1),
+              SizedBox(width: fontSize / 3),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                // On a pastel in either theme, so always dark.
+                style: TextStyle(
+                    fontSize: fontSize, color: const Color(0xFF1E1E1E)),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (selected) ...[
-                    Icon(Icons.check, size: 16, color: palette.accent),
-                    const SizedBox(width: 4),
-                  ] else if (glyph != null) ...[
-                    Text(glyph!, style: const TextStyle(fontSize: 16)),
-                    const SizedBox(width: 4),
-                  ],
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: selected ? palette.onTint : surface.ink,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                  if (count != null) ...[
-                    const SizedBox(width: 6),
-                    Text('$count',
-                        style: TextStyle(fontSize: 12, color: surface.muted)),
-                  ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The pill every chip is: an optional emoji, the name, an optional count.
+/// The edge is drawn in every state, in the fill's colour when there is
+/// none to show, so choosing a chip never changes its size.
+class _Pill extends StatelessWidget {
+  final Color background;
+  final Color edge;
+  final VoidCallback? onTap;
+  final bool compact;
+  final Widget? leading;
+  final String label;
+  final Color labelColor;
+  final FontWeight labelWeight;
+  final int? count;
+  final Color countColor;
+  final bool faded;
+
+  const _Pill({
+    super.key,
+    required this.background,
+    required this.edge,
+    required this.onTap,
+    required this.compact,
+    required this.leading,
+    required this.label,
+    required this.labelColor,
+    this.labelWeight = FontWeight.w400,
+    required this.count,
+    required this.countColor,
+    this.faded = false,
+  });
+
+  static final _radius = BorderRadius.circular(60);
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: _radius,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: compact
+              ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
+              : const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: _radius,
+            border: Border.all(color: edge),
+          ),
+          child: Opacity(
+            opacity: faded ? 0.4 : 1,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (leading != null) ...[
+                  leading!,
+                  SizedBox(width: compact ? 5 : 6),
                 ],
-              ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: compact ? 14 : 15,
+                    color: labelColor,
+                    fontWeight: labelWeight,
+                  ),
+                ),
+                if (count != null) ...[
+                  const SizedBox(width: 6),
+                  Text('$count',
+                      style: TextStyle(
+                          fontSize: compact ? 12 : 13, color: countColor)),
+                ],
+              ],
             ),
           ),
         ),

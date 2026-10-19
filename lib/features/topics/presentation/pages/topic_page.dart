@@ -9,6 +9,7 @@ import 'package:finnet/features/discover/presentation/widgets/discover_event_car
 import 'package:finnet/features/discover/presentation/widgets/discover_format.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_sections.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/pages/topics_page.dart';
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
@@ -225,7 +226,7 @@ class _TopicBody extends ConsumerWidget {
                   InterestChip(
                     key: const ValueKey('topic-interest-all'),
                     label: 'All',
-                    accent: palette.accent,
+                    compact: true,
                     selected: interestId == null,
                     onTap: () => onInterest(null),
                   ),
@@ -234,8 +235,8 @@ class _TopicBody extends ConsumerWidget {
                     InterestChip(
                       key: ValueKey('topic-interest-${i.id}'),
                       label: i.name,
-                      glyph: interestGlyph(i.icon, i.iconType),
-                      accent: palette.accent,
+                      glyph: i.emoji,
+                      compact: true,
                       count: i.upcomingEvents,
                       topicLabel: topic.label,
                       selected: interestId == i.id,

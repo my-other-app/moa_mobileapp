@@ -54,18 +54,40 @@ void main() {
 
   setUp(() => api = useFakeApi());
 
+  testWidgets("a tile's emoji large, and a glimpse of its interests' emoji",
+      (tester) async {
+    api.on('GET', '/interests/topics', contractTopicsBody);
+    await _pump(tester, const BrowseByTopicRow());
+
+    final dev = find.byKey(const ValueKey('browse-topic-development'));
+    expect(find.descendant(of: dev, matching: find.text('💻')), findsOneWidget);
+    // Web Development and Coding came without emoji: the app's own.
+    expect(
+        tester
+            .widget<Text>(
+                find.byKey(const ValueKey('browse-topic-emoji-development')))
+            .data,
+        '🌐 ⌨️');
+    // Arts came without its emoji, too.
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('browse-topic-arts')),
+            matching: find.text('🎭')),
+        findsOneWidget);
+  });
+
   testWidgets("a card per topic, counted; a tap opens the topic's page",
       (tester) async {
     api.on('GET', '/interests/topics', contractTopicsBody);
     final went = await _pump(tester, const BrowseByTopicRow());
 
     expect(find.text('BROWSE BY TOPIC'), findsOneWidget);
-    expect(find.byKey(const ValueKey('browse-topic-development')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('browse-topic-development')), findsOneWidget);
     expect(find.text('12 upcoming'), findsOneWidget);
     expect(
-      tester.getSemantics(
-          find.byKey(const ValueKey('browse-topic-development'))),
+      tester
+          .getSemantics(find.byKey(const ValueKey('browse-topic-development'))),
       isSemantics(
           label: 'Development, 12 upcoming events',
           isButton: true,
@@ -108,8 +130,8 @@ void main() {
     api.on('GET', '/interests/list', contractListBody);
     await _pump(tester, const BrowseByTopicRow());
 
-    expect(find.byKey(const ValueKey('browse-topic-development')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('browse-topic-development')), findsOneWidget);
     expect(find.textContaining('upcoming'), findsNothing);
   });
 

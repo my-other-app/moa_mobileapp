@@ -1,3 +1,4 @@
+import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_interest_picker.dart';
@@ -53,8 +54,7 @@ String _count(WidgetTester tester) =>
     tester.widget<Text>(find.byKey(const ValueKey('interest-count'))).data!;
 
 void main() {
-  testWidgets('one section per topic, its interests under it',
-      (tester) async {
+  testWidgets('one section per topic, its interests under it', (tester) async {
     await tester.pumpWidget(const _Harness(topics: catalogue));
 
     expect(_header('development'), findsOneWidget);
@@ -173,13 +173,48 @@ void main() {
     expect(told, 1);
   });
 
-  testWidgets('section headers are headers to a screen reader',
+  testWidgets('past the limit a chip fades, but never looks chosen',
       (tester) async {
+    await tester.pumpWidget(const _Harness(
+      topics: catalogue,
+      initial: {3, 6},
+      max: 2,
+    ));
+
+    BoxDecoration pill(int id) => tester
+        .widget<AnimatedContainer>(find.descendant(
+            of: _chip(id), matching: find.byType(AnimatedContainer)))
+        .decoration! as BoxDecoration;
+    double opacity(int id) => tester
+        .widget<Opacity>(
+            find.descendant(of: _chip(id), matching: find.byType(Opacity)))
+        .opacity;
+
+    expect(pill(15).color, AppColors.softGrey);
+    expect(opacity(15), lessThan(1));
+    expect(pill(6).color, AppColors.paleYellow);
+    expect(opacity(6), 1);
+  });
+
+  testWidgets("a chip without the server's emoji has the app's",
+      (tester) async {
+    await tester.pumpWidget(const _Harness(topics: catalogue));
+
+    // Web Development and Artificial Intelligence came without one.
+    expect(find.descendant(of: _chip(3), matching: find.text('🌐')),
+        findsOneWidget);
+    expect(find.descendant(of: _chip(2), matching: find.text('🦾')),
+        findsOneWidget);
+  });
+
+  testWidgets('section headers are headers to a screen reader', (tester) async {
     await tester.pumpWidget(const _Harness(topics: catalogue, initial: {6}));
 
     expect(
-      tester.getSemantics(find.ancestor(
-          of: _header('development'), matching: find.byType(Semantics)).first),
+      tester.getSemantics(find
+          .ancestor(
+              of: _header('development'), matching: find.byType(Semantics))
+          .first),
       isSemantics(isHeader: true, label: 'Development, 1 selected'),
     );
   });
