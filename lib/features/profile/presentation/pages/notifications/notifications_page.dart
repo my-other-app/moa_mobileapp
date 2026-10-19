@@ -5,6 +5,7 @@ import 'package:finnet/features/notifications/data/models/notification_model.dar
 import 'package:finnet/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:finnet/features/profile/presentation/pages/notifications/no_notification_page.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/core/services/notification_service.dart';
 
 /// Notifications page showing in-app notification history.
@@ -82,7 +83,10 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
   }
 
   Widget _buildBody(NotificationsState state) {
-    if (state.isLoading) {
+    // The spinner only with nothing to show: the list on screen (saved or
+    // from the last visit) stays while it is read again. It used to give
+    // way to the spinner on every visit until the server answered.
+    if (state.isLoading && state.notifications.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(
           color: Color(0xFF1A1A2E),
@@ -90,25 +94,13 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
       );
     }
 
-    if (state.error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Error: ${state.error}',
-              style: TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                ref.read(notificationsProvider.notifier).loadNotifications();
-              },
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
+    // Nothing saved and nothing fetched. Offline this is the offline state,
+    // which reads the list again by itself when the network is back.
+    if (state.error != null && state.notifications.isEmpty) {
+      return ErrorView(
+        message: state.error,
+        onRetry: () =>
+            ref.read(notificationsProvider.notifier).loadNotifications(),
       );
     }
 

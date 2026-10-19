@@ -1,28 +1,43 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:finnet/features/events/data/repositories/saved_tickets_repository.dart';
+import 'package:finnet/features/events/data/ticket_images.dart';
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 
 /// The signed-in person's tickets on this phone, soonest first.
 ///
 /// Starts from what is saved -- so a ticket opens with no network -- and is
 /// brought up to date by [SavedTicketsNotifier.refresh], which
-/// `SavedTicketsSync` calls whenever the app is online.
+/// `SavedTicketsSync` calls whenever the app is online. Each refresh also
+/// keeps every ticket's design (the club's, as a picture) ready on the
+/// phone before the event, and deletes a revoked one's.
 final savedTicketsProvider =
     StateNotifierProvider<SavedTicketsNotifier, List<SavedTicket>>((ref) {
-  return SavedTicketsNotifier(ref.watch(savedTicketsRepositoryProvider));
+  return SavedTicketsNotifier(
+    ref.watch(savedTicketsRepositoryProvider),
+    images: ref.watch(ticketImagesProvider),
+  );
 });
 
 class SavedTicketsNotifier extends StateNotifier<List<SavedTicket>> {
-  SavedTicketsNotifier(this._repository, {DateTime Function()? now})
-      : _now = now ?? DateTime.now,
+  SavedTicketsNotifier(
+    this._repository, {
+    DateTime Function()? now,
+    TicketImages? images,
+  })  : _now = now ?? DateTime.now,
+        _images = images,
         super(const []) {
     _loaded = _load();
   }
 
   final SavedTicketsRepository _repository;
   final DateTime Function() _now;
+
+  /// Where the tickets' designs are kept; none, nothing is fetched.
+  final TicketImages? _images;
 
   late final Future<void> _loaded;
   Future<void>? _refreshing;
@@ -56,6 +71,9 @@ class SavedTicketsNotifier extends StateNotifier<List<SavedTicket>> {
       final fresh = await _repository.refresh();
       _lastRefresh = _now();
       if (mounted) state = fresh;
+      // In the background: the list is what the door needs first.
+      final images = _images;
+      if (images != null) unawaited(images.prefetch(fresh, now: _now()));
     } catch (e) {
       debugPrint('SavedTickets: refresh failed, keeping the saved ones: $e');
     }

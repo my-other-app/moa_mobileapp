@@ -21,12 +21,29 @@ enum CacheScope {
 /// the network is asked, and instead of an error when the network cannot
 /// be reached. Passed in a request's `extra` ([extra]).
 class CachePolicy {
-  const CachePolicy({this.scope = CacheScope.shared});
+  const CachePolicy({this.scope = CacheScope.shared, this.keep = false});
 
   final CacheScope scope;
 
+  /// One of the few answers every session leans on -- the profile, the
+  /// person's registrations, certificates, notifications, their feed --
+  /// which [ApiCache.prune] never deletes to make room, only when it is
+  /// past [ApiCache.maxAge]. Room is made from the rest: an event page or a
+  /// club's posts, one per thing looked at.
+  ///
+  /// Without it, the encrypted store's 40 answers filled up with event
+  /// pages, and the profile -- written once at sign-in and confirmed
+  /// unchanged since, so the oldest -- was the first to go at the next
+  /// start: offline, the Profile tab had nothing to show, and no way to
+  /// Settings.
+  final bool keep;
+
   static const shared = CachePolicy();
   static const personal = CachePolicy(scope: CacheScope.personal);
+
+  /// [personal], never pruned for room ([keep]).
+  static const personalKept =
+      CachePolicy(scope: CacheScope.personal, keep: true);
 
   /// The `extra` that asks for this policy.
   Map<String, dynamic> get extra => {ApiCache.policyKey: this};
@@ -45,6 +62,7 @@ class CacheEntry {
     required this.savedAt,
     this.etag,
     this.lastModified,
+    this.keep = false,
   });
 
   /// The decoded JSON body.
@@ -56,19 +74,29 @@ class CacheEntry {
   final String? etag;
   final String? lastModified;
 
+  /// Not pruned for room ([CachePolicy.keep]).
+  final bool keep;
+
   CacheEntry confirmedAt(DateTime at) => CacheEntry(
         data: data,
         savedAt: at,
         etag: etag,
         lastModified: lastModified,
+        keep: keep,
       );
 
+  /// Written before `data`, so a store can read it without decoding the
+  /// rest ([keepMarker]).
   String encode() => jsonEncode({
         'saved_at': savedAt.toUtc().toIso8601String(),
+        if (keep) 'keep': true,
         if (etag != null) 'etag': etag,
         if (lastModified != null) 'last_modified': lastModified,
         'data': data,
       });
+
+  /// How an encoded entry says it is kept, for a store's listing.
+  static const keepMarker = cacheKeepMarker;
 
   /// Null for anything unreadable: a saved copy is never worth a crash.
   static CacheEntry? decode(String? text) {
@@ -86,6 +114,7 @@ class CacheEntry {
         etag: etag is String && etag.isNotEmpty ? etag : null,
         lastModified:
             lastModified is String && lastModified.isNotEmpty ? lastModified : null,
+        keep: json['keep'] == true,
       );
     } catch (_) {
       return null;
@@ -102,7 +131,8 @@ class CacheEntry {
 ///   confirmed it, then deleted.
 /// - [maxSharedBytes] caps the files, [maxPersonalEntries] and
 ///   [maxPersonalBytes] the encrypted copies; a single answer larger than
-///   [maxEntryBytes] is not saved. [prune] holds them to it, oldest first.
+///   [maxEntryBytes] is not saved. [prune] holds them to it, oldest first,
+///   and never by deleting a kept answer ([CachePolicy.keep]).
 /// - [clear] at sign-out (and sign-in) deletes all of it. A response still
 ///   in flight when it runs is not saved afterwards ([epoch]).
 class ApiCache {
@@ -294,9 +324,12 @@ class ApiCache {
       kept.sort((a, b) => a.modified.compareTo(b.modified));
       var total = kept.fold<int>(0, (sum, item) => sum + item.bytes);
       var count = kept.length;
+      // Room is made from the answers that are not kept; the kept ones are
+      // a handful, and count towards the caps all the same.
       for (final item in kept) {
         final overCount = maxEntries != null && count > maxEntries;
         if (!overCount && total <= maxBytes) break;
+        if (item.keep) continue;
         await store.delete(item.key);
         total -= item.bytes;
         count--;

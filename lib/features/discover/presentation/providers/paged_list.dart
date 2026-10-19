@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/error/either.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/discover/domain/discover_paging.dart';
 
 /// A list a page at a time: what is shown, what is loading, and where the
@@ -76,6 +77,15 @@ class PagedState<T, M> {
       fromSaved: fromSaved ?? this.fromSaved,
     );
   }
+}
+
+/// Read [notifier]'s first page again each time the app comes back online,
+/// keeping what is shown until the new page is in ([PagedNotifier.refresh]).
+/// Called from the provider that makes it.
+void refreshWhenBackOnline(Ref ref, PagedNotifier<dynamic, dynamic> notifier) {
+  ref.listen<int>(backOnlineProvider, (_, __) {
+    if (notifier.mounted) notifier.refresh();
+  });
 }
 
 /// One page and what came beside it.

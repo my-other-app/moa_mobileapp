@@ -8,11 +8,25 @@ import 'package:finnet/core/storage/secure_storage_service.dart';
 
 /// One saved value and when it was last written, as a store lists it.
 class StoredItem {
-  const StoredItem(this.key, this.bytes, this.modified);
+  const StoredItem(this.key, this.bytes, this.modified, {this.keep = false});
 
   final String key;
   final int bytes;
   final DateTime modified;
+
+  /// Not to be deleted to make room ([CacheEntry.keep]).
+  final bool keep;
+}
+
+/// How an encoded saved answer says it is kept (`CacheEntry.keep`). It is
+/// written before the answer's data, so a listing finds it in the first
+/// bytes without decoding the rest.
+const cacheKeepMarker = '"keep":true';
+
+/// Whether an encoded entry says it is kept ([cacheKeepMarker]).
+bool _isKept(String value) {
+  final head = value.length > 96 ? value.substring(0, 96) : value;
+  return head.contains(cacheKeepMarker);
 }
 
 /// Where saved responses live: strings by key.
@@ -61,7 +75,8 @@ class MemoryCacheStore implements CacheStore {
   Future<List<StoredItem>> list() async => [
         for (final entry in values.entries)
           StoredItem(entry.key, utf8.encode(entry.value).length,
-              _modified[entry.key] ?? _now()),
+              _modified[entry.key] ?? _now(),
+              keep: _isKept(entry.value)),
       ];
 }
 
@@ -147,7 +162,12 @@ class FileCacheStore implements CacheStore {
           await entity.delete();
           continue;
         }
-        items.add(StoredItem(text.substring(0, split), stat.size, stat.modified));
+        items.add(StoredItem(
+          text.substring(0, split),
+          stat.size,
+          stat.modified,
+          keep: _isKept(text.substring(split + 1)),
+        ));
       } catch (e) {
         debugPrint('FileCacheStore: unreadable ${entity.path}: $e');
       }
@@ -204,6 +224,7 @@ class SecureCacheStore implements CacheStore {
         entry.key.substring(prefix.length),
         utf8.encode(entry.value).length,
         _savedAtOf(entry.value) ?? DateTime.fromMillisecondsSinceEpoch(0),
+        keep: _isKept(entry.value),
       ));
     }
     return items;

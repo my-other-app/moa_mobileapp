@@ -11,6 +11,10 @@ abstract class ThreadRepository {
     int limit = 20,
   });
 
+  /// A club's first page of posts as last kept on this phone; null when
+  /// none.
+  Future<ThreadPage?> savedClubThreads(int clubId, {int limit = 20});
+
   /// Posts from the clubs this person follows, newest first: the first
   /// page, or the one after [after] (a page's `nextCursor`).
   Future<Result<ThreadPage>> getFollowingFeed({String? after, int limit = 20});

@@ -56,7 +56,7 @@ class CertificateRemoteDataSourceImpl implements CertificateRemoteDataSource {
       _path,
       queryParameters: _query,
       // The person's own registrations: saved encrypted.
-      options: Options(extra: CachePolicy.personal.extra),
+      options: Options(extra: CachePolicy.personalKept.extra),
     );
     return _certificatesFrom(response.data);
   }

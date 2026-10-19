@@ -62,6 +62,12 @@ class _FakeRepository implements ThreadRepository {
   @override
   Future<ThreadPage?> savedFollowingFeed({int limit = 20}) async => null;
 
+  ThreadPage? savedClub;
+
+  @override
+  Future<ThreadPage?> savedClubThreads(int clubId, {int limit = 20}) async =>
+      savedClub;
+
   @override
   Future<Result<Thread>> getThread(String threadId) async => thread;
 
@@ -132,6 +138,42 @@ void main() {
       final state = container.read(clubThreadsProvider(5));
       expect(state.error, 'offline');
       expect(state.threads, isEmpty);
+    });
+
+    test('offline, the first page kept on the phone, and no error',
+        () async {
+      final repo = _FakeRepository()
+        ..savedClub = ThreadPage(items: [_thread('kept')], total: 1)
+        ..pages[0] = Either.left(const NetworkFailure(message: 'offline'));
+      final container = _container(repo);
+      final sub = container.listen(clubThreadsProvider(5), (_, __) {});
+      addTearDown(sub.close);
+      await _settle();
+      await _settle();
+
+      final state = container.read(clubThreadsProvider(5));
+      expect(state.threads.map((t) => t.id), ['kept']);
+      expect(state.error, isNull);
+      expect(state.isLoading, isFalse);
+    });
+
+    test('the kept page at once, then the server\'s', () async {
+      final repo = _FakeRepository()
+        ..savedClub = ThreadPage(items: [_thread('kept')], total: 1)
+        ..pages[0] = Either.right(ThreadPage(items: [_thread('new')], total: 1));
+      final container = _container(repo);
+      final seen = <List<String>>[];
+      final sub = container.listen(clubThreadsProvider(5), (_, next) {
+        if (next.threads.isNotEmpty) {
+          seen.add(next.threads.map((t) => t.id).toList());
+        }
+      });
+      addTearDown(sub.close);
+      await _settle();
+      await _settle();
+
+      expect(seen.first, ['kept']);
+      expect(seen.last, ['new']);
     });
 
     test('load more asks for the next offset and drops repeats', () async {

@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/error/failures.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/threads/data/repositories/thread_repository_impl.dart';
@@ -161,11 +163,18 @@ class ClubThreadsState {
 
 /// A club's posts, pinned first then newest, loaded on first read.
 ///
-/// Auto-disposed with the club page, so opening the club again shows what
-/// it has posted since rather than a cached list.
+/// Auto-disposed with the club page, so opening the club again asks for
+/// what it has posted since -- drawing the first page kept on the phone
+/// meanwhile, and instead when offline. Read again when the app comes back
+/// online.
 final clubThreadsProvider = StateNotifierProvider.autoDispose
     .family<ClubThreadsNotifier, ClubThreadsState, int>((ref, clubId) {
-  return ClubThreadsNotifier(ref.watch(threadRepositoryProvider), clubId);
+  final notifier =
+      ClubThreadsNotifier(ref.watch(threadRepositoryProvider), clubId);
+  ref.listen<int>(backOnlineProvider, (_, __) {
+    if (notifier.mounted) notifier.refresh();
+  });
+  return notifier;
 });
 
 /// Notifier for a club's posts: paging, refresh, likes and votes.
@@ -186,15 +195,32 @@ class ClubThreadsNotifier extends StateNotifier<ClubThreadsState>
         nextOffset: page.offset + page.items.length,
       );
 
-  /// Load the first page, replacing whatever was there.
+  /// Load the first page, replacing whatever was there: the copy kept on
+  /// the phone at once when nothing is shown, then the server's. With the
+  /// kept copy on screen a failure is not an error (the offline strip says
+  /// why).
   Future<void> load() async {
     state = state.copyWith(isLoading: true, clearError: true);
+    if (state.threads.isEmpty) {
+      ThreadPage? saved;
+      try {
+        saved =
+            await repository.savedClubThreads(clubId, limit: threadsPageSize);
+      } catch (e) {
+        debugPrint('ClubThreads: no kept copy: $e');
+      }
+      if (!mounted) return;
+      if (saved != null && saved.items.isNotEmpty && state.threads.isEmpty) {
+        state = _firstPage(saved).copyWith(isLoading: true);
+      }
+    }
     final result =
         await repository.getClubThreads(clubId, limit: threadsPageSize);
     if (!mounted) return;
     result.fold(
-      (failure) =>
-          state = state.copyWith(isLoading: false, error: failure.message),
+      (failure) => state = state.threads.isEmpty
+          ? state.copyWith(isLoading: false, error: failure.message)
+          : state.copyWith(isLoading: false),
       (page) => state = _firstPage(page),
     );
   }
@@ -289,10 +315,15 @@ class ClubThreadsNotifier extends StateNotifier<ClubThreadsState>
 /// server's replaces it.
 final followingThreadsProvider = StateNotifierProvider.autoDispose<
     FollowingThreadsNotifier, ClubThreadsState>((ref) {
-  return FollowingThreadsNotifier(
+  final notifier = FollowingThreadsNotifier(
     ref.watch(threadRepositoryProvider),
     signedIn: ref.watch(isAuthenticatedProvider),
   );
+  // Back online: the feed again, over the kept page.
+  ref.listen<int>(backOnlineProvider, (_, __) {
+    if (notifier.mounted) notifier.refresh();
+  });
+  return notifier;
 });
 
 class FollowingThreadsNotifier extends StateNotifier<ClubThreadsState>
