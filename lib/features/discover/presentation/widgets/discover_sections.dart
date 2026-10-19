@@ -153,7 +153,7 @@ class ClubRail extends StatelessWidget {
     final shown = clubs.take(limit).toList();
     final scale = (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.6);
     return SizedBox(
-      height: 70 + 110 * scale,
+      height: 76 + 112 * scale,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),

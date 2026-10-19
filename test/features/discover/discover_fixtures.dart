@@ -31,7 +31,7 @@ Map<String, dynamic> eventCard(
         'id': 3,
         'name': 'Tinkerhub',
         'slug': 'tinkerhub',
-        'logo': {'thumbnail': 'https://media.example/t.png'},
+        'logo': null,
       },
       'going': going,
       'capacity': 100,

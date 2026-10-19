@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/domain/topic_rules.dart';
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
 
 /// "Browse by topic" on Home: a card per topic, with how many events are
-/// coming up under it when the server counts, each opening Explore Events
-/// on that topic.
+/// coming up under it when the server counts, each opening the topic's page
+/// (its events and clubs, readable signed out); "See all" opens Topics.
 ///
 /// Nothing while the topics load or if they fail -- it is a way in, not the
 /// feed -- and nothing on a server with one topic holding everything.
@@ -57,7 +58,7 @@ class BrowseByTopicRow extends ConsumerWidget {
             const SizedBox(width: 8),
             GestureDetector(
               key: const ValueKey('browse-by-topic-all'),
-              onTap: () => context.push('/events/explore'),
+              onTap: () => context.push(topicsPath),
               child: const Text(
                 'See all',
                 style: TextStyle(
@@ -170,6 +171,5 @@ class _TopicCard extends StatelessWidget {
     );
   }
 
-  void _open(BuildContext context) =>
-      context.push('/events/explore', extra: {'topic': topic.slug});
+  void _open(BuildContext context) => context.push(topicLocation(topic.slug));
 }

@@ -114,68 +114,44 @@ class DiscoverClubCard extends StatelessWidget {
                       ],
                     ),
                   ],
+                  // One line each, so a card in a rail keeps its height.
                   if (shown.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final name in shown) _Tag(label: name),
-                        if (more > 0) _Tag(label: '+$more'),
-                      ],
+                    const SizedBox(height: 6),
+                    Text(
+                      [...shown, if (more > 0) '+$more'].join(' · '),
+                      key: const ValueKey('discover-club-interests'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, color: _ink),
                     ),
                   ],
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Text(
-                        plural(club.followers, 'follower'),
-                        style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: _ink),
+                  const SizedBox(height: 8),
+                  Text.rich(
+                    TextSpan(children: [
+                      TextSpan(
+                        text: plural(club.followers, 'follower'),
+                        style: const TextStyle(color: _ink),
                       ),
-                      const SizedBox(width: 12),
-                      Text(
-                        '${formatCount(club.upcomingEvents)} upcoming',
+                      const TextSpan(text: '   '),
+                      TextSpan(
+                        text: '${formatCount(club.upcomingEvents)} upcoming',
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
                           color: club.upcomingEvents > 0
                               ? const Color(0xFF17A58F)
                               : _muted,
                         ),
                       ),
-                    ],
+                    ]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  const _Tag({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4F4F2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 11, color: _ink),
       ),
     );
   }
