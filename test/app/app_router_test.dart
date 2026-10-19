@@ -63,6 +63,11 @@ void main() {
         '/events/hack-night-04/register',
         '/events/hack-night-04/compete',
         '/feedback/12/34?k=abc',
+        // Batch C's pages.
+        '/following/posts',
+        '/verify/certificates',
+        '/verify/certificates/abc',
+        '/auth/forgot-password',
         // Batch A's pages.
         '/discover/events?when=this_week',
         '/discover/clubs',
@@ -223,6 +228,8 @@ void main() {
             'hack-night-04');
         expect(nameOf('/clubs/circuit-society'), AppRoutes.clubDetail);
         expect(nameOf('/clubs/42'), AppRoutes.clubDetail);
+        expect(matchOf('/clubs/circuit-society').pathParameters['clubId'],
+            'circuit-society');
         expect(nameOf('/events/hack-night-04/register'),
             AppRoutes.eventRegister);
       });

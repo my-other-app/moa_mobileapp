@@ -90,7 +90,7 @@ class _App {
         GoRoute(path: '/profile', builder: (_, __) => const _Page('profile')),
         GoRoute(
             path: signInPath,
-            builder: (_, s) => SignInGate(
+            builder: (_, s) => SignInPageFrame(
                   location: s.uri,
                   child: const _Page('sign in'),
                 )),

@@ -41,14 +41,14 @@ Future<bool> requireSignIn(
   );
   if (wantsToSignIn != true || router == null) return false;
   if (!context.mounted) return false;
-  startSignIn(ref, router, returnTo: here);
+  openSignIn(ref, router, returnTo: here);
   return false;
 }
 
 /// Open sign-in over the current screen, to come back to [returnTo] (or
 /// the current screen) once signed in. For a "Sign in" button that needs no
 /// question first -- a signed-out Profile tab, say.
-void startSignIn(WidgetRef ref, GoRouter router, {String? returnTo}) {
+void openSignIn(WidgetRef ref, GoRouter router, {String? returnTo}) {
   final here = returnTo ?? _currentLocation(router);
   if (here != null) ref.read(pendingLocationProvider).holdReturn(here);
   router.push(here == null ? signInPath : signInLocation(here));
@@ -186,7 +186,7 @@ class SignInPlaceholder extends ConsumerWidget {
             FilledButton(
               onPressed: () {
                 final router = GoRouter.maybeOf(context);
-                if (router != null) startSignIn(ref, router);
+                if (router != null) openSignIn(ref, router);
               },
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF2C333D),

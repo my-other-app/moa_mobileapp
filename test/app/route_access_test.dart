@@ -24,6 +24,11 @@ void main() {
       '/events/hack-night-04/register',
       '/events/hack-night-04/compete',
       '/feedback/12/34',
+      // Batch C's pages.
+      '/following/posts',
+      '/verify/certificates',
+      '/verify/certificates/certificate:abc-123',
+      '/auth/forgot-password',
       // Batch A's pages; and any screen a feature adds is open unless listed.
       '/discover/events',
       '/discover/clubs',
@@ -77,8 +82,8 @@ void main() {
         '/auth/profile-check?from=%2Fevents%2F12');
     expect(profileCheckLocation(null), '/auth/profile-check');
     expect(profileCheckLocation('https://evil.example'), '/auth/profile-check');
-    expect(safeReturn('/\\evil.example'), isNull);
-    expect(safeReturn('/events/12?x=1'), '/events/12?x=1');
+    expect(safeReturnPath('/\\evil.example'), isNull);
+    expect(safeReturnPath('/events/12?x=1'), '/events/12?x=1');
   });
 
   test('returnTarget only comes back inside the app', () {

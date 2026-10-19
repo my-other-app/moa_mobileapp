@@ -176,6 +176,34 @@ Widget _buildEventPage(BuildContext context, GoRouterState state) {
   );
 }
 
+/// `/clubs/{clubId}`: the club, by id or by the website's slug. The
+/// parameter keeps its old name; it is a string ref. [ClubRefPage] finds the
+/// id behind a slug for the page, which takes an id.
+///
+/// Batch C's `ClubIndividualPage` resolves a slug itself (`clubId: 0` with
+/// `clubSlug`); at merge this body becomes:
+///
+/// ```dart
+/// final ref = state.pathParameters['clubId'] ?? '';
+/// final id = int.tryParse(ref);
+/// return ClubIndividualPage(
+///   clubId: id ?? 0,
+///   clubSlug: extra?['clubSlug'] as String? ?? (id == null ? ref : ''),
+///   clubname: extra?['clubName'] as String? ?? '',
+/// );
+/// ```
+Widget _buildClubPage(BuildContext context, GoRouterState state) {
+  final extra = state.extra as Map<String, dynamic>?;
+  return ClubRefPage(
+    clubRef: state.pathParameters['clubId'] ?? '',
+    page: (clubId, slug, name) => ClubIndividualPage(
+      clubId: clubId,
+      clubSlug: extra?['clubSlug'] as String? ?? slug,
+      clubname: extra?['clubName'] as String? ?? name,
+    ),
+  );
+}
+
 /// `/events/{eventId}/register`. The form here needs the event's questions,
 /// which the event's page hands over; opened without them (a link, or the
 /// way back from sign-in) it shows the event, whose Register starts again.
@@ -246,7 +274,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/auth/onboarding',
           name: 'onboarding',
           parentNavigatorKey: rootKey,
-          builder: (context, state) => SignInGate(
+          builder: (context, state) => SignInPageFrame(
                 location: state.uri,
                 child: const OnboardingInitialPage(),
               )),
@@ -514,20 +542,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                     ]),
                 // A club, by id or by the website's slug.
                 GoRoute(
-                    path: 'clubs/:clubRef',
+                    path: 'clubs/:clubId',
                     name: 'clubDetail',
                     parentNavigatorKey: rootKey,
-                    builder: (context, state) {
-                      final extra = state.extra as Map<String, dynamic>?;
-                      return ClubRefPage(
-                        clubRef: state.pathParameters['clubRef'] ?? '',
-                        page: (clubId, slug, name) => ClubIndividualPage(
-                          clubId: clubId,
-                          clubSlug: extra?['clubSlug'] as String? ?? slug,
-                          clubname: extra?['clubName'] as String? ?? name,
-                        ),
-                      );
-                    }),
+                    builder: _buildClubPage, // merge: C's page takes the slug (see _buildClubPage)
+                ),
                 // A club's post, with its comments. Not under its club: a
                 // tapped notification knows the post and not the club.
                 GoRoute(

@@ -70,10 +70,10 @@ String signInLocation(String from) => Uri(
 /// `from` naming another site (`https://...`, `//host`, `/\\host`), or the
 /// sign-in flow itself, is ignored.
 String? returnTarget(Uri location) =>
-    safeReturn(location.queryParameters[returnParameter]);
+    safeReturnPath(location.queryParameters[returnParameter]);
 
 /// [from] when it is a path inside the app, else null. See [returnTarget].
-String? safeReturn(String? from) {
+String? safeReturnPath(String? from) {
   if (from == null || !from.startsWith('/') || from.startsWith('//')) {
     return null;
   }
@@ -87,7 +87,7 @@ String? safeReturn(String? from) {
 /// The profile check, told where to go once it has the profile (an
 /// existing account goes straight back to [from]).
 String profileCheckLocation(String? from) {
-  final back = safeReturn(from);
+  final back = safeReturnPath(from);
   return back == null
       ? '/auth/profile-check'
       : Uri(

@@ -314,18 +314,19 @@ class _CertificateOnWeb extends ConsumerWidget {
 /// A `?from=` address (a private page, or a screen whose action asked for
 /// an account) is held so that signing in comes back to it. "Not now", or
 /// Back, forgets it: the person chose not to go there.
-class SignInGate extends ConsumerStatefulWidget {
-  const SignInGate({super.key, required this.location, required this.child});
+class SignInPageFrame extends ConsumerStatefulWidget {
+  const SignInPageFrame(
+      {super.key, required this.location, required this.child});
 
   /// The sign-in screen's own address, with its `from`.
   final Uri location;
   final Widget child;
 
   @override
-  ConsumerState<SignInGate> createState() => _SignInGateState();
+  ConsumerState<SignInPageFrame> createState() => _SignInPageFrameState();
 }
 
-class _SignInGateState extends ConsumerState<SignInGate> {
+class _SignInPageFrameState extends ConsumerState<SignInPageFrame> {
   @override
   void initState() {
     super.initState();
