@@ -39,8 +39,8 @@ Checked on 2026-10-18 with read-only GETs, using the token in `~/.config/moa/clo
   | A | `myotherapp.in` |
   | A | `api.myotherapp.in` |
   | A | `api.staging.myotherapp.in` |
-  | A | `admin-next.myotherapp.in` |
-  | A | `clubs-next.myotherapp.in` |
+  | A | `main-portal.myotherapp.in` (admin; `admin-next` redirects here) |
+  | A | `club-dashboard.myotherapp.in` (clubs; `clubs-next` redirects here) |
   | CNAME | `events.myotherapp.in` |
   | CNAME | `www.myotherapp.in` |
   | CNAME | `rsend.myotherapp.in` |
@@ -106,8 +106,8 @@ Go to **Workers Routes → Add route**. The most specific pattern wins, so each 
 | `api.myotherapp.in/*` | None | The API |
 | `api.staging.myotherapp.in/*` | None | Production under another name |
 | `events.myotherapp.in/*` | None | Old event site name (Vercel) |
-| `clubs-next.myotherapp.in/*` | None | Clubs dashboard (Vercel) |
-| `admin-next.myotherapp.in/*` | None | Admin dashboard (Vercel) |
+| `club-dashboard.myotherapp.in/*` | None | Clubs dashboard (Vercel) |
+| `main-portal.myotherapp.in/*` | None | Admin dashboard (Vercel) |
 | `rsend.myotherapp.in/*` | None | Resend's sending subdomain |
 | `event.myotherapp.in/*` | None | Planned (phase 3) |
 | `club.myotherapp.in/*` | None | Planned (phase 3) |
@@ -132,7 +132,7 @@ Z=$(cat ~/.config/moa/cloudflare.zone)
 curl -sS -H @$HOME/.config/moa/cloudflare.authheader -X POST "https://api.cloudflare.com/client/v4/zones/$Z/workers/routes" \
   -H "Content-Type: application/json" --data '{"pattern":"*/*","script":"club-sites"}'
 for host in myotherapp.in www.myotherapp.in api.myotherapp.in api.staging.myotherapp.in events.myotherapp.in \
-            clubs-next.myotherapp.in admin-next.myotherapp.in rsend.myotherapp.in event.myotherapp.in \
+            club-dashboard.myotherapp.in main-portal.myotherapp.in rsend.myotherapp.in event.myotherapp.in \
             club.myotherapp.in admin.myotherapp.in; do
   curl -sS -H @$HOME/.config/moa/cloudflare.authheader -X POST "https://api.cloudflare.com/client/v4/zones/$Z/workers/routes" \
     -H "Content-Type: application/json" --data "{\"pattern\":\"$host/*\"}"
@@ -174,8 +174,8 @@ Use a domain the owner controls, for example `www.<a test domain>`, and a test c
 2. **Nothing else moved:** these answer exactly as before (same status and server headers, no `content-security-policy` from the Worker):
    - `curl -sI https://api.myotherapp.in/ping`
    - `curl -sI https://myotherapp.in/`
-   - `curl -sI https://clubs-next.myotherapp.in/`
-   - `curl -sI https://admin-next.myotherapp.in/`
+   - `curl -sI https://club-dashboard.myotherapp.in/`
+   - `curl -sI https://main-portal.myotherapp.in/`
    - `curl -sI https://events.myotherapp.in/`
 3. **Subdomains still work:** `curl -sI https://<slug>.myotherapp.in/` returns 200 with the Worker's `content-security-policy`.
 4. **Connect:** on the club's Website page, add `www.<test domain>`.

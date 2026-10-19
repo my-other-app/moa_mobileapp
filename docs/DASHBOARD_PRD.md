@@ -9,8 +9,8 @@ Two separate web apps, one shared component library:
 
 | App | Who signs in | Live at |
 |---|---|---|
-| **Admin** | Platform staff | `admin-next.myotherapp.in` |
-| **Clubs** | One login per club (often shared by a committee) | `clubs-next.myotherapp.in` |
+| **Admin** | Platform staff | `main-portal.myotherapp.in` |
+| **Clubs** | One login per club (often shared by a committee) | `club-dashboard.myotherapp.in` |
 
 ---
 
