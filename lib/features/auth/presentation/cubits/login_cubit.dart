@@ -37,6 +37,23 @@ class LoginSuccess extends LoginState {
 
 class Logout extends LoginState {}
 
+/// The password was right and the account has two-step verification on:
+/// the code from the authenticator app (or a recovery code) is needed. The
+/// screen asks for it and calls [LoginCubit.loginWithEmail] again with it.
+class LoginNeedsTwoStep extends LoginState {
+  final String email;
+  final String password;
+
+  /// Why the last code was refused; null the first time it is asked for.
+  final String? error;
+
+  LoginNeedsTwoStep({
+    required this.email,
+    required this.password,
+    this.error,
+  });
+}
+
 class LoginFailure extends LoginState {
   final String error;
   LoginFailure({required this.error});
@@ -74,7 +91,11 @@ class LoginCubit {
 
   void _fail(String method, Object error) {
     debugPrint('LoginCubit: $method sign-in failed: $error');
-    _emit(LoginFailure(error: signInErrorMessage(error)));
+    _emit(LoginFailure(
+      error: method == 'email'
+          ? emailSignInErrorMessage(error)
+          : signInErrorMessage(error),
+    ));
   }
 
   /// The two tokens from a sign-in answer. One without both is a failed
@@ -152,13 +173,20 @@ class LoginCubit {
     }
   }
 
-  Future<void> loginWithEmail(String email, String password) async {
+  /// Sign in with an email and password -- and, the second time round for
+  /// an account with two-step verification, [totpCode].
+  Future<void> loginWithEmail(
+    String email,
+    String password, {
+    String? totpCode,
+  }) async {
     _emit(LoginLoading());
 
     try {
       final result = await authService.signInWithEmail(
         email: email,
         password: password,
+        totpCode: totpCode,
       );
       final tokens = _tokensFrom(result);
       // Google and Apple only ever sign in attendee accounts; a password can
@@ -178,6 +206,18 @@ class LoginCubit {
         photoUrl: '', // Email login doesn't provide profile photo
       ));
     } catch (e) {
+      final code = errorCodeOf(e);
+      final sentCode = totpCode != null && totpCode.trim().isNotEmpty;
+      if (code == 'TOTP_REQUIRED' || code == 'TOTP_INVALID') {
+        debugPrint(
+            'LoginCubit: two-step code ${sentCode ? 'refused' : 'needed'}');
+        _emit(LoginNeedsTwoStep(
+          email: email,
+          password: password,
+          error: sentCode ? twoStepWrongCodeMessage : null,
+        ));
+        return;
+      }
       _fail('email', e);
     }
   }

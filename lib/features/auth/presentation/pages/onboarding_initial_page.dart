@@ -11,7 +11,9 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
+import 'package:finnet/features/auth/presentation/sign_in_errors.dart';
 import 'package:finnet/features/auth/presentation/widgets/terms_consent.dart';
+import 'package:finnet/features/auth/presentation/widgets/two_step_sheet.dart';
 
 /// Onboarding Initial Page with Google and Apple Sign In support.
 ///
@@ -34,6 +36,9 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
 
   late LoginCubit _loginCubit;
   bool _isAppleSignInAvailable = false;
+
+  /// The two-step sheet is up: it shows the progress and the errors itself.
+  bool _twoStepOpen = false;
 
   @override
   void initState() {
@@ -78,10 +83,19 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
     if (!mounted) return;
 
     if (state is LoginLoading) {
+      if (_twoStepOpen) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Logging in...')),
       );
+    } else if (state is LoginNeedsTwoStep) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      if (!_twoStepOpen) _openTwoStep(state);
     } else if (state is LoginSuccess) {
+      if (_twoStepOpen) {
+        // The sheet goes before the page does.
+        _twoStepOpen = false;
+        Navigator.of(context).pop();
+      }
       if (state.signedUpEmail != null) {
         // A new email account: the sign-up sent a code to the address. The
         // verify screen carries on to the profile check when done or skipped.
@@ -98,6 +112,8 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
         'profileUrl': state.photoUrl,
       });
     } else if (state is LoginFailure) {
+      // The two-step sheet says it there.
+      if (_twoStepOpen) return;
       // Already worded for a person (signInErrorMessage); some of it -- a
       // suspended or club account -- takes a moment to read.
       ScaffoldMessenger.of(context)
@@ -625,6 +641,35 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
 
   void _handleEmailSignIn(String email, String password) {
     _loginCubit.loginWithEmail(email, password);
+  }
+
+  /// The password was right; the account wants its authenticator code too.
+  /// Each code tried signs in again with the same email and password.
+  Future<void> _openTwoStep(LoginNeedsTwoStep first) async {
+    _twoStepOpen = true;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => TwoStepSheet(
+        email: first.email,
+        initialError: first.error,
+        onSubmit: (code) async {
+          await _loginCubit.loginWithEmail(first.email, first.password,
+              totpCode: code);
+          final state = _loginCubit.state;
+          if (state is LoginNeedsTwoStep) {
+            return state.error ?? twoStepWrongCodeMessage;
+          }
+          if (state is LoginFailure) return state.error;
+          return null;
+        },
+      ),
+    );
+    _twoStepOpen = false;
   }
 
   void _handleEmailSignUp(String name, String email, String password) {
