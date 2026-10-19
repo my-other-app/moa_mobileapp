@@ -51,6 +51,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           context.push('/profile/certificates');
         },
       },
+      // Anyone's certificate: is it genuine, and still valid?
+      {
+        'label': 'Verify a Certificate',
+        'icon': AssetResources.mycertificates,
+        'onTap': (BuildContext context) {
+          context.push('/verify/certificates');
+        },
+      },
       // TODO: Temporarily hidden - re-enable when badges feature is complete
       // {
       //   'label': 'My Badges',

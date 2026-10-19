@@ -43,6 +43,7 @@ import 'package:finnet/common/models/events/event_model.dart';
 // Batch C's routes (auth, threads, profile)
 import 'package:finnet/features/auth/presentation/auth_routes.dart';
 import 'package:finnet/features/threads/presentation/threads_routes.dart';
+import 'package:finnet/features/profile/presentation/profile_routes.dart';
 
 // Volunteer pages
 import 'package:finnet/features/volunteer/presentation/pages/volunteer_events_page.dart';
@@ -154,7 +155,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             );
           }),
 
-      ...authRoutes, ...threadsRoutes,
+      ...authRoutes, ...threadsRoutes, ...profileRoutes,
       // Onboarding flow
       GoRoute(
           path: '/onboarding/details',

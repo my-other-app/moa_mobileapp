@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -10,6 +11,7 @@ import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
 import 'package:finnet/features/profile/presentation/pages/certificates/certificate_preview.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/profile/presentation/utils/certificate_share.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// One certificate, to the design: preview, title, id, club, two facts,
@@ -96,7 +98,18 @@ class CertificateDetailPage extends ConsumerWidget {
           ),
         ),
         actions: [
+          // A Builder, so the share sheet can point at this button.
+          Builder(
+            builder: (buttonContext) => IconButton(
+              key: const ValueKey('certificate-share'),
+              tooltip: 'Share certificate',
+              icon: const Icon(Icons.ios_share, color: _ink),
+              onPressed: () =>
+                  shareCertificate(buttonContext, ref, certificate),
+            ),
+          ),
           IconButton(
+            tooltip: 'Open the PDF',
             icon: const Icon(Icons.open_in_new, color: _ink),
             onPressed: () => _open(context, pdfUrl),
           ),
@@ -141,8 +154,10 @@ class CertificateDetailPage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    'Certificate ID: ${certificate.ticketId}',
+                  // The number printed beside the QR, which is what anyone
+                  // checks it by -- not the ticket's id.
+                  SelectableText(
+                    'Certificate number: ${certificate.number}',
                     style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                   ),
                   if (certificate.clubName != null) ...[
@@ -179,6 +194,16 @@ class CertificateDetailPage extends ConsumerWidget {
                     onTap: () => ref
                         .read(pinnedCertificatesProvider.notifier)
                         .toggle(certificate.ticketId),
+                  ),
+                  const SizedBox(height: 12),
+                  _ActionRow(
+                    key: const ValueKey('certificate-verify'),
+                    emoji: '✅',
+                    label: 'Check it is genuine',
+                    onTap: () => context.push(
+                      '/verify/certificates/'
+                      '${Uri.encodeComponent(certificate.number)}',
+                    ),
                   ),
                 ],
               ),
@@ -351,6 +376,62 @@ class _FactCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A tappable row in the style of the pin row: an emoji, a label, a
+/// chevron.
+class _ActionRow extends StatelessWidget {
+  final String emoji;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ActionRow({
+    super.key,
+    required this.emoji,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E2E2)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF2F2F2),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(emoji, style: const TextStyle(fontSize: 16)),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: CertificateDetailPage._ink,
+              ),
+            ),
+            const Spacer(),
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }

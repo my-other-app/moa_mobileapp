@@ -4,6 +4,7 @@ import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/network/dio_client.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
+import 'package:finnet/features/profile/domain/entities/certificate_verification.dart';
 
 final certificateRemoteDataSourceProvider =
     Provider<CertificateRemoteDataSource>((ref) {
@@ -22,6 +23,10 @@ abstract class CertificateRemoteDataSource {
 
   /// How this certificate should look.
   Future<CertificateStyle> getStyle(String ticketId);
+
+  /// `GET /verify/certificates/{code}`: public, no session. [code] is
+  /// already in the server's terms ([certificateCodeFrom]).
+  Future<CertificateVerification> verify(String code);
 }
 
 class CertificateRemoteDataSourceImpl implements CertificateRemoteDataSource {
@@ -80,6 +85,18 @@ class CertificateRemoteDataSourceImpl implements CertificateRemoteDataSource {
     // the one being looked for than one from two years ago.
     certificates.sort((a, b) => b.issuedOn.compareTo(a.issuedOn));
     return certificates;
+  }
+
+  @override
+  Future<CertificateVerification> verify(String code) async {
+    final response = await _dio.get<dynamic>(
+      '/verify/certificates/${Uri.encodeComponent(code)}',
+      // Anyone may check a certificate; the answer is never kept.
+      options: Options(extra: {'skipAuth': true}),
+    );
+    final data = response.data;
+    return CertificateVerification.fromJson(
+        data is Map ? Map<String, dynamic>.from(data) : const {});
   }
 
   @override
