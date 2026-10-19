@@ -111,10 +111,10 @@ class ApiCache {
     required CacheStore personal,
     DateTime Function()? now,
     this.maxAge = const Duration(days: 7),
-    this.maxEntryBytes = 256 * 1024,
+    this.maxEntryBytes = 384 * 1024,
     this.maxSharedBytes = 20 * 1024 * 1024,
     this.maxPersonalEntries = 40,
-    this.maxPersonalBytes = 1024 * 1024,
+    this.maxPersonalBytes = 1536 * 1024,
   })  : _shared = shared,
         _personal = personal,
         _now = now ?? DateTime.now;
@@ -184,6 +184,16 @@ class ApiCache {
     );
     return keyFor(options.uri);
   }
+
+  /// The saved answer to `GET [path]` (with [query]) through [dio], or
+  /// null. Reads the store only, never the network.
+  Future<dynamic> savedAnswer(
+    Dio dio,
+    String path, {
+    Map<String, dynamic>? query,
+    CacheScope scope = CacheScope.shared,
+  }) async =>
+      (await read(keyForRequest(dio, path, query: query), scope))?.data;
 
   /// Paths never saved, whatever a caller asks: sign-in and its tokens,
   /// payments and checkout, and anything that hands out a one-time token.

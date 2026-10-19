@@ -187,96 +187,22 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     return RegistrationStatus.none;
   }
 
+  /// The event: the saved copy at once when there is one, then the
+  /// network's. It carries the person's registration and ticket, so it is
+  /// saved encrypted (personal). The steps that need the server's word --
+  /// finishing a payment, the agenda, the store, the live room -- run once,
+  /// after the fresh answer (or after the saved one, offline).
   Future<void> _fetchData() async {
+    var gotFresh = false;
     try {
-      Response<dynamic> res = await APIService.instance.request(
+      await APIService.instance.getSavedThenFresh(
         '/events/info/${widget.eventId}',
-        DioMethod.get,
+        policy: CachePolicy.personal,
+        onData: (data, {required fresh}) {
+          _applyEvent(data);
+          gotFresh = gotFresh || fresh;
+        },
       );
-      final Map<String, dynamic> raw = res.data is Map<String, dynamic>
-          ? res.data as Map<String, dynamic>
-          : const <String, dynamic>{};
-
-      // Parse the JSON response into an EventInfo model.
-      EventInfo eventInfo = EventInfo.fromJson(raw);
-      final status = registrationStatusFrom(raw, carried: _status);
-      if (!mounted) return;
-
-      // Update state with the parsed values.
-      setState(() {
-        id = eventInfo.id;
-        name = eventInfo.name;
-        slug = eventInfo.slug;
-        poster = eventInfo.poster;
-        eventDateTime = eventInfo.eventDateTime;
-        // EventInfo reads a missing or zero length as 0; the page shows "—".
-        duration = eventInfo.duration > 0 ? eventInfo.duration : null;
-        locationName = eventInfo.locationName;
-        locationLink = eventInfo.locationLink;
-        hasFee = eventInfo.hasFee;
-        regFee = eventInfo.regFee;
-        hasPrize = eventInfo.hasPrize;
-        prizeAmount = eventInfo.prizeAmount;
-        isOnline = eventInfo.isOnline;
-        regStartDate = eventInfo.regStartDate;
-        regEndDate = eventInfo.regEndDate;
-        club = eventInfo.club;
-        category = eventInfo.category;
-        interests = eventInfo.interests;
-        topics = eventInfo.topics;
-        additionalDetails = eventInfo.additionalDetails;
-        rating = eventInfo.rating;
-        totalRating = eventInfo.totalRating;
-        about = eventInfo.about;
-        contactPhone = eventInfo.contactPhone;
-        contactEmail = eventInfo.contactEmail;
-        url = eventInfo.url;
-
-        // New registration/attendance fields
-        // IMPORTANT: Use API values if available, otherwise preserve navigation values
-        // This ensures status from EventCard navigation is not lost.
-        // `is_paid: false` is a registration still waiting for its payment:
-        // it has no ticket to view yet.
-        isAttended = status == RegistrationStatus.attended;
-        isRegistered = status != RegistrationStatus.none;
-        awaitingPayment = status == RegistrationStatus.awaitingPayment;
-        registrationId = eventInfo.registrationId;
-        // Only update URLs if API provides them
-        if (eventInfo.ticketUrl != null && eventInfo.ticketUrl!.isNotEmpty) {
-          ticketUrl = eventInfo.ticketUrl;
-        }
-        if (eventInfo.certificateUrl != null &&
-            eventInfo.certificateUrl!.isNotEmpty) {
-          certificateUrl = eventInfo.certificateUrl;
-        }
-        userRating = eventInfo.userRating;
-        userPosition = eventInfo.userPosition;
-        positionLabel = eventInfo.positionLabel;
-        downloads = eventInfo.downloads;
-
-        isLoading = false;
-
-        // CRITICAL: Check if registration is already closed IMMEDIATELY
-        if (regEndDate != null && regEndDate!.isBefore(DateTime.now())) {
-          registrationClosed = true;
-          countdownText = 'Registration Closed';
-        }
-      });
-
-      // Start the countdown timer if regEndDate is available and not already closed.
-      if (regEndDate != null && !registrationClosed) {
-        _startTimer();
-      }
-      if (_finishPaymentOnLoad) {
-        _finishPaymentOnLoad = false;
-        if (awaitingPayment && !_eventEnded) unawaited(_finishPayment());
-      }
-      await _fetchAgenda();
-      await _fetchCatalog();
-      if (!mounted) return;
-      // The room fetched, as on every load; the stream follows while the
-      // event is live, and while it streams there is nothing to fetch.
-      _live.refresh();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -286,7 +212,97 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         );
         isLoading = false;
       });
+      return;
     }
+    if (!mounted || isLoading) return;
+
+    // Start the countdown timer if regEndDate is available and not already closed.
+    if (regEndDate != null && !registrationClosed) {
+      _startTimer();
+    }
+    if (_finishPaymentOnLoad && gotFresh) {
+      _finishPaymentOnLoad = false;
+      if (awaitingPayment && !_eventEnded) unawaited(_finishPayment());
+    }
+    await _fetchAgenda();
+    await _fetchCatalog();
+    if (!mounted) return;
+    // The room fetched, as on every load; the stream follows while the
+    // event is live, and while it streams there is nothing to fetch.
+    _live.refresh();
+  }
+
+  /// Show [data], an `/events/info` answer (saved or fresh).
+  void _applyEvent(Object? data) {
+    if (!mounted) return;
+    final Map<String, dynamic> raw = data is Map<String, dynamic>
+        ? data
+        : const <String, dynamic>{};
+
+    // Parse the JSON response into an EventInfo model.
+    EventInfo eventInfo = EventInfo.fromJson(raw);
+    final status = registrationStatusFrom(raw, carried: _status);
+
+    // Update state with the parsed values.
+    setState(() {
+      id = eventInfo.id;
+      name = eventInfo.name;
+      slug = eventInfo.slug;
+      poster = eventInfo.poster;
+      eventDateTime = eventInfo.eventDateTime;
+      // EventInfo reads a missing or zero length as 0; the page shows "—".
+      duration = eventInfo.duration > 0 ? eventInfo.duration : null;
+      locationName = eventInfo.locationName;
+      locationLink = eventInfo.locationLink;
+      hasFee = eventInfo.hasFee;
+      regFee = eventInfo.regFee;
+      hasPrize = eventInfo.hasPrize;
+      prizeAmount = eventInfo.prizeAmount;
+      isOnline = eventInfo.isOnline;
+      regStartDate = eventInfo.regStartDate;
+      regEndDate = eventInfo.regEndDate;
+      club = eventInfo.club;
+      category = eventInfo.category;
+      interests = eventInfo.interests;
+      topics = eventInfo.topics;
+      additionalDetails = eventInfo.additionalDetails;
+      rating = eventInfo.rating;
+      totalRating = eventInfo.totalRating;
+      about = eventInfo.about;
+      contactPhone = eventInfo.contactPhone;
+      contactEmail = eventInfo.contactEmail;
+      url = eventInfo.url;
+
+      // New registration/attendance fields
+      // IMPORTANT: Use API values if available, otherwise preserve navigation values
+      // This ensures status from EventCard navigation is not lost.
+      // `is_paid: false` is a registration still waiting for its payment:
+      // it has no ticket to view yet.
+      isAttended = status == RegistrationStatus.attended;
+      isRegistered = status != RegistrationStatus.none;
+      awaitingPayment = status == RegistrationStatus.awaitingPayment;
+      registrationId = eventInfo.registrationId;
+      // Only update URLs if API provides them
+      if (eventInfo.ticketUrl != null && eventInfo.ticketUrl!.isNotEmpty) {
+        ticketUrl = eventInfo.ticketUrl;
+      }
+      if (eventInfo.certificateUrl != null &&
+          eventInfo.certificateUrl!.isNotEmpty) {
+        certificateUrl = eventInfo.certificateUrl;
+      }
+      userRating = eventInfo.userRating;
+      userPosition = eventInfo.userPosition;
+      positionLabel = eventInfo.positionLabel;
+      downloads = eventInfo.downloads;
+
+      isLoading = false;
+
+      // CRITICAL: Check if registration is already closed IMMEDIATELY
+      if (regEndDate != null && regEndDate!.isBefore(DateTime.now())) {
+        registrationClosed = true;
+        countdownText = 'Registration Closed';
+      }
+    });
   }
 
   /// Registers again with the same details: for a signed-in person's unpaid
@@ -418,6 +434,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       final Response<dynamic> res = await APIService.instance.request(
         '/events/${widget.eventId}/agenda',
         DioMethod.get,
+        cache: CachePolicy.shared,
       );
       final data = res.data;
       if (data is Map<String, dynamic> && mounted) {
@@ -505,6 +522,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         '/events/${widget.eventId}/store/catalog',
         DioMethod.get,
         skipAuth: true,
+        cache: CachePolicy.shared,
       );
       final data = res.data;
       if (data is Map<String, dynamic> && mounted) {

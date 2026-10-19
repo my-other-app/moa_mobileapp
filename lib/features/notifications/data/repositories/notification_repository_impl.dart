@@ -30,6 +30,16 @@ class NotificationRepositoryImpl implements NotificationRepository {
       );
 
   @override
+  Future<NotificationPage?> savedFirstPage({required int limit}) async {
+    try {
+      return await remoteDataSource.savedFirstPage(limit: limit);
+    } catch (e) {
+      debugPrint('NotificationRepository.savedFirstPage error: $e');
+      return null;
+    }
+  }
+
+  @override
   Future<Result<int>> unreadCount() =>
       _guard(remoteDataSource.unreadCount, 'unreadCount');
 

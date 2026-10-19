@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:finnet/core/api/api_helper.dart';
-import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:finnet/features/events/presentation/utils/event_feed.dart';
+import 'package:finnet/features/events/presentation/utils/saved_feed.dart';
 import 'package:finnet/features/topics/presentation/widgets/browse_by_topic_row.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
@@ -14,104 +14,25 @@ class ForYouEventsPage extends StatefulWidget {
 }
 
 class _ForYouEventsPageState extends State<ForYouEventsPage>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, SavedFirstPageFeed<ForYouEventsPage> {
   @override
   bool get wantKeepAlive => true;
 
-  final List<dynamic> _events = [];
+  @override
+  String feedPage(int offset) =>
+      '/events/for-you?offset=$offset&limit=${SavedFirstPageFeed.pageSize}';
 
-  bool _isLoading = true;
-  bool _isLoadingMore = false;
-  bool _hasMore = true;
-  String? _errorMessage;
-  int _offset = 0;
-  static const int _limit = 10;
+  /// The feed is ranked for the person, but holds nothing private.
+  @override
+  CachePolicy get feedPolicy => CachePolicy.shared;
+
+  @override
+  String get feedErrorFallback => 'Could not load your feed.';
 
   @override
   void initState() {
     super.initState();
-    _fetchData();
-  }
-
-  /// Handle scroll notifications for pagination
-  bool _onScrollNotification(ScrollNotification notification) {
-    if (notification is ScrollEndNotification) {
-      final metrics = notification.metrics;
-      if (metrics.pixels >= metrics.maxScrollExtent - 200 &&
-          !_isLoadingMore &&
-          _hasMore &&
-          !_isLoading) {
-        _loadMore();
-      }
-    }
-    return false; // Don't consume the notification
-  }
-
-  Future<void> _fetchData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _offset = 0;
-      _events.clear();
-    });
-
-    try {
-      final res = await APIService.instance.request(
-        '/events/for-you?offset=$_offset&limit=$_limit',
-        DioMethod.get,
-      );
-      List<dynamic> fetchedEvents = res.data['items'] ?? [];
-      if (mounted) {
-        setState(() {
-          _events.addAll(fetchedEvents);
-          _hasMore = fetchedEvents.length >= _limit;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage =
-              readableError(e, fallback: 'Could not load your feed.');
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _loadMore() async {
-    if (_isLoadingMore) return;
-
-    setState(() {
-      _isLoadingMore = true;
-      _offset += _limit;
-    });
-
-    try {
-      final res = await APIService.instance.request(
-        '/events/for-you?offset=$_offset&limit=$_limit',
-        DioMethod.get,
-      );
-      List<dynamic> fetchedEvents = res.data['items'] ?? [];
-      if (mounted) {
-        setState(() {
-          _events.addAll(fetchedEvents);
-          _hasMore = fetchedEvents.length >= _limit;
-          _isLoadingMore = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _offset -= _limit;
-          _isLoadingMore = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _refresh() async {
-    await _fetchData();
+    fetchFirstPage();
   }
 
   @override
@@ -119,7 +40,7 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
     super.build(context);
 
     // Loading state
-    if (_isLoading) {
+    if (isLoading) {
       return Container(
         color: Colors.white,
         child: const SingleChildScrollView(
@@ -136,18 +57,18 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
     }
 
     // Error state
-    if (_errorMessage != null) {
+    if (errorMessage != null) {
       return Container(
         color: Colors.white,
         child: ErrorView(
-          message: _errorMessage,
-          onRetry: _fetchData,
+          message: errorMessage,
+          onRetry: fetchFirstPage,
         ),
       );
     }
 
     // Empty state -- with the topics to browse, a way to find something.
-    if (_events.isEmpty) {
+    if (events.isEmpty) {
       return Container(
         color: Colors.white,
         padding: const EdgeInsets.all(16),
@@ -169,15 +90,15 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
 
     // Content with NotificationListener for pagination
     return NotificationListener<ScrollNotification>(
-      onNotification: _onScrollNotification,
+      onNotification: onFeedScroll,
       child: RefreshIndicator(
-        onRefresh: _refresh,
+        onRefresh: fetchFirstPage,
         child: ListView.separated(
           // Use primary: true to cooperate with NestedScrollView
           primary: true,
           padding: const EdgeInsets.all(16),
           // "Browse by topic" first, then the feed.
-          itemCount: 1 + _events.length + (_hasMore ? 1 : 0),
+          itemCount: 1 + events.length + (hasMore ? 1 : 0),
           separatorBuilder: (context, index) => index == 0
               ? const SizedBox.shrink()
               : const Padding(
@@ -192,7 +113,7 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
           itemBuilder: (context, position) {
             if (position == 0) return const BrowseByTopicRow(bottomGap: 20);
             final index = position - 1;
-            if (index == _events.length) {
+            if (index == events.length) {
               return const Center(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
@@ -202,7 +123,7 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
             }
 
             final event = Map<String, dynamic>.from(
-                _events[index] as Map? ?? const <String, dynamic>{});
+                events[index] as Map? ?? const <String, dynamic>{});
             return eventCardFromJson(event);
           },
         ),

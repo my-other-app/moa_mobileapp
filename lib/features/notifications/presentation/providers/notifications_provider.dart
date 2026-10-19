@@ -58,18 +58,35 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 
   static const int _pageSize = 20;
 
-  /// Load initial notifications
+  /// Load initial notifications: the first page saved on this phone at
+  /// once, when there is one and nothing is on screen yet, then the
+  /// server's.
   Future<void> loadNotifications() async {
     state = state.copyWith(isLoading: true, error: null);
 
+    if (state.notifications.isEmpty) {
+      final saved = await _repository.savedFirstPage(limit: _pageSize);
+      if (!mounted) return;
+      if (saved != null && saved.items.isNotEmpty) {
+        state = state.copyWith(
+          notifications: saved.items,
+          isLoading: false,
+          hasMore: false,
+          currentOffset: saved.items.length,
+        );
+      }
+    }
+
     final result = await _repository.fetchList(limit: _pageSize, offset: 0);
+    if (!mounted) return;
 
     result.fold(
       (failure) => state = state.copyWith(
         isLoading: false,
         // The failure's own message, not e.toString(): the repository has
         // already turned a transport error into something a person can read.
-        error: failure.message,
+        // With the saved page on screen, a failed refresh is not an error.
+        error: state.notifications.isEmpty ? failure.message : null,
       ),
       (page) {
         state = state.copyWith(
@@ -82,7 +99,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
       },
     );
 
-    if (result.isRight) await fetchUnreadCount();
+    if (result.isRight && mounted) await fetchUnreadCount();
   }
 
   /// Load more notifications (pagination)
@@ -98,6 +115,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
       offset: state.currentOffset,
       cursor: state.nextCursor,
     );
+    if (!mounted) return;
 
     result.fold(
       (_) => state = state.copyWith(isLoadingMore: false),
@@ -116,6 +134,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
   /// Fetch unread notification count
   Future<void> fetchUnreadCount() async {
     final result = await _repository.unreadCount();
+    if (!mounted) return;
     // A failed count is not worth surfacing: the badge keeps its previous
     // value rather than flashing an error over a screen nobody asked to
     // refresh.
@@ -125,7 +144,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
   /// Mark a single notification as read
   Future<void> markAsRead(String notificationId) async {
     final result = await _repository.markAsRead(notificationId);
-    if (result.isLeft) return;
+    if (result.isLeft || !mounted) return;
 
     state = state.copyWith(
       notifications: [
@@ -139,7 +158,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
   /// Mark all notifications as read
   Future<void> markAllAsRead() async {
     final result = await _repository.markAllAsRead();
-    if (result.isLeft) return;
+    if (result.isLeft || !mounted) return;
 
     state = state.copyWith(
       notifications: [

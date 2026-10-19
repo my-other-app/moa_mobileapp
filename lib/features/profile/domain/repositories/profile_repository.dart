@@ -6,6 +6,9 @@ abstract class ProfileRepository {
   /// Get the current user's profile.
   Future<Result<UserProfile>> getMyProfile();
 
+  /// The profile as last saved on this phone, or null. No network.
+  Future<UserProfile?> getSavedProfile();
+
   /// Update the user's profile.
   Future<Result<UserProfile>> updateProfile({
     String? fullName,

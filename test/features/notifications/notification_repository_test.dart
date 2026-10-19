@@ -30,6 +30,9 @@ class _FakeDataSource implements NotificationRemoteDataSource {
   }
 
   @override
+  Future<NotificationPage?> savedFirstPage({required int limit}) async => null;
+
+  @override
   Future<int> unreadCount() async {
     calls.add('unreadCount');
     if (throws != null) throw throws!;

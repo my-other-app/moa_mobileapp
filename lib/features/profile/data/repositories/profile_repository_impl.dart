@@ -31,6 +31,16 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
+  Future<UserProfile?> getSavedProfile() async {
+    try {
+      return (await remoteDataSource.getSavedProfile())?.toEntity();
+    } catch (e) {
+      debugPrint('ProfileRepository.getSavedProfile error: $e');
+      return null;
+    }
+  }
+
+  @override
   Future<Result<UserProfile>> updateProfile({
     String? fullName,
     String? phone,

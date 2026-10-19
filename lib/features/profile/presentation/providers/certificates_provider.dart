@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/cache/saved_then_fresh.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_pin_store.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_remote_datasource.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
@@ -7,9 +8,14 @@ import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
 /// Every certificate the user has earned, newest first.
 ///
 /// Self-loading, so a screen that watches it does not also have to remember
-/// to fetch it.
-final certificatesProvider = FutureProvider<List<Certificate>>((ref) async {
-  return ref.watch(certificateRemoteDataSourceProvider).getMyCertificates();
+/// to fetch it. The list saved on this phone comes first, then the
+/// server's.
+final certificatesProvider = StreamProvider<List<Certificate>>((ref) {
+  final source = ref.watch(certificateRemoteDataSourceProvider);
+  return savedThenFresh(
+    saved: source.savedCertificates,
+    fresh: source.getMyCertificates,
+  );
 });
 
 /// How one certificate should look, from its club's template.

@@ -136,8 +136,8 @@ class APIService {
     Map<String, dynamic>? param,
     CachePolicy policy = CachePolicy.shared,
   }) async {
-    final key = ApiCache.keyForRequest(_dio, endpoint, query: param);
-    return (await ApiCache.instance.read(key, policy.scope))?.data;
+    return ApiCache.instance
+        .savedAnswer(_dio, endpoint, query: param, scope: policy.scope);
   }
 
   /// `GET [endpoint]`, stale-while-revalidate: [onData] gets the saved

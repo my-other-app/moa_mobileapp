@@ -14,6 +14,9 @@ abstract class NotificationRepository {
     String? cursor,
   });
 
+  /// The first page as last saved on this phone, or null. No network.
+  Future<NotificationPage?> savedFirstPage({required int limit});
+
   Future<Result<int>> unreadCount();
 
   Future<Result<void>> markAsRead(String notificationId);

@@ -1,5 +1,4 @@
 import 'dart:math' show Random;
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/shared/widgets/rating_stars.dart';
 import 'package:finnet/core/api/api_helper.dart';
@@ -18,6 +17,7 @@ import 'package:finnet/features/topics/data/models/topic_model.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_tag_strip.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/core/utils/json_read.dart';
 
 class ClubProfilePage extends StatefulWidget {
   final int id;
@@ -81,6 +81,7 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
       clubInfo!.userData['is_following'] = !isCurrentlyFollowing;
     } catch (e) {
       // Revert on error
+      if (!mounted) return;
       setState(() {
         userData?['is_following'] = isCurrentlyFollowing;
         followersCount =
@@ -95,35 +96,17 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
     }
   }
 
+  /// The club: the saved copy at once when there is one, then the network's.
   Future<void> _fetchData() async {
     try {
-      Response<dynamic> res = await APIService.instance.request(
+      await APIService.instance.getSavedThenFresh(
         '/clubs/info/${widget.id}',
-        DioMethod.get,
+        onData: (data, {required fresh}) => _applyClub(data),
       );
-      // Parse the response into our model.
-      clubInfo = ClubInfo.fromJson(res.data);
-      setState(() {
-        id = clubInfo!.id;
-        name = clubInfo!.name;
-        slug = clubInfo!.slug;
-        logo = clubInfo!.logo;
-        locationName = clubInfo!.locationName;
-        locationLink = clubInfo!.locationLink;
-        about = clubInfo!.about;
-        rating = clubInfo!.rating;
-        //rating = 2;
-        totalRatings = clubInfo!.totalRatings;
-        socials = clubInfo!.socials;
-        interests = clubInfo!.interests;
-        followersCount = clubInfo!.followersCount;
-        contactPhone = clubInfo!.contactPhone;
-        contactEmail = clubInfo!.contactEmail;
-        userData = clubInfo!.userData;
-        org = clubInfo!.org;
-        isLoading = false;
-      });
     } catch (e) {
+      // It used to set state here without asking whether the page was
+      // still open: leaving before the club loaded threw.
+      if (!mounted) return;
       setState(() {
         errorMessage = extractErrorMessage(
           e,
@@ -132,6 +115,34 @@ class _ClubProfilePageState extends State<ClubProfilePage> {
         isLoading = false;
       });
     }
+  }
+
+  void _applyClub(Object? data) {
+    if (!mounted) return;
+    // Parse the response into our model.
+    final info = ClubInfo.fromJson(
+        data is Map<String, dynamic> ? data : const <String, dynamic>{});
+    clubInfo = info;
+    setState(() {
+      id = info.id;
+      name = info.name;
+      slug = info.slug;
+      logo = info.logo;
+      locationName = info.locationName;
+      locationLink = info.locationLink;
+      about = info.about;
+      rating = info.rating;
+      totalRatings = info.totalRatings;
+      socials = info.socials;
+      interests = info.interests;
+      followersCount = info.followersCount;
+      contactPhone = info.contactPhone;
+      contactEmail = info.contactEmail;
+      userData = info.userData;
+      org = info.org;
+      isLoading = false;
+      errorMessage = null;
+    });
   }
 
   @override
@@ -791,32 +802,29 @@ class ClubInfo {
 
   factory ClubInfo.fromJson(Map<String, dynamic> json) {
     return ClubInfo(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
+      id: jsonInt(json['id']) ?? 0,
+      name: jsonText(json['name']),
+      slug: jsonText(json['slug']),
       // A dict normally; null for a club with no logo, and a bare URL on
       // older rows. Kept as a map either way so the page never casts.
       logo: _logoMap(json['logo']),
-      locationName: json['location_name'] ?? '',
-      locationLink: json['location_link'] ?? '',
-      about: json['about'] ?? '',
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      totalRatings: (json['total_ratings'] as num?)?.toInt() ?? 0,
+      locationName: jsonText(json['location_name']),
+      locationLink: jsonText(json['location_link']),
+      about: jsonText(json['about']),
+      rating: jsonDouble(json['rating']) ?? 0.0,
+      totalRatings: jsonInt(json['total_ratings']) ?? 0,
       socials: json['socials'] is Map
           ? Map<String, dynamic>.from(json['socials'])
           : <String, dynamic>{},
-      interests: (json['interests'] as List<dynamic>?)
-              ?.map((e) => Interest.fromJson(e))
-              .toList() ??
-          [],
+      interests: jsonObjects(json['interests']).map(Interest.fromJson).toList(),
       topics: TopicModel.declaredIn(json),
-      followersCount: (json['followers_count'] as num?)?.toInt() ?? 0,
-      contactPhone: json['contact_phone'] ?? '',
-      contactEmail: json['contact_email'] ?? '',
+      followersCount: jsonInt(json['followers_count']) ?? 0,
+      contactPhone: jsonText(json['contact_phone']),
+      contactEmail: jsonText(json['contact_email']),
       userData: json['user_data'] is Map
           ? Map<String, dynamic>.from(json['user_data'])
           : <String, dynamic>{},
-      org: Org.fromJson(json['org'] ?? {}),
+      org: Org.fromJson(jsonObject(json['org']) ?? const <String, dynamic>{}),
     );
   }
 }
@@ -847,11 +855,11 @@ class Interest {
 
   factory Interest.fromJson(Map<String, dynamic> json) {
     return Interest(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      name: json['name'] ?? '',
-      icon: json['icon'] ?? '',
-      iconType: json['icon_type'] ?? '',
-      categoryId: (json['category_id'] as num?)?.toInt(),
+      id: jsonInt(json['id']) ?? 0,
+      name: jsonText(json['name']),
+      icon: jsonText(json['icon']),
+      iconType: jsonText(json['icon_type']),
+      categoryId: jsonInt(json['category_id']),
     );
   }
 
@@ -883,12 +891,12 @@ class Org {
 
   factory Org.fromJson(Map<String, dynamic> json) {
     return Org(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      name: json['name'] ?? '',
-      type: json['type'] ?? '',
-      address: json['address'] ?? '',
-      phone: json['phone'] ?? '',
-      email: json['email'] ?? '',
+      id: jsonInt(json['id']) ?? 0,
+      name: jsonText(json['name']),
+      type: jsonText(json['type']),
+      address: jsonText(json['address']),
+      phone: jsonText(json['phone']),
+      email: jsonText(json['email']),
     );
   }
 }
