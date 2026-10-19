@@ -333,3 +333,26 @@ String summarise(String text, int max) {
   final head = space > max * 0.6 ? cut.substring(0, space) : cut;
   return '${head.replaceFirst(RegExp(r'[\s,.;:!?-]+$'), '')}…';
 }
+
+// ---------------------------------------------------------------- feedback
+
+/// The app's route for a survey link from the website
+/// (`https://myotherapp.in/feedback/{eventId}/{registrationId}?k=…`):
+/// `/feedback/{eventId}/{registrationId}?k=…`. Null for any other link.
+String? feedbackRouteFrom(String link) {
+  final uri = Uri.tryParse(link.trim());
+  if (uri == null || !(uri.isScheme('https') || uri.isScheme('http'))) {
+    return null;
+  }
+  final site = Uri.parse(AppConfig.publicSiteUrl).host;
+  final host = uri.host.toLowerCase();
+  if (host != site && !host.endsWith('.$site')) return null;
+  final parts = uri.pathSegments.where((p) => p.isNotEmpty).toList();
+  if (parts.length != 3 || parts[0] != 'feedback') return null;
+  if (eventIdOf(parts[1]) == null || parts[2].isEmpty) return null;
+  final key = uri.queryParameters['k'] ?? '';
+  return Uri(
+    path: '/feedback/${parts[1]}/${parts[2]}',
+    queryParameters: key.isEmpty ? null : {'k': key},
+  ).toString();
+}
