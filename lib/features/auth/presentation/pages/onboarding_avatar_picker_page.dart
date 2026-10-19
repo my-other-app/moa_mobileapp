@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/auth/presentation/pages/widgest/avatar_picker_bottom_sheet.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
@@ -118,7 +119,8 @@ class OnboardingAvatarPickerPage extends ConsumerWidget {
               Spacer(),
               FilledButton(
                 onPressed: () {
-                  context.go('/onboarding/complete');
+                  context.go(withSignInFrom(
+                      '/onboarding/complete', signInFromOf(context)));
                 },
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,

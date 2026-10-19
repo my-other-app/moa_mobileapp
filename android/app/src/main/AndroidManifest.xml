@@ -13,6 +13,14 @@
   <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove"/>
   <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove"/>
 
+  <!-- No advertising ID (owner decision, 2026-10): the app shows no ads.
+       Firebase Analytics merges these in; they are removed, and its
+       collection of the ID is off below. Play Console's Advertising ID
+       declaration is then "No". -->
+  <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>
+  <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID" tools:node="remove"/>
+  <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION" tools:node="remove"/>
+
   <!-- REQUIRED FOR ANDROID 11+ to access external apps -->
   <queries>
       <!-- For launching HTTP/HTTPS URLs in browser -->
@@ -56,8 +64,11 @@
   <application
       android:label="MyOtherApp"
       android:name="${applicationName}"
-      android:icon="@mipmap/ic_launcher">
-      
+      android:icon="@mipmap/ic_launcher"
+      android:fullBackupContent="@xml/backup_rules"
+      android:dataExtractionRules="@xml/data_extraction_rules"
+      tools:targetApi="31">
+
       <!-- Google Sign-In Client ID -->
       <meta-data
           android:name="com.google.android.gms.client_id"
@@ -81,7 +92,56 @@
               <action android:name="android.intent.action.MAIN"/>
               <category android:name="android.intent.category.LAUNCHER"/>
           </intent-filter>
+
+          <!-- App Links: the website's pages the app has (web_links.dart),
+               verified against https://myotherapp.in/.well-known/assetlinks.json.
+               Only the apex: www. and events. redirect to it. An intent
+               filter cannot leave a path out, so /events/{slug}/live comes
+               here too; the router opens the event with its room. -->
+          <intent-filter android:autoVerify="true">
+              <action android:name="android.intent.action.VIEW"/>
+              <category android:name="android.intent.category.DEFAULT"/>
+              <category android:name="android.intent.category.BROWSABLE"/>
+              <data android:scheme="https"/>
+              <data android:host="myotherapp.in"/>
+              <data android:path="/events"/>
+              <data android:pathPrefix="/events/"/>
+              <data android:path="/clubs"/>
+              <data android:pathPrefix="/clubs/"/>
+              <data android:path="/threads"/>
+              <data android:pathPrefix="/threads/"/>
+              <data android:path="/topics"/>
+              <data android:pathPrefix="/topics/"/>
+              <data android:pathPrefix="/tickets/"/>
+              <data android:pathPrefix="/certificates/"/>
+              <data android:pathPrefix="/feedback/"/>
+          </intent-filter>
       </activity>
+
+      <!-- Links reach the app's router (go_router) as routes. On by default
+           in current Flutter; said here so it stays on. -->
+      <meta-data
+          android:name="flutter_deeplinking_enabled"
+          android:value="true" />
+
+      <!-- Pushes the system shows itself (the app in the background) use
+           the app's channel, status-bar icon and accent, not the fallback
+           "Miscellaneous" channel and the launcher icon. The channel is
+           created at start-up (NotificationService.androidChannelId). -->
+      <meta-data
+          android:name="com.google.firebase.messaging.default_notification_channel_id"
+          android:value="high_importance_channel" />
+      <meta-data
+          android:name="com.google.firebase.messaging.default_notification_icon"
+          android:resource="@drawable/ic_stat_notification" />
+      <meta-data
+          android:name="com.google.firebase.messaging.default_notification_color"
+          android:resource="@color/notification_accent" />
+
+      <!-- Firebase Analytics: no advertising ID (see the permissions above). -->
+      <meta-data
+          android:name="google_analytics_adid_collection_enabled"
+          android:value="false" />
 
       <!-- Required for Flutter plugin -->
       <meta-data

@@ -4,6 +4,7 @@ import 'package:finnet/features/profile/data/datasources/certificate_pin_store.d
 import 'package:finnet/features/profile/data/datasources/certificate_remote_datasource.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
+import 'package:finnet/features/profile/domain/entities/certificate_verification.dart';
 
 /// Every certificate the user has earned, newest first.
 ///
@@ -31,6 +32,13 @@ final certificateStyleProvider =
   } catch (_) {
     return CertificateStyle.fallback;
   }
+});
+
+/// What checking the certificate with [code] found (`certificateCodeFrom`
+/// has already made it the server's code).
+final certificateVerificationProvider = FutureProvider.autoDispose
+    .family<CertificateVerification, String>((ref, code) {
+  return ref.watch(certificateRemoteDataSourceProvider).verify(code);
 });
 
 /// The ticket ids the user has pinned, device-local.

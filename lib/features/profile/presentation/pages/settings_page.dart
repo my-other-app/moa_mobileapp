@@ -10,6 +10,7 @@ import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/auth/presentation/widgets/email_verification_banner.dart';
 import 'package:finnet/features/notifications/presentation/widgets/push_switches_section.dart';
 import 'package:finnet/features/profile/presentation/pages/settings/blocked_users_page.dart';
+import 'package:finnet/features/profile/presentation/pages/settings/privacy_switches_section.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
 import 'package:finnet/shared/utils/external_links.dart';
@@ -107,6 +108,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           // Nothing shows on a server that keeps none (the system settings
           // still turn every notification off).
           const PushSwitchesSection(),
+
+          // Usage analytics and crash reports: on until turned off, kept on
+          // this phone, applied at once and at every start.
+          const PrivacySwitchesSection(),
 
           CustomOptionTile(
             key: const ValueKey('settings-blocked-users'),

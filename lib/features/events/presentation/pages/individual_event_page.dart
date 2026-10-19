@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,17 +9,29 @@ import 'package:share_plus/share_plus.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/agenda_model.dart';
 import 'package:finnet/common/models/events/live_model.dart';
+import 'package:finnet/common/models/events/event_page_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
 import 'package:finnet/features/events/data/datasources/live_remote_datasource.dart';
 import 'package:finnet/features/events/data/live/live_stream_client.dart';
+import 'package:finnet/features/events/domain/event_page_rules.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
+import 'package:finnet/features/events/presentation/providers/event_page_provider.dart';
+import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
+import 'package:finnet/features/events/presentation/utils/event_sign_in.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/event_contact.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/event_people.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/event_rail.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/event_section.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/event_venue.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/register_bar_parts.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/event_entries.dart';
 import 'package:finnet/features/events/presentation/finish_payment.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
-import 'package:finnet/features/events/presentation/utils/event_feed.dart';
 import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
 import 'package:finnet/features/events/presentation/widgets/merch_picker.dart';
 import 'package:finnet/features/events/presentation/widgets/registration_feedback.dart';
 import 'package:finnet/features/payments/checkout.dart';
+import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
@@ -39,9 +52,15 @@ import 'package:finnet/features/events/presentation/pages/networking_page.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 
 class IndividualEventPage extends ConsumerStatefulWidget {
-  final int eventId;
+  /// The event's id, when it was opened by id.
+  final int? eventId;
+
+  /// The event's slug or id, as an address has it (`/events/hack-night`,
+  /// `/events/42`). `/events/info/{ref}` takes either.
+  final String? eventRef;
   final String? initialStatus;
   final String? initialTicketUrl;
   final String? initialCertificateUrl;
@@ -53,12 +72,20 @@ class IndividualEventPage extends ConsumerStatefulWidget {
 
   const IndividualEventPage({
     super.key,
-    required this.eventId,
+    this.eventId,
+    this.eventRef,
     this.initialStatus,
     this.initialTicketUrl,
     this.initialCertificateUrl,
     this.openLiveRoom = false,
-  });
+  }) : assert(eventId != null || eventRef != null,
+            'An event page needs an id or a slug');
+
+  /// The event as it was asked for: [eventRef] when given, else [eventId].
+  String get ref {
+    final given = eventRef?.trim() ?? '';
+    return given.isNotEmpty ? given : '${eventId ?? 0}';
+  }
 
   @override
   ConsumerState<IndividualEventPage> createState() =>
@@ -96,6 +123,38 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   String? contactPhone;
   String? contactEmail;
   String? url;
+
+  // From /events/info, for the sections the website shows. The website's
+  // own page (/discover/events) has more, and wins where both say.
+  List<EventPerson> infoSpeakers = const [];
+  String? infoGuidelines;
+  EventContact infoContact = EventContact.none;
+  double? infoLat;
+  double? infoLng;
+  String? feedbackUrl;
+
+  /// The event's id: known from the start when it was opened by id, and
+  /// from `/events/info` when by slug. Null until then.
+  int? get _eventId {
+    final loaded = id;
+    if (loaded != null && loaded > 0) return loaded;
+    return widget.eventId ?? eventIdOf(widget.ref);
+  }
+
+  /// Whether this phone sells a place at this event: not a paid online
+  /// event on an iPhone (canSellInApp, the owner's decision for 3.1.3(d)).
+  bool get _sellable => canSellInApp(
+        hasFee: hasFee ?? false,
+        isOnline: isOnline ?? false,
+      );
+
+  /// The id, or 0 before it is known (no call is made with it then).
+  int get _idOrZero => _eventId ?? 0;
+
+  /// What the website's event page has for this event; null for a
+  /// non-public event, before it loads, or when it can't. Watched at the
+  /// top of [build], so tap handlers read the same copy the page shows.
+  EventPageDetails? _page;
 
   // Registration/Attendance status
   bool isRegistered = false;
@@ -172,12 +231,13 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     }
     final liveSource = ref.read(liveRemoteDataSourceProvider);
     _live = LiveStreamClient<LiveFeed>(
+      // Started only once the event has loaded, when its id is known.
       open: ({lastEventId, required abort}) => liveSource.openRoomStream(
-        widget.eventId,
+        _idOrZero,
         lastEventId: lastEventId,
         abort: abort,
       ),
-      poll: () => liveSource.fetchRoom(widget.eventId),
+      poll: () => liveSource.fetchRoom(_idOrZero),
       parse: LiveFeed.tryParse,
       onData: (feed) {
         if (mounted) setState(() => live = feed);
@@ -225,7 +285,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     var gotFresh = false;
     try {
       await APIService.instance.getSavedThenFresh(
-        '/events/info/${widget.eventId}',
+        '/events/info/${Uri.encodeComponent(widget.ref)}',
         policy: CachePolicy.personal,
         onData: (data, {required fresh}) {
           _applyEvent(data);
@@ -251,7 +311,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     }
     if (_finishPaymentOnLoad && gotFresh) {
       _finishPaymentOnLoad = false;
-      if (awaitingPayment && !_eventEnded) unawaited(_finishPayment());
+      if (awaitingPayment && !_eventEnded && _sellable) {
+        unawaited(_finishPayment());
+      }
     }
     await _fetchAgenda();
     await _fetchCatalog();
@@ -324,6 +386,12 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       userPosition = eventInfo.userPosition;
       positionLabel = eventInfo.positionLabel;
       downloads = eventInfo.downloads;
+      infoSpeakers = eventInfo.speakers;
+      infoGuidelines = eventInfo.guidelines;
+      infoContact = eventInfo.contact;
+      infoLat = eventInfo.lat;
+      infoLng = eventInfo.lng;
+      feedbackUrl = eventInfo.feedbackUrl;
 
       isLoading = false;
 
@@ -354,6 +422,12 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// the ticket shows.
   Future<void> _finishPayment() async {
     if (_paying) return;
+    if (!_sellable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(iosOnlineSaleBlockedMessage)),
+      );
+      return;
+    }
     setState(() => _paying = true);
     try {
       var profile = ref.read(profileProvider).profile;
@@ -381,9 +455,10 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           name: name,
           email: email,
           phone: phone,
+          sellable: _sellable,
         ),
       ).run(
-        eventId: id ?? widget.eventId,
+        eventId: _idOrZero,
         questions: additionalDetails,
         name: profile?.fullName ?? '',
         email: profile?.email ?? '',
@@ -430,9 +505,20 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// the ticket or the payment when a refusal offered it. The event is
   /// fetched again either way -- a registration may now exist.
   Future<void> _openRegistrationForm() async {
+    final signedIn = await ensureSignedInFor(
+      context,
+      ref,
+      reason: 'Sign in to register for ${name ?? 'this event'}. '
+          "You'll come back here.",
+    );
+    if (!signedIn || !mounted) return;
     final result = await context.push<Object?>(
-      '/events/${id ?? widget.eventId}/register',
-      extra: {'additionalDetails': additionalDetails},
+      '/events/$_idOrZero/register',
+      extra: {
+        'additionalDetails': additionalDetails,
+        'hasFee': hasFee ?? false,
+        'isOnline': isOnline ?? false,
+      },
     );
     if (!mounted) return;
     await _fetchData();
@@ -445,9 +531,16 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     }
   }
 
+  /// The event's canonical address on the website.
+  String get _canonicalUrl => eventCanonicalUrl(
+        id: _idOrZero,
+        slug: slug ?? _page?.slug,
+        apiUrl: _page?.url,
+      );
+
   /// Shares the event's page on the website.
   Future<void> _shareEvent() async {
-    final link = eventShareUrl(id: id ?? widget.eventId, slug: slug);
+    final link = _canonicalUrl;
     final box = context.findRenderObject() as RenderBox?;
     await Share.share(
       name == null || name!.isEmpty ? link : '$name\n$link',
@@ -462,7 +555,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   Future<void> _fetchAgenda() async {
     try {
       final Response<dynamic> res = await APIService.instance.request(
-        '/events/${widget.eventId}/agenda',
+        '/events/$_idOrZero/agenda',
         DioMethod.get,
         cache: CachePolicy.shared,
       );
@@ -491,8 +584,15 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// on every phone. It opens inside the app (SFSafariViewController /
   /// Custom Tabs), so closing it comes back here; the browser if it cannot.
   Future<void> _openLiveRoom() async {
-    final opened =
-        await ref.read(linkLauncherProvider)(liveRoomUri(widget.eventId));
+    // By slug when it is known (or the page was opened by one); by id
+    // otherwise, which the website sends on to the slug.
+    final knownSlug = (slug?.isNotEmpty ?? false)
+        ? slug
+        : eventIdOf(widget.ref) == null
+            ? widget.ref
+            : null;
+    final opened = await ref.read(linkLauncherProvider)(
+        eventLiveRoomUri(id: _eventId ?? widget.ref, slug: knownSlug));
     if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Couldn't open the live room")),
@@ -556,7 +656,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   Future<void> _fetchCatalog() async {
     try {
       final Response<dynamic> res = await APIService.instance.request(
-        '/events/${widget.eventId}/store/catalog',
+        '/events/$_idOrZero/store/catalog',
         DioMethod.get,
         skipAuth: true,
         cache: CachePolicy.shared,
@@ -743,6 +843,202 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         const SizedBox(height: 16),
       ],
     );
+  }
+
+  // ------------------------------------------- what the website shows too
+
+  /// The speakers: the website API's, else /events/info's.
+  List<EventPerson> get _speakers {
+    final fromPage = _page?.speakers ?? const <EventPerson>[];
+    return fromPage.isNotEmpty ? fromPage : infoSpeakers;
+  }
+
+  String? get _guidelines => _page?.guidelines ?? infoGuidelines;
+
+  EventContact get _contact =>
+      (_page?.contact ?? EventContact.none).or(infoContact);
+
+  double? get _lat => _page?.lat ?? infoLat;
+  double? get _lng => _page?.lng ?? infoLng;
+
+  /// Directions to the venue in the phone's maps app; null with nothing to
+  /// go on.
+  Uri? get _directions => directionsUri(
+        ios: defaultTargetPlatform == TargetPlatform.iOS,
+        lat: _lat,
+        lng: _lng,
+        name: locationName ?? _page?.locationName,
+        link: (locationLink?.isNotEmpty ?? false)
+            ? locationLink
+            : _page?.locationLink,
+      );
+
+  Future<void> _openDirections() async {
+    final uri = _directions;
+    if (uri == null) return;
+    final opened = await ref.read(linkLauncherProvider)(uri);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't open your maps app")),
+      );
+    }
+  }
+
+  Future<void> _openLink(Uri uri, String failure) async {
+    final opened = await ref.read(linkLauncherProvider)(uri);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(failure)));
+    }
+  }
+
+  /// "Add to calendar": the phone's calendar, or Google Calendar's page
+  /// when there is no calendar app to take it.
+  Future<void> _addToCalendar() async {
+    final entry = calendarEntryFor(
+      name: name ?? '',
+      startsAt: eventDateTime,
+      endsAt: _page?.endsAt,
+      durationHours: duration,
+      isOnline: isOnline ?? false,
+      locationName: locationName,
+      about: about,
+      url: _canonicalUrl,
+    );
+    if (entry == null) return;
+    final outcome = await addToCalendarWith(ref, entry);
+    if (outcome == CalendarOutcome.failed && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't open your calendar")),
+      );
+    }
+  }
+
+  /// Another event, from a rail: by id, which every router reads.
+  void _openRailEvent(EventSummary event) {
+    context.push(event.route);
+  }
+
+  /// "Your team": the competition page for this event.
+  void _openCompetition() {
+    context.push('/events/$_idOrZero/compete',
+        extra: {'eventName': name ?? 'Event'});
+  }
+
+  /// The feedback survey: here, natively, from the link the server gave;
+  /// the website's page inside the app for any other link.
+  Future<void> _openFeedback() async {
+    final link = feedbackUrl;
+    if (link == null) return;
+    final route = feedbackRouteFrom(link);
+    if (route != null) {
+      await context.push(route);
+      return;
+    }
+    final uri = Uri.tryParse(link);
+    if (uri != null) await _openLink(uri, "Couldn't open the survey");
+  }
+
+  /// Speakers, the agenda, the venue, guidelines, the team, contact, and
+  /// the rails -- the website's order -- each only when there is something
+  /// to show.
+  List<Widget> _buildWebsiteSections(BuildContext context) {
+    final page = _page;
+    final speakers = _speakers;
+    final guidelines = _guidelines;
+    final contact = _contact;
+    final online = isOnline ?? page?.isOnline ?? false;
+    final hasVenue = online ||
+        (locationName?.isNotEmpty ?? false) ||
+        (_lat != null && _lng != null);
+    final team = page?.team ?? const <EventPerson>[];
+    final clubName = page?.club?.name ?? club?.name;
+    final clubId = club?.id ?? page?.club?.id;
+    final more = page?.moreFromClub ?? const <EventSummary>[];
+    final similar = page?.similar ?? const <EventSummary>[];
+    return [
+      if (speakers.isNotEmpty)
+        EventPeopleSection(
+          key: const ValueKey('event-speakers'),
+          title: speakers.length == 1 ? 'Speaker' : 'Speakers',
+          people: speakers,
+          speakers: true,
+        ),
+      // The run of show, when the organiser has written one: after the
+      // speakers, as on the website.
+      if (agenda.items.isNotEmpty) _buildAgendaSection(context),
+      if (hasVenue)
+        EventVenueSection(
+          isOnline: online,
+          locationName: locationName ?? page?.locationName,
+          lat: _lat,
+          lng: _lng,
+          onDirections: _directions == null ? null : _openDirections,
+        ),
+      if (guidelines != null)
+        EventSection(
+          key: const ValueKey('event-guidelines'),
+          title: 'Guidelines',
+          child: ExpandableText(guidelines),
+        ),
+      if (team.isNotEmpty)
+        EventPeopleSection(
+          key: const ValueKey('event-team'),
+          title: page?.teamSource == TeamSource.club
+              ? 'Hosted by ${clubName ?? 'the club'}'
+              : 'Organising team',
+          people: team,
+          trailing: page?.teamSource == TeamSource.club &&
+                  clubId != null &&
+                  clubId > 0
+              ? TextButton(
+                  onPressed: () => context.push('/clubs/$clubId', extra: {
+                    'clubSlug': club?.slug ?? page?.club?.slug ?? '',
+                    'clubName': clubName ?? '',
+                  }),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF2C333D),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: const Text('About the club'),
+                )
+              : null,
+        ),
+      if (!contact.isEmpty)
+        EventContactSection(
+          key: const ValueKey('event-contact'),
+          contact: contact,
+          onEmail: contact.email == null
+              ? null
+              : () => _openLink(
+                  Uri(scheme: 'mailto', path: contact.email),
+                  "Couldn't open your email app"),
+          onCall: contact.dialable == null
+              ? null
+              : () => _openLink(Uri(scheme: 'tel', path: contact.dialable),
+                  "Couldn't start a call"),
+        ),
+      if (more.isNotEmpty)
+        EventRail(
+          key: const ValueKey('rail-more-from-club'),
+          title: 'More from ${clubName ?? 'this club'}',
+          events: more,
+          onOpen: _openRailEvent,
+          onSeeAll: clubId == null || clubId <= 0
+              ? null
+              : () => context.push('/clubs/$clubId', extra: {
+                    'clubSlug': club?.slug ?? page?.club?.slug ?? '',
+                    'clubName': clubName ?? '',
+                  }),
+        ),
+      if (similar.isNotEmpty)
+        EventRail(
+          key: const ValueKey('rail-similar'),
+          title: 'Similar events',
+          events: similar,
+          onOpen: _openRailEvent,
+        ),
+    ];
   }
 
   void _startTimer() {
@@ -1293,7 +1589,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   Future<void> _submitRating(int ratingValue, String? review) async {
     try {
       await APIService.instance.request(
-        '/events/rate/${widget.eventId}',
+        '/events/rate/$_idOrZero',
         DioMethod.post,
         param: {
           'rating': ratingValue,
@@ -1333,6 +1629,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
 
   @override
   Widget build(BuildContext context) {
+    _page = ref.watch(eventPageDetailsProvider(widget.ref)).valueOrNull;
     // Loading and error handling.
     if (isLoading) {
       return Scaffold(
@@ -1382,6 +1679,12 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           style: const TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
         ),
         actions: [
+          if (eventDateTime != null && !_eventEnded)
+            IconButton(
+              tooltip: 'Add to calendar',
+              icon: const Icon(Icons.event_available_outlined),
+              onPressed: _addToCalendar,
+            ),
           IconButton(
             tooltip: 'Share event',
             icon: const Icon(Icons.share_outlined),
@@ -1401,7 +1704,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               aspectRatio: 1.0,
               child: EventPosterImage(
                 poster: poster,
-                eventId: id ?? widget.eventId,
+                eventId: _eventId ?? widget.ref,
                 // A missing category parses as id 0 and an empty name.
                 categoryId:
                     (category?.id ?? 0) != 0 ? category!.id : null,
@@ -1461,20 +1764,27 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      if ((_page?.club?.followers ?? 0) > 0)
+                        Text(
+                          _page!.club!.followers == 1
+                              ? '1 follower'
+                              : '${NumberFormat.compact(locale: 'en').format(_page!.club!.followers)} followers',
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.grey[600]),
+                        ),
                     ],
                   ),
                 ),
               ],
             ),
             // Its topics in their colours, then its interests. A topic
-            // opens Explore on it.
+            // opens its own page, as on the site.
             TopicTagStrip(
               topGap: 16,
               declared: topics,
               interests: [for (final i in interests) i.toEntity()],
               showInterests: true,
-              onTopicTap: (topic) => context.push('/events/explore',
-                  extra: {'topic': topic.slug}),
+              onTopicTap: (topic) => context.push(topicLocation(topic.slug)),
             ),
 
             const SizedBox(height: 16),
@@ -1499,18 +1809,22 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _showFeePopup(context),
-                    child: _infoCard(
-                      context,
-                      icon: AssetResources.regfee,
-                      title: 'Registration Fee',
-                      value: hasFee == true ? '₹ $regFee' : 'Free',
+                // No price on an iPhone for an event it doesn't sell: a
+                // price reads as an offer.
+                if (_sellable) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _showFeePopup(context),
+                      child: _infoCard(
+                        context,
+                        icon: AssetResources.regfee,
+                        title: 'Registration Fee',
+                        value: hasFee == true ? '₹ $regFee' : 'Free',
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
             const SizedBox(height: 16),
@@ -1707,7 +2021,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                       context,
                       MaterialPageRoute(
                         builder: (_) => NetworkingPage(
-                          eventId: widget.eventId,
+                          eventId: _idOrZero,
                           eventName: name ?? 'Event',
                         ),
                       ),
@@ -1739,14 +2053,23 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               ],
             ],
 
+            // ========== FEEDBACK (after attending) ==========
+            if (isAttended)
+              FeedbackEntryCard(
+                clubName: club?.name,
+                onOpen: feedbackUrl == null ? null : _openFeedback,
+              ),
+
             // ========== THE LIVE ROOM (while something is up) ==========
             if (live.isActive) _buildLiveStrip(context),
 
-            // ========== AGENDA (when the organiser has written one) ==========
-            if (agenda.items.isNotEmpty) _buildAgendaSection(context),
-
-            // ========== ON SALE WITH THE TICKET ==========
-            if (catalog.hasAnything) _buildStoreSection(context),
+            // ========== YOUR TEAM (an event with a competition) ==========
+            if ((isRegistered || isAttended) &&
+                !awaitingPayment &&
+                _eventId != null &&
+                (ref.watch(competitionEnabledProvider(_eventId!)).valueOrNull ??
+                    false))
+              CompetitionEntryCard(onTap: _openCompetition),
 
             // ========== MAIN DESCRIPTION ==========
             Text(
@@ -1755,12 +2078,22 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             ),
             const SizedBox(height: 16),
 
+            // ========== ON SALE WITH THE TICKET ==========
+            // Bought with the ticket, so not offered where the ticket isn't.
+            if (catalog.hasAnything && _sellable) _buildStoreSection(context),
+
             // ========== RATE AND RATING SECTION (only for attended) ==========
             if (isAttended) ...[
               // Rate the Event button (only if not rated yet)
               if (userRating == null || userRating == 0) ...[
                 OutlinedButton(
-                  onPressed: () => _showRatingDialog(context),
+                  onPressed: () async {
+                    if (await ensureSignedInFor(context, ref,
+                            reason: 'Sign in to rate this event.') &&
+                        context.mounted) {
+                      _showRatingDialog(context);
+                    }
+                  },
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 48),
                     side: const BorderSide(color: Colors.black),
@@ -1819,33 +2152,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               ],
             ],
 
-            // Need Help.
-            const Text(
-              'Need Help?',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Got any questions? We\'re here to help—hit us up!',
-              style: TextStyle(fontSize: 14, color: Colors.black54),
-            ),
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: () async {
-                if (contactPhone != null && contactPhone!.isNotEmpty) {
-                  final Uri url = Uri.parse('tel:$contactPhone');
-                  await openExternally(url);
-                }
-              },
-              child: Text(
-                'Call Organizer',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Theme.of(context).primaryColor,
-                  decoration: TextDecoration.underline,
-                ),
-              ),
-            ),
+            // ========== WHAT THE WEBSITE'S PAGE SHOWS ==========
+            ..._buildWebsiteSections(context),
             const SizedBox(height: 100),
           ],
         ),
@@ -1890,6 +2198,13 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// can be paid for until the event ends. Closed is shown only once the
   /// server has refused the payment.
   Widget _buildFinishPaymentBottomSheet(BuildContext context) {
+    if (!_sellable) {
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 26),
+        child: const IosSaleBlockedNotice(),
+      );
+    }
     final String banner;
     final String? blocked;
     if (_paymentClosed) {
@@ -1950,48 +2265,117 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     );
   }
 
-  /// Bottom sheet for registration state
+  /// What the register button can do now: from the website API's status
+  /// and seats when it has them, else from the dates (the countdown's own
+  /// "closed" included).
+  RegisterState get _registerState {
+    final page = _page;
+    final state = registerStateFor(
+      now: DateTime.now(),
+      phase: page?.phase,
+      registrationOpen: page?.registrationOpen,
+      capacity: page?.capacity,
+      seatsLeft: page?.seatsLeft,
+      regOpensAt: page?.regOpensAt ?? regStartDate,
+      regClosesAt: page?.regClosesAt ?? regEndDate,
+      startsAt: eventDateTime,
+      endsAt: page?.endsAt ??
+          eventDateTime?.add(hoursToDuration(duration ?? 0)),
+    );
+    // The countdown reached nought while the page was open.
+    if (registrationClosed && state.canRegister) {
+      return const RegisterState(
+          kind: RegisterKind.closed, label: 'REGISTRATION CLOSED');
+    }
+    return state;
+  }
+
+  /// Bottom sheet for registration state: the countdown or a note, the
+  /// seats, and the one button -- or, on an iPhone, for a paid online
+  /// event, the line saying it isn't sold here, with no price and no button.
   Widget _buildRegistrationBottomSheet(BuildContext context) {
+    final state = _registerState;
+    final page = _page;
+    final showCountdown =
+        state.canRegister && !registrationClosed && regEndDate != null;
+    final showMeter = page != null &&
+        page.capacity != null &&
+        (state.kind == RegisterKind.open || state.kind == RegisterKind.full);
+    final VoidCallback? onPressed;
+    if (isLoading) {
+      onPressed = null;
+    } else if (state.canRegister) {
+      onPressed = _openRegistrationForm;
+    } else if (state.kind == RegisterKind.live) {
+      onPressed = _openLiveRoom;
+    } else {
+      onPressed = null;
+    }
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // The countdown, when there is a deadline and it hasn't passed.
-          if (!registrationClosed && regEndDate != null)
-            Container(
-              width: double.infinity,
-              height: 25,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFDEDD),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                countdownText,
-                textAlign: TextAlign.left,
-                style: const TextStyle(
-                  fontWeight: FontWeight.normal,
-                  fontSize: 12,
-                  color: Color(0xFFCD0000),
+          if (!_sellable) ...[
+            const IosSaleBlockedNotice(),
+            const SizedBox(height: 10),
+          ] else ...[
+            // The countdown, when there is a deadline and it hasn't passed.
+            if (showCountdown)
+              Container(
+                width: double.infinity,
+                height: 25,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFDEDD),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  countdownText,
+                  textAlign: TextAlign.left,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.normal,
+                    fontSize: 12,
+                    color: Color(0xFFCD0000),
+                  ),
                 ),
               ),
+            if (state.note != null)
+              Padding(
+                padding: EdgeInsets.only(top: showCountdown ? 8 : 0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    state.note!,
+                    key: const ValueKey('register-note'),
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight:
+                          state.urgent ? FontWeight.w600 : FontWeight.normal,
+                      color: state.urgent
+                          ? const Color(0xFFB45309)
+                          : const Color(0xFF4B5563),
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 12),
+            if (showMeter)
+              SeatsMeter(
+                going: page.going,
+                capacity: page.capacity,
+                seatsLeft: page.seatsLeft,
+              ),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: onPressed,
+                child: Text(isLoading ? 'LOADING...' : state.label),
+              ),
             ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: (isLoading || registrationClosed)
-                  ? null
-                  : _openRegistrationForm,
-              child: Text(isLoading
-                  ? 'LOADING...'
-                  : registrationClosed
-                      ? 'REGISTRATION CLOSED'
-                      : 'REGISTER NOW'),
-            ),
-          ),
+          ],
           const SizedBox(height: 10),
         ],
       ),
@@ -2022,6 +2406,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           durationHours: duration,
           ticketUrl: url,
           revoked: _ticketRevoked,
+          eventId: _eventId,
         ),
       ),
     );

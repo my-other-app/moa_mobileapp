@@ -1,11 +1,15 @@
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/core/network/api_exception.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
 import 'package:finnet/features/events/presentation/utils/question_answers.dart';
 import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
+import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
+import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,7 +45,9 @@ final _typed = [
 
 /// The form, pushed from a page that keeps what it was closed with.
 Future<List<Object?>> _pump(WidgetTester tester,
-    {List<AdditionalDetail>? questions}) async {
+    {List<AdditionalDetail>? questions,
+    Widget? form,
+    bool signedIn = true}) async {
   tester.view.physicalSize = const Size(800, 3200);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -63,6 +69,7 @@ Future<List<Object?>> _pump(WidgetTester tester,
     GoRoute(
       path: '/form',
       builder: (_, __) =>
+          form ??
           EventFormPage(eventId: 7, additionalDetails: questions ?? _questions),
     ),
     GoRoute(
@@ -74,6 +81,7 @@ Future<List<Object?>> _pump(WidgetTester tester,
     overrides: [
       profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
       paymentRepositoryProvider.overrideWithValue(FakePaymentRepository()),
+      isAuthenticatedProvider.overrideWithValue(signedIn),
     ],
     child: MaterialApp.router(routerConfig: router),
   ));
@@ -245,10 +253,12 @@ void main() {
         status: 400);
 
     Future<void> answerAndSend(WidgetTester tester) async {
+      // Answers that pass the form's own checks; the server refuses them
+      // for reasons of its own.
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Enter age'), 'twenty');
+          find.widgetWithText(TextFormField, 'Enter age'), '21');
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Enter website'), 'my site');
+          find.widgetWithText(TextFormField, 'Enter website'), 'example.com');
       await tester.tap(find.text('AI'));
       await tester.pump();
       await tester.tap(find.text('Continue'));
@@ -326,7 +336,7 @@ void main() {
 
       final sent = api.sent('POST', '/events/registration/7/register');
       expect((sent.last.data as Map)['additional_details'],
-          {'age': '20', 'site': 'my site', 'track': 'AI'});
+          {'age': '20', 'site': 'example.com', 'track': 'AI'});
       expect(find.text('Registered!'), findsOneWidget);
     });
 
@@ -376,6 +386,175 @@ void main() {
               }),
               ['age']),
           isNull);
+    });
+  });
+
+  group('each kind of question the website asks', () {
+    final typed = [
+      _q('mail', 'Work email', 'email'),
+      _q('site', 'Portfolio', 'url'),
+      _q('tel', 'Alternate phone', 'tel'),
+      _q('age', 'Age', 'number'),
+      _q('bio', 'About you', 'textarea'),
+      _q('start', 'Start', 'datetime', required: false),
+      _q('file', 'Resume link', 'file', required: false),
+    ];
+
+    testWidgets('every type has a control: none is left invisible',
+        (tester) async {
+      await _pump(tester, questions: typed);
+
+      for (final label in [
+        'Enter work email',
+        'Enter portfolio',
+        'Enter alternate phone',
+        'Enter age',
+        'Enter about you',
+        'Enter resume link',
+      ]) {
+        expect(find.widgetWithText(TextFormField, label), findsOneWidget,
+            reason: label);
+      }
+      expect(find.text('Pick a date and time'), findsOneWidget);
+    });
+
+    testWidgets('a typo is caught here, in the server\'s words, before sending',
+        (tester) async {
+      await _pump(tester, questions: typed);
+
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Enter work email'), 'asha@');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Enter portfolio'), 'my site');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Enter alternate phone'), '12ab');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Enter age'), 'twenty');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Enter about you'), 'Builder');
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Enter an email address, like name@example.com.'),
+          findsOneWidget);
+      expect(
+          find.text('Enter a web address, like example.com.'), findsOneWidget);
+      expect(find.text('Enter a phone number.'), findsOneWidget);
+      expect(find.text('Enter a number.'), findsOneWidget);
+      expect(api.sent('POST', '/events/registration/7/register'), isEmpty);
+    });
+
+    test('typedAnswerProblem matches the website', () {
+      expect(typedAnswerProblem('email', 'a@b.co'), isNull);
+      expect(typedAnswerProblem('url', 'example.com/x'), isNull);
+      expect(typedAnswerProblem('url', 'https://example.com'), isNull);
+      expect(typedAnswerProblem('tel', '+91 98765-43210'), isNull);
+      expect(typedAnswerProblem('number', '4,5'), isNull);
+      expect(typedAnswerProblem('number', '-3'), isNull);
+      expect(typedAnswerProblem('text', 'anything'), isNull);
+      expect(typedAnswerProblem('email', ''), isNull);
+      expect(typedAnswerProblem('url', 'not a url'), isNotNull);
+    });
+  });
+
+  group('opened from a link', () {
+    testWidgets('by slug, it reads the event for its id and questions',
+        (tester) async {
+      api
+        ..on('GET', '/events/info/hack-night', {
+          'id': 7,
+          'name': 'Hack Night',
+          'has_fee': false,
+          'is_online': false,
+          'additional_details': [
+            {
+              'key': 'college',
+              'label': 'College',
+              'field_type': 'text',
+              'required': true,
+            },
+          ],
+        })
+        ..on('POST', '/events/registration/7/register', {
+          'event_id': 7,
+          'event_name': 'Hack Night',
+          'event_registration_id': 'reg-1',
+          'pay_amount': 0,
+          'ticket_id': 'T-1',
+        });
+      await _pump(tester,
+          form: const EventFormPage(eventRef: 'hack-night'));
+
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Enter college'), 'CET');
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      final sent = api.sent('POST', '/events/registration/7/register').single;
+      expect((sent.data as Map)['additional_details'], {'college': 'CET'});
+      expect(find.text('Registered!'), findsOneWidget);
+    });
+
+    testWidgets('an event that cannot load says so, with a retry',
+        (tester) async {
+      await _pump(tester,
+          form: const EventFormPage(eventRef: 'gone'));
+      expect(find.text('Continue'), findsNothing);
+      expect(find.byType(ErrorView), findsOneWidget);
+    });
+  });
+
+  testWidgets('signed out, the form asks for an account and sends nothing',
+      (tester) async {
+    await _pump(tester, signedIn: false);
+
+    expect(find.text('Sign in to register'), findsOneWidget);
+    expect(find.text('Continue'), findsNothing);
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('sign-in-prompt')), findsOneWidget);
+  });
+
+  group('a paid online event', () {
+    for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+      testWidgets('on ${platform.name}', (tester) async {
+        debugDefaultTargetPlatformOverride = platform;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+        await _pump(tester,
+            form: EventFormPage(
+              eventId: 7,
+              additionalDetails: const [],
+              hasFee: true,
+              isOnline: true,
+            ));
+
+        if (platform == TargetPlatform.iOS) {
+          expect(find.text(iosOnlineSaleBlockedMessage), findsOneWidget);
+          expect(find.text('Continue'), findsNothing);
+        } else {
+          expect(find.text(iosOnlineSaleBlockedMessage), findsNothing);
+          expect(find.text('Continue'), findsOneWidget);
+        }
+        debugDefaultTargetPlatformOverride = null;
+      });
+    }
+
+    testWidgets('on iOS, opened from a link, it is read before the form shows',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      api.on('GET', '/events/info/7', {
+        'id': 7,
+        'has_fee': true,
+        'is_online': true,
+        'additional_details': const [],
+      });
+      await _pump(tester,
+          form: EventFormPage(eventId: 7, additionalDetails: const []));
+
+      expect(find.text(iosOnlineSaleBlockedMessage), findsOneWidget);
+      expect(find.text('Continue'), findsNothing);
+      debugDefaultTargetPlatformOverride = null;
     });
   });
 }

@@ -15,9 +15,21 @@ const String clubAccountMessage =
     'This is a club account. Club accounts sign in on the clubs dashboard, '
     'not in the app. To attend events, sign in with your personal account.';
 
+/// Asked for after the password, for an account with two-step verification.
 const String twoStepMessage =
-    "This account uses two-step verification, which the app doesn't support "
-    'yet.';
+    'This account uses two-step verification. Enter the code from your '
+    'authenticator app.';
+
+/// The authenticator code (or recovery code) was not right.
+const String twoStepWrongCodeMessage =
+    "That code isn't right. Check your authenticator app and try again, or "
+    'use a recovery code.';
+
+/// An email and password that do not go together. Said without saying which
+/// one is wrong, as the server does.
+const String wrongPasswordMessage =
+    "That email and password don't match. Check them and try again, or tap "
+    'Forgot password.';
 
 const String signInFailedMessage = "We couldn't sign you in. Please try again.";
 
@@ -38,11 +50,23 @@ String signInErrorMessage(
     case 'CLUB_NOT_VERIFIED':
     case 'CLUB_UNAVAILABLE':
       return clubAccountMessage;
-    // The app has no field for the code. TOTP_INVALID cannot happen while it
-    // sends none, but would mean the same thing.
+    // The email sign-in asks for the code itself (LoginNeedsTwoStep); these
+    // are the words for anywhere else they turn up.
     case 'TOTP_REQUIRED':
-    case 'TOTP_INVALID':
       return twoStepMessage;
+    case 'TOTP_INVALID':
+      return twoStepWrongCodeMessage;
   }
   return extractErrorMessage(error, defaultMessage: defaultMessage);
+}
+
+/// What the sign-in screen says when an email sign-in failed: as
+/// [signInErrorMessage], except that a plain 401 -- the password check --
+/// reads as [wrongPasswordMessage] rather than the server's "Incorrect
+/// username or password".
+String emailSignInErrorMessage(Object? error) {
+  if (statusCodeOf(error) == 401 && errorCodeOf(error) == null) {
+    return wrongPasswordMessage;
+  }
+  return signInErrorMessage(error);
 }

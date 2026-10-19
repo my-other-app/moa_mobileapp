@@ -1,8 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
+import 'package:finnet/features/discover/domain/event_filters.dart';
+import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/domain/topic_filter.dart';
@@ -56,6 +61,9 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
   List<dynamic> clubs = [];
   bool isLoading = true;
   String? errorMessage;
+
+  /// The server refused the list to someone signed out.
+  bool _needsSignIn = false;
 
   // Filter state
   int? _selectedOrgId;
@@ -179,6 +187,9 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
     } catch (e) {
       if (mounted && generation == _generation) {
         setState(() {
+          // The list needs an account; signed out, that is what to say.
+          _needsSignIn =
+              !ref.read(isAuthenticatedProvider) && statusCodeOf(e) == 401;
           errorMessage = extractErrorMessage(
             e,
             defaultMessage: 'Could not load clubs.',
@@ -288,6 +299,47 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
         itemCount: 5,
         itemBuilder: (_, __) => const ShimmerClubTile(),
         separatorBuilder: (_, __) => const SizedBox(height: 16),
+      );
+    }
+
+    if (errorMessage != null && _needsSignIn) {
+      return Center(
+        child: Padding(
+          key: const ValueKey('explore-clubs-sign-in'),
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.groups_outlined, size: 48, color: Colors.grey[400]),
+              const SizedBox(height: 12),
+              Text(
+                'Sign in to explore every club, by college and topic.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => startSignIn(context, ref),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2C333D),
+                ),
+                child: const Text('SIGN IN'),
+              ),
+              const SizedBox(height: 8),
+              // The public directory needs no account; it keeps the topic.
+              TextButton(
+                key: const ValueKey('explore-clubs-browse'),
+                onPressed: () => context.pushReplacement(
+                  clubsDirectoryLocation(ClubFilters(
+                    topic: _filter.topic?.slug,
+                    interest: _filter.interest?.id,
+                  )),
+                ),
+                child: const Text('Browse clubs without signing in'),
+              ),
+            ],
+          ),
+        ),
       );
     }
 

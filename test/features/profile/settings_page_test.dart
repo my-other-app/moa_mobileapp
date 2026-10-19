@@ -1,4 +1,5 @@
 import 'package:finnet/core/error/either.dart';
+import 'package:finnet/core/services/analytics_service.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/notifications/data/repositories/push_settings_repository_impl.dart';
 import 'package:finnet/features/notifications/domain/entities/push_switches.dart';
@@ -70,11 +71,44 @@ class _FakePushSettings implements PushSettingsRepository {
       throw UnimplementedError('${invocation.memberName} not needed here');
 }
 
+/// The privacy choices, kept in memory.
+class _MemoryChoices implements PrivacyChoicesStore {
+  _MemoryChoices([this.kept = PrivacyChoices.defaults]);
+
+  PrivacyChoices kept;
+  final written = <PrivacyChoices>[];
+
+  @override
+  Future<PrivacyChoices> read() async => kept;
+
+  @override
+  Future<void> write(PrivacyChoices choices) async {
+    written.add(choices);
+    kept = choices;
+  }
+}
+
+/// What the SDKs were told to collect.
+class _RecordingControl implements CollectionControl {
+  final applied = <PrivacyChoices>[];
+
+  @override
+  Future<void> applyChoices(PrivacyChoices choices) async =>
+      applied.add(choices);
+}
+
 Future<List<Uri>> _pump(WidgetTester tester,
-    {bool launches = true, PushSettingsRepository? pushSettings}) async {
+    {bool launches = true,
+    PushSettingsRepository? pushSettings,
+    PrivacyChoicesStore? privacy,
+    CollectionControl? control}) async {
   final opened = <Uri>[];
   await tester.pumpWidget(ProviderScope(
     overrides: [
+      privacyChoicesStoreProvider
+          .overrideWithValue(privacy ?? _MemoryChoices()),
+      collectionControlProvider
+          .overrideWithValue(control ?? _RecordingControl()),
       pushSettingsRepositoryProvider
           .overrideWithValue(pushSettings ?? _FakePushSettings(null)),
       profileRepositoryProvider.overrideWithValue(_FakeProfiles()),
@@ -97,6 +131,8 @@ Future<List<Uri>> _pump(WidgetTester tester,
 Future<void> _tap(WidgetTester tester, String key) async {
   final finder = find.byKey(ValueKey(key));
   await tester.ensureVisible(finder);
+  // ensureVisible only asks for the scroll; the frame after it lays it out.
+  await tester.pump();
   await tester.tap(finder);
   await tester.pump();
 }
@@ -106,7 +142,7 @@ void main() {
       (tester) async {
     await _pump(tester);
 
-    expect(find.byType(Switch), findsNothing);
+    expect(find.byKey(const ValueKey('push-switch-clubs')), findsNothing);
     expect(find.text('Event Notification'), findsNothing);
     expect(find.text('Club Updates'), findsNothing);
   });
@@ -117,7 +153,8 @@ void main() {
         const PushSwitches(clubs: true, topics: true, platform: false));
     await _pump(tester, pushSettings: settings);
 
-    expect(find.byType(Switch), findsNWidgets(3));
+    // The three notification switches, and the two privacy ones.
+    expect(find.byType(Switch), findsNWidgets(5));
     bool on(String key) =>
         tester.widget<SwitchListTile>(find.byKey(ValueKey(key))).value;
     expect(on('push-switch-clubs'), isTrue);
@@ -197,5 +234,61 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(BlockedUsersPage), findsOneWidget);
+  });
+
+  group('privacy', () {
+    bool on(WidgetTester tester, String key) =>
+        tester.widget<SwitchListTile>(find.byKey(ValueKey(key))).value;
+
+    testWidgets('analytics and crash reports are both on to begin with',
+        (tester) async {
+      await _pump(tester);
+
+      expect(find.text('Share usage analytics'), findsOneWidget);
+      expect(find.text('Send crash reports'), findsOneWidget);
+      expect(on(tester, 'privacy-switch-analytics'), isTrue);
+      expect(on(tester, 'privacy-switch-crash-reports'), isTrue);
+    });
+
+    testWidgets('turning analytics off saves it and stops collection at once',
+        (tester) async {
+      final store = _MemoryChoices();
+      final control = _RecordingControl();
+      await _pump(tester, privacy: store, control: control);
+
+      await _tap(tester, 'privacy-switch-analytics');
+      await tester.pump();
+
+      const chosen = PrivacyChoices(analytics: false, crashReports: true);
+      expect(on(tester, 'privacy-switch-analytics'), isFalse);
+      expect(on(tester, 'privacy-switch-crash-reports'), isTrue);
+      expect(store.written, [chosen]);
+      expect(control.applied, [chosen]);
+    });
+
+    testWidgets('crash reports are a switch of their own', (tester) async {
+      final store = _MemoryChoices();
+      final control = _RecordingControl();
+      await _pump(tester, privacy: store, control: control);
+
+      await _tap(tester, 'privacy-switch-crash-reports');
+      await tester.pump();
+
+      const chosen = PrivacyChoices(analytics: true, crashReports: false);
+      expect(on(tester, 'privacy-switch-analytics'), isTrue);
+      expect(on(tester, 'privacy-switch-crash-reports'), isFalse);
+      expect(store.written, [chosen]);
+      expect(control.applied, [chosen]);
+    });
+
+    testWidgets('a choice made earlier is what the switches show',
+        (tester) async {
+      await _pump(tester,
+          privacy: _MemoryChoices(
+              const PrivacyChoices(analytics: false, crashReports: false)));
+
+      expect(on(tester, 'privacy-switch-analytics'), isFalse);
+      expect(on(tester, 'privacy-switch-crash-reports'), isFalse);
+    });
   });
 }

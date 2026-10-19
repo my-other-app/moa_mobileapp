@@ -79,7 +79,6 @@ void main() {
       expect(isOwnSite(Uri.parse('https://events.myotherapp.in/x')), isTrue);
       expect(isOwnSite(Uri.parse('https://instagram.com/x')), isFalse);
       expect(isOwnSite(Uri.parse('mailto:support@myotherapp.in')), isFalse);
-      expect(liveRoomUri(68).toString(), 'https://myotherapp.in/68/live');
     });
   });
 
@@ -125,7 +124,9 @@ void main() {
         (tester) async {
       final opened = await pumpEvent(tester, openLiveRoom: true);
 
-      expect(opened, [Uri.parse('https://myotherapp.in/68/live')]);
+      // The room under the event's own address; the website sends an id
+      // on to the slug.
+      expect(opened, [Uri.parse('https://myotherapp.in/events/68/live')]);
       // The event is underneath: closing the room lands on it.
       expect(find.byType(IndividualEventPage), findsOneWidget);
     });
