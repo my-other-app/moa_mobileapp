@@ -10,10 +10,10 @@ plugins {
 import java.util.Properties
 
 // Release signing comes from android/key.properties (gitignored, with
-// storeFile, storePassword, keyAlias, keyPassword). Without it -- a fresh
-// clone, a contributor's machine -- a release build is signed with the debug
-// key so it still configures and builds locally. That build cannot be
-// uploaded to Play, and on CI it is refused outright below.
+// storeFile, storePassword, keyAlias, keyPassword): the upload key. Without
+// it a release build stops with what to do (see the check at the end). It
+// used to carry on signed with the debug key, which built fine and could
+// not be uploaded -- or, sideloaded, could never be updated from Play.
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file("key.properties")
 def hasReleaseKey = false
@@ -23,6 +23,13 @@ if (keystorePropertiesFile.exists()) {
             .every { keystoreProperties[it] }
 }
 def isCi = System.getenv("CI") != null
+// For trying a release build on your own phone without the upload key:
+//   MOA_DEBUG_SIGNED_RELEASE=1 flutter run --release
+// (or moa.debugSignedRelease=true in ~/.gradle/gradle.properties). Never on
+// CI, and never for Play.
+def debugSignedReleaseAllowed = !isCi && (
+        System.getenv("MOA_DEBUG_SIGNED_RELEASE") == "1" ||
+        project.findProperty("moa.debugSignedRelease") == "true")
 
 // The shared debug keystore whose SHA-1 is registered for Google Sign-In.
 // It is gitignored too; when it is missing, AGP's own ~/.android/debug.keystore
@@ -31,7 +38,10 @@ def sharedDebugKeystore = file("debug-key.keystore")
 
 android {
     namespace = "app.myotherapp.com"
-    compileSdk = flutter.compileSdkVersion
+    // Pinned rather than taken from the Flutter SDK, so an older SDK on the
+    // build machine can't quietly build for API 35: Play requires target 36
+    // for updates (since 31 Aug 2026).
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -47,7 +57,7 @@ android {
     defaultConfig {
         applicationId = "app.myotherapp.com"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -73,7 +83,8 @@ android {
 
     buildTypes {
         release {
-            // The debug key only as a local stand-in; see the check below.
+            // The debug key only when asked for (MOA_DEBUG_SIGNED_RELEASE);
+            // otherwise the check below stops the build first.
             signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
             shrinkResources true
@@ -88,18 +99,23 @@ flutter {
 
 // Checked once the build knows what it is building, so a debug build or a
 // Gradle sync without key.properties still works and only a release build
-// hears about it.
+// is stopped.
 gradle.taskGraph.whenReady { graph ->
     def buildsRelease = graph.allTasks.any { it.name.toLowerCase().contains("release") }
     if (!buildsRelease || hasReleaseKey) return
-    if (isCi) {
-        throw new GradleException(
-            "android/key.properties is missing or incomplete. A CI release " +
-            "build must be signed with the upload key, never the debug key.")
+    if (debugSignedReleaseAllowed) {
+        logger.warn("WARNING: android/key.properties is missing or incomplete; " +
+            "MOA_DEBUG_SIGNED_RELEASE is set, so this release build is signed " +
+            "with the DEBUG key. It cannot be uploaded to Google Play.")
+        return
     }
-    logger.warn("WARNING: android/key.properties is missing or incomplete; " +
-        "this release build is signed with the DEBUG key. It runs locally " +
-        "but cannot be uploaded to Google Play.")
+    throw new GradleException(
+        "A release build must be signed with the upload key, and " +
+        "android/key.properties is missing or incomplete " +
+        "(it needs storeFile, storePassword, keyAlias and keyPassword). " +
+        "Build releases from a checkout that has it. To try a release build " +
+        "on your own phone without it, run with MOA_DEBUG_SIGNED_RELEASE=1 " +
+        "(never for Play, and never on CI).")
 }
 
 dependencies {
