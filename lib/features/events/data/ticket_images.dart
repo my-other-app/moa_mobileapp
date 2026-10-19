@@ -20,9 +20,13 @@ import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 /// [prefetch] keeps every upcoming ticket's picture ready before the event,
 /// and deletes a revoked one's: a revoked ticket shows no QR of any kind.
 class TicketImages {
-  TicketImages({DocumentCache? cache, Duration? keepFor})
-      : _cache = cache,
-        keepFor = keepFor ?? const Duration(hours: 12);
+  TicketImages({
+    DocumentCache? cache,
+    Duration? keepFor,
+    Duration? keepIncompleteFor,
+  })  : _cache = cache,
+        keepFor = keepFor ?? const Duration(hours: 12),
+        keepIncompleteFor = keepIncompleteFor ?? const Duration(hours: 1);
 
   static TicketImages? _instance;
 
@@ -37,6 +41,13 @@ class TicketImages {
   /// How long a complete kept picture is good for before [prefetch] asks
   /// the server again. Opening the ticket always asks.
   final Duration keepFor;
+
+  /// The same for one that came without an ETag (the server leaves it off
+  /// a render missing one of its images, and may not send one at all):
+  /// shorter, but not every refresh -- the server renders each one, and a
+  /// refresh runs at every start, every return to the app and every return
+  /// online.
+  final Duration keepIncompleteFor;
 
   DocumentCache get _documents => _cache ?? DocumentCache.instance;
 
@@ -78,7 +89,8 @@ class TicketImages {
   Future<void> forget(String code) => _documents.remove(nameFor(code));
 
   /// Bring the kept pictures in line with [tickets]: a revoked ticket's is
-  /// deleted; one missing, incomplete or older than [keepFor] is fetched.
+  /// deleted; one missing, or older than [keepFor] ([keepIncompleteFor]
+  /// when incomplete), is fetched.
   /// One at a time, so the server -- which renders each one -- is not
   /// asked for them all at once. Failures are logged and skipped.
   Future<void> prefetch(List<SavedTicket> tickets, {DateTime? now}) async {
@@ -91,8 +103,8 @@ class TicketImages {
         }
         final kept = await _documents.kept(nameFor(ticket.code));
         final fresh = kept != null &&
-            kept.isFinal &&
-            at.difference(kept.savedAt) < keepFor;
+            at.difference(kept.savedAt) <
+                (kept.isFinal ? keepFor : keepIncompleteFor);
         if (fresh) continue;
         await fetch(ticket.code);
       } catch (e) {

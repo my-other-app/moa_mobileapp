@@ -37,7 +37,7 @@ final _png = base64Decode(
 class _Renderer implements HttpClientAdapter {
   bool offline = false;
   int? status;
-  String etag = '"v1"';
+  String? etag = '"v1"';
   final requests = <RequestOptions>[];
 
   @override
@@ -57,14 +57,15 @@ class _Renderer implements HttpClientAdapter {
         'content-type': ['application/json'],
       });
     }
-    if (options.headers['If-None-Match'] == etag) {
+    final tag = etag;
+    if (tag != null && options.headers['If-None-Match'] == tag) {
       return ResponseBody(const Stream.empty(), 304, headers: {
-        'etag': [etag],
+        'etag': [tag],
       });
     }
     return ResponseBody(Stream.value(_png), 200, headers: {
       'content-type': ['image/png'],
-      'etag': [etag],
+      if (tag != null) 'etag': [tag],
     });
   }
 
@@ -172,6 +173,21 @@ void main() {
       expect(await images.saved('MOA-NEW'), _png);
       expect(renderer.requests.map((r) => r.path),
           ['/events/tickets/MOA-NEW/image']);
+    });
+
+    test('prefetch: one that came without an ETag is asked for again, but '
+        'not on every refresh', () async {
+      renderer.etag = null;
+      await images.fetch('MOA-1');
+      renderer.requests.clear();
+      const tickets = [SavedTicket(code: 'MOA-1', eventId: 1, eventName: 'A')];
+
+      await images.prefetch(tickets);
+      expect(renderer.requests, isEmpty, reason: 'within the hour');
+
+      await images.prefetch(tickets,
+          now: DateTime.now().add(const Duration(hours: 2)));
+      expect(renderer.requests, hasLength(1));
     });
 
     test('prefetch carries on past a failure', () async {
