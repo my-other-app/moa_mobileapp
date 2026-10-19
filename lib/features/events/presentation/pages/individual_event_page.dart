@@ -32,6 +32,7 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/features/events/presentation/pages/networking_page.dart';
 import 'package:finnet/core/utils/hours.dart';
@@ -1971,15 +1972,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       );
       return;
     }
-    // Extract ticket ID from URL
-    final String ticketId;
-    if (url.startsWith('/api/v1/events/tickets/')) {
-      ticketId = url.replaceFirst('/api/v1/events/tickets/', '');
-    } else if (url.contains('/tickets/')) {
-      ticketId = url.split('/tickets/').last;
-    } else {
-      ticketId = url;
-    }
+    // The ticket code from its address (the QR is drawn from it).
+    final ticketId = ticketCodeFromUrl(url) ?? url;
     Navigator.push(
       context,
       MaterialPageRoute(

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
+import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart'
+    show ticketRoute;
 import 'package:finnet/features/events/presentation/utils/event_feed.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
@@ -303,10 +306,13 @@ class EventCard extends StatelessWidget {
     switch (status) {
       case EventCardStatus.registered:
         return FilledButton(
-          onPressed: () async {
-            if (ticketUrl != null && ticketUrl!.isNotEmpty) {
-              final Uri url = Uri.parse(ticketUrl!);
-              await launchUrl(url, mode: LaunchMode.externalApplication);
+          onPressed: () {
+            // The ticket inside the app, from what the phone has saved: it
+            // used to open the website in the browser, which needs a signal
+            // the door often does not have.
+            final code = ticketCodeFromUrl(ticketUrl);
+            if (code != null) {
+              context.push(ticketRoute(code));
             } else {
               context.push('/events/$eventId', extra: _getNavigationExtras());
             }

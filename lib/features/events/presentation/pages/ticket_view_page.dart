@@ -11,6 +11,8 @@ import 'package:open_filex/open_filex.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/network/interceptors/retry_interceptor.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:apple_passkit/apple_passkit.dart';
 import 'package:finnet/core/utils/hours.dart';
@@ -28,6 +30,19 @@ class TicketViewPage extends StatefulWidget {
   final String? ticketType;
   final String? posterUrl;
 
+  /// Whether the app can reach the server; defaults to
+  /// [NetworkStatus.instance]. Offline, the ticket is the drawn card, its QR
+  /// made on the phone from [ticketId], with a note that it is the saved
+  /// ticket.
+  final NetworkStatus? networkStatus;
+
+  /// The drawn card's QR, keyed by what it encodes.
+  static Key qrKeyFor(String data) => ValueKey('ticket-qr:$data');
+
+  /// The note shown while offline.
+  static const offlineNoticeKey = ValueKey('ticket-offline-notice');
+  static const offlineNotice = 'Offline — showing your saved ticket';
+
   const TicketViewPage({
     super.key,
     required this.ticketId,
@@ -39,6 +54,7 @@ class TicketViewPage extends StatefulWidget {
     this.ticketHolderName,
     this.ticketType,
     this.posterUrl,
+    this.networkStatus,
   });
 
   @override
@@ -60,6 +76,9 @@ class _TicketViewPageState extends State<TicketViewPage>
   /// there to scan.
   Uint8List? _ticketImage;
   bool _ticketImageFailed = false;
+
+  /// No server to ask: the drawn card, with its on-device QR, and a note.
+  bool _offline = false;
   late AnimationController _glowController;
   late AnimationController _pulseController;
 
@@ -97,7 +116,14 @@ class _TicketViewPageState extends State<TicketViewPage>
   @override
   void initState() {
     super.initState();
-    _loadTicketImage();
+    // Known to be offline: straight to the drawn card, without a spinner
+    // waiting on a request that cannot succeed.
+    if ((widget.networkStatus ?? NetworkStatus.instance).isOffline) {
+      _offline = true;
+      _ticketImageFailed = true;
+    } else {
+      _loadTicketImage();
+    }
     _glowController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -122,7 +148,12 @@ class _TicketViewPageState extends State<TicketViewPage>
       // image is an entry pass and the endpoint keeps the PDF's access rule.
       final response = await APIService.instance.dio.get<List<int>>(
         '/events/tickets/${widget.ticketId}/image',
-        options: Options(responseType: ResponseType.bytes),
+        // No second try: the drawn card is a ticket too, and the person is
+        // probably standing at the door.
+        options: Options(
+          responseType: ResponseType.bytes,
+          extra: {RetryInterceptor.noRetryKey: true},
+        ),
       );
       final bytes = response.data;
       if (!mounted) return;
@@ -133,7 +164,11 @@ class _TicketViewPageState extends State<TicketViewPage>
       }
     } catch (e) {
       debugPrint('Ticket image unavailable, showing the drawn card: $e');
-      if (mounted) setState(() => _ticketImageFailed = true);
+      if (!mounted) return;
+      setState(() {
+        _ticketImageFailed = true;
+        _offline = e is DioException && RetryInterceptor.isConnectionFailure(e);
+      });
     }
   }
 
@@ -523,11 +558,42 @@ class _TicketViewPageState extends State<TicketViewPage>
                 child: Column(
                   children: [
                     const SizedBox(height: 8),
+                    if (_offline) _buildOfflineNotice(),
                     _buildTicketCard(),
                     const SizedBox(height: 28),
                     _buildActionButtons(),
                   ],
                 ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfflineNotice() {
+    return Container(
+      key: TicketViewPage.offlineNoticeKey,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _accentYellow.withAlpha(60)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.cloud_off, size: 16, color: _accentYellow),
+          const SizedBox(width: 8),
+          const Flexible(
+            child: Text(
+              TicketViewPage.offlineNotice,
+              style: TextStyle(
+                fontFamily: 'DMSans',
+                fontSize: 13,
+                color: Colors.white,
               ),
             ),
           ),
@@ -963,7 +1029,10 @@ class _TicketViewPageState extends State<TicketViewPage>
                 ),
               ],
             ),
+            // Made on the phone from the plain ticket code, what the door
+            // scanner reads: no network needed to show it.
             child: QrImageView(
+              key: TicketViewPage.qrKeyFor(widget.ticketId),
               data: widget.ticketId,
               version: QrVersions.auto,
               size: 160,

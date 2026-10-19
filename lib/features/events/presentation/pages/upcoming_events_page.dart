@@ -8,6 +8,7 @@ import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/presentation/pages/no_registered_event_page.dart';
+import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart';
 
 class UpcomingEventsPage extends StatefulWidget {
   const UpcomingEventsPage({super.key});
@@ -71,11 +72,15 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage>
     }
 
     if (errorMessage != null) {
+      // Nothing saved of the list and no network: the tickets saved on the
+      // phone, if there are any, rather than an error.
       return Container(
         color: Colors.white,
-        child: ErrorView(
-          message: errorMessage,
-          onRetry: fetchFirstPage,
+        child: SavedTicketsFallback(
+          fallback: ErrorView(
+            message: errorMessage,
+            onRetry: fetchFirstPage,
+          ),
         ),
       );
     }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/features/events/presentation/widgets/saved_tickets_sync.dart';
 import 'package:finnet/features/main/presentation/providers/navigation_index_provider.dart';
 
 export 'package:finnet/features/main/presentation/providers/navigation_index_provider.dart';
@@ -22,7 +23,9 @@ class MainShell extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(child: child),
+      // The signed-in screens: while they are up, the tickets on the phone
+      // are kept current for the door.
+      body: SavedTicketsSync(child: SafeArea(child: child)),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         backgroundColor: const Color(0xFF2C333D),

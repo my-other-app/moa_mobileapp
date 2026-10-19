@@ -24,6 +24,7 @@ import 'package:finnet/features/events/presentation/pages/events_page.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
 import 'package:finnet/features/events/presentation/pages/explore_events_page.dart';
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
+import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/clubs_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_individual_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/explore_more_clubs_page.dart';
@@ -221,6 +222,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           parentNavigatorKey: rootKey,
           builder: (context, state) => ThreadDetailPage(
                 threadId: state.pathParameters['threadId'] ?? '',
+              )),
+
+      // A ticket, from what the phone has saved: opens with no network.
+      GoRoute(
+          path: '/tickets/:code',
+          name: 'ticket',
+          parentNavigatorKey: rootKey,
+          builder: (context, state) => SavedTicketPage(
+                code: state.pathParameters['code'] ?? '',
               )),
 
       // Main shell with bottom nav
