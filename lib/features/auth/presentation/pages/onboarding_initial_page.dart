@@ -99,7 +99,11 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
       if (state.signedUpEmail != null) {
         // A new email account: the sign-up sent a code to the address. The
         // verify screen carries on to the profile check when done or skipped.
-        context.go('/auth/verify-email', extra: {
+        // `from` rides along every step, so the person ends up back on the
+        // page that asked them to sign in.
+        context.go(
+            withSignInFrom('/auth/verify-email', signInFromOf(context)),
+            extra: {
           'email': state.signedUpEmail,
           'onboarding': true,
           'accessToken': state.accessToken,
@@ -107,7 +111,8 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
         });
         return;
       }
-      context.go('/auth/profile-check', extra: {
+      context.go(withSignInFrom('/auth/profile-check', signInFromOf(context)),
+          extra: {
         'accessToken': state.accessToken,
         'profileUrl': state.photoUrl,
       });
@@ -282,10 +287,7 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
                   key: const ValueKey('sign-in-close'),
                   tooltip: 'Not now',
                   icon: const Icon(Icons.close, color: Color(0xFF2C333D)),
-                  onPressed: () {
-                    cancelSignInReturn(ref);
-                    Navigator.of(context).pop();
-                  },
+                  onPressed: () => Navigator.of(context).pop(),
                 ),
               ),
             ),
@@ -558,7 +560,9 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
                         // The page's context, not the sheet's: the sheet
                         // closes first.
                         Navigator.pop(context);
-                        this.context.push('/auth/forgot-password',
+                        this.context.push(
+                            withSignInFrom('/auth/forgot-password',
+                                signInFromOf(this.context)),
                             extra: {'email': emailController.text.trim()});
                       },
                       child: const Text(

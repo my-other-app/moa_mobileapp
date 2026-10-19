@@ -49,7 +49,8 @@ class OnboardingFinalPage extends ConsumerWidget {
                             if (currentAvatar != null) {
                               // A new account made from "sign in to follow"
                               // (say) goes back to that club, else home.
-                              goAfterSignIn(context, ref);
+                              goAfterSignIn(
+                                  context, signInFromOf(context));
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(

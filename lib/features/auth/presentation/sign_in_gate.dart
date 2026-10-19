@@ -7,39 +7,65 @@ import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 /// commenting, reporting -- needs an account. This is where the two meet.
 ///
 /// [ensureSignedIn] answers whether the action may go ahead and, when it
-/// may not, asks the person to sign in. Signing in from there comes back to
-/// the page they were on ([signInReturnProvider], [goAfterSignIn]).
+/// may not, asks the person to sign in -- without ever signing anyone out.
+///
+/// The way back is in the address: sign-in opens as
+/// `/auth/onboarding?from=<the page>`, every step after it (the profile
+/// check; for a new account the details, interests, avatar and the last
+/// page; the email code; a password reset) passes `from` on, and the last
+/// one goes there ([goAfterSignIn]). Batches A and B send people to the
+/// same address; batch D's router sends a signed-in
+/// `/auth/onboarding?from=X` to `/auth/profile-check?from=X`.
 
-/// Where to go once signed in: the page someone was on when an action asked
-/// them to sign in. Null when sign-in started anywhere else.
-final signInReturnProvider = StateProvider<SignInReturn?>((ref) => null);
+/// The query parameter that carries the page to come back to.
+const signInFromParam = 'from';
 
-/// A page to come back to.
-@immutable
-class SignInReturn {
-  final String location;
+/// [from] when it is a page of this app to go to: a path that starts with
+/// a single `/`, with no scheme or host, and not a sign-in step (which
+/// would go round in a circle). Null for anything else -- including
+/// `//evil.example`, `https://...` and `javascript:...`.
+String? safeReturnPath(String? from) {
+  final path = from?.trim() ?? '';
+  if (!path.startsWith('/') || path.startsWith('//')) return null;
+  if (path.contains('\\')) return null;
+  final uri = Uri.tryParse(path);
+  if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
+  if (uri.path == '/splash' ||
+      uri.path.startsWith('/auth') ||
+      uri.path.startsWith('/onboarding')) {
+    return null;
+  }
+  return path;
+}
 
-  /// What the page was opened with (a club's slug and name, say), handed
-  /// back to it on the way in.
-  final Object? extra;
+/// [path] with `?from=` [from] added, when [from] is safe to go back to;
+/// [path] as it is otherwise.
+String withSignInFrom(String path, String? from) {
+  final back = safeReturnPath(from);
+  if (back == null) return path;
+  final uri = Uri.parse(path);
+  return uri.replace(queryParameters: {
+    ...uri.queryParameters,
+    signInFromParam: back,
+  }).toString();
+}
 
-  /// When sign-in was asked for.
-  final DateTime at;
-
-  SignInReturn(this.location, {this.extra, DateTime? at})
-      : at = at ?? DateTime.now();
-
-  /// How long the page is worth coming back to. Someone who backs out of
-  /// sign-in with the system gesture and signs in much later, from
-  /// somewhere else, should land at home rather than on a page they left.
-  static const keptFor = Duration(minutes: 30);
-
-  bool get isFresh => DateTime.now().difference(at) < keptFor;
+/// The page to come back to, as the current route was opened with it; null
+/// when there is none (or it is not safe).
+String? signInFromOf(BuildContext context) {
+  try {
+    return safeReturnPath(
+        GoRouterState.of(context).uri.queryParameters[signInFromParam]);
+  } catch (_) {
+    // Not under a router (a test's MaterialApp): nowhere to come back to.
+    return null;
+  }
 }
 
 /// Whether this person may do something that needs an account. If not, asks
 /// them to sign in -- saying [reason] -- and answers false; the action is
-/// not done, and they can do it once they are back.
+/// not done, and they can do it once they are back. Signed in, it answers
+/// true and asks nothing.
 bool ensureSignedIn(BuildContext context, WidgetRef ref, String reason) {
   if (ref.read(isAuthenticatedProvider)) return true;
   askToSignIn(context, ref, reason);
@@ -64,47 +90,31 @@ Future<void> askToSignIn(
   if (go == true && context.mounted) startSignIn(context, ref);
 }
 
-/// Open the sign-in screen over the current page, remembering the page so
-/// signing in comes back to it.
+/// Open the sign-in screen over the current page:
+/// `/auth/onboarding?from=<the page>`, so signing in comes back to it.
 void startSignIn(BuildContext context, WidgetRef ref) {
   final router = GoRouter.maybeOf(context);
   if (router == null) return;
-  ref.read(signInReturnProvider.notifier).state = _here(context, router);
-  router.push('/auth/onboarding');
+  router.push(withSignInFrom('/auth/onboarding', _here(context, router)));
 }
 
-SignInReturn? _here(BuildContext context, GoRouter router) {
+/// Where the person is, as an address to come back to.
+String? _here(BuildContext context, GoRouter router) {
+  String location;
   try {
-    final state = GoRouterState.of(context);
-    final location = state.uri.toString();
-    if (location.isEmpty || location.startsWith('/auth')) return null;
-    return SignInReturn(location, extra: state.extra);
+    location = GoRouterState.of(context).uri.toString();
   } catch (_) {
     // A context outside any route (a dialog's): the router's own idea of
     // where it is.
-    final config = router.routerDelegate.currentConfiguration;
-    final location = config.uri.toString();
-    if (location.isEmpty || location.startsWith('/auth')) return null;
-    return SignInReturn(location, extra: config.extra);
+    location = router.routerDelegate.currentConfiguration.uri.toString();
   }
+  return safeReturnPath(location);
 }
 
-/// Where a finished sign-in goes: back to the page that asked for it, or
-/// home. The remembered page is used once.
-void goAfterSignIn(BuildContext context, WidgetRef ref) {
-  final back = ref.read(signInReturnProvider);
-  ref.read(signInReturnProvider.notifier).state = null;
-  if (back == null || !back.isFresh) {
-    context.go('/');
-  } else {
-    context.go(back.location, extra: back.extra);
-  }
-}
-
-/// Forget the page to come back to: the person left sign-in without
-/// signing in.
-void cancelSignInReturn(WidgetRef ref) {
-  ref.read(signInReturnProvider.notifier).state = null;
+/// Where a finished sign-in goes: back to [from] when it is a safe page of
+/// this app, else home.
+void goAfterSignIn(BuildContext context, String? from) {
+  context.go(safeReturnPath(from) ?? '/');
 }
 
 /// "Sign in to follow clubs", with the way in and the way out.

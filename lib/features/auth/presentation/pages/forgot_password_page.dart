@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/features/auth/data/services/password_reset_service.dart';
 import 'package:finnet/features/auth/presentation/cubits/password_reset_cubit.dart';
@@ -110,7 +111,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     messenger?.showSnackBar(const SnackBar(
       content: Text("Password changed. You're signed in."),
     ));
-    context.go('/auth/profile-check', extra: {
+    context.go(withSignInFrom('/auth/profile-check', signInFromOf(context)),
+        extra: {
       'accessToken': tokens.accessToken,
       'profileUrl': '',
     });
@@ -135,7 +137,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go('/auth/onboarding');
+      context.go(withSignInFrom('/auth/onboarding', signInFromOf(context)));
     }
   }
 

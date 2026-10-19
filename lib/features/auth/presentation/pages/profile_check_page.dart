@@ -15,10 +15,14 @@ class ProfileCheckPage extends ConsumerStatefulWidget {
   final String accessToken;
   final String profileUrl;
 
+  /// For tests; the real one otherwise.
+  final ProfileService? profileService;
+
   const ProfileCheckPage({
     super.key,
     required this.accessToken,
     required this.profileUrl,
+    this.profileService,
   });
 
   @override
@@ -34,7 +38,8 @@ class _ProfileCheckPageState extends ConsumerState<ProfileCheckPage> {
   @override
   void initState() {
     super.initState();
-    _profileCubit = ProfileCubit(profileService: ProfileService());
+    _profileCubit =
+        ProfileCubit(profileService: widget.profileService ?? ProfileService());
     _profileCubit.onStateChanged = _handleProfileStateChange;
 
     // Fetch profile after widget is built
@@ -84,15 +89,17 @@ class _ProfileCheckPageState extends ConsumerState<ProfileCheckPage> {
           // Check the interest field from the nested profile.
           final ProfileDetails? profile = state.profile.profile;
           if (!mounted) return;
+          // The page that asked them to sign in, if one did.
+          final from = signInFromOf(context);
 
           if (profile == null) {
-            context.go('/onboarding/details', extra: {
+            context.go(withSignInFrom('/onboarding/details', from), extra: {
               'profileUrl': widget.profileUrl,
               'initialName': state.profile.fullName,
             });
           } else {
             // Back to the page that asked them to sign in, if one did.
-            goAfterSignIn(context, ref);
+            goAfterSignIn(context, from);
           }
         }
       } catch (error) {
@@ -115,7 +122,9 @@ class _ProfileCheckPageState extends ConsumerState<ProfileCheckPage> {
     } catch (e) {
       debugPrint('ProfileCheck: could not clear tokens: $e');
     }
-    if (mounted) context.go('/auth/onboarding');
+    if (mounted) {
+      context.go(withSignInFrom('/auth/onboarding', signInFromOf(context)));
+    }
   }
 
   @override

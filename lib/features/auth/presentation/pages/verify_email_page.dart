@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/features/auth/data/services/email_verification_service.dart';
 import 'package:finnet/features/auth/presentation/cubits/email_verification_cubit.dart';
 import 'package:finnet/features/auth/presentation/widgets/six_digit_code_field.dart';
@@ -104,7 +105,8 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
       ));
     }
     if (widget.onboarding) {
-      context.go('/auth/profile-check', extra: {
+      context.go(withSignInFrom('/auth/profile-check', signInFromOf(context)),
+          extra: {
         'accessToken': widget.accessToken,
         'profileUrl': widget.profileUrl,
       });
