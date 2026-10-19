@@ -8,6 +8,8 @@ import 'package:finnet/features/clubs/data/models/club_info.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_events_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_individual_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_profile_page.dart';
+import 'package:finnet/features/clubs/presentation/pages/clubs_page.dart';
+import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/utils/share_links.dart';
 import 'package:finnet/shared/widgets/club_tab_header.dart';
@@ -50,10 +52,14 @@ Future<List<Uri>> _pump(
     GoRoute(
         path: '/clubs/explore',
         builder: (_, __) => const Scaffold(body: Text('explore'))),
+    GoRoute(
+        path: '/following/posts',
+        builder: (_, __) => const Scaffold(body: Text('following posts'))),
   ]);
   addTearDown(router.dispose);
   await tester.pumpWidget(ProviderScope(
     overrides: [
+      profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
       isAuthenticatedProvider.overrideWithValue(signedIn),
       linkLauncherProvider.overrideWithValue((uri) async {
         opened.add(uri);
@@ -433,6 +439,61 @@ void main() {
       expect(item['duration'], 2.5);
       expect(item['is_online'], isTrue);
       expect(item['poster'], 'https://media.myotherapp.in/p.jpg');
+    });
+  });
+
+  group('the Clubs tab', () {
+    late RouteAdapter api;
+
+    setUp(() {
+      api = useFakeApi();
+      api.on('GET', '/interests/topics', const []);
+    });
+
+    Map<String, dynamic> page(List<Map<String, dynamic>> items) =>
+        {'items': items, 'total': items.length, 'limit': 10, 'offset': 0};
+
+    testWidgets('signed in, the posts of the clubs you follow are a tap away',
+        (tester) async {
+      api
+        ..on('GET', '/clubs/list?is_pinned=true', page(const []))
+        ..on(
+            'GET',
+            '/clubs/list?is_following=true',
+            page([
+              {
+                'id': 12,
+                'name': 'Robotics Club',
+                'slug': 'robotics-club',
+                'logo': null,
+                'followers_count': 120,
+              },
+            ]));
+      await _pump(tester, const ClubsPage(), signedIn: true, width: 900);
+
+      await _tap(tester, find.byKey(const ValueKey('clubs-following-posts')));
+      expect(find.text('following posts'), findsOneWidget);
+    });
+
+    testWidgets('signed out, it says how to get clubs of your own',
+        (tester) async {
+      for (final path in [
+        '/clubs/list?is_pinned=true',
+        '/clubs/list?is_following=true',
+      ]) {
+        api.on('GET', path, {'message': 'Could not validate credentials'},
+            status: 401);
+      }
+      await _pump(tester, const ClubsPage(), signedIn: false, width: 900);
+
+      expect(find.byKey(const ValueKey('clubs-signed-out')), findsOneWidget);
+      // No session to send: the requests went without one.
+      final lists = api.requests.where((r) => r.path.startsWith('/clubs/list'));
+      expect(lists, hasLength(2));
+      expect(lists.every((r) => r.extra['skipAuth'] == true), isTrue);
+
+      await _tap(tester, find.byKey(const ValueKey('clubs-sign-in')));
+      expect(find.text('sign-in screen'), findsOneWidget);
     });
   });
 }

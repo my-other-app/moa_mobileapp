@@ -38,12 +38,14 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
   bool isLoading = true;
   String? errorMessage;
 
+  /// Nobody is signed in, and the server would not list clubs without an
+  /// account: the tab says how to get clubs of your own instead.
+  bool _signedOut = false;
+
   @override
   void initState() {
     super.initState();
-    // Signed out there are no clubs of your own to fetch: the tab says how
-    // to get some instead.
-    if (ref.read(isAuthenticatedProvider)) _fetchData();
+    _fetchData();
   }
 
   static const _pinnedPath = '/clubs/list?is_pinned=true';
@@ -58,14 +60,25 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
     final showedSaved = savedPinned != null && savedFollowing != null;
     if (showedSaved) _show(savedPinned, savedFollowing);
 
+    // Signed out there is no session to send, or to renew on a 401.
+    final signedIn = ref.read(isAuthenticatedProvider);
     try {
       final answers = await Future.wait([
-        api.request(_pinnedPath, DioMethod.get, cache: CachePolicy.shared),
-        api.request(_followingPath, DioMethod.get, cache: CachePolicy.shared),
+        api.request(_pinnedPath, DioMethod.get,
+            cache: CachePolicy.shared, skipAuth: !signedIn),
+        api.request(_followingPath, DioMethod.get,
+            cache: CachePolicy.shared, skipAuth: !signedIn),
       ]);
       _show(answers[0].data, answers[1].data);
     } catch (e) {
       if (!mounted || showedSaved) return;
+      if (!signedIn && statusCodeOf(e) == 401) {
+        setState(() {
+          _signedOut = true;
+          isLoading = false;
+        });
+        return;
+      }
       setState(() {
         errorMessage = extractErrorMessage(
           e,
@@ -134,7 +147,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!ref.watch(isAuthenticatedProvider)) {
+    if (_signedOut) {
       return const Scaffold(
         backgroundColor: Colors.white,
         body: _SignedOutClubs(),
