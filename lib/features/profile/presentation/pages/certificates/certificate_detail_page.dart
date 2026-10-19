@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:finnet/core/cache/document_cache.dart';
 import 'package:finnet/core/config/env/env.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
@@ -21,14 +23,36 @@ class CertificateDetailPage extends ConsumerWidget {
   static const _preview = Color(0xFFF5C44C);
   static const _banner = Color(0xFFF7F6A8);
 
+  /// The PDF, kept on the phone and fetched again only when the server's
+  /// ETag says it changed (a new design, a corrected name, a revocation),
+  /// opened in the system's viewer -- which can save and share it, and
+  /// works offline from the kept copy. Without a viewer, or without the
+  /// PDF, the browser as before.
   Future<void> _open(BuildContext context, String url) async {
-    final uri = Uri.parse(url);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final pdf = await DocumentCache.instance.fetch(
+        '/events/certificates/${certificate.ticketId}/pdf',
+        name: 'certificate_${DocumentCache.safeName(certificate.ticketId)}.pdf',
+      );
+      if (!pdf.current) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text('Offline — this is your saved copy')));
+      }
+      final opened = await OpenFilex.open(pdf.file.path);
+      if (opened.type == ResultType.done) return;
+    } catch (e) {
+      debugPrint('Certificate PDF unavailable, opening the link: $e');
+    }
     // externalApplication: a PDF belongs in the browser or a viewer, not an
     // in-app webview that cannot save it.
-    final launched =
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+    var launched = false;
+    try {
+      launched = await launchUrl(Uri.parse(url),
+          mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    if (!launched) {
+      messenger.showSnackBar(
         const SnackBar(content: Text('Could not open the certificate')),
       );
     }

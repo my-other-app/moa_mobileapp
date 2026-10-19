@@ -1,16 +1,15 @@
-import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/cache/document_cache.dart';
 import 'package:finnet/core/network/interceptors/retry_interceptor.dart';
 import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
@@ -172,27 +171,28 @@ class _TicketViewPageState extends State<TicketViewPage>
     }
   }
 
+  /// The ticket's PDF, from the copy kept on the phone when the server says
+  /// it has not changed (or cannot be reached), else downloaded again.
+  Future<SavedDocument> _ticketPdf() {
+    final safeId = DocumentCache.safeName(widget.ticketId);
+    return DocumentCache.instance.fetch(
+      '/events/tickets/${widget.ticketId}/pdf',
+      name: 'ticket_$safeId.pdf',
+    );
+  }
+
   Future<void> _downloadTicket() async {
     setState(() => _isDownloading = true);
     HapticFeedback.mediumImpact();
 
     try {
-      final response = await APIService.instance.dio.get(
-        '/events/tickets/${widget.ticketId}/pdf',
-        options: Options(responseType: ResponseType.bytes),
-      );
-
-      if (response.statusCode == 200) {
-        final directory = await getApplicationDocumentsDirectory();
-        final filePath = '${directory.path}/ticket_${widget.ticketId}.pdf';
-        await File(filePath).writeAsBytes(response.data as List<int>);
-
-        HapticFeedback.heavyImpact();
-        if (mounted) {
-          _showSuccessSnackBar('Ticket saved!', () => OpenFilex.open(filePath));
-        }
-      } else {
-        throw Exception('Download failed: ${response.statusCode}');
+      final pdf = await _ticketPdf();
+      HapticFeedback.heavyImpact();
+      if (mounted) {
+        _showSuccessSnackBar(
+          pdf.current ? 'Ticket saved!' : 'Offline — this is your saved copy',
+          () => OpenFilex.open(pdf.file.path),
+        );
       }
     } catch (e) {
       debugPrint('Download error: $e');
@@ -220,7 +220,14 @@ class _TicketViewPageState extends State<TicketViewPage>
       androidParams: const AndroidParams(emailInvites: []),
     );
 
-    await Add2Calendar.addEvent2Cal(event);
+    // A platform failure (no calendar app, permission refused) was thrown
+    // from a tap handler, unhandled.
+    try {
+      await Add2Calendar.addEvent2Cal(event);
+    } catch (e) {
+      debugPrint('Add to calendar failed: $e');
+      if (mounted) _showErrorSnackBar("Couldn't open your calendar");
+    }
   }
 
   Future<void> _shareTicket() async {
@@ -229,37 +236,10 @@ class _TicketViewPageState extends State<TicketViewPage>
     setState(() => _isDownloading = true);
 
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      // Sanitize filename
-      final safeId = widget.ticketId.replaceAll(RegExp(r'[^\w\s-]'), '');
-      final filePath = '${directory.path}/ticket_$safeId.pdf';
-      final file = File(filePath);
-
-      // Always download fresh copy to ensure it's valid
-      if (await file.exists()) {
-        await file.delete();
-      }
-
-      final pdfPath = '/events/tickets/${widget.ticketId}/pdf';
-      debugPrint('Downloading ticket from: $pdfPath');
-
-      final response = await APIService.instance.dio.get(
-        pdfPath,
-        options: Options(responseType: ResponseType.bytes),
-      );
-
-      if (response.statusCode == 200) {
-        final bytes = response.data as List<int>;
-        if (bytes.isEmpty) {
-          throw Exception('Downloaded file is empty');
-        }
-        await file.writeAsBytes(bytes);
-        debugPrint('Ticket saved to: $filePath (${bytes.length} bytes)');
-      } else {
-        debugPrint('Download failed with status: ${response.statusCode}');
-        throw Exception(
-            'Failed to download ticket (Status: ${response.statusCode})');
-      }
+      // The kept copy when it is current, or when there is no network; it
+      // used to delete it and download again every time, so sharing a
+      // ticket offline always failed.
+      final filePath = (await _ticketPdf()).file.path;
 
       // Check mounted before accessing context after async gap
       if (!mounted) return;
