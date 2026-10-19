@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart'
     hide ProfileState;
 import 'package:finnet/features/auth/presentation/cubits/profile_cubit.dart';
@@ -90,7 +91,8 @@ class _ProfileCheckPageState extends ConsumerState<ProfileCheckPage> {
               'initialName': state.profile.fullName,
             });
           } else {
-            context.go('/');
+            // Back to the page that asked them to sign in, if one did.
+            goAfterSignIn(context, ref);
           }
         }
       } catch (error) {

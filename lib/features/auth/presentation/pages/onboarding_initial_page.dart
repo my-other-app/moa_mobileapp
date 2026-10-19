@@ -10,6 +10,7 @@ import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/features/auth/presentation/widgets/terms_consent.dart';
 
 /// Onboarding Initial Page with Google and Apple Sign In support.
@@ -46,7 +47,8 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
     _checkAppleSignInAvailability();
     // After the first frame: a snackbar needs the Scaffold, and the auth
     // state may not be changed while the tree is building.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showSessionEndNotice());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _showSessionEndNotice());
   }
 
   /// Say why the last session ended, if the server ended it.
@@ -197,7 +199,8 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
             content: Text(
               extractErrorMessage(
                 error,
-                defaultMessage: 'Could not sign in with Apple. Please try again.',
+                defaultMessage:
+                    'Could not sign in with Apple. Please try again.',
               ),
             ),
           ),
@@ -253,6 +256,23 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
               ),
             ),
           ),
+          // Opened over a page -- "sign in to follow this club" -- rather
+          // than as the app's front door: a way back without signing in.
+          if (Navigator.of(context).canPop())
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: IconButton(
+                  key: const ValueKey('sign-in-close'),
+                  tooltip: 'Not now',
+                  icon: const Icon(Icons.close, color: Color(0xFF2C333D)),
+                  onPressed: () {
+                    cancelSignInReturn(ref);
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -2,25 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/error/failures.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 
-/// Whether this person can like, vote or comment; if not, says so with a
-/// way to sign in, and answers false.
-///
-/// Reading is open to anyone; acting needs an account.
-bool ensureSignedIn(BuildContext context, WidgetRef ref, String reason) {
-  if (ref.read(isAuthenticatedProvider)) return true;
-  showSignInPrompt(context, ref, reason);
-  return false;
-}
+export 'package:finnet/features/auth/presentation/sign_in_gate.dart'
+    show ensureSignedIn;
 
-/// A snackbar with a SIGN IN action.
+/// Ask the person to sign in, saying [message].
 ///
-/// Signing in starts from a clean slate the way Settings > Log out does:
-/// the stale session is cleared, the router notices and takes the person to
-/// the sign-in screen. It is only offered when the session is already gone
-/// -- signed out, or refused by the server -- so nothing live is lost.
+/// Signed out, that is the sign-in sheet, and signing in comes back here.
+/// Signed in to a session the server has since refused, it is a snackbar
+/// whose SIGN IN starts from a clean slate the way Settings > Log out does:
+/// the stale session is cleared and the router takes the person to sign-in.
+/// Either way the session is already gone, so nothing live is lost.
 void showSignInPrompt(BuildContext context, WidgetRef ref, String message) {
+  if (!ref.read(isAuthenticatedProvider)) {
+    askToSignIn(context, ref, message);
+    return;
+  }
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(

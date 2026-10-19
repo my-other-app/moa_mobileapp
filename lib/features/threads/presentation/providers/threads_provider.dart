@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/error/failures.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/threads/data/repositories/thread_repository_impl.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
@@ -17,8 +18,11 @@ const maxCommentLength = 500;
 /// The signed-in person's user id, for "is this my comment".
 ///
 /// From the profile, which loads itself on first read. Null until it has, or
-/// when signed out -- either way no delete button is offered.
+/// when signed out -- either way no delete button is offered. Signed out,
+/// the profile is not even asked for: reading a club's posts must not cost
+/// a refused `/user/profile/me`.
 final threadViewerIdProvider = Provider<int?>((ref) {
+  if (!ref.watch(isAuthenticatedProvider)) return null;
   final id = int.tryParse(ref.watch(profileProvider).profile?.id ?? '');
   return (id == null || id <= 0) ? null : id;
 });

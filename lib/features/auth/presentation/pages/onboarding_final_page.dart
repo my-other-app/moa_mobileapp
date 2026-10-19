@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 
@@ -47,7 +47,9 @@ class OnboardingFinalPage extends ConsumerWidget {
                           onPressed: () {
                             final currentAvatar = profile?.avatar;
                             if (currentAvatar != null) {
-                              context.go('/');
+                              // A new account made from "sign in to follow"
+                              // (say) goes back to that club, else home.
+                              goAfterSignIn(context, ref);
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(

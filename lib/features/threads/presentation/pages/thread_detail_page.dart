@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/themes/color_resources.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/features/threads/domain/entities/moderation.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
 import 'package:finnet/features/threads/domain/entities/thread_comment.dart';
@@ -295,11 +296,9 @@ class _Composer extends ConsumerWidget {
             : SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: () => showSignInPrompt(
-                    context,
-                    ref,
-                    'Sign in to comment.',
-                  ),
+                  key: const ValueKey('comment-sign-in'),
+                  // They have chosen to sign in: straight there, and back.
+                  onPressed: () => startSignIn(context, ref),
                   child: const Text('SIGN IN TO COMMENT'),
                 ),
               ),
