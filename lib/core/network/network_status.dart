@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:finnet/core/network/interceptors/retry_interceptor.dart';
 
@@ -14,6 +16,11 @@ import 'package:finnet/core/network/interceptors/retry_interceptor.dart';
 /// answer, of any status, marks it online. While offline, a probe (a TCP
 /// connect to the API's host, nothing sent) runs every [probeEvery] so the
 /// banner goes away without the person having to do anything.
+///
+/// Coming back counts up [backOnline]. The screens on show watch it
+/// ([backOnlineProvider], [RefreshWhenBackOnline]) and read themselves
+/// again, so what was drawn from the saved copy is brought up to date
+/// without a pull or a tap.
 class NetworkStatus {
   NetworkStatus({
     Future<bool> Function()? probe,
@@ -27,11 +34,16 @@ class NetworkStatus {
   final Duration probeEvery;
 
   final ValueNotifier<bool> _offline = ValueNotifier<bool>(false);
+  final ValueNotifier<int> _backOnline = ValueNotifier<int>(0);
 
   /// True while the last request could not reach the server.
   ValueListenable<bool> get offline => _offline;
 
   bool get isOffline => _offline.value;
+
+  /// How many times the app has come back online since it started: one
+  /// more each time [offline] goes from true to false.
+  ValueListenable<int> get backOnline => _backOnline;
 
   Timer? _probing;
   bool _probeRunning = false;
@@ -43,7 +55,10 @@ class NetworkStatus {
   void reportOnline() {
     _probing?.cancel();
     _probing = null;
-    if (_offline.value) _offline.value = false;
+    if (_offline.value) {
+      _offline.value = false;
+      _backOnline.value++;
+    }
   }
 
   /// A request got no answer at all.
@@ -90,6 +105,57 @@ class NetworkStatus {
   void dispose() {
     _probing?.cancel();
     _offline.dispose();
+    _backOnline.dispose();
+  }
+}
+
+/// The app's [NetworkStatus]; overridden in tests.
+final networkStatusProvider =
+    Provider<NetworkStatus>((ref) => NetworkStatus.instance);
+
+/// [NetworkStatus.backOnline], for providers: one that watches it is read
+/// again each time the app comes back online.
+///
+/// A provider of saved-then-fresh data watches it, so the copy drawn from
+/// the phone while offline is replaced by the server's as soon as the
+/// server can be reached. A notifier that holds more than it fetched (a
+/// list paged further, likes) listens instead and refreshes itself, rather
+/// than being rebuilt from nothing.
+final backOnlineProvider = Provider<int>((ref) {
+  final count = ref.watch(networkStatusProvider).backOnline;
+  void changed() => ref.state = count.value;
+  count.addListener(changed);
+  ref.onDispose(() => count.removeListener(changed));
+  return count.value;
+});
+
+/// For a screen that loads in its `State`: [onBackOnline] runs each time the
+/// app comes back online while the screen is up.
+///
+/// [backOnlineStatus] is the [NetworkStatus] listened to; the app's own
+/// unless a test gives another.
+mixin RefreshWhenBackOnline<W extends StatefulWidget> on State<W> {
+  ValueListenable<int>? _backOnline;
+
+  NetworkStatus get backOnlineStatus => NetworkStatus.instance;
+
+  /// Read the screen again: the network is back.
+  void onBackOnline();
+
+  void _onBackOnline() {
+    if (mounted) onBackOnline();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _backOnline = backOnlineStatus.backOnline..addListener(_onBackOnline);
+  }
+
+  @override
+  void dispose() {
+    _backOnline?.removeListener(_onBackOnline);
+    super.dispose();
   }
 }
 
