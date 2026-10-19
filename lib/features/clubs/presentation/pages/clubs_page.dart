@@ -8,6 +8,8 @@ import 'package:finnet/features/profile/presentation/providers/profile_provider.
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/shared/widgets/custom_search_delegate.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/search_tab_header.dart';
+import 'package:finnet/shared/widgets/section_header.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/clubs/presentation/pages/no_clubs_following_page.dart';
 
@@ -214,36 +216,13 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
               const _FollowingPostsCard(),
               const SizedBox(height: 20),
             ],
-            // Header with "Explore More Clubs" link
-            Padding(
+            // The followed clubs, with a way to more.
+            SectionHeader(
+              title: 'Clubs you follow',
+              seeAllLabel: 'Explore more',
+              seeAllKey: const ValueKey('clubs-explore-more'),
+              onSeeAll: () => context.push('/clubs/explore'),
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'CLUBS YOU FOLLOW',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontSize: 24,
-                          fontFamily: 'BebasNeue',
-                        ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      context.push('/clubs/explore');
-                    },
-                    child: const Text(
-                      'Explore More Clubs',
-                      style: TextStyle(
-                        decoration: TextDecoration.underline,
-                        decorationColor: Colors.redAccent,
-                        color: Colors.redAccent,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
             // Clubs list or empty state
             followingClubs.isEmpty
@@ -270,32 +249,16 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Search box
-        GestureDetector(
-          onTap: () {
-            showSearch(
+        // The search box, as the Home and Events headers have it.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(TabHeaderLayout.gutter,
+              TabHeaderLayout.top, TabHeaderLayout.gutter, 0),
+          child: HeaderSearchBox(
+            key: const ValueKey('clubs-search'),
+            hintText: 'Search for clubs...',
+            onTap: () => showSearch(
               context: context,
               delegate: ClubSearchDelegate(),
-            );
-          },
-          child: Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF1E1E1E)),
-            ),
-            child: Row(
-              children: const [
-                Icon(Icons.search, color: Color(0xFF979797)),
-                SizedBox(width: 8),
-                Text(
-                  "Search for clubs...",
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-              ],
             ),
           ),
         ),
