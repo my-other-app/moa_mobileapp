@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:finnet/app/router/app_router.dart';
 import 'package:finnet/app/router/pending_location.dart';
 import 'package:finnet/app/router/route_access.dart';
@@ -312,6 +314,30 @@ void main() {
       await resolve(tester, router, '/auth/onboarding');
       expect(pending.location, isNull);
     });
+  });
+
+  test('every path Android hands the app is one it reads', () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    final paths = RegExp(r'android:path="([^"]+)"')
+        .allMatches(manifest)
+        .map((m) => m.group(1)!);
+    final prefixes = RegExp(r'android:pathPrefix="([^"]+)"')
+        .allMatches(manifest)
+        .map((m) => m.group(1)!);
+    expect(paths, isNotEmpty);
+    expect(prefixes, isNotEmpty);
+    for (final path in paths) {
+      expect(webLocation(Uri.parse('https://myotherapp.in$path')), isNotNull,
+          reason: path);
+    }
+    for (final prefix in prefixes) {
+      final sample = prefix == '/feedback/' ? '${prefix}12/34' : '${prefix}x';
+      expect(webLocation(Uri.parse('https://myotherapp.in$sample')), isNotNull,
+          reason: sample);
+    }
+    expect(manifest, contains('android:autoVerify="true"'));
+    expect(manifest, contains('android:host="myotherapp.in"'));
   });
 
   test('isTabRoot names the bottom bar\'s pages', () {

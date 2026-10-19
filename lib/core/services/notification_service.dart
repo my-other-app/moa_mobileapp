@@ -16,6 +16,8 @@ import 'package:finnet/core/services/push_topics.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/app/router/app_router.dart';
+import 'package:finnet/app/router/web_links.dart';
+import 'package:finnet/shared/utils/external_links.dart';
 import 'package:go_router/go_router.dart';
 
 /// Background message handler - must be a top-level function
@@ -76,6 +78,25 @@ class NotificationService {
 
   /// Get the current FCM token
   String? get fcmToken => _fcmToken;
+
+  /// The Android channel every push is shown on: created at start-up, and
+  /// named in the manifest as FCM's default
+  /// (`com.google.firebase.messaging.default_notification_channel_id`), so
+  /// a push the system shows while the app is in the background lands here
+  /// too rather than in "Miscellaneous". The id is the one the app has
+  /// always used: a channel's importance is fixed once created on a phone.
+  static const androidChannelId = 'high_importance_channel';
+  static const androidChannelName = 'Events and clubs';
+  static const androidChannelDescription =
+      'Reminders, check-ins, live updates and posts from clubs you follow.';
+
+  /// The status-bar icon: white on transparent, as Android draws it. The
+  /// launcher icon there was a white blob. Named in the manifest too
+  /// (`default_notification_icon`), for pushes the system shows itself.
+  static const androidSmallIcon = '@drawable/ic_stat_notification';
+
+  /// The accent Android tints the small icon and the app name with.
+  static const androidAccent = Color(0xFF17A58F);
 
   /// Register the handler for messages that arrive while the app is in the
   /// background or closed. Cheap and synchronous: call it in `main` before
@@ -272,7 +293,7 @@ class NotificationService {
 
   Future<void> _initializeLocalNotifications() async {
     const AndroidInitializationSettings androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings(androidSmallIcon);
 
     // No permission requests here: that waits for sign-in.
     const DarwinInitializationSettings iosSettings =
@@ -295,9 +316,9 @@ class NotificationService {
     // Create notification channel for Android
     if (Platform.isAndroid) {
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'high_importance_channel',
-        'High Importance Notifications',
-        description: 'This channel is used for important notifications.',
+        androidChannelId,
+        androidChannelName,
+        description: androidChannelDescription,
         importance: Importance.high,
       );
 
@@ -373,7 +394,41 @@ class NotificationService {
   /// live room in the app ([liveJoinRoute]), so Back lands on the event. A
   /// club's new post (`club_thread`) opens that post; if it has been removed
   /// since, its page says so.
-  static String? routeFor(Map<String, dynamic> data) {
+  ///
+  /// Any other push that carries a `url` to the website opens the app's
+  /// screen for that address (`/events/{slug}`, `/clubs/{slug}`, ...: see
+  /// web_links.dart). A `url` the app has no screen for opens in the
+  /// browser instead ([webUrlFor]).
+  static String? routeFor(Map<String, dynamic> data) =>
+      _typedRoute(data) ?? _urlRoute(data);
+
+  /// The website (or other) address a push opens outside the app's own
+  /// screens: its `url`, when the app has no screen for it -- a feedback
+  /// survey, say. Only http(s).
+  static Uri? webUrlFor(Map<String, dynamic> data) {
+    if (routeFor(data) != null) return null;
+    final url = _url(data);
+    if (url == null || !(url.isScheme('https') || url.isScheme('http'))) {
+      return null;
+    }
+    return url;
+  }
+
+  static Uri? _url(Map<String, dynamic> data) {
+    final text = data['url']?.toString().trim();
+    if (text == null || text.isEmpty) return null;
+    return Uri.tryParse(text);
+  }
+
+  static String? _urlRoute(Map<String, dynamic> data) {
+    final url = _url(data);
+    if (url == null) return null;
+    // Absolute links only: a bare path is not the server's to send.
+    if (!url.hasScheme) return null;
+    return webLocation(url);
+  }
+
+  static String? _typedRoute(Map<String, dynamic> data) {
     final type = data['type']?.toString();
     if (type == 'club_thread') {
       final threadId = data['thread_id']?.toString().trim();
@@ -419,8 +474,17 @@ class NotificationService {
     // A tap on a second copy of a push already opened does nothing.
     if (!dedupe.firstOpen(data)) return;
     final route = routeFor(data);
+    if (route == null) {
+      final url = webUrlFor(data);
+      // Our own pages inside the app; anything else in the browser.
+      if (url != null) {
+        unawaited(
+            isOwnSite(url) ? openInAppThenBrowser(url) : openExternally(url));
+      }
+      return;
+    }
     final context = rootNavigatorKey.currentContext;
-    if (route == null || context == null) return;
+    if (context == null) return;
     GoRouter.of(context).push(route);
   }
 
@@ -449,36 +513,37 @@ class NotificationService {
         );
 
         androidDetails = AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          channelDescription:
-              'This channel is used for important notifications.',
+          androidChannelId,
+          androidChannelName,
+          channelDescription: androidChannelDescription,
           importance: Importance.high,
           priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+          icon: androidSmallIcon,
+          color: androidAccent,
           styleInformation: bigPictureStyleInformation,
         );
       } catch (e) {
         debugPrint('Error downloading image for notification: $e');
         // Fallback to text only
         androidDetails = const AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          channelDescription:
-              'This channel is used for important notifications.',
+          androidChannelId,
+          androidChannelName,
+          channelDescription: androidChannelDescription,
           importance: Importance.high,
           priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+          icon: androidSmallIcon,
+          color: androidAccent,
         );
       }
     } else {
       androidDetails = const AndroidNotificationDetails(
-        'high_importance_channel',
-        'High Importance Notifications',
-        channelDescription: 'This channel is used for important notifications.',
+        androidChannelId,
+        androidChannelName,
+        channelDescription: androidChannelDescription,
         importance: Importance.high,
         priority: Priority.high,
-        icon: '@mipmap/ic_launcher',
+        icon: androidSmallIcon,
+        color: androidAccent,
       );
     }
 

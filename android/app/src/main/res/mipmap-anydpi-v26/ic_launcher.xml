@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launcher icon on Android 8 and later: the launcher masks these
+     layers to its own shape. Made by tool/icons.py from
+     assets/icons/app_icon.png; older Androids use mipmap-*/ic_launcher.png.
+     The monochrome layer is Android 13's themed icon. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
+</adaptive-icon>

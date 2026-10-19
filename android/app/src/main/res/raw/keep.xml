@@ -2,8 +2,9 @@
 <!--
   Resources the shrinker must keep although no code names them directly.
   flutter_local_notifications looks its icon up by name at runtime
-  ('@mipmap/ic_launcher'), so a release build with shrinkResources could
-  otherwise drop it and notifications would fail silently.
+  ('@drawable/ic_stat_notification', and '@mipmap/ic_launcher' before it),
+  so a release build with shrinkResources could otherwise drop it and
+  notifications would fail silently.
 -->
 <resources xmlns:tools="http://schemas.android.com/tools"
     tools:keep="@mipmap/ic_launcher,@drawable/*" />
