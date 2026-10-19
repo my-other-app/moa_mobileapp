@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/events/presentation/utils/event_feed.dart';
@@ -7,9 +9,16 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 
-/// Page to display club's events (past or upcoming)
-class ClubEventsPage extends StatefulWidget {
+/// Page to display club's events (past or upcoming).
+///
+/// Signed in, from `/clubs/{id}/events`. Signed out that answers 401, so
+/// the club's public list is read instead, as the website does:
+/// `/discover/clubs/{slug}/events?when=past|upcoming`.
+class ClubEventsPage extends ConsumerStatefulWidget {
   final int clubId;
+
+  /// What the public list is read by, signed out.
+  final String clubSlug;
   final String clubName;
   final String clubLogo;
   final bool isPastEvents;
@@ -17,16 +26,17 @@ class ClubEventsPage extends StatefulWidget {
   const ClubEventsPage({
     super.key,
     required this.clubId,
+    this.clubSlug = '',
     required this.clubName,
     required this.clubLogo,
     required this.isPastEvents,
   });
 
   @override
-  State<ClubEventsPage> createState() => _ClubEventsPageState();
+  ConsumerState<ClubEventsPage> createState() => _ClubEventsPageState();
 }
 
-class _ClubEventsPageState extends State<ClubEventsPage> {
+class _ClubEventsPageState extends ConsumerState<ClubEventsPage> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
@@ -85,20 +95,36 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       _isLoading = true;
     });
 
-    final query = {
-      'limit': _limit,
-      'offset': _offset,
-      'is_ended': widget.isPastEvents,
-    };
+    final public =
+        !ref.read(isAuthenticatedProvider) && widget.clubSlug.trim().isNotEmpty;
+    final path = public
+        ? '/discover/clubs/${Uri.encodeComponent(widget.clubSlug.trim())}/events'
+        : '/clubs/${widget.clubId}/events';
+    final query = public
+        ? {
+            'when': widget.isPastEvents ? 'past' : 'upcoming',
+            'offset': _offset,
+            'limit': _limit,
+          }
+        : {
+            'limit': _limit,
+            'offset': _offset,
+            'is_ended': widget.isPastEvents,
+          };
+    List<Map<String, dynamic>> eventsOf(Object? data) {
+      final page = _eventsOf(data);
+      return public ? page.map(discoverEventAsListItem).toList() : page;
+    }
+
     try {
       if (_offset == 0) {
         // The first page: the saved copy at once, then the network's.
         await APIService.instance.getSavedThenFresh(
-          '/clubs/${widget.clubId}/events',
+          path,
           param: query,
           onData: (data, {required fresh}) {
             if (!mounted) return;
-            final page = _eventsOf(data);
+            final page = eventsOf(data);
             setState(() {
               _events
                 ..clear()
@@ -110,12 +136,12 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
         );
       } else {
         final Response res = await APIService.instance.request(
-          '/clubs/${widget.clubId}/events',
+          path,
           DioMethod.get,
           param: query,
         );
         if (!mounted) return;
-        final page = _eventsOf(res.data);
+        final page = eventsOf(res.data);
         setState(() {
           _events.addAll(page);
           _offset += page.length;
@@ -350,5 +376,29 @@ Map<String, dynamic> clubEventWithClub(
       'name': name is String && name.trim().isNotEmpty ? name : clubName,
       'logo': imageUrlFrom(club['logo']) ?? clubLogo,
     },
+  };
+}
+
+/// An event from the club's public list (`/discover/clubs/{slug}/events`,
+/// the website's card) in the shape the app's lists send, so the same card
+/// draws it.
+@visibleForTesting
+Map<String, dynamic> discoverEventAsListItem(Map<String, dynamic> card) {
+  final starts = DateTime.tryParse('${card['starts_at'] ?? ''}');
+  final ends = DateTime.tryParse('${card['ends_at'] ?? ''}');
+  final hours = starts != null && ends != null && ends.isAfter(starts)
+      ? ends.difference(starts).inMinutes / 60
+      : null;
+  return {
+    'id': card['id'],
+    'name': card['name'],
+    'slug': card['slug'],
+    'poster': card['poster'],
+    'event_datetime': card['starts_at'],
+    if (hours != null) 'duration': hours,
+    'is_online': card['is_online'] == true,
+    'has_fee': card['has_fee'] == true,
+    'category': card['category'],
+    'club': card['club'],
   };
 }
