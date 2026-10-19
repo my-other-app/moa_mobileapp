@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/features/discover/domain/entities/discover_event.dart';
+import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 
 // How the discover screens write things, as the website does
 // (`src/utils/format.js`).
@@ -19,6 +21,16 @@ String formatPrice(bool hasFee, double? fee) {
   if (!hasFee) return 'Free';
   if (fee == null || fee <= 0) return 'Paid';
   return '₹${_whole.format(fee.round() == fee ? fee.round() : fee)}';
+}
+
+/// The one price a card shows: "Free", "₹250" or "Paid" -- or null for a
+/// paid online event on an iPhone ([platform], the running one by
+/// default). The iOS app doesn't sell those, and a price there reads as an
+/// offer (canSellInApp), so the card shows no price at all.
+String? cardPrice(DiscoverEvent event, {TargetPlatform? platform}) {
+  final sellable = canSellInApp(
+      hasFee: event.hasFee, isOnline: event.isOnline, platform: platform);
+  return sellable ? formatPrice(event.hasFee, event.fee) : null;
 }
 
 /// 950, 1.2k, 34k, 3.4M.

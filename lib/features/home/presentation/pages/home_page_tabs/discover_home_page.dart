@@ -286,7 +286,7 @@ class _HomeSkeleton extends StatelessWidget {
           children: [
             RailSkeleton(),
             SizedBox(height: 28),
-            RailSkeleton(height: 160, width: 240),
+            RailSkeleton(clubs: true),
             SizedBox(height: 28),
             RailSkeleton(),
           ],

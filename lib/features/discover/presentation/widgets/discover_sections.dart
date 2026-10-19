@@ -5,9 +5,15 @@ import 'package:finnet/features/discover/domain/entities/discover_event.dart';
 import 'package:finnet/features/discover/presentation/providers/paged_list.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_club_card.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_event_card.dart';
+import 'package:finnet/shared/widgets/section_header.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 
+export 'package:finnet/shared/widgets/section_header.dart' show SeeAllLink;
+
 /// A titled block on a discover screen, with "See all" when there is more.
+///
+/// The title and "See all" sit on the gutter, 12 points over [child]; the
+/// space under it ([padding]) keeps the sections on one rhythm.
 class DiscoverSection extends StatelessWidget {
   const DiscoverSection({
     super.key,
@@ -17,15 +23,18 @@ class DiscoverSection extends StatelessWidget {
     this.seeAllKey,
     this.trailing,
     required this.child,
-    this.padding = const EdgeInsets.only(bottom: 28),
+    this.padding = const EdgeInsets.only(bottom: sectionGap),
   });
+
+  /// Between one section and the next.
+  static const sectionGap = 32.0;
 
   final String title;
   final String? subtitle;
   final VoidCallback? onSeeAll;
   final Key? seeAllKey;
 
-  /// Beside the title instead of "See all".
+  /// Beside the title, before "See all".
   final Widget? trailing;
   final Widget child;
   final EdgeInsets padding;
@@ -35,41 +44,19 @@ class DiscoverSection extends StatelessWidget {
     return Padding(
       padding: padding,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Semantics(
-                    header: true,
-                    child: Text(
-                      title.toUpperCase(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontFamily: 'BebasNeue',
-                        color: Color(0xFF1E1E1E),
-                        height: 1.1,
-                      ),
-                    ),
-                  ),
-                ),
-                if (trailing != null) trailing!,
-                if (onSeeAll != null) ...[
-                  const SizedBox(width: 8),
-                  SeeAllLink(key: seeAllKey, onTap: onSeeAll!),
-                ],
-              ],
-            ),
+          SectionHeader(
+            title: title,
+            onSeeAll: onSeeAll,
+            seeAllKey: seeAllKey,
+            trailing: trailing,
+            padding: const EdgeInsets.symmetric(horizontal: railGutter),
           ),
           if (subtitle != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
+              padding: const EdgeInsets.fromLTRB(railGutter, 2, railGutter, 0),
               child: Text(
                 subtitle!,
                 style: const TextStyle(fontSize: 12, color: Color(0xFF6B6B6B)),
@@ -83,38 +70,13 @@ class DiscoverSection extends StatelessWidget {
   }
 }
 
-/// "See all", as Home's topic row has it.
-class SeeAllLink extends StatelessWidget {
-  const SeeAllLink({super.key, required this.onTap, this.label = 'See all'});
+/// Left and right of a rail's first and last card.
+const railGutter = 16.0;
 
-  final VoidCallback onTap;
-  final String label;
+/// Between cards in a rail.
+const railSpacing = 12.0;
 
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Text(
-            label,
-            style: const TextStyle(
-              decoration: TextDecoration.underline,
-              decorationColor: Colors.redAccent,
-              color: Colors.redAccent,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Events side by side, scrolled sideways.
+/// Events side by side, scrolled sideways: every card the same size.
 class EventRail extends StatelessWidget {
   const EventRail({super.key, required this.events, this.limit = 10});
 
@@ -124,25 +86,20 @@ class EventRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shown = events.take(limit).toList();
-    final scale =
-        (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.6);
     return SizedBox(
-      height: 140 + 160 * scale,
+      height: DiscoverEventCard.heightFor(context),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: railGutter),
         itemCount: shown.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (_, i) => Align(
-          alignment: Alignment.topCenter,
-          child: DiscoverEventCard(event: shown[i]),
-        ),
+        separatorBuilder: (_, __) => const SizedBox(width: railSpacing),
+        itemBuilder: (_, i) => DiscoverEventCard(event: shown[i]),
       ),
     );
   }
 }
 
-/// Clubs side by side, scrolled sideways.
+/// Clubs side by side, scrolled sideways: every card the same size.
 class ClubRail extends StatelessWidget {
   const ClubRail({super.key, required this.clubs, this.limit = 8});
 
@@ -152,91 +109,132 @@ class ClubRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shown = clubs.take(limit).toList();
-    final scale =
-        (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.6);
     return SizedBox(
-      height: 76 + 112 * scale,
+      height: DiscoverClubCard.heightFor(context),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: railGutter),
         itemCount: shown.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (_, i) => Align(
-          alignment: Alignment.topCenter,
-          child: DiscoverClubCard(club: shown[i], width: 240),
-        ),
+        separatorBuilder: (_, __) => const SizedBox(width: railSpacing),
+        itemBuilder: (_, i) => DiscoverClubCard(
+            club: shown[i], width: DiscoverClubCard.railWidth),
       ),
     );
   }
 }
 
-/// A rail's shape while it loads.
+/// A rail of event cards while it loads: the cards' own shapes, at their
+/// size, under a bar where the title goes.
 class RailSkeleton extends StatelessWidget {
-  const RailSkeleton({super.key, this.height = 260, this.width = 248});
+  const RailSkeleton({super.key, this.clubs = false});
 
-  final double height;
-  final double width;
+  /// Club cards rather than event cards.
+  final bool clubs;
 
   @override
   Widget build(BuildContext context) {
+    final height = clubs
+        ? DiscoverClubCard.heightFor(context)
+        : DiscoverEventCard.heightFor(context);
     return Shimmer.fromColors(
       baseColor: Colors.grey.shade200,
       highlightColor: Colors.grey.shade100,
-      child: SizedBox(
-        height: height,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: 3,
-          separatorBuilder: (_, __) => const SizedBox(width: 12),
-          itemBuilder: (_, __) =>
-              ShimmerBox(height: height, width: width, borderRadius: 10),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: railGutter),
+            child: ShimmerBox(height: 20, width: 160, borderRadius: 4),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: height,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: railGutter),
+              itemCount: 3,
+              separatorBuilder: (_, __) => const SizedBox(width: railSpacing),
+              itemBuilder: (_, __) => clubs
+                  ? ShimmerBox(
+                      height: height,
+                      width: DiscoverClubCard.railWidth,
+                      borderRadius: 10)
+                  : const EventCardSkeleton(),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Rows of a list while its first page loads.
+/// Rows of a list while its first page loads, shaped like the event rows.
 class ListSkeleton extends StatelessWidget {
-  const ListSkeleton({super.key, this.rows = 5, this.rowHeight = 92});
+  const ListSkeleton({super.key, this.rows = 5, this.rowHeight});
 
   final int rows;
-  final double rowHeight;
+
+  /// Each row's height; an event row's by default.
+  final double? rowHeight;
 
   @override
   Widget build(BuildContext context) {
-    return Shimmer.fromColors(
+    final height =
+        rowHeight ?? EventCardSlots.of(context, maxScale: tileMaxTextScale).content;
+    final skeleton = Shimmer.fromColors(
       key: const ValueKey('discover-list-loading'),
       baseColor: Colors.grey.shade200,
       highlightColor: Colors.grey.shade100,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           for (var i = 0; i < rows; i++)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  ShimmerBox(height: rowHeight, width: rowHeight),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ShimmerBox(height: 12, width: 120),
-                        SizedBox(height: 8),
-                        ShimmerBox(height: 16),
-                        SizedBox(height: 8),
-                        ShimmerBox(height: 12, width: 160),
-                      ],
+              padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
+              child: SizedBox(
+                height: height,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ShimmerBox(
+                        height: height,
+                        width: rowHeight == null
+                            ? DiscoverEventTile.thumbWidth
+                            : height),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          ShimmerBox(height: 10, width: 110, borderRadius: 4),
+                          ShimmerBox(height: 14, borderRadius: 4),
+                          ShimmerBox(height: 14, width: 140, borderRadius: 4),
+                          ShimmerBox(height: 10, width: 120, borderRadius: 4),
+                          ShimmerBox(height: 10, width: 150, borderRadius: 4),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
         ],
       ),
+    );
+    // Given a screen's height (a page that is loading), the rows past its
+    // bottom are cut off rather than overflow it; in a list, all are drawn.
+    return LayoutBuilder(
+      builder: (context, box) => box.hasBoundedHeight
+          ? ClipRect(
+              child: SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
+                child: skeleton,
+              ),
+            )
+          : skeleton,
     );
   }
 }
