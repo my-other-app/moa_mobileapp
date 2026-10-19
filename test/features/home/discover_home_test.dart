@@ -69,8 +69,12 @@ Future<_Harness> _pump(
 
 Finder _rail(String name) => find.byKey(ValueKey('rail-$name'));
 
-Future<void> _scrollTo(WidgetTester tester, Finder target) => tester
-    .scrollUntilVisible(target, 300, scrollable: scrollableIn('discover-home'));
+Future<void> _scrollTo(WidgetTester tester, Finder target) async {
+  await tester.scrollUntilVisible(target, 300,
+      scrollable: scrollableIn('discover-home'));
+  // Laid out where it was scrolled to before anything taps it.
+  await tester.pump();
+}
 
 void main() {
   group('signed out', () {
@@ -81,16 +85,18 @@ void main() {
       // No FOR YOU or FOLLOWING: they are about the person.
       expect(find.byKey(const ValueKey('home-tab-0')), findsNothing);
       expect(find.text('FOR YOU'), findsNothing);
-      // Placed by connection: the server named the city.
+      // Placed by connection: the server named the city, on the pill at
+      // the top; the near rails under it say "near you".
       expect(find.text('Near Thiruvananthapuram'), findsOneWidget);
-      expect(find.text('EVENTS NEAR THIRUVANANTHAPURAM'), findsOneWidget);
+      expect(find.text('EVENTS NEAR YOU'), findsOneWidget);
       expect(find.text('Hack Night'), findsOneWidget);
-      expect(_rail('this-week'), findsOneWidget);
+      // Then the topics, and the rest of the rails in order.
+      await _scrollTo(tester, find.byKey(const ValueKey('browse-by-topic')));
+      await _scrollTo(tester, _rail('this-week'));
       // Clubs with a distance are the near ones.
-      expect(find.text('CLUBS NEAR THIRUVANANTHAPURAM'), findsOneWidget);
+      await _scrollTo(tester, find.text('CLUBS NEAR YOU'));
       await _scrollTo(tester, _rail('online'));
       await _scrollTo(tester, _rail('popular'));
-      await _scrollTo(tester, find.byKey(const ValueKey('browse-by-topic')));
       await _scrollTo(tester, _rail('threads'));
       expect(find.text('Hello from the club'), findsOneWidget);
 
@@ -110,6 +116,7 @@ void main() {
       await tester.pageBack();
       await settle(tester, 16);
 
+      await _scrollTo(tester, _rail('this-week'));
       await tester.tap(find.descendant(
           of: _rail('this-week'), matching: find.text('See all')));
       await settle(tester);
@@ -117,8 +124,8 @@ void main() {
       await tester.pageBack();
       await settle(tester, 16);
 
-      await tester
-          .ensureVisible(find.byKey(const ValueKey('discover-club-club-5')));
+      await _scrollTo(
+          tester, find.byKey(const ValueKey('discover-club-club-5')));
       await settle(tester);
       await tester.tap(find.byKey(const ValueKey('discover-club-club-5')));
       await settle(tester);
@@ -142,6 +149,29 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('discover-where-everywhere')));
       await settle(tester);
       expect(h.went.last, '/discover/events');
+    });
+
+    testWidgets('the top: the counts the server sent, and quick ways in',
+        (tester) async {
+      final h = await _pump(tester);
+      expect(find.text("WHAT'S ON"), findsOneWidget);
+      expect(find.text('40 upcoming events · 12 clubs'), findsOneWidget);
+
+      for (final (chip, location) in [
+        ('today', '/discover/events?when=today'),
+        ('weekend', '/discover/events?when=this_weekend'),
+        ('free', '/discover/events?price=free'),
+        ('online', '/discover/events?type=online'),
+        ('near', '/discover/events?sort=distance&near=1'),
+        ('calendar', '/discover/events?view=calendar'),
+      ]) {
+        await tapVisible(tester, find.byKey(ValueKey('discover-quick-$chip')),
+            scrollable: scrollableIn('discover-home-quick'));
+        await settle(tester);
+        expect(h.went.last, location, reason: chip);
+        await tester.pageBack();
+        await settle(tester, 16);
+      }
     });
 
     testWidgets('search opens Find events, ready to type', (tester) async {
@@ -259,7 +289,9 @@ void main() {
         )));
       await _pump(tester, repo: repo);
       expect(_rail('near'), findsNothing);
-      expect(find.text('POPULAR CLUBS'), findsOneWidget);
+      await _scrollTo(tester, find.text('POPULAR CLUBS'));
+      // Not placed: nothing near to offer.
+      expect(find.byKey(const ValueKey('discover-quick-near')), findsNothing);
     });
   });
 }

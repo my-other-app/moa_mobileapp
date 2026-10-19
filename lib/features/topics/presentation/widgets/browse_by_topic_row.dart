@@ -6,10 +6,12 @@ import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/domain/topic_rules.dart';
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
+import 'package:finnet/shared/widgets/section_header.dart';
 
-/// "Browse by topic" on Home: a card per topic, with how many events are
-/// coming up under it when the server counts, each opening the topic's page
-/// (its events and clubs, readable signed out); "See all" opens Topics.
+/// "Browse by topic" on Home: a tile per topic in its own colour, with how
+/// many events are coming up under it when the server counts, each opening
+/// the topic's page (its events and clubs, readable signed out); "See all"
+/// opens Topics.
 ///
 /// Nothing while the topics load or if they fail -- it is a way in, not the
 /// feed -- and nothing on a server with one topic holding everything.
@@ -17,7 +19,15 @@ class BrowseByTopicRow extends ConsumerWidget {
   /// Space below it, only when it draws anything.
   final double bottomGap;
 
-  const BrowseByTopicRow({super.key, this.bottomGap = 0});
+  /// Left and right of the title and of the first and last tile: none
+  /// inside a list that is padded already, the gutter on one that is not
+  /// (the tiles then scroll to the screen's edge).
+  final double gutter;
+
+  const BrowseByTopicRow({super.key, this.bottomGap = 0, this.gutter = 0});
+
+  /// How far the tiles' text grows with the phone's text size.
+  static const _maxTextScale = 2.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,54 +43,33 @@ class BrowseByTopicRow extends ConsumerWidget {
   }
 
   Widget _content(BuildContext context, List<Topic> topics) {
+    final scale = MediaQuery.textScalerOf(context)
+        .clamp(maxScaleFactor: _maxTextScale);
     return Column(
       key: const ValueKey('browse-by-topic'),
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Semantics(
-                header: true,
-                child: Text(
-                  'BROWSE BY TOPIC',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontSize: 24,
-                        fontFamily: 'BebasNeue',
-                      ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              key: const ValueKey('browse-by-topic-all'),
-              onTap: () => context.push(topicsPath),
-              child: const Text(
-                'See all',
-                style: TextStyle(
-                  decoration: TextDecoration.underline,
-                  decorationColor: Colors.redAccent,
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ],
+        SectionHeader(
+          title: 'Browse by topic',
+          onSeeAll: () => context.push(topicsPath),
+          seeAllKey: const ValueKey('browse-by-topic-all'),
+          padding: EdgeInsets.symmetric(horizontal: gutter),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          // Taller with larger text, so the name and count still fit.
-          height: 72 + 40 * _textScale(context),
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: topics.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (context, i) => _TopicCard(topic: topics[i]),
+        MediaQuery.withClampedTextScaling(
+          maxScaleFactor: _maxTextScale,
+          child: SizedBox(
+            // Taller with larger text, so the name and count still fit.
+            height: _TopicCard.heightFor(scale),
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.symmetric(horizontal: gutter),
+              itemCount: topics.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, i) =>
+                  _TopicCard(topic: topics[i], width: _TopicCard.widthFor(scale)),
+            ),
           ),
         ),
       ],
@@ -88,13 +77,28 @@ class BrowseByTopicRow extends ConsumerWidget {
   }
 }
 
-double _textScale(BuildContext context) =>
-    (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 2.0);
-
+/// A topic as a tile: its colour as a wash, its icon on a disc of the
+/// colour itself, then its name and how many events are coming up.
 class _TopicCard extends StatelessWidget {
   final Topic topic;
+  final double width;
 
-  const _TopicCard({required this.topic});
+  const _TopicCard({required this.topic, required this.width});
+
+  static const _padding = 12.0;
+  static const _disc = 34.0;
+  static const _gap = 10.0;
+
+  /// Wide enough for "Development" at the text size.
+  static double widthFor(TextScaler scale) =>
+      2 * _padding + scale.scale(14) * 7.4;
+
+  static double heightFor(TextScaler scale) =>
+      2 * _padding +
+      _disc +
+      _gap +
+      scale.scale(14) * 1.3 +
+      scale.scale(12) * 1.3;
 
   @override
   Widget build(BuildContext context) {
@@ -114,54 +118,52 @@ class _TopicCard extends StatelessWidget {
       excludeSemantics: true,
       child: Material(
         color: palette.tint,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: ValueKey('browse-topic-${topic.slug}'),
           onTap: () => _open(context),
           child: SizedBox(
-            width: 136,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(width: 4, color: palette.accent),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TopicIcon(
-                            topic: topic, size: 22, color: palette.accent),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              topic.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: palette.onTint,
-                              ),
-                            ),
-                            if (countText != null)
-                              Text(
-                                countText,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                    fontSize: 12, color: surface.muted),
-                              ),
-                          ],
-                        ),
-                      ],
+            width: width,
+            child: Padding(
+              padding: const EdgeInsets.all(_padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: _disc,
+                    height: _disc,
+                    decoration: BoxDecoration(
+                      color: palette.accent,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child:
+                        TopicIcon(topic: topic, size: 18, color: Colors.white),
+                  ),
+                  const Spacer(),
+                  Text(
+                    topic.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    strutStyle: const StrutStyle(
+                        fontSize: 14, height: 1.3, forceStrutHeight: true),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: palette.onTint,
                     ),
                   ),
-                ),
-              ],
+                  Text(
+                    countText ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    strutStyle: const StrutStyle(
+                        fontSize: 12, height: 1.3, forceStrutHeight: true),
+                    style: TextStyle(fontSize: 12, color: surface.muted),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
