@@ -927,7 +927,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           'phone': _phoneController.text.trim(),
           'additional_details': additionalDetailsMap,
           if (organizationName != null) 'organization': organizationName,
-          if (picksToPayload(_catalog, _picks).isNotEmpty) 'store': picksToPayload(_catalog, _picks),
+          // Whenever the event sells merch, what is picked now -- even
+          // nothing: a registration coming back to pay with its picks
+          // cleared must drop the earlier order, not keep charging for it.
+          if (_catalog.hasAnything) 'store': picksToPayload(_catalog, _picks),
         };
 
         final response = await APIService.instance.request(

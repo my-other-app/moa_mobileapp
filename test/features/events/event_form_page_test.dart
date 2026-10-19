@@ -482,8 +482,7 @@ void main() {
           'pay_amount': 0,
           'ticket_id': 'T-1',
         });
-      await _pump(tester,
-          form: const EventFormPage(eventRef: 'hack-night'));
+      await _pump(tester, form: const EventFormPage(eventRef: 'hack-night'));
 
       await tester.enterText(
           find.widgetWithText(TextFormField, 'Enter college'), 'CET');
@@ -497,8 +496,7 @@ void main() {
 
     testWidgets('an event that cannot load says so, with a retry',
         (tester) async {
-      await _pump(tester,
-          form: const EventFormPage(eventRef: 'gone'));
+      await _pump(tester, form: const EventFormPage(eventRef: 'gone'));
       expect(find.text('Continue'), findsNothing);
       expect(find.byType(ErrorView), findsOneWidget);
     });
@@ -555,6 +553,47 @@ void main() {
       expect(find.text(iosOnlineSaleBlockedMessage), findsOneWidget);
       expect(find.text('Continue'), findsNothing);
       debugDefaultTargetPlatformOverride = null;
+    });
+  });
+
+  group('merch picks', () {
+    const catalog = {
+      'enabled': true,
+      'items': [
+        {'id': 'tee', 'name': 'Hack Night tee', 'price': 399, 'variants': []},
+      ],
+    };
+    void registered() => api.on('POST', '/events/registration/7/register', {
+          'event_id': 7,
+          'event_name': 'Hack Night',
+          'event_registration_id': 'reg-1',
+          'pay_amount': 0,
+          'ticket_id': 'T-1',
+          'event_datetime': '2030-12-01T10:00:00Z',
+          'full_name': 'Asha Menon',
+        });
+
+    testWidgets('an event with merch sends the picks even when there are none',
+        (tester) async {
+      api.on('GET', '/events/7/store/catalog', catalog);
+      registered();
+      await _pump(tester);
+      await fillAndSend(tester);
+
+      final sent = api.sent('POST', '/events/registration/7/register').single;
+      // An empty list, not a missing key: it drops an earlier order.
+      expect((sent.data as Map)['store'], isEmpty);
+      expect((sent.data as Map).containsKey('store'), isTrue);
+    });
+
+    testWidgets('an event without merch sends no store at all', (tester) async {
+      api.on('GET', '/events/7/store/catalog', {'enabled': false, 'items': []});
+      registered();
+      await _pump(tester);
+      await fillAndSend(tester);
+
+      final sent = api.sent('POST', '/events/registration/7/register').single;
+      expect((sent.data as Map).containsKey('store'), isFalse);
     });
   });
 }
