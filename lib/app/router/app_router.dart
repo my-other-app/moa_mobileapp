@@ -45,6 +45,11 @@ import 'package:finnet/features/volunteer/presentation/pages/volunteer_events_pa
 import 'package:finnet/features/volunteer/presentation/pages/volunteer_scanner_page.dart';
 import 'package:finnet/features/volunteer/presentation/pages/manual_ticket_entry_page.dart';
 
+// Signed-out browsing and the website's links
+import 'package:finnet/app/router/link_pages.dart';
+import 'package:finnet/app/router/pending_location.dart';
+import 'package:finnet/app/router/route_access.dart';
+
 GlobalKey<NavigatorState> _rootNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'root');
 
@@ -58,26 +63,101 @@ final routerObserversProvider = Provider<List<NavigatorObserver>>(
   (ref) => [AnalyticsService.instance.observer],
 );
 
-/// Where the router sends someone at [location], or null to let them in.
+/// Where the router sends someone at [location] (a path and query), or
+/// null to let them in.
 ///
-/// Signed out, everything but the sign-in and onboarding screens leads to
-/// sign-in -- which is how an ended session reaches the screen: the auth
-/// state changes, the router re-runs this, and the person lands on sign-in.
+/// The app is open without an account (route_access.dart): signed out,
+/// only an address that is about the person -- their events and tickets,
+/// clubs, profile, settings, the scanner, registering -- leads to sign-in,
+/// which comes back to it afterwards (`?from=`). That is also how an ended
+/// session on such a page reaches sign-in: the auth state changes and the
+/// router re-runs this on the page the person is on.
+///
+/// [launchLink] is a link that opened the app and waits for the splash
+/// screen to finish. The splash sends a signed-out person to sign-in; with
+/// a link waiting, a public one opens over home instead, and a private one
+/// asks for sign-in first and then opens.
 @visibleForTesting
-String? authRedirect(AuthState auth, String location) {
+String? authRedirect(AuthState auth, String location, {String? launchLink}) {
+  final uri = Uri.parse(location);
+  final path = uri.path.isEmpty ? '/' : uri.path;
   // The splash screen routes itself once the stored session has been read.
-  if (location == '/splash') return null;
+  if (path == '/splash') return null;
   if (!auth.isInitialized) return '/splash';
 
-  final isOnAuthRoute = location.startsWith('/auth');
-  final isOnOnboarding = location.startsWith('/onboarding');
-  if (!auth.isAuthenticated && !isOnAuthRoute && !isOnOnboarding) {
-    return '/auth/onboarding';
+  if (auth.isAuthenticated) {
+    return path == signInPath ? '/auth/profile-check' : null;
   }
-  if (auth.isAuthenticated && location == '/auth/onboarding') {
-    return '/auth/profile-check';
+  if (isAuthFlow(path)) {
+    if (path == signInPath && launchLink != null && returnTarget(uri) == null) {
+      return needsAccount(launchLink) ? signInLocation(launchLink) : '/';
+    }
+    return null;
   }
-  return null;
+  return needsAccount(path) ? signInLocation(location) : null;
+}
+
+/// Whether [location] is a link worth holding while the app starts: an
+/// address of a page, not the start or the sign-in flow.
+bool _isLaunchLink(String location) {
+  final path = Uri.parse(location).path;
+  return path.isNotEmpty && path != '/' && !isAuthFlow(path);
+}
+
+/// Feature routes (absolute paths, as each feature writes them) re-rooted
+/// under Home, on the root navigator: a page a link opens from outside the
+/// app then has Home under it, so Back -- or the app bar's back button on
+/// an iPhone -- leads into the app rather than out of it.
+///
+/// Only [GoRoute]s: a feature's own shell route goes in the top-level list.
+@visibleForTesting
+List<RouteBase> overHome(
+  GlobalKey<NavigatorState> rootKey,
+  List<RouteBase> routes,
+) {
+  return [
+    for (final route in routes)
+      if (route is GoRoute)
+        GoRoute(
+          path: route.path.startsWith('/')
+              ? route.path.substring(1)
+              : route.path,
+          name: route.name,
+          builder: route.builder,
+          pageBuilder: route.pageBuilder,
+          redirect: route.redirect,
+          onExit: route.onExit,
+          parentNavigatorKey: rootKey,
+          routes: route.routes,
+        )
+      else
+        throw ArgumentError.value(route, 'routes',
+            'overHome takes GoRoutes; put a ShellRoute in the top-level list'),
+  ];
+}
+
+/// The event's id or slug from an `/events/{ref}...` address.
+String _eventRef(GoRouterState state) => state.pathParameters['eventRef'] ?? '';
+
+/// The event's own page, for a sub-address of it.
+String _eventLocation(GoRouterState state) =>
+    '/events/${Uri.encodeComponent(_eventRef(state))}';
+
+/// `/events/{ref}`: the event's page. [EventRefPage] finds the id behind a
+/// website slug; the page itself takes the id.
+Widget _eventPage(GoRouterState state) {
+  final extra = state.extra as Map<String, dynamic>?;
+  return EventRefPage(
+    eventRef: _eventRef(state),
+    page: (eventId) => IndividualEventPage(
+      eventId: eventId,
+      initialStatus: extra?['status'],
+      initialTicketUrl: extra?['ticketUrl'],
+      initialCertificateUrl: extra?['certificateUrl'],
+      // ?live=quiz|poll|room: a "join now" push, or the website's room.
+      openLiveRoom: state.uri.queryParameters.containsKey('live'),
+    ),
+  );
 }
 
 /// GoRouter provider with auth-based redirects.
@@ -90,6 +170,7 @@ String? authRedirect(AuthState auth, String location) {
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ValueNotifier<AuthState>(ref.read(authStateProvider));
   ref.listen<AuthState>(authStateProvider, (_, next) => auth.value = next);
+  final pending = ref.read(pendingLocationProvider);
 
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
   final shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -107,8 +188,17 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: auth,
     // Add analytics observer for automatic screen tracking
     observers: ref.read(routerObserversProvider),
-    redirect: (context, state) =>
-        authRedirect(auth.value, state.matchedLocation),
+    redirect: (context, state) {
+      final location = state.uri.toString();
+      final now = auth.value;
+      // A link that opened the app arrives while the splash screen reads
+      // the stored session: held, and opened once the splash is done.
+      if (!now.isInitialized && _isLaunchLink(location)) {
+        pending.holdLaunch(location);
+      }
+      return authRedirect(now, location,
+          launchLink: pending.fromLaunch ? pending.location : null);
+    },
     routes: [
       // Splash screen route
       GoRoute(
@@ -121,7 +211,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/auth/onboarding',
           name: 'onboarding',
           parentNavigatorKey: rootKey,
-          builder: (context, state) => const OnboardingInitialPage()),
+          builder: (context, state) => SignInGate(
+                location: state.uri,
+                child: const OnboardingInitialPage(),
+              )),
       GoRoute(
           path: '/auth/profile-check',
           name: 'profileCheck',
@@ -213,37 +306,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             );
           }),
 
-      // A club's post, with its comments. Top level rather than under
-      // /clubs/:clubId, because a tapped notification knows the post and
-      // not the club.
-      GoRoute(
-          path: '/threads/:threadId',
-          name: 'threadDetail',
-          parentNavigatorKey: rootKey,
-          builder: (context, state) => ThreadDetailPage(
-                threadId: state.pathParameters['threadId'] ?? '',
-              )),
-
-      // A ticket, from what the phone has saved: opens with no network.
-      GoRoute(
-          path: '/tickets/:code',
-          name: 'ticket',
-          parentNavigatorKey: rootKey,
-          builder: (context, state) => SavedTicketPage(
-                code: state.pathParameters['code'] ?? '',
-                revoked: (state.extra as Map<String, dynamic>?)?['revoked'] ==
-                    true,
-              )),
-
-      // Main shell with bottom nav
+      // Main shell with bottom nav. The tabs first: Home's pages come
+      // last, so `/events/explore` is not taken for an event called
+      // "explore".
       ShellRoute(
         navigatorKey: shellKey,
         builder: (context, state, child) => MainShell(child: child),
         routes: [
-          GoRoute(
-              path: '/',
-              name: 'home',
-              builder: (context, state) => const HomePage()),
+          // My events: registrations and tickets. Signed in only.
           GoRoute(
               path: '/events',
               name: 'events',
@@ -263,98 +333,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                         fullName: extra?['fullName'],
                       );
                     }),
-                // Before ':eventId', which would take "explore" for an id.
-                GoRoute(
-                    path: 'explore',
-                    name: 'exploreEvents',
-                    parentNavigatorKey: rootKey,
-                    builder: (context, state) {
-                      final extra = state.extra as Map<String, dynamic>?;
-                      return ExploreEventsPage(
-                        initialTopic: extra?['topic'] as String? ??
-                            state.uri.queryParameters['topic'],
-                        initialInterestId: extra?['interestId'] as int? ??
-                            int.tryParse(
-                                state.uri.queryParameters['interest'] ?? ''),
-                      );
-                    }),
-                GoRoute(
-                    path: ':eventId',
-                    name: 'eventDetail',
-                    parentNavigatorKey: rootKey,
-                    builder: (context, state) {
-                      final extra = state.extra as Map<String, dynamic>?;
-                      return IndividualEventPage(
-                        eventId: int.tryParse(
-                                state.pathParameters['eventId'] ?? '') ??
-                            0,
-                        initialStatus: extra?['status'],
-                        initialTicketUrl: extra?['ticketUrl'],
-                        initialCertificateUrl: extra?['certificateUrl'],
-                        // ?live=quiz|poll|room: a "join now" push.
-                        openLiveRoom:
-                            state.uri.queryParameters.containsKey('live'),
-                      );
-                    },
-                    routes: [
-                      GoRoute(
-                          path: 'register',
-                          name: 'eventRegister',
-                          parentNavigatorKey: rootKey,
-                          builder: (context, state) {
-                            final extra = state.extra as Map<String, dynamic>?;
-                            final additionalDetails =
-                                extra?['additionalDetails']
-                                        as List<AdditionalDetail>? ??
-                                    [];
-                            return EventFormPage(
-                              eventId: int.tryParse(
-                                      state.pathParameters['eventId'] ?? '') ??
-                                  0,
-                              additionalDetails: additionalDetails,
-                            );
-                          }),
-                    ]),
               ]),
+          // My clubs: followed and pinned. Signed in only.
           GoRoute(
               path: '/clubs',
               name: 'clubs',
-              builder: (context, state) => const ClubsPage(),
-              routes: [
-                GoRoute(
-                    path: 'explore',
-                    name: 'exploreClubs',
-                    parentNavigatorKey: rootKey,
-                    builder: (context, state) {
-                      final extra = state.extra as Map<String, dynamic>?;
-                      final legacyIds = extra?['interestIds'] is List
-                          ? List<int>.from(extra!['interestIds'] as List)
-                          : const <int>[];
-                      return ExploreMoreClubsPage(
-                        initialOrganizationId: extra?['organizationId'] as int?,
-                        initialTopic: extra?['topic'] as String? ??
-                            state.uri.queryParameters['topic'],
-                        initialInterestId: extra?['interestId'] as int? ??
-                            int.tryParse(
-                                state.uri.queryParameters['interest'] ?? '') ??
-                            legacyIds.firstOrNull,
-                      );
-                    }),
-                GoRoute(
-                    path: ':clubId',
-                    name: 'clubDetail',
-                    parentNavigatorKey: rootKey,
-                    builder: (context, state) {
-                      final extra = state.extra as Map<String, dynamic>?;
-                      return ClubIndividualPage(
-                        clubId: int.tryParse(
-                                state.pathParameters['clubId'] ?? '') ??
-                            0,
-                        clubSlug: extra?['clubSlug'] ?? '',
-                        clubname: extra?['clubName'] ?? '',
-                      );
-                    }),
-              ]),
+              builder: (context, state) => const ClubsPage()),
           GoRoute(
               path: '/profile',
               name: 'profile',
@@ -394,12 +378,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                                 state.extra as Map<String, dynamic>?;
                             final certificate =
                                 extra?['certificate'] as Certificate?;
-                            // Reached only from the list, which passes the
-                            // certificate it already has. A deep link has
-                            // nothing to show, so it goes back to the list
-                            // rather than rendering an empty screen.
+                            // Reached from the list, which passes the
+                            // certificate it already has. Without one, the
+                            // certificate's link page finds it (or shows the
+                            // public page).
                             if (certificate == null) {
-                              return const CertificatePage();
+                              return CertificateLinkPage(
+                                  ticketId:
+                                      state.pathParameters['ticketId'] ?? '');
                             }
                             return CertificateDetailPage(
                                 certificate: certificate);
@@ -416,23 +402,175 @@ final routerProvider = Provider<GoRouter>((ref) {
                     parentNavigatorKey: rootKey,
                     builder: (context, state) => NotificationsNewPage()),
               ]),
+          // Home, and every page that is open without an account, above it
+          // on the root navigator. A link from outside the app opens one of
+          // these with Home underneath. Their paths are the website's
+          // (web_links.dart), so the site's links open them as they are.
+          GoRoute(
+              path: '/',
+              name: 'home',
+              builder: (context, state) => const HomePage(),
+              routes: [
+                // The features' own routes first: a fixed word in a path
+                // ("explore") must win over an event's or a club's slug.
+                // Batches A, B and C: one line each, on the marked line.
+                ...overHome(rootKey, [
+                  // Batch A (discover): ...discoverRoutes,
+
+                  // Batch B (events): ...eventRoutes,
+
+                  // Batch C (clubs, threads, auth, profile): ...clubRoutes,
+                ]),
+                GoRoute(
+                    path: 'events/explore',
+                    name: 'exploreEvents',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) {
+                      final extra = state.extra as Map<String, dynamic>?;
+                      return ExploreEventsPage(
+                        initialTopic: extra?['topic'] as String? ??
+                            state.uri.queryParameters['topic'],
+                        initialInterestId: extra?['interestId'] as int? ??
+                            int.tryParse(
+                                state.uri.queryParameters['interest'] ?? ''),
+                      );
+                    }),
+                GoRoute(
+                    path: 'clubs/explore',
+                    name: 'exploreClubs',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) {
+                      final extra = state.extra as Map<String, dynamic>?;
+                      final legacyIds = extra?['interestIds'] is List
+                          ? List<int>.from(extra!['interestIds'] as List)
+                          : const <int>[];
+                      return ExploreMoreClubsPage(
+                        initialOrganizationId: extra?['organizationId'] as int?,
+                        initialTopic: extra?['topic'] as String? ??
+                            state.uri.queryParameters['topic'],
+                        initialInterestId: extra?['interestId'] as int? ??
+                            int.tryParse(
+                                state.uri.queryParameters['interest'] ?? '') ??
+                            legacyIds.firstOrNull,
+                      );
+                    }),
+                // An event, by id or by the website's slug.
+                GoRoute(
+                    path: 'events/:eventRef',
+                    name: 'eventDetail',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => _eventPage(state),
+                    routes: [
+                      GoRoute(
+                          path: 'register',
+                          name: 'eventRegister',
+                          parentNavigatorKey: rootKey,
+                          // The form needs the event's questions, which
+                          // the event page hands over. A link (or a return
+                          // from sign-in) has none: it opens the event,
+                          // whose Register starts again from there.
+                          redirect: (context, state) => state.extra == null
+                              ? _eventLocation(state)
+                              : null,
+                          builder: (context, state) {
+                            final extra = state.extra as Map<String, dynamic>?;
+                            final additionalDetails =
+                                extra?['additionalDetails']
+                                        as List<AdditionalDetail>? ??
+                                    [];
+                            return EventRefPage(
+                              eventRef: _eventRef(state),
+                              page: (eventId) => EventFormPage(
+                                eventId: eventId,
+                                additionalDetails: additionalDetails,
+                              ),
+                            );
+                          }),
+                      // The website's live room: the event, with the room
+                      // open on top (as a "join now" push opens it).
+                      GoRoute(
+                          path: 'live',
+                          redirect: (context, state) =>
+                              '${_eventLocation(state)}?live=room'),
+                      // The website's team and submission pages: the event,
+                      // until the app has its own.
+                      GoRoute(
+                          path: 'compete',
+                          redirect: (context, state) =>
+                              _eventLocation(state)),
+                    ]),
+                // A club, by id or by the website's slug.
+                GoRoute(
+                    path: 'clubs/:clubRef',
+                    name: 'clubDetail',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) {
+                      final extra = state.extra as Map<String, dynamic>?;
+                      return ClubRefPage(
+                        clubRef: state.pathParameters['clubRef'] ?? '',
+                        page: (clubId, slug, name) => ClubIndividualPage(
+                          clubId: clubId,
+                          clubSlug: extra?['clubSlug'] as String? ?? slug,
+                          clubname: extra?['clubName'] as String? ?? name,
+                        ),
+                      );
+                    }),
+                // A club's post, with its comments. Not under its club: a
+                // tapped notification knows the post and not the club.
+                GoRoute(
+                    path: 'threads/:threadId',
+                    name: 'threadDetail',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => ThreadDetailPage(
+                          threadId: state.pathParameters['threadId'] ?? '',
+                        )),
+                // A ticket, from what the phone has saved: opens with no
+                // network, and from its link with no account (its QR is
+                // the ticket, as on the website's page).
+                GoRoute(
+                    path: 'tickets/:code',
+                    name: 'ticket',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => SavedTicketPage(
+                          code: state.pathParameters['code'] ?? '',
+                          revoked: (state.extra
+                                  as Map<String, dynamic>?)?['revoked'] ==
+                              true,
+                        )),
+                // A certificate from its link: the person's own in the app,
+                // anyone else's on its public page.
+                GoRoute(
+                    path: 'certificates/:ticketId',
+                    name: 'certificateLink',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => CertificateLinkPage(
+                          ticketId: state.pathParameters['ticketId'] ?? '',
+                        )),
+                // A topic: Explore, filtered to it, until there is a topic
+                // page (whose route, above, then wins).
+                GoRoute(
+                    path: 'topics/:topicSlug',
+                    redirect: (context, state) => Uri(
+                          path: '/events/explore',
+                          queryParameters: {
+                            'topic': state.pathParameters['topicSlug'] ?? '',
+                          },
+                        ).toString()),
+              ]),
         ],
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        const Icon(Icons.error_outline, size: 64, color: Colors.red),
-        const SizedBox(height: 16),
-        Text('Page not found: ${state.matchedLocation}',
-            style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 24),
-        ElevatedButton(
-            onPressed: () => context.go('/'), child: const Text('Go Home')),
-      ])),
-    ),
+    // An address the app has no screen for: never "Page not found: path".
+    errorBuilder: (context, state) =>
+        LinkNotFoundPage(location: state.uri.toString()),
   );
+
+  // What was waiting -- the link that opened the app, or where a sign-in
+  // returns to -- opens once the router lands on Home.
+  final openPending = openPendingOnHome(router, auth, pending);
+
   ref.onDispose(() {
+    router.routerDelegate.removeListener(openPending);
     router.dispose();
     auth.dispose();
   });
@@ -458,6 +596,8 @@ class AppRoutes {
   static const String exploreEvents = 'exploreEvents';
   static const String clubDetail = 'clubDetail';
   static const String threadDetail = 'threadDetail';
+  static const String ticket = 'ticket';
+  static const String certificateLink = 'certificateLink';
   static const String profile = 'profile';
   static const String editProfile = 'editProfile';
   static const String profileInterests = 'profileInterests';

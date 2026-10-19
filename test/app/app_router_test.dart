@@ -1,7 +1,9 @@
 import 'package:finnet/app/router/app_router.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 /// An auth state that tests set by hand, without the real notifier's
 /// secure-storage read.
@@ -27,18 +29,45 @@ void main() {
 
     test('nothing opens before the stored session has been read', () {
       expect(authRedirect(const AuthState(), '/events'), '/splash');
+      expect(authRedirect(const AuthState(), '/events/hack-night-04'),
+          '/splash');
     });
 
-    test('signed out, a protected page leads to sign-in', () {
+    test('signed out, a page about the person leads to sign-in, and back',
+        () {
       // How an ended session reaches the screen: the state changes, the
       // router re-runs this on the page the person is on.
-      expect(authRedirect(_signedOut, '/profile/settings'), '/auth/onboarding');
-      expect(authRedirect(_signedOut, '/threads/abc'), '/auth/onboarding');
-      expect(authRedirect(_signedOut, '/'), '/auth/onboarding');
+      expect(authRedirect(_signedOut, '/profile/settings'),
+          '/auth/onboarding?from=%2Fprofile%2Fsettings');
+      expect(authRedirect(_signedOut, '/events'),
+          '/auth/onboarding?from=%2Fevents');
+      // The query comes back too.
+      expect(authRedirect(_signedOut, '/events/12/register?x=1'),
+          '/auth/onboarding?from=%2Fevents%2F12%2Fregister%3Fx%3D1');
+    });
+
+    test('signed out, the public pages open', () {
+      for (final location in [
+        '/',
+        '/events/12',
+        '/events/hack-night-04',
+        '/events/hack-night-04?live=room',
+        '/events/explore?topic=design',
+        '/clubs/circuit-society',
+        '/clubs/explore',
+        '/threads/abc',
+        '/tickets/abc-123',
+        '/certificates/abc-123',
+        '/topics/development',
+      ]) {
+        expect(authRedirect(_signedOut, location), isNull, reason: location);
+      }
     });
 
     test('signed out, sign-in and onboarding stay open', () {
       expect(authRedirect(_signedOut, '/auth/onboarding'), isNull);
+      expect(
+          authRedirect(_signedOut, '/auth/onboarding?from=%2Fprofile'), isNull);
       expect(authRedirect(_signedOut, '/auth/verify-email'), isNull);
       expect(authRedirect(_signedOut, '/onboarding/details'), isNull);
     });
@@ -46,7 +75,59 @@ void main() {
     test('signed in, the app is open', () {
       expect(authRedirect(_signedIn, '/'), isNull);
       expect(authRedirect(_signedIn, '/events/12'), isNull);
+      expect(authRedirect(_signedIn, '/profile/settings'), isNull);
       expect(authRedirect(_signedIn, '/auth/onboarding'), '/auth/profile-check');
+      expect(authRedirect(_signedIn, '/auth/onboarding?from=%2Fprofile'),
+          '/auth/profile-check');
+    });
+
+    test('a link that opened the app, signed out: a public one opens over '
+        'home instead of sign-in', () {
+      expect(
+          authRedirect(_signedOut, '/auth/onboarding',
+              launchLink: '/events/hack-night-04'),
+          '/');
+    });
+
+    test('a link that opened the app, signed out: a private one asks for '
+        'sign-in, then opens', () {
+      expect(
+          authRedirect(_signedOut, '/auth/onboarding',
+              launchLink: '/profile/notifications'),
+          '/auth/onboarding?from=%2Fprofile%2Fnotifications');
+      // A sign-in already returning somewhere is left alone.
+      expect(
+          authRedirect(_signedOut, '/auth/onboarding?from=%2Fprofile',
+              launchLink: '/events/12'),
+          isNull);
+    });
+  });
+
+  group('overHome', () {
+    final rootKey = GlobalKey<NavigatorState>();
+
+    test('re-roots a feature\'s absolute routes under Home', () {
+      final routes = overHome(rootKey, [
+        GoRoute(
+            path: '/topics/:slug',
+            name: 'topicPage',
+            builder: (_, __) => const SizedBox()),
+      ]);
+      final route = routes.single as GoRoute;
+      expect(route.path, 'topics/:slug');
+      expect(route.name, 'topicPage');
+      expect(route.parentNavigatorKey, same(rootKey));
+    });
+
+    test('takes only GoRoutes', () {
+      expect(
+        () => overHome(rootKey, [
+          ShellRoute(
+              builder: (_, __, child) => child,
+              routes: [GoRoute(path: '/x', builder: (_, __) => const SizedBox())]),
+        ]),
+        throwsArgumentError,
+      );
     });
   });
 
@@ -109,6 +190,59 @@ void main() {
       expect(nameOf('/events/explore'), AppRoutes.exploreEvents);
       expect(nameOf('/events/12'), AppRoutes.eventDetail);
       expect(nameOf('/clubs/explore'), AppRoutes.exploreClubs);
+    });
+
+    group('the website\'s addresses', () {
+      late GoRouter router;
+      setUp(() => router = containerWith(_signedOut).read(routerProvider));
+
+      RouteMatchList matchOf(String location) =>
+          router.configuration.findMatch(Uri.parse(location));
+      String? nameOf(String location) => matchOf(location).last.route.name;
+
+      test('an event and a club open by slug as well as by id', () {
+        expect(nameOf('/events/hack-night-04'), AppRoutes.eventDetail);
+        expect(nameOf('/events/123'), AppRoutes.eventDetail);
+        expect(matchOf('/events/hack-night-04').pathParameters['eventRef'],
+            'hack-night-04');
+        expect(nameOf('/clubs/circuit-society'), AppRoutes.clubDetail);
+        expect(nameOf('/clubs/42'), AppRoutes.clubDetail);
+        expect(nameOf('/events/hack-night-04/register'),
+            AppRoutes.eventRegister);
+      });
+
+      test('a post, a ticket and a certificate open by their ids', () {
+        expect(nameOf('/threads/7d0f3c2a-1111-4c4c-9a9a-000000000001'),
+            AppRoutes.threadDetail);
+        expect(nameOf('/tickets/abc-123'), AppRoutes.ticket);
+        expect(nameOf('/certificates/abc-123'), AppRoutes.certificateLink);
+      });
+
+      test('the public pages sit over Home, so Back leads into the app', () {
+        for (final location in [
+          '/events/hack-night-04',
+          '/clubs/circuit-society',
+          '/threads/abc',
+          '/tickets/abc-123',
+          '/certificates/abc-123',
+          '/events/explore',
+        ]) {
+          final match = matchOf(location);
+          final shell = match.matches.first as ShellRouteMatch;
+          expect(shell.matches.first.route,
+              isA<GoRoute>().having((r) => r.path, 'path', '/'),
+              reason: location);
+        }
+        // My events stays under its own tab.
+        final success = matchOf('/events/registration-success');
+        expect((success.matches.first as ShellRouteMatch).matches.first.route,
+            isA<GoRoute>().having((r) => r.path, 'path', '/events'));
+      });
+
+      test('nonsense matches nothing (the friendly page answers)', () {
+        expect(matchOf('/events/x/y/z').isError, isTrue);
+        expect(matchOf('/a/b/c').isError, isTrue);
+      });
     });
   });
 }
