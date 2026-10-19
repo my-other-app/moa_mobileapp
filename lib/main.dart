@@ -5,6 +5,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/app/app.dart';
 import 'package:finnet/app/session_scope.dart';
+import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/cache/image_caches.dart';
 import 'package:finnet/core/services/analytics_service.dart';
 import 'package:finnet/core/services/notification_service.dart';
@@ -43,6 +44,8 @@ void main() async {
     // The picture caches count files; this holds them to their bytes too.
     // Off the start-up path, and harmless if it fails.
     unawaited(AppImageCaches.trim());
+    // Saved answers past their week, or over their caps, go the same way.
+    unawaited(ApiCache.instance.prune());
 
     // Push set-up runs alongside the first frames, not ahead of them. It
     // used to be awaited here, and on iOS it asked for push permission and

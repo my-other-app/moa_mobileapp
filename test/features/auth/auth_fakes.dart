@@ -50,6 +50,9 @@ class MemoryStorage extends SecureStorageService {
 
   @override
   Future<void> clearAll() async => values.clear();
+
+  @override
+  Future<Map<String, String>> readAll() async => {...values};
 }
 
 /// Records what sign-in and sign-out asked of push registration.

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/config/env/env.dart';
 import 'package:finnet/core/network/interceptors/auth_interceptor.dart';
 import 'package:finnet/core/network/interceptors/error_interceptor.dart';
@@ -13,7 +14,8 @@ import 'package:finnet/core/storage/secure_storage_service.dart';
 
 /// Builds the single Dio instance used app-wide, with the full interceptor
 /// stack: one retry for a GET that never reached the server, the offline
-/// state, auth token injection + refresh-on-401, error handling, and debug
+/// state, saved answers revalidated by ETag (for GETs that ask), auth token
+/// injection + refresh-on-401, error handling, and debug
 /// logging.
 ///
 /// There is no certificate pinning. The interceptor that claimed to pin
@@ -40,11 +42,13 @@ Dio buildAppDio() {
   NetworkStatus.instance.probeTarget = Uri.tryParse(Env.apiBaseUrl);
 
   // Add interceptors - order matters! Errors pass through them in this
-  // order: a connection failure on a GET is retried first, and only a
-  // failure that survives the retry tells the app it is offline.
+  // order: a connection failure on a GET is retried first; only a failure
+  // that survives the retry tells the app it is offline, and is then
+  // answered from the saved copy if the request asked for one.
   dio.interceptors.addAll([
     RetryInterceptor(dio),
     NetworkStatusInterceptor(),
+    ApiCacheInterceptor(),
     AuthInterceptor(SecureStorageService(), dio),
     ErrorInterceptor(),
     TopicChangeInterceptor(),

@@ -89,6 +89,9 @@ class SecureStorageService {
     return await _storage.read(key: key);
   }
 
+  /// Every key and value in this container.
+  Future<Map<String, String>> readAll() => _storage.readAll();
+
   /// Delete a value from secure storage.
   Future<void> delete({required String key}) async {
     await _storage.delete(key: key);
