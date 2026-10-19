@@ -40,6 +40,7 @@ class SavedTicketPage extends ConsumerWidget {
       ticketUrl: ticket?.ticketUrl,
       posterUrl: ticket?.posterUrl,
       revoked: revoked || (ticket?.revoked ?? false),
+      eventId: ticket?.eventId,
     );
   }
 }

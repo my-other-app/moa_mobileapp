@@ -25,6 +25,7 @@ import 'package:finnet/features/events/presentation/pages/individual_event_page.
 import 'package:finnet/features/events/presentation/pages/explore_events_page.dart';
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart';
+import 'package:finnet/features/events/presentation/events_routes.dart';
 import 'package:finnet/features/clubs/presentation/pages/clubs_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_individual_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/explore_more_clubs_page.dart';
@@ -235,6 +236,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 revoked: (state.extra as Map<String, dynamic>?)?['revoked'] ==
                     true,
               )),
+      ...eventsRoutes,
 
       ...discoverRoutes, // Batch A: find events, clubs, posts, topics
       // Main shell with bottom nav

@@ -1,3 +1,5 @@
+import 'package:finnet/core/utils/json_read.dart';
+
 /// One block of an event's run of show, as `GET /events/{id}/agenda` returns it.
 class AgendaItem {
   final String id;
@@ -24,19 +26,21 @@ class AgendaItem {
     this.parallel = false,
   });
 
+  /// Read field by field (core/utils/json_read.dart): a numeric id or a
+  /// missing title used to throw, and the whole agenda went with it.
   factory AgendaItem.fromJson(Map<String, dynamic> json) {
-    final ends = json['ends_at'] as String?;
+    final ends = jsonString(json['ends_at']);
     return AgendaItem(
-      id: json['id'] as String? ?? '',
-      startsAt: DateTime.tryParse(json['starts_at'] as String? ?? '') ??
+      id: jsonText(json['id']),
+      startsAt: DateTime.tryParse(jsonText(json['starts_at'])) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       endsAt: ends == null ? null : DateTime.tryParse(ends),
-      title: json['title'] as String? ?? '',
-      description: _blank(json['description'] as String?),
-      speaker: _blank(json['speaker'] as String?),
-      speakerPhotoUrl: _blank(json['speaker_photo_url'] as String?),
-      location: _blank(json['location'] as String?),
-      parallel: json['parallel'] as bool? ?? false,
+      title: jsonText(json['title']),
+      description: _blank(jsonString(json['description'])),
+      speaker: _blank(jsonString(json['speaker'])),
+      speakerPhotoUrl: _blank(jsonString(json['speaker_photo_url'])),
+      location: _blank(jsonString(json['location'])),
+      parallel: jsonBool(json['parallel']) ?? false,
     );
   }
 
@@ -58,13 +62,10 @@ class Agenda {
   const Agenda({required this.items, this.timezone = 'Asia/Kolkata'});
 
   factory Agenda.fromJson(Map<String, dynamic> json) {
-    final items = (json['items'] as List<dynamic>? ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(AgendaItem.fromJson)
-        .toList();
+    final items = jsonObjects(json['items']).map(AgendaItem.fromJson).toList();
     return Agenda(
       items: items,
-      timezone: json['timezone'] as String? ?? 'Asia/Kolkata',
+      timezone: jsonString(json['timezone']) ?? 'Asia/Kolkata',
     );
   }
 

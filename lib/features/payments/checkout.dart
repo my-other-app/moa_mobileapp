@@ -18,6 +18,10 @@ class RegistrationCheckout {
   /// Right(false) when the person backed out or the payment failed. Left
   /// when no order could be made -- among them an `UpdateAppToPayFailure`,
   /// which carries the website link, and a `NothingToPayFailure`.
+  ///
+  /// [sellable] is `canSellInApp` for the event: false (a paid online event
+  /// on an iPhone) answers [InAppSaleBlockedFailure] without asking for an
+  /// order, so no checkout can open for it whichever screen asked.
   static Future<Result<bool>> pay({
     required PaymentRepository repository,
     required int eventId,
@@ -25,7 +29,9 @@ class RegistrationCheckout {
     required String name,
     required String email,
     required String phone,
+    bool sellable = true,
   }) async {
+    if (!sellable) return Either.left(const InAppSaleBlockedFailure());
     final made = await repository.createRegistrationOrder(
       eventId: eventId,
       registrationId: registrationId,
