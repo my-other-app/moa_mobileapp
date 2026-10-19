@@ -1,3 +1,4 @@
+import 'package:finnet/common/models/events/event_page_model.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart'
     as entity;
@@ -63,6 +64,28 @@ class EventInfo {
   /// server.
   final String? registrationId;
 
+  /// The speakers, with their bios and links (`speakers`).
+  final List<EventPerson> speakers;
+
+  /// The organiser's guidelines and rules (`event_guidelines`).
+  final String? guidelines;
+
+  /// Who to ask (`contact_name`); [contactEmail] and [contactPhone] are how.
+  final String? contactName;
+
+  /// The venue's point on the map, when it has one.
+  final double? lat;
+  final double? lng;
+
+  /// The most places the event takes (`max_participants`); null for no
+  /// limit.
+  final int? maxParticipants;
+
+  /// The person's own feedback survey link, once they have attended
+  /// (`feedback_url`). Today's server doesn't send it: the link (with its
+  /// key) goes out by email only.
+  final String? feedbackUrl;
+
   EventInfo({
     required this.id,
     required this.name,
@@ -101,7 +124,21 @@ class EventInfo {
     this.isPaid,
     this.ticketRevoked = false,
     this.registrationId,
+    this.speakers = const [],
+    this.guidelines,
+    this.contactName,
+    this.lat,
+    this.lng,
+    this.maxParticipants,
+    this.feedbackUrl,
   });
+
+  /// [contactName], [contactEmail] and [contactPhone] together.
+  EventContact get contact => EventContact(
+        name: contactName,
+        email: contactEmail.trim().isEmpty ? null : contactEmail.trim(),
+        phone: contactPhone.trim().isEmpty ? null : contactPhone.trim(),
+      );
 
   factory EventInfo.fromJson(Map<String, dynamic> json) {
     return EventInfo(
@@ -159,7 +196,35 @@ class EventInfo {
       isPaid: jsonBool(json['is_paid']),
       ticketRevoked: jsonBool(json['ticket_revoked']) == true,
       registrationId: _id(json['registration_id']),
+      speakers: EventPerson.speakersFrom(json['speakers']),
+      guidelines: _words(json['event_guidelines']),
+      contactName: _words(json['contact_name']),
+      lat: _point(json['lat'], json['lng'])?.$1,
+      lng: _point(json['lat'], json['lng'])?.$2,
+      maxParticipants: _limit(json['max_participants']),
+      feedbackUrl: _words(json['feedback_url']) ?? _words(json['survey_url']),
     );
+  }
+
+  /// Text with something in it, or null.
+  static String? _words(Object? value) {
+    final s = jsonString(value)?.trim();
+    return s == null || s.isEmpty ? null : s;
+  }
+
+  /// A place on the map; null for none, or for 0,0 (nobody picked one).
+  static (double, double)? _point(Object? lat, Object? lng) {
+    final a = jsonDouble(lat);
+    final b = jsonDouble(lng);
+    if (a == null || b == null || (a == 0 && b == 0)) return null;
+    if (a.abs() > 90 || b.abs() > 180) return null;
+    return (a, b);
+  }
+
+  /// A limit greater than nought, or null for none.
+  static int? _limit(Object? value) {
+    final n = jsonInt(value);
+    return n != null && n > 0 ? n : null;
   }
 
   /// A registration id as text: the server sends a UUID string.
@@ -305,7 +370,9 @@ class AdditionalDetail {
       key: jsonText(json['key']),
       label: jsonText(json['label']),
       fieldType: jsonText(json['field_type']),
-      requiredField: jsonBool(json['required']) ?? false,
+      // The server's default, and the website's reading: a question that
+      // doesn't say is required.
+      requiredField: jsonBool(json['required']) ?? true,
       options: json['options'] is List
           ? [for (final option in json['options'] as List) '$option']
           : const <String>[],
