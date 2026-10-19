@@ -92,8 +92,13 @@ void main() {
       expect(find.text('Tinkerhub'), findsOneWidget);
       expect(find.text('IEEE SB'), findsOneWidget);
       expect(h.repo.clubCalls.single.$1, ClubFilters.none);
-      // The list's interests, with how many clubs pick each.
-      expect(find.text('Coding 7'), findsOneWidget);
+      // The list's interests, each with its emoji and how many clubs pick
+      // it.
+      final coding = find.byKey(const ValueKey('club-interest-6'));
+      for (final text in ['⌨️', 'Coding', '7']) {
+        expect(find.descendant(of: coding, matching: find.text(text)),
+            findsOneWidget);
+      }
 
       await tester.tap(find.byKey(const ValueKey('discover-club-club-1')));
       await settle(tester);

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
+import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 
 import '../../../core/themes/app_colors.dart';
 
@@ -34,15 +36,6 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
 
   @override
   Widget build(BuildContext context) {
-    // Define a list of colors for the interest tags.
-    final List<Color> colorList = [
-      const Color(0xFFE1C9FF),
-      const Color(0xFFF9FFA1),
-      const Color(0xFFB8DFF2),
-      const Color(0xFFFFC84A),
-      const Color(0xFFE1C9FF),
-    ];
-
     return InkWell(
       onTap: () {
         context.push('/clubs/${widget.id}', extra: {
@@ -92,29 +85,21 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Interest tags: assign colors based on index to avoid repeats.
+              // Its interests, each its emoji and name on a pastel, so
+              // neighbours differ.
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 alignment: WrapAlignment.start,
-                children: widget.interests.asMap().entries.map((entry) {
-                  int index = entry.key;
-                  final interest = entry.value;
-                  final Color assignedColor =
-                      colorList[index % colorList.length];
-                  return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: assignedColor,
-                      borderRadius: BorderRadius.circular(8),
+                children: [
+                  for (final (index, interest) in widget.interests.indexed)
+                    InterestTag(
+                      label: interest.toString(),
+                      glyph: interestEmoji(name: interest.toString()),
+                      color: InterestTag.pastelAt(index),
+                      fontSize: 14,
                     ),
-                    child: Text(
-                      interest.toString(),
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  );
-                }).toList(),
+                ],
               ),
               const SizedBox(height: 24),
               // Follow/Unfollow, the full width. A "Join the Team" button

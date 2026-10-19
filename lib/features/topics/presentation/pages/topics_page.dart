@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
+import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
@@ -99,6 +101,8 @@ class TopicsPage extends ConsumerWidget {
   }
 }
 
+/// A topic as a card: its emoji large on a white disc, its name, and its
+/// first few interests as emoji chips.
 class _TopicCard extends StatelessWidget {
   const _TopicCard({required this.topic});
 
@@ -109,13 +113,9 @@ class _TopicCard extends StatelessWidget {
     final palette = TopicPalette.of(context, topic);
     final surface = TopicSurface.of(context);
     final counts = topicCounts(topic);
-    final names =
-        topic.interests.take(TopicsPage._interestsOnCard).map((i) => i.name);
-    final more = topic.interests.length - names.length;
-    final interests = [
-      ...names,
-      if (more > 0) '+$more more',
-    ].join(' · ');
+    final shown = topic.interests.take(TopicsPage._interestsOnCard).toList();
+    final more = topic.interests.length - shown.length;
+    final emoji = topic.emoji != null;
     void open() => context.push(topicLocation(topic.slug));
 
     return Semantics(
@@ -131,15 +131,30 @@ class _TopicCard extends StatelessWidget {
         child: InkWell(
           key: ValueKey('topic-card-${topic.slug}'),
           onTap: open,
-          child: Row(
-            children: [
-              Container(width: 5, height: 96, color: palette.accent),
-              const SizedBox(width: 12),
-              TopicIcon(topic: topic, size: 28, color: palette.accent),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(color: palette.accent, width: 5),
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  // An emoji keeps its own colours, on white; an icon is
+                  // drawn white on the topic's colour.
+                  decoration: BoxDecoration(
+                    color: emoji ? Colors.white : palette.accent,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: TopicIcon(topic: topic, size: 28, color: Colors.white),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -158,20 +173,31 @@ class _TopicCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 13, color: surface.ink),
                         ),
-                      if (interests.isNotEmpty)
+                      if (shown.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            interests,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style:
-                                TextStyle(fontSize: 12, color: surface.muted),
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Wrap(
+                            key: ValueKey('topic-card-interests-${topic.slug}'),
+                            spacing: 6,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              for (final i in shown)
+                                InterestTag(
+                                  label: i.name,
+                                  glyph: i.emoji,
+                                  color: Colors.white,
+                                ),
+                              if (more > 0)
+                                Text('+$more more',
+                                    style: TextStyle(
+                                        fontSize: 12, color: surface.muted)),
+                            ],
                           ),
                         ),
                       if (counts != null)
                         Padding(
-                          padding: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             counts,
                             style: TextStyle(
@@ -184,12 +210,12 @@ class _TopicCard extends StatelessWidget {
                     ],
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Icon(Icons.arrow_forward, color: palette.accent),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.only(left: 8, top: 12),
+                  child: Icon(Icons.arrow_forward, color: palette.accent),
+                ),
+              ],
+            ),
           ),
         ),
       ),

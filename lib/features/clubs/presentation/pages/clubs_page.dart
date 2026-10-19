@@ -16,9 +16,11 @@ import 'package:finnet/features/clubs/presentation/pages/no_clubs_following_page
 
 import 'package:finnet/features/clubs/presentation/pages/clubs_you_follow_section.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/domain/topic_rules.dart';
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
+import 'package:finnet/features/topics/presentation/widgets/topic_filter_bar.dart';
 import 'package:finnet/features/clubs/presentation/pages/pinned_clubs_section.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 
@@ -285,9 +287,9 @@ class _ClubsPageState extends ConsumerState<ClubsPage>
             children: [
               if (userOrg != null) ...[
                 Center(
-                  child: _FilterChip(
+                  child: PlainFilterChip(
                     label: userOrg.name,
-                    isSelected: _showMyOrg,
+                    selected: _showMyOrg,
                     onTap: () => _toggleOrgFilter(userOrg),
                   ),
                 ),
@@ -313,9 +315,10 @@ class _ClubsPageState extends ConsumerState<ClubsPage>
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: Center(
-                      child: _FilterChip(
+                      child: InterestChip(
                         label: interest.name,
-                        isSelected: false,
+                        glyph: interest.emoji,
+                        compact: true,
                         onTap: () => _navigateToExploreWithFilters(
                             interestId: interest.id),
                       ),
@@ -326,55 +329,6 @@ class _ClubsPageState extends ConsumerState<ClubsPage>
         ),
         const SizedBox(height: 24),
       ],
-    );
-  }
-}
-
-/// Interactive filter chip widget.
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _FilterChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF17A58F) : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color:
-                isSelected ? const Color(0xFF17A58F) : const Color(0xFFAFAFAF),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: isSelected ? Colors.white : const Color(0xFFAFAFAF),
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-            if (isSelected) ...[
-              const SizedBox(width: 4),
-              Icon(Icons.close, size: 14, color: Colors.white),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }

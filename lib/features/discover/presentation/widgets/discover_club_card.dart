@@ -8,6 +8,7 @@ import 'package:finnet/features/discover/presentation/widgets/discover_event_car
 import 'package:finnet/features/discover/presentation/widgets/discover_format.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
 
 const _ink = Color(0xFF1E1E1E);
 const _muted = Color(0xFF6B6B6B);
@@ -160,7 +161,13 @@ class DiscoverClubCard extends StatelessWidget {
                     shown.isEmpty
                         ? SizedBox(height: slots.line)
                         : line(
-                            [...shown, if (more > 0) '+$more'].join(' · '),
+                            [
+                              for (final name in shown)
+                                [interestEmoji(name: name), name]
+                                    .nonNulls
+                                    .join(' '),
+                              if (more > 0) '+$more',
+                            ].join(' · '),
                             key: const ValueKey('discover-club-interests'),
                             color: _ink,
                           ),

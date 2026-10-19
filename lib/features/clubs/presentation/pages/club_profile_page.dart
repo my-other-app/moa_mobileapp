@@ -18,6 +18,8 @@ import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
+import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_tag_strip.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 
@@ -44,14 +46,6 @@ class ClubProfilePage extends ConsumerStatefulWidget {
 }
 
 class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
-  static const List<Color> _tagColors = [
-    Color(0xFFE1C9FF),
-    Color(0xFFF9FFA1),
-    Color(0xFFB8DFF2),
-    Color(0xFFFFC84A),
-    Color(0xFFFFDEDD),
-  ];
-
   /// Follow, as tapped, until the server's copy of the club says otherwise.
   bool? _following;
   int _followerDelta = 0;
@@ -264,17 +258,10 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
                         children: [
                           for (final (index, interest)
                               in club.interests.indexed)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 4, horizontal: 8),
-                              decoration: BoxDecoration(
-                                color: _tagColors[index % _tagColors.length],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                interest.name,
-                                style: const TextStyle(fontSize: 12),
-                              ),
+                            InterestTag(
+                              label: interest.name,
+                              glyph: interest.toEntity().emoji,
+                              color: InterestTag.pastelAt(index),
                             ),
                         ],
                       ),

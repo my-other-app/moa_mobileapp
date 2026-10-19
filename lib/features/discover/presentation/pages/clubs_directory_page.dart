@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/features/discover/domain/entities/discover_results.dart';
 import 'package:finnet/features/discover/domain/entities/discover_where.dart';
 import 'package:finnet/features/discover/domain/event_filters.dart';
@@ -11,7 +10,9 @@ import 'package:finnet/features/discover/presentation/widgets/discover_club_card
 import 'package:finnet/features/discover/presentation/widgets/discover_format.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_sections.dart';
 import 'package:finnet/features/discover/presentation/widgets/filter_widgets.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
+import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 
 const _ink = Color(0xFF1E1E1E);
@@ -232,15 +233,6 @@ class _InterestChips extends StatelessWidget {
           ]
         : interests;
     if (pool.isEmpty) return const SizedBox.shrink();
-    Widget chip(int? id, String label, {Key? key}) => ChoiceChip(
-          key: key,
-          label: Text(label, style: const TextStyle(fontSize: 13)),
-          selected: selected == id,
-          selectedColor: AppColors.paleYellow,
-          visualDensity: VisualDensity.compact,
-          side: const BorderSide(color: AppColors.border, width: 0.5),
-          onSelected: (_) => onChanged(selected == id ? null : id),
-        );
     return SizedBox(
       height: 44,
       child: ListView(
@@ -248,13 +240,24 @@ class _InterestChips extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         children: [
-          chip(null, 'All', key: const ValueKey('club-interest-all')),
+          InterestChip(
+            key: const ValueKey('club-interest-all'),
+            label: 'All',
+            compact: true,
+            selected: selected == null,
+            onTap: () => onChanged(null),
+          ),
           for (final i in pool) ...[
             const SizedBox(width: 8),
-            chip(
-              i.id,
-              i.clubs == null ? i.name : '${i.name} ${formatCount(i.clubs!)}',
+            InterestChip(
               key: ValueKey('club-interest-${i.id}'),
+              label: i.name,
+              glyph: interestEmoji(name: i.name),
+              compact: true,
+              count: i.clubs,
+              countUnit: 'clubs',
+              selected: selected == i.id,
+              onTap: () => onChanged(selected == i.id ? null : i.id),
             ),
           ],
         ],

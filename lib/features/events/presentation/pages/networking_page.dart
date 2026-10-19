@@ -8,6 +8,7 @@ import 'package:finnet/features/threads/domain/entities/moderation.dart';
 import 'package:finnet/features/threads/presentation/providers/moderation_provider.dart';
 import 'package:finnet/features/threads/presentation/widgets/moderation_actions.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
 
 /// Model for a networking attendee.
 class NetworkingAttendee {
@@ -378,7 +379,15 @@ class _NetworkingPageState extends ConsumerState<NetworkingPage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            '${interest.icon ?? ''} ${interest.name}'.trim(),
+                            // Its emoji: the server's, else the app's --
+                            // never the server's placeholder word.
+                            [
+                              interestEmoji(
+                                  icon: interest.icon,
+                                  iconType: interest.iconType,
+                                  name: interest.name),
+                              interest.name,
+                            ].nonNulls.join(' '),
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
