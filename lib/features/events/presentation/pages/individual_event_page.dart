@@ -938,8 +938,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     if (uri != null) await _openLink(uri, "Couldn't open the survey");
   }
 
-  /// Speakers, the venue, guidelines, the team, contact, and the rails:
-  /// each only when there is something to show.
+  /// Speakers, the agenda, the venue, guidelines, the team, contact, and
+  /// the rails -- the website's order -- each only when there is something
+  /// to show.
   List<Widget> _buildWebsiteSections(BuildContext context) {
     final page = _page;
     final speakers = _speakers;
@@ -962,6 +963,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           people: speakers,
           speakers: true,
         ),
+      // The run of show, when the organiser has written one: after the
+      // speakers, as on the website.
+      if (agenda.items.isNotEmpty) _buildAgendaSection(context),
       if (hasVenue)
         EventVenueSection(
           isOnline: online,
@@ -2063,12 +2067,6 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                     false))
               CompetitionEntryCard(onTap: _openCompetition),
 
-            // ========== AGENDA (when the organiser has written one) ==========
-            if (agenda.items.isNotEmpty) _buildAgendaSection(context),
-
-            // ========== ON SALE WITH THE TICKET ==========
-            if (catalog.hasAnything) _buildStoreSection(context),
-
             // ========== MAIN DESCRIPTION ==========
             Text(
               about ?? 'Event description not available.',
@@ -2076,12 +2074,21 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             ),
             const SizedBox(height: 16),
 
+            // ========== ON SALE WITH THE TICKET ==========
+            if (catalog.hasAnything) _buildStoreSection(context),
+
             // ========== RATE AND RATING SECTION (only for attended) ==========
             if (isAttended) ...[
               // Rate the Event button (only if not rated yet)
               if (userRating == null || userRating == 0) ...[
                 OutlinedButton(
-                  onPressed: () => _showRatingDialog(context),
+                  onPressed: () async {
+                    if (await ensureSignedInFor(context, ref,
+                            reason: 'Sign in to rate this event.') &&
+                        context.mounted) {
+                      _showRatingDialog(context);
+                    }
+                  },
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 48),
                     side: const BorderSide(color: Colors.black),

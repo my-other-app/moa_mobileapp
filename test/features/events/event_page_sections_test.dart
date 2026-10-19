@@ -139,6 +139,38 @@ void main() {
       expect(sent.extra['skipAuth'], isTrue);
     });
 
+    testWidgets('in the website\'s order: about, speakers, agenda, venue, '
+        'guidelines, team, contact, then the rails', (tester) async {
+      api
+        ..on('GET', '/events/info/7',
+            eventInfo(extra: {'about': 'A night of building things.'}))
+        ..on('GET', '/discover/events/7', discoverEventPage())
+        ..on('GET', '/events/7/agenda', {
+          'timezone': 'Asia/Kolkata',
+          'items': [
+            {
+              'id': 1,
+              'starts_at': '2030-12-01T10:00:00Z',
+              'title': 'Doors open',
+            },
+          ],
+        });
+      await _pump(tester);
+
+      final tops = [
+        'A night of building things.',
+        'Speaker',
+        'Agenda',
+        'Venue',
+        'Guidelines',
+        'Organising team',
+        'Questions?',
+        'More from Tinkerhub',
+        'Similar events',
+      ].map((t) => tester.getTopLeft(find.text(t)).dy).toList();
+      expect(tops, orderedEquals([...tops]..sort()));
+    });
+
     testWidgets("a speaker's sheet has their bio and their link",
         (tester) async {
       api
