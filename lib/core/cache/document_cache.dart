@@ -19,7 +19,26 @@ class SavedDocument {
   final bool current;
 }
 
-/// Tickets' and certificates' PDFs, kept on the phone and fetched again only
+/// A copy kept on the phone, read without asking the network.
+class KeptDocument {
+  const KeptDocument({
+    required this.file,
+    required this.isFinal,
+    required this.savedAt,
+  });
+
+  final File file;
+
+  /// It came with an ETag: complete, rendered with all its images. A copy
+  /// without one is shown but fetched again next time.
+  final bool isFinal;
+
+  /// When it was last written.
+  final DateTime savedAt;
+}
+
+/// Tickets' and certificates' PDFs -- and each ticket's picture, the club's
+/// design rendered as a PNG -- kept on the phone and fetched again only
 /// when they have changed.
 ///
 /// A PDF carries the person's name and the club's design, both of which
@@ -73,14 +92,49 @@ class DocumentCache {
     return dir;
   }
 
+  Future<File> _fileFor(String name) async =>
+      File('${(await _directory()).path}/${safeName(name)}');
+
+  /// The copy kept as [name], or null. Reads the disk only.
+  Future<KeptDocument?> kept(String name) async {
+    try {
+      final file = await _fileFor(name);
+      if (!await file.exists() || await file.length() == 0) return null;
+      final meta = await _readMeta(File('${file.path}.meta.json'));
+      return KeptDocument(
+        file: file,
+        isFinal: meta['final'] == true,
+        savedAt: await file.lastModified(),
+      );
+    } catch (e) {
+      debugPrint('DocumentCache: could not read the kept $name: $e');
+      return null;
+    }
+  }
+
+  /// Delete the copy kept as [name] -- a revoked ticket's picture must not
+  /// be shown again, online or off.
+  Future<void> remove(String name) async {
+    try {
+      final file = await _fileFor(name);
+      for (final kept in [file, File('${file.path}.meta.json')]) {
+        if (await kept.exists()) await kept.delete();
+      }
+    } catch (e) {
+      debugPrint('DocumentCache: could not remove $name: $e');
+    }
+  }
+
   /// The document at [path] (on the API), kept as [name].
+  ///
+  /// [extra] goes with the request (`RetryInterceptor.noRetryKey`, say).
   Future<SavedDocument> fetch(
     String path, {
     required String name,
     String? version,
+    Map<String, dynamic>? extra,
   }) async {
-    final dir = await _directory();
-    final file = File('${dir.path}/${safeName(name)}');
+    final file = await _fileFor(name);
     final metaFile = File('${file.path}.meta.json');
     final meta = await _readMeta(metaFile);
     final kept = await file.exists() && await file.length() > 0;
@@ -107,6 +161,7 @@ class DocumentCache {
         options: Options(
           responseType: ResponseType.bytes,
           headers: headers,
+          extra: extra,
           validateStatus: (status) =>
               status != null && (status == 304 || (status >= 200 && status < 300)),
         ),

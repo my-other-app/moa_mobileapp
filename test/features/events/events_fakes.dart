@@ -4,9 +4,11 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/cache/api_cache.dart';
+import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/cache/cache_store.dart';
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/network/interceptors/error_interceptor.dart';
+import 'package:finnet/features/events/data/ticket_images.dart';
 import 'package:finnet/features/payments/domain/entities/payment_order.dart';
 import 'package:finnet/features/payments/domain/repositories/payment_repository.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
@@ -69,6 +71,7 @@ class RouteAdapter implements HttpClientAdapter {
 RouteAdapter useFakeApi({ApiCache? cache}) {
   ApiCache.instance = cache ??
       ApiCache(shared: MemoryCacheStore(), personal: MemoryCacheStore());
+  TicketImages.instance = MemoryTicketImages();
   final adapter = RouteAdapter();
   APIService.instance.dio
     ..httpClientAdapter = adapter
@@ -122,4 +125,39 @@ class FakePaymentRepository implements PaymentRepository {
     required String razorpayPaymentId,
   }) async =>
       Either.right(null);
+}
+
+/// The tickets' designs kept in memory, fetched through the app's Dio (the
+/// fake API): a widget test's clock is fake, and the disk the real ones
+/// live on never answers it.
+class MemoryTicketImages extends TicketImages {
+  final kept = <String, Uint8List>{};
+
+  @override
+  Future<Uint8List?> saved(String code) async => kept[code];
+
+  @override
+  Future<({Uint8List bytes, bool current})> fetch(String code) async {
+    try {
+      final response = await APIService.instance.dio.get<List<int>>(
+        TicketImages.pathFor(code),
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final bytes = Uint8List.fromList(response.data ?? const []);
+      if (bytes.isEmpty) {
+        throw const FormatException('The document came back empty');
+      }
+      kept[code] = bytes;
+      return (bytes: bytes, current: true);
+    } on DioException catch (e) {
+      final saved = kept[code];
+      if (saved != null && ApiCacheInterceptor.gotNoAnswer(e)) {
+        return (bytes: saved, current: false);
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> forget(String code) async => kept.remove(code);
 }

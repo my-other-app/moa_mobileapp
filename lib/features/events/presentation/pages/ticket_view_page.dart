@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,9 +11,10 @@ import 'package:open_filex/open_filex.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/cache/document_cache.dart';
-import 'package:finnet/core/network/interceptors/retry_interceptor.dart';
 import 'package:finnet/core/network/network_status.dart';
+import 'package:finnet/features/events/data/ticket_images.dart';
 import 'package:finnet/features/events/domain/event_page_rules.dart';
 import 'package:finnet/features/events/presentation/providers/event_page_provider.dart';
 import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
@@ -34,10 +36,15 @@ class TicketViewPage extends StatefulWidget {
   final String? posterUrl;
 
   /// Whether the app can reach the server; defaults to
-  /// [NetworkStatus.instance]. Offline, the ticket is the drawn card, its QR
-  /// made on the phone from [ticketId], with a note that it is the saved
-  /// ticket.
+  /// [NetworkStatus.instance]. Offline, the ticket is the club's design as
+  /// kept on the phone ([images]) -- or, if it was never fetched, the drawn
+  /// card with its QR made on the phone from [ticketId] -- with a note that
+  /// it is the saved ticket.
   final NetworkStatus? networkStatus;
+
+  /// Where the club's design of the ticket is kept; defaults to
+  /// [TicketImages.instance].
+  final TicketImages? images;
 
   /// The organiser revoked this ticket. The screen says so instead of
   /// showing a QR -- online or offline -- and offers nothing to download,
@@ -53,6 +60,12 @@ class TicketViewPage extends StatefulWidget {
 
   /// The drawn card's QR, keyed by what it encodes.
   static Key qrKeyFor(String data) => ValueKey('ticket-qr:$data');
+
+  /// The club's design, rendered by the server (fresh or kept).
+  static const renderedKey = ValueKey('ticket-rendered');
+
+  /// Asking the server again over the kept design.
+  static const refreshingKey = ValueKey('ticket-refreshing');
 
   /// The note shown while offline.
   static const offlineNoticeKey = ValueKey('ticket-offline-notice');
@@ -73,6 +86,7 @@ class TicketViewPage extends StatefulWidget {
     this.ticketType,
     this.posterUrl,
     this.networkStatus,
+    this.images,
     this.revoked = false,
     this.eventId,
   });
@@ -91,14 +105,21 @@ class _TicketViewPageState extends State<TicketViewPage>
   /// This screen used to draw its own ticket -- a hardcoded card in the
   /// app's colours with its own QR -- so an attendee saw one design here
   /// and a different one in the PDF they downloaded. The image is the same
-  /// template, payload and engine as the PDF. Null while loading; on
-  /// failure the drawn card below is the fallback, so the QR is always
-  /// there to scan.
+  /// template, payload and engine as the PDF. The copy kept on the phone
+  /// is shown at once, and offline; null until one is there. When none was
+  /// ever fetched and none can be, the drawn card below is the fallback, so
+  /// the QR is always there to scan.
   Uint8List? _ticketImage;
   bool _ticketImageFailed = false;
 
-  /// No server to ask: the drawn card, with its on-device QR, and a note.
+  /// The server is being asked again, over the kept design: a slow render
+  /// shows a spinner on it, not the drawn card.
+  bool _refreshing = false;
+
+  /// No server to ask: the kept design (or the drawn card), and a note.
   bool _offline = false;
+
+  TicketImages get _images => widget.images ?? TicketImages.instance;
   late AnimationController _glowController;
   late AnimationController _pulseController;
 
@@ -137,13 +158,10 @@ class _TicketViewPageState extends State<TicketViewPage>
   void initState() {
     super.initState();
     if (widget.revoked) {
-      // Revoked: no QR of any kind, so nothing to fetch.
+      // Revoked: no QR of any kind, so nothing to fetch -- and the design
+      // kept from before it was revoked goes too.
       _ticketImageFailed = true;
-    } else if ((widget.networkStatus ?? NetworkStatus.instance).isOffline) {
-      // Known to be offline: straight to the drawn card, without a spinner
-      // waiting on a request that cannot succeed.
-      _offline = true;
-      _ticketImageFailed = true;
+      unawaited(_images.forget(widget.ticketId));
     } else {
       _loadTicketImage();
     }
@@ -165,32 +183,42 @@ class _TicketViewPageState extends State<TicketViewPage>
     super.dispose();
   }
 
+  /// The kept design at once, then the server's (a 304 when unchanged).
+  ///
+  /// Known to be offline, the kept one alone -- no spinner waiting on a
+  /// request that cannot succeed. A ticket the server now refuses (gone,
+  /// not theirs) loses its kept design.
   Future<void> _loadTicketImage() async {
+    final saved = await _images.saved(widget.ticketId);
+    if (!mounted) return;
+    final offline =
+        (widget.networkStatus ?? NetworkStatus.instance).isOffline;
+    setState(() {
+      _ticketImage = saved;
+      _offline = offline;
+      _ticketImageFailed = offline && saved == null;
+      _refreshing = !offline && saved != null;
+    });
+    if (offline) return;
     try {
-      // Through the shared Dio so the auth interceptor signs it: a ticket
-      // image is an entry pass and the endpoint keeps the PDF's access rule.
-      final response = await APIService.instance.dio.get<List<int>>(
-        '/events/tickets/${widget.ticketId}/image',
-        // No second try: the drawn card is a ticket too, and the person is
-        // probably standing at the door.
-        options: Options(
-          responseType: ResponseType.bytes,
-          extra: {RetryInterceptor.noRetryKey: true},
-        ),
-      );
-      final bytes = response.data;
-      if (!mounted) return;
-      if (response.statusCode == 200 && bytes != null && bytes.isNotEmpty) {
-        setState(() => _ticketImage = Uint8List.fromList(bytes));
-      } else {
-        setState(() => _ticketImageFailed = true);
-      }
-    } catch (e) {
-      debugPrint('Ticket image unavailable, showing the drawn card: $e');
+      final fresh = await _images.fetch(widget.ticketId);
       if (!mounted) return;
       setState(() {
-        _ticketImageFailed = true;
-        _offline = e is DioException && RetryInterceptor.isConnectionFailure(e);
+        _ticketImage = fresh.bytes;
+        _offline = !fresh.current;
+        _refreshing = false;
+      });
+    } catch (e) {
+      debugPrint('Ticket image unavailable: $e');
+      final status = e is DioException ? e.response?.statusCode : null;
+      final refused = status == 403 || status == 404 || status == 410;
+      if (refused) await _images.forget(widget.ticketId);
+      if (!mounted) return;
+      setState(() {
+        _refreshing = false;
+        if (refused) _ticketImage = null;
+        _ticketImageFailed = _ticketImage == null;
+        _offline = e is DioException && ApiCacheInterceptor.gotNoAnswer(e);
       });
     }
   }
@@ -735,8 +763,36 @@ class _TicketViewPageState extends State<TicketViewPage>
   }
 
   Widget _buildTicketCard() {
-    if (_ticketImage != null) {
-      return _buildRenderedTicket(_ticketImage!);
+    final image = _ticketImage;
+    if (image != null) {
+      final rendered = _buildRenderedTicket(image);
+      if (!_refreshing) return rendered;
+      // Asking the server again: a small spinner on the kept design.
+      return Stack(
+        children: [
+          rendered,
+          Positioned(
+            top: 10,
+            right: 10,
+            child: Container(
+              key: TicketViewPage.refreshingKey,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(110),
+                shape: BoxShape.circle,
+              ),
+              child: const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
     }
     if (!_ticketImageFailed) {
       // Loading. A spinner the size of a ticket, not a flash of the drawn
@@ -784,6 +840,7 @@ class _TicketViewPageState extends State<TicketViewPage>
         );
       },
       child: ClipRRect(
+        key: TicketViewPage.renderedKey,
         borderRadius: BorderRadius.circular(20),
         child: Image.memory(
           bytes,
