@@ -191,13 +191,6 @@ class DiscoverEventTile extends StatelessWidget {
   static const thumbWidth = 96.0;
   static const _padding = 10.0;
 
-  /// How tall every row is at [context]'s text size, with the space
-  /// around it.
-  static double heightFor(BuildContext context) =>
-      EventCardSlots.of(context, maxScale: tileMaxTextScale).content +
-      2 * _padding +
-      12;
-
   @override
   Widget build(BuildContext context) {
     final slots = EventCardSlots.of(context, maxScale: tileMaxTextScale);
