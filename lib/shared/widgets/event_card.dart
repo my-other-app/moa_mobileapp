@@ -1,13 +1,16 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
+import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
+import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart'
+    show ticketRoute;
 import 'package:finnet/features/events/presentation/utils/event_feed.dart';
+import 'package:finnet/shared/utils/external_links.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// Status type for event cards
 enum EventCardStatus {
@@ -16,16 +19,21 @@ enum EventCardStatus {
   attended, // Event over and attended - show "VIEW CERTIFICATE"
   notAttended, // Event over but not attended - show "Not Attended" badge
   awaitingPayment, // Registered for a paid event, not paid - "FINISH PAYMENT"
+  ticketRevoked, // The organiser revoked the ticket - "TICKET REVOKED"
 }
 
 /// The card status for an event this person is registered for:
-/// [EventCardStatus.awaitingPayment] when its fee is still owed
-/// ([isAwaitingPayment]: `has_fee` true and `is_paid` false; a missing
-/// `is_paid` is not read as unpaid), else [EventCardStatus.registered].
-EventCardStatus registeredCardStatus(Map<dynamic, dynamic> item) =>
-    isAwaitingPayment(item)
-        ? EventCardStatus.awaitingPayment
-        : EventCardStatus.registered;
+/// [EventCardStatus.ticketRevoked] when the organiser revoked the ticket
+/// ([isTicketRevoked]), [EventCardStatus.awaitingPayment] when its fee is
+/// still owed ([isAwaitingPayment]: `has_fee` true and `is_paid` false; a
+/// missing `is_paid` is not read as unpaid), else
+/// [EventCardStatus.registered].
+EventCardStatus registeredCardStatus(Map<dynamic, dynamic> item) {
+  if (isTicketRevoked(item)) return EventCardStatus.ticketRevoked;
+  return isAwaitingPayment(item)
+      ? EventCardStatus.awaitingPayment
+      : EventCardStatus.registered;
+}
 
 /// The small "Payment due" pill: on an awaiting-payment card, and on search
 /// results for an unpaid registration.
@@ -148,32 +156,18 @@ class EventCard extends StatelessWidget {
               child: SizedBox(
                 width: 48,
                 height: 48,
-                child: CachedNetworkImage(
-                  imageUrl: orgImage,
-                  // Logos are presigned too: key the cache on the object,
-                  // not the signature, or it never hits.
-                  cacheKey: orgImage.isEmpty ? null : posterCacheKey(orgImage),
-                  imageBuilder: (context, imageProvider) => Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                        image: imageProvider,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  placeholder: (context, url) => Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
+                child: ClipOval(
+                  // Logos are presigned too: AppNetworkImage keys the cache
+                  // on the object, not the signature, or it never hits.
+                  child: AppNetworkImage(
+                    url: orgImage,
+                    width: 48,
+                    height: 48,
+                    errorWidget: (_) => Container(
                       color: Colors.grey[300],
+                      child: const Icon(Icons.group, color: Colors.grey),
                     ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.grey[300],
-                    ),
-                    child: const Icon(Icons.group, color: Colors.grey),
+                    placeholder: (_) => ColoredBox(color: Colors.grey[300]!),
                   ),
                 ),
               ),
@@ -317,10 +311,13 @@ class EventCard extends StatelessWidget {
     switch (status) {
       case EventCardStatus.registered:
         return FilledButton(
-          onPressed: () async {
-            if (ticketUrl != null && ticketUrl!.isNotEmpty) {
-              final Uri url = Uri.parse(ticketUrl!);
-              await launchUrl(url, mode: LaunchMode.externalApplication);
+          onPressed: () {
+            // The ticket inside the app, from what the phone has saved: it
+            // used to open the website in the browser, which needs a signal
+            // the door often does not have.
+            final code = ticketCodeFromUrl(ticketUrl);
+            if (code != null) {
+              context.push(ticketRoute(code));
             } else {
               context.push('/events/$eventId', extra: _getNavigationExtras());
             }
@@ -330,12 +327,35 @@ class EventCard extends StatelessWidget {
           ),
           child: const Text('VIEW TICKET'),
         );
+      case EventCardStatus.ticketRevoked:
+        return FilledButton(
+          key: const ValueKey('event-ticket-revoked'),
+          // The ticket screen, which says it was revoked and shows no QR.
+          onPressed: () {
+            final code = ticketCodeFromUrl(ticketUrl);
+            if (code != null) {
+              context.push(ticketRoute(code), extra: {'revoked': true});
+            } else {
+              context.push('/events/$eventId', extra: _getNavigationExtras());
+            }
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.grey.shade600,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('TICKET REVOKED'),
+        );
       case EventCardStatus.attended:
         return FilledButton(
           onPressed: () async {
-            if (certificateUrl != null && certificateUrl!.isNotEmpty) {
-              final Uri url = Uri.parse(certificateUrl!);
-              await launchUrl(url, mode: LaunchMode.externalApplication);
+            final url = Uri.tryParse(certificateUrl ?? '');
+            if (url != null && url.hasScheme) {
+              // The site's certificate page: inside the app.
+              if (isOwnSite(url)) {
+                await openInAppThenBrowser(url);
+              } else {
+                await openExternally(url);
+              }
             } else {
               context.push('/events/$eventId', extra: _getNavigationExtras());
             }
@@ -423,6 +443,8 @@ class EventCard extends StatelessWidget {
         return const Color(0xFFF44336); // Red
       case EventCardStatus.awaitingPayment:
         return PaymentDueBadge.color;
+      case EventCardStatus.ticketRevoked:
+        return const Color(0xFF616161); // Grey
       case EventCardStatus.none:
         return Colors.transparent;
     }
@@ -439,6 +461,8 @@ class EventCard extends StatelessWidget {
         return Icons.cancel_outlined;
       case EventCardStatus.awaitingPayment:
         return Icons.payments_outlined;
+      case EventCardStatus.ticketRevoked:
+        return Icons.block;
       case EventCardStatus.none:
         return Icons.circle;
     }
@@ -450,6 +474,7 @@ class EventCard extends StatelessWidget {
       case EventCardStatus.attended:
       case EventCardStatus.notAttended:
       case EventCardStatus.awaitingPayment:
+      case EventCardStatus.ticketRevoked:
         return Colors.white;
       case EventCardStatus.registered:
         return Colors.black87;
@@ -469,6 +494,8 @@ class EventCard extends StatelessWidget {
         return 'Not Attended';
       case EventCardStatus.awaitingPayment:
         return 'Payment due';
+      case EventCardStatus.ticketRevoked:
+        return 'Ticket revoked';
       case EventCardStatus.none:
         return '';
     }

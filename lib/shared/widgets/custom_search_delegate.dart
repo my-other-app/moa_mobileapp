@@ -7,6 +7,7 @@ import 'package:finnet/features/events/domain/registration_status.dart'
     show isAwaitingPayment;
 import 'package:finnet/shared/widgets/event_card.dart' show PaymentDueBadge;
 import 'package:finnet/shared/widgets/event_poster_image.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// `/events/list` for a search, narrowed to the tab it was started from.
 ///
@@ -403,7 +404,10 @@ class ClubSearchDelegate extends SearchDelegate<String> {
     final hasUrl = url is String && url.trim().isNotEmpty;
     return CircleAvatar(
       backgroundColor: const Color(0xFFF3F3F3),
-      foregroundImage: hasUrl ? NetworkImage(url) : null,
+      foregroundImage: hasUrl
+          // A 40pt disc: 160px is enough on any phone's screen.
+          ? appImageProvider(url, decodeWidth: 160)
+          : null,
       onForegroundImageError: hasUrl ? (_, __) {} : null,
       child: const Icon(Icons.group, color: Colors.grey),
     );

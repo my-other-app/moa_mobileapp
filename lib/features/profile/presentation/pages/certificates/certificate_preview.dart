@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// A rendering of the certificate itself, styled by the club's template.
 ///
@@ -47,7 +48,13 @@ class CertificatePreview extends StatelessWidget {
               image: style.backgroundImageUrl == null
                   ? null
                   : DecorationImage(
-                      image: NetworkImage(style.backgroundImageUrl!),
+                      image: appImageProvider(
+                        style.backgroundImageUrl!,
+                        decodeWidth: (constraints.maxWidth *
+                                MediaQuery.devicePixelRatioOf(context))
+                            .ceil()
+                            .clamp(1, maxDecodePixels),
+                      ),
                       fit: BoxFit.cover,
                       onError: (_, __) {},
                     ),

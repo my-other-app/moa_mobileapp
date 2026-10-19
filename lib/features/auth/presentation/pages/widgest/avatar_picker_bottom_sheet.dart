@@ -1,9 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/auth/data/models/profile.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// Avatar Picker Bottom Sheet - migrated to Riverpod.
 class AvatarPickerBottomSheet extends ConsumerWidget {
@@ -62,28 +62,26 @@ class AvatarPickerBottomSheet extends ConsumerWidget {
                               onTap: () {
                                 selectedAvatarNotifier.value = avatars[index];
                               },
-                              child: CachedNetworkImage(
-                                imageUrl: avatars[index].image.thumbnail,
-                                imageBuilder: (context, imageProvider) =>
-                                    Container(
-                                  decoration: BoxDecoration(
-                                    border: avatars[index] == selectedAvatar
-                                        ? Border.all(
-                                            color: Colors.green, width: 3)
-                                        : null,
-                                    borderRadius: BorderRadius.circular(10),
-                                    image: DecorationImage(
-                                      image: imageProvider,
-                                      fit: BoxFit.cover,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: avatars[index] == selectedAvatar
+                                      ? Border.all(
+                                          color: Colors.green, width: 3)
+                                      : null,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: AppNetworkImage(
+                                    url: avatars[index].image.thumbnail,
+                                    decodeWidth: 300,
+                                    placeholder: (_) => const Center(
+                                      child: CircularProgressIndicator(),
                                     ),
+                                    errorWidget: (_) =>
+                                        const Icon(Icons.error),
                                   ),
                                 ),
-                                errorWidget: (context, url, error) =>
-                                    Icon(Icons.error),
-                                progressIndicatorBuilder:
-                                    (context, url, downloadProgress) =>
-                                        CircularProgressIndicator(
-                                            value: downloadProgress.progress),
                               ),
                             ),
                           );

@@ -94,7 +94,10 @@ class NotificationService {
     // has routed home.
     try {
       final initialMessage = await _messaging.getInitialMessage();
-      if (initialMessage != null) {
+      if (initialMessage != null &&
+          // The launch tap counts as this push's one opening: a second copy
+          // tapped later (the same push_id) opens nothing again.
+          dedupe.firstOpen(initialMessage.data)) {
         debugPrint('App launched by notification: ${initialMessage.messageId}');
         pendingLaunch.hold(initialMessage.data);
       }
@@ -109,7 +112,7 @@ class NotificationService {
       final launch =
           await _localNotifications.getNotificationAppLaunchDetails();
       if (launch?.didNotificationLaunchApp ?? false) {
-        pendingLaunch.holdPayload(launch?.notificationResponse?.payload);
+        holdLaunchPayload(launch?.notificationResponse?.payload);
       }
     } catch (e) {
       debugPrint('NotificationService: local notifications unavailable: $e');
@@ -365,9 +368,11 @@ class NotificationService {
   }
 
   /// Where a notification's data points. A live update from an event opens
-  /// that event, whose page shows the room's strip. A club's new post
-  /// (`club_thread`) opens that post; if it has been removed since, its page
-  /// says so.
+  /// that event, whose page shows the room's strip. A host starting a quiz
+  /// or a poll (`event_live_join`) opens the event and, on top of it, the
+  /// live room in the app ([liveJoinRoute]), so Back lands on the event. A
+  /// club's new post (`club_thread`) opens that post; if it has been removed
+  /// since, its page says so.
   static String? routeFor(Map<String, dynamic> data) {
     final type = data['type']?.toString();
     if (type == 'club_thread') {
@@ -375,13 +380,39 @@ class NotificationService {
       if (threadId == null || threadId.isEmpty) return null;
       return '/threads/${Uri.encodeComponent(threadId)}';
     }
-    final eventId = data['event_id']?.toString();
-    if (eventId != null && eventId.isNotEmpty && int.tryParse(eventId) != null) {
+    final eventId = int.tryParse(data['event_id']?.toString().trim() ?? '');
+    if (eventId != null) {
+      if (type == 'event_live_join') {
+        return liveJoinRoute(eventId, data['what']);
+      }
       if (type == 'event_live_update' || type == 'event_reminder' || type == 'event_started' || type == 'event_checkin') {
         return '/events/$eventId';
       }
     }
     return null;
+  }
+
+  /// The event's page, told to open its live room at once: what a "join
+  /// now" push and its inbox row open. [what] is the push's `what` (`quiz`
+  /// or `poll`); anything else is just the room.
+  static String liveJoinRoute(int eventId, Object? what) {
+    final kind = what == 'quiz' || what == 'poll' ? what as String : 'room';
+    return '/events/$eventId?live=$kind';
+  }
+
+  /// A local notification's payload that launched the app: held to open
+  /// once the app is up, and counted as that push's one opening.
+  @visibleForTesting
+  static void holdLaunchPayload(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+    try {
+      final data = jsonDecode(payload);
+      if (data is Map && dedupe.firstOpen(Map<String, dynamic>.from(data))) {
+        pendingLaunch.holdPayload(payload);
+      }
+    } catch (_) {
+      // Not ours: nothing to open.
+    }
   }
 
   void openFromData(Map<String, dynamic> data) {

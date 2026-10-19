@@ -433,6 +433,91 @@ void main() {
       expect(t.ended, isEmpty);
     });
 
+    test('five requests that 401 together cause exactly one refresh, and '
+        'every one is retried with the new token', () async {
+      final presented = <String>[];
+      final retriedWith = <Object?>[];
+      final t = setUp({
+        for (var i = 0; i < 5; i++)
+          '/r$i': (options) async {
+            if (options.headers['Authorization'] == 'Bearer a1') {
+              retriedWith.add(options.headers['Authorization']);
+              return json('{"n":$i}', 200);
+            }
+            // Staggered, so some 401s land before the refresh starts, some
+            // while it runs, and some after it has finished.
+            await Future<void>.delayed(Duration(milliseconds: 15 * i));
+            return json(expired, 401);
+          },
+        '/auth/refresh': (options) async {
+          presented.add(sentToken(options));
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          return json('{"access_token":"a1","refresh_token":"r1"}', 200);
+        },
+      });
+
+      final results = await Future.wait([
+        for (var i = 0; i < 5; i++) t.dio.get('/r$i'),
+      ]).timeout(const Duration(seconds: 5));
+
+      expect(results.map((r) => r.data['n']), [0, 1, 2, 3, 4]);
+      expect(t.calls['/auth/refresh'], 1);
+      expect(presented, ['r0']);
+      expect(retriedWith, List.filled(5, 'Bearer a1'));
+      expect(t.storage.values, {'access_token': 'a1', 'refresh_token': 'r1'});
+      expect(t.ended, isEmpty);
+    });
+
+    test('a 401 whose storage read outlasts a whole refresh is retried, not '
+        'refreshed a second time', () async {
+      // The slow request's 401 arrives first and reads the stored token;
+      // that read is slow. Meanwhile another request's 401 starts and
+      // finishes the refresh. The slow read then returns the token from
+      // before the refresh -- the same one the request carried -- which
+      // used to look like "nothing has refreshed yet" and spent r1 on a
+      // second refresh.
+      final storage = _SlowReadStorage(
+          {'access_token': 'a0', 'refresh_token': 'r0'});
+      final calls = <String, int>{};
+      final dio = Dio(BaseOptions(baseUrl: 'https://example.test'));
+      ResponseBody count(String path, ResponseBody body) {
+        calls[path] = (calls[path] ?? 0) + 1;
+        return body;
+      }
+
+      dio.httpClientAdapter = _FakeHttpClientAdapter({
+        '/slow': (options) {
+          if (options.headers['Authorization'] == 'Bearer a1') {
+            return count('/slow', json('{"ok":true}', 200));
+          }
+          // The next storage read is this 401's, in the interceptor.
+          storage.slowNextRead = const Duration(milliseconds: 120);
+          return count('/slow', json(expired, 401));
+        },
+        '/quick': (options) async {
+          if (options.headers['Authorization'] == 'Bearer a1') {
+            return count('/quick', json('{"ok":true}', 200));
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          return count('/quick', json(expired, 401));
+        },
+        '/auth/refresh': (_) => count(
+            '/auth/refresh', json('{"access_token":"a1","refresh_token":"r1"}', 200)),
+      });
+      dio.interceptors.addAll([
+        AuthInterceptor(storage, dio, onSessionEnded: (_) {}),
+        ErrorInterceptor(),
+      ]);
+
+      final results = await Future.wait([dio.get('/slow'), dio.get('/quick')])
+          .timeout(const Duration(seconds: 5));
+
+      expect(results.map((r) => r.statusCode), [200, 200]);
+      expect(calls['/auth/refresh'], 1);
+      expect(calls['/slow'], 2);
+      expect(storage.values, {'access_token': 'a1', 'refresh_token': 'r1'});
+    });
+
     test('SESSION_REUSED signs out once, for every waiting request, and '
         'nothing loops', () async {
       final t = setUp({
@@ -467,4 +552,21 @@ void main() {
       expect(t.ended, [SessionEndReason.expired]);
     });
   });
+}
+
+/// [MemoryStorage] whose next access-token read can be made slow. The value
+/// is taken when the read starts, as a real store's would be.
+class _SlowReadStorage extends MemoryStorage {
+  _SlowReadStorage(super.initial);
+
+  Duration? slowNextRead;
+
+  @override
+  Future<String?> getAccessToken() async {
+    final value = values['access_token'];
+    final delay = slowNextRead;
+    slowNextRead = null;
+    if (delay != null) await Future<void>.delayed(delay);
+    return value;
+  }
 }

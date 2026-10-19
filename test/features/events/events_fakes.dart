@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/cache/api_cache.dart';
+import 'package:finnet/core/cache/cache_store.dart';
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/network/interceptors/error_interceptor.dart';
 import 'package:finnet/features/payments/domain/entities/payment_order.dart';
@@ -62,8 +64,11 @@ class RouteAdapter implements HttpClientAdapter {
 
 /// Points the app's one Dio (`APIService.instance`) at [adapter], with only
 /// the app's error interceptor -- failures arrive shaped as in production,
-/// and nothing reaches secure storage or analytics.
-RouteAdapter useFakeApi() {
+/// and nothing reaches secure storage or analytics. The saved-answer cache
+/// starts empty, in memory.
+RouteAdapter useFakeApi({ApiCache? cache}) {
+  ApiCache.instance = cache ??
+      ApiCache(shared: MemoryCacheStore(), personal: MemoryCacheStore());
   final adapter = RouteAdapter();
   APIService.instance.dio
     ..httpClientAdapter = adapter

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:finnet/core/api/api_helper.dart';
-import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:finnet/features/events/presentation/utils/event_feed.dart';
+import 'package:finnet/features/events/presentation/utils/saved_feed.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
@@ -15,110 +15,32 @@ class PastEventsPage extends StatefulWidget {
 }
 
 class _PastEventsPageState extends State<PastEventsPage>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, SavedFirstPageFeed<PastEventsPage> {
   @override
   bool get wantKeepAlive => true;
 
-  final List<dynamic> _events = [];
+  @override
+  String feedPage(int offset) =>
+      '/events/list?is_registered=true&is_ended=true&offset=$offset&limit=${SavedFirstPageFeed.pageSize}';
 
-  bool _isLoading = true;
-  bool _isLoadingMore = false;
-  bool _hasMore = true;
-  String? _errorMessage;
-  int _offset = 0;
-  static const int _limit = 10;
+  /// The person's own registrations: encrypted.
+  @override
+  CachePolicy get feedPolicy => CachePolicy.personal;
+
+  @override
+  String get feedErrorFallback => 'Could not load past events.';
 
   @override
   void initState() {
     super.initState();
-    _fetchData();
-  }
-
-  bool _onScrollNotification(ScrollNotification notification) {
-    if (notification is ScrollEndNotification) {
-      final metrics = notification.metrics;
-      if (metrics.pixels >= metrics.maxScrollExtent - 200 &&
-          !_isLoadingMore &&
-          _hasMore &&
-          !_isLoading) {
-        _loadMore();
-      }
-    }
-    return false;
-  }
-
-  Future<void> _fetchData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _offset = 0;
-      _events.clear();
-    });
-
-    try {
-      final res = await APIService.instance.request(
-        '/events/list?is_registered=true&is_ended=true&offset=$_offset&limit=$_limit',
-        DioMethod.get,
-      );
-      if (mounted) {
-        setState(() {
-          _events.addAll(res.data['items'] ?? []);
-          _hasMore = (res.data['items'] ?? []).length >= _limit;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = readableError(
-            e,
-            fallback: 'Could not load past events.',
-          );
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _loadMore() async {
-    if (_isLoadingMore) return;
-
-    setState(() {
-      _isLoadingMore = true;
-      _offset += _limit;
-    });
-
-    try {
-      final res = await APIService.instance.request(
-        '/events/list?is_registered=true&is_ended=true&offset=$_offset&limit=$_limit',
-        DioMethod.get,
-      );
-      if (mounted) {
-        setState(() {
-          _events.addAll(res.data['items'] ?? []);
-          _hasMore = (res.data['items'] ?? []).length >= _limit;
-          _isLoadingMore = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _offset -= _limit;
-          _isLoadingMore = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _refresh() async {
-    await _fetchData();
+    fetchFirstPage();
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
 
-    if (_isLoading) {
+    if (isLoading) {
       return Container(
         color: Colors.white,
         child: const SingleChildScrollView(
@@ -136,28 +58,28 @@ class _PastEventsPageState extends State<PastEventsPage>
       );
     }
 
-    if (_errorMessage != null) {
+    if (errorMessage != null) {
       return Container(
         color: Colors.white,
         child: ErrorView(
-          message: _errorMessage,
-          onRetry: _fetchData,
+          message: errorMessage,
+          onRetry: fetchFirstPage,
         ),
       );
     }
 
-    if (_events.isEmpty) {
+    if (events.isEmpty) {
       return NoPastEventsPage();
     }
 
     return NotificationListener<ScrollNotification>(
-      onNotification: _onScrollNotification,
+      onNotification: onFeedScroll,
       child: RefreshIndicator(
-        onRefresh: _refresh,
+        onRefresh: fetchFirstPage,
         child: ListView.separated(
           primary: true,
           padding: const EdgeInsets.all(16),
-          itemCount: _events.length + (_hasMore ? 1 : 0),
+          itemCount: events.length + (hasMore ? 1 : 0),
           separatorBuilder: (context, index) => const Padding(
             padding: EdgeInsets.symmetric(vertical: 20.0),
             child: Divider(
@@ -168,7 +90,7 @@ class _PastEventsPageState extends State<PastEventsPage>
             ),
           ),
           itemBuilder: (context, index) {
-            if (index == _events.length) {
+            if (index == events.length) {
               return const Center(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
@@ -178,7 +100,7 @@ class _PastEventsPageState extends State<PastEventsPage>
             }
 
             final event = Map<String, dynamic>.from(
-                _events[index] as Map? ?? const <String, dynamic>{});
+                events[index] as Map? ?? const <String, dynamic>{});
             return eventCardFromJson(
               event,
               status: event['is_attended'] == true

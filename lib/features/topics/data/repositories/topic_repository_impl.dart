@@ -35,4 +35,10 @@ class TopicRepositoryImpl implements TopicRepository {
   @override
   Future<Result<List<Topic>>> getDirectory() =>
       _guard('getDirectory', remoteDataSource.getDirectory);
+
+  @override
+  Future<List<Topic>?> savedCatalogue() => remoteDataSource.savedCatalogue();
+
+  @override
+  Future<List<Topic>?> savedDirectory() => remoteDataSource.savedDirectory();
 }

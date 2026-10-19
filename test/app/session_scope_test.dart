@@ -41,6 +41,7 @@ void main() {
         secureStorageServiceProvider.overrideWithValue(storage),
         pushRegistrationProvider.overrideWithValue(FakePushRegistration()),
         sessionRevokerProvider.overrideWithValue(FakeSessionRevoker()),
+        sessionCachesProvider.overrideWithValue(FakeSessionCaches()),
       ],
       child: const _Probe(),
     ));

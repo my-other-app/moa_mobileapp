@@ -27,15 +27,18 @@ import 'package:intl/intl.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/themes/app_colors.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
+import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/pages/networking_page.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/core/config/app_config.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 class IndividualEventPage extends ConsumerStatefulWidget {
   final int eventId;
@@ -43,12 +46,18 @@ class IndividualEventPage extends ConsumerStatefulWidget {
   final String? initialTicketUrl;
   final String? initialCertificateUrl;
 
+  /// Open the live room as soon as the page is up: a tapped "join now"
+  /// push (`event_live_join`) lands here, so closing the room returns to
+  /// the event.
+  final bool openLiveRoom;
+
   const IndividualEventPage({
     super.key,
     required this.eventId,
     this.initialStatus,
     this.initialTicketUrl,
     this.initialCertificateUrl,
+    this.openLiveRoom = false,
   });
 
   @override
@@ -94,6 +103,22 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
 
   /// Registered for a paid event and not paid: no ticket until they pay.
   bool awaitingPayment = false;
+
+  /// The organiser revoked this person's ticket (the event's own
+  /// `ticket_revoked`).
+  bool ticketRevoked = false;
+
+  /// Revoked by the event's word, or by the saved tickets' (the list
+  /// carries `ticket_revoked`; an event page from an older server may not).
+  bool get _ticketRevoked {
+    if (ticketRevoked) return true;
+    final code = ticketCodeFromUrl(ticketUrl);
+    if (code == null) return false;
+    for (final saved in ref.read(savedTicketsProvider)) {
+      if (saved.code == code) return saved.revoked;
+    }
+    return false;
+  }
 
   /// The viewer's registration (`registration_id`), to pay for it directly.
   /// Null when not registered, or from an older server.
@@ -162,6 +187,11 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     );
     WidgetsBinding.instance.addObserver(this);
     _fetchData();
+    if (widget.openLiveRoom) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openLiveRoom();
+      });
+    }
   }
 
   @override
@@ -186,96 +216,22 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     return RegistrationStatus.none;
   }
 
+  /// The event: the saved copy at once when there is one, then the
+  /// network's. It carries the person's registration and ticket, so it is
+  /// saved encrypted (personal). The steps that need the server's word --
+  /// finishing a payment, the agenda, the store, the live room -- run once,
+  /// after the fresh answer (or after the saved one, offline).
   Future<void> _fetchData() async {
+    var gotFresh = false;
     try {
-      Response<dynamic> res = await APIService.instance.request(
+      await APIService.instance.getSavedThenFresh(
         '/events/info/${widget.eventId}',
-        DioMethod.get,
+        policy: CachePolicy.personal,
+        onData: (data, {required fresh}) {
+          _applyEvent(data);
+          gotFresh = gotFresh || fresh;
+        },
       );
-      final Map<String, dynamic> raw = res.data is Map<String, dynamic>
-          ? res.data as Map<String, dynamic>
-          : const <String, dynamic>{};
-
-      // Parse the JSON response into an EventInfo model.
-      EventInfo eventInfo = EventInfo.fromJson(raw);
-      final status = registrationStatusFrom(raw, carried: _status);
-      if (!mounted) return;
-
-      // Update state with the parsed values.
-      setState(() {
-        id = eventInfo.id;
-        name = eventInfo.name;
-        slug = eventInfo.slug;
-        poster = eventInfo.poster;
-        eventDateTime = eventInfo.eventDateTime;
-        // EventInfo reads a missing or zero length as 0; the page shows "—".
-        duration = eventInfo.duration > 0 ? eventInfo.duration : null;
-        locationName = eventInfo.locationName;
-        locationLink = eventInfo.locationLink;
-        hasFee = eventInfo.hasFee;
-        regFee = eventInfo.regFee;
-        hasPrize = eventInfo.hasPrize;
-        prizeAmount = eventInfo.prizeAmount;
-        isOnline = eventInfo.isOnline;
-        regStartDate = eventInfo.regStartDate;
-        regEndDate = eventInfo.regEndDate;
-        club = eventInfo.club;
-        category = eventInfo.category;
-        interests = eventInfo.interests;
-        topics = eventInfo.topics;
-        additionalDetails = eventInfo.additionalDetails;
-        rating = eventInfo.rating;
-        totalRating = eventInfo.totalRating;
-        about = eventInfo.about;
-        contactPhone = eventInfo.contactPhone;
-        contactEmail = eventInfo.contactEmail;
-        url = eventInfo.url;
-
-        // New registration/attendance fields
-        // IMPORTANT: Use API values if available, otherwise preserve navigation values
-        // This ensures status from EventCard navigation is not lost.
-        // `is_paid: false` is a registration still waiting for its payment:
-        // it has no ticket to view yet.
-        isAttended = status == RegistrationStatus.attended;
-        isRegistered = status != RegistrationStatus.none;
-        awaitingPayment = status == RegistrationStatus.awaitingPayment;
-        registrationId = eventInfo.registrationId;
-        // Only update URLs if API provides them
-        if (eventInfo.ticketUrl != null && eventInfo.ticketUrl!.isNotEmpty) {
-          ticketUrl = eventInfo.ticketUrl;
-        }
-        if (eventInfo.certificateUrl != null &&
-            eventInfo.certificateUrl!.isNotEmpty) {
-          certificateUrl = eventInfo.certificateUrl;
-        }
-        userRating = eventInfo.userRating;
-        userPosition = eventInfo.userPosition;
-        positionLabel = eventInfo.positionLabel;
-        downloads = eventInfo.downloads;
-
-        isLoading = false;
-
-        // CRITICAL: Check if registration is already closed IMMEDIATELY
-        if (regEndDate != null && regEndDate!.isBefore(DateTime.now())) {
-          registrationClosed = true;
-          countdownText = 'Registration Closed';
-        }
-      });
-
-      // Start the countdown timer if regEndDate is available and not already closed.
-      if (regEndDate != null && !registrationClosed) {
-        _startTimer();
-      }
-      if (_finishPaymentOnLoad) {
-        _finishPaymentOnLoad = false;
-        if (awaitingPayment && !_eventEnded) unawaited(_finishPayment());
-      }
-      await _fetchAgenda();
-      await _fetchCatalog();
-      if (!mounted) return;
-      // The room fetched, as on every load; the stream follows while the
-      // event is live, and while it streams there is nothing to fetch.
-      _live.refresh();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -285,7 +241,98 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         );
         isLoading = false;
       });
+      return;
     }
+    if (!mounted || isLoading) return;
+
+    // Start the countdown timer if regEndDate is available and not already closed.
+    if (regEndDate != null && !registrationClosed) {
+      _startTimer();
+    }
+    if (_finishPaymentOnLoad && gotFresh) {
+      _finishPaymentOnLoad = false;
+      if (awaitingPayment && !_eventEnded) unawaited(_finishPayment());
+    }
+    await _fetchAgenda();
+    await _fetchCatalog();
+    if (!mounted) return;
+    // The room fetched, as on every load; the stream follows while the
+    // event is live, and while it streams there is nothing to fetch.
+    _live.refresh();
+  }
+
+  /// Show [data], an `/events/info` answer (saved or fresh).
+  void _applyEvent(Object? data) {
+    if (!mounted) return;
+    final Map<String, dynamic> raw = data is Map<String, dynamic>
+        ? data
+        : const <String, dynamic>{};
+
+    // Parse the JSON response into an EventInfo model.
+    EventInfo eventInfo = EventInfo.fromJson(raw);
+    final status = registrationStatusFrom(raw, carried: _status);
+
+    // Update state with the parsed values.
+    setState(() {
+      id = eventInfo.id;
+      name = eventInfo.name;
+      slug = eventInfo.slug;
+      poster = eventInfo.poster;
+      eventDateTime = eventInfo.eventDateTime;
+      // EventInfo reads a missing or zero length as 0; the page shows "—".
+      duration = eventInfo.duration > 0 ? eventInfo.duration : null;
+      locationName = eventInfo.locationName;
+      locationLink = eventInfo.locationLink;
+      hasFee = eventInfo.hasFee;
+      regFee = eventInfo.regFee;
+      hasPrize = eventInfo.hasPrize;
+      prizeAmount = eventInfo.prizeAmount;
+      isOnline = eventInfo.isOnline;
+      regStartDate = eventInfo.regStartDate;
+      regEndDate = eventInfo.regEndDate;
+      club = eventInfo.club;
+      category = eventInfo.category;
+      interests = eventInfo.interests;
+      topics = eventInfo.topics;
+      additionalDetails = eventInfo.additionalDetails;
+      rating = eventInfo.rating;
+      totalRating = eventInfo.totalRating;
+      about = eventInfo.about;
+      contactPhone = eventInfo.contactPhone;
+      contactEmail = eventInfo.contactEmail;
+      url = eventInfo.url;
+
+      // New registration/attendance fields
+      // IMPORTANT: Use API values if available, otherwise preserve navigation values
+      // This ensures status from EventCard navigation is not lost.
+      // `is_paid: false` is a registration still waiting for its payment:
+      // it has no ticket to view yet.
+      isAttended = status == RegistrationStatus.attended;
+      isRegistered = status != RegistrationStatus.none;
+      awaitingPayment = status == RegistrationStatus.awaitingPayment;
+      ticketRevoked = eventInfo.ticketRevoked;
+      registrationId = eventInfo.registrationId;
+      // Only update URLs if API provides them
+      if (eventInfo.ticketUrl != null && eventInfo.ticketUrl!.isNotEmpty) {
+        ticketUrl = eventInfo.ticketUrl;
+      }
+      if (eventInfo.certificateUrl != null &&
+          eventInfo.certificateUrl!.isNotEmpty) {
+        certificateUrl = eventInfo.certificateUrl;
+      }
+      userRating = eventInfo.userRating;
+      userPosition = eventInfo.userPosition;
+      positionLabel = eventInfo.positionLabel;
+      downloads = eventInfo.downloads;
+
+      isLoading = false;
+
+      // CRITICAL: Check if registration is already closed IMMEDIATELY
+      if (regEndDate != null && regEndDate!.isBefore(DateTime.now())) {
+        registrationClosed = true;
+        countdownText = 'Registration Closed';
+      }
+    });
   }
 
   /// Registers again with the same details: for a signed-in person's unpaid
@@ -417,6 +464,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       final Response<dynamic> res = await APIService.instance.request(
         '/events/${widget.eventId}/agenda',
         DioMethod.get,
+        cache: CachePolicy.shared,
       );
       final data = res.data;
       if (data is Map<String, dynamic> && mounted) {
@@ -439,10 +487,17 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// it was: the room is optional; the event itself has loaded.
   late final LiveStreamClient<LiveFeed> _live;
 
-  /// The room is the web page, so voting, polls and the quiz are the same on every phone.
+  /// The room is the web page, so voting, polls and the quiz are the same
+  /// on every phone. It opens inside the app (SFSafariViewController /
+  /// Custom Tabs), so closing it comes back here; the browser if it cannot.
   Future<void> _openLiveRoom() async {
-    final url = Uri.parse('${AppConfig.publicSiteUrl}/${widget.eventId}/live');
-    await launchUrl(url, mode: LaunchMode.inAppBrowserView);
+    final opened =
+        await ref.read(linkLauncherProvider)(liveRoomUri(widget.eventId));
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't open the live room")),
+      );
+    }
   }
 
   Widget _buildLiveStrip(BuildContext context) {
@@ -504,6 +559,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         '/events/${widget.eventId}/store/catalog',
         DioMethod.get,
         skipAuth: true,
+        cache: CachePolicy.shared,
       );
       final data = res.data;
       if (data is Map<String, dynamic> && mounted) {
@@ -894,7 +950,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                       return;
                     }
                     final Uri url = Uri.parse(mapsUrl);
-                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                    // Never throws: no maps app is a no-op, not a crash.
+                    await openExternally(url);
                   },
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF2C333D),
@@ -1244,6 +1301,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         },
       );
 
+      if (!mounted) return;
       setState(() {
         // The picker offers whole stars; the field holds the
         // server's float, so widen rather than narrow.
@@ -1620,8 +1678,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                       ...downloads.map((download) => InkWell(
                             onTap: () async {
                               final Uri url = Uri.parse(download.url);
-                              await launchUrl(url,
-                                  mode: LaunchMode.externalApplication);
+                              await openExternally(url);
                             },
                             child: Text(
                               download.name.isEmpty
@@ -1777,7 +1834,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               onTap: () async {
                 if (contactPhone != null && contactPhone!.isNotEmpty) {
                   final Uri url = Uri.parse('tel:$contactPhone');
-                  await launchUrl(url);
+                  await openExternally(url);
                 }
               },
               child: Text(
@@ -1952,15 +2009,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       );
       return;
     }
-    // Extract ticket ID from URL
-    final String ticketId;
-    if (url.startsWith('/api/v1/events/tickets/')) {
-      ticketId = url.replaceFirst('/api/v1/events/tickets/', '');
-    } else if (url.contains('/tickets/')) {
-      ticketId = url.split('/tickets/').last;
-    } else {
-      ticketId = url;
-    }
+    // The ticket code from its address (the QR is drawn from it).
+    final ticketId = ticketCodeFromUrl(url) ?? url;
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1971,6 +2021,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           locationName: locationName,
           durationHours: duration,
           ticketUrl: url,
+          revoked: _ticketRevoked,
         ),
       ),
     );
@@ -1978,6 +2029,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
 
   /// Bottom sheet for ticket state (registered but event not over)
   Widget _buildTicketBottomSheet(BuildContext context) {
+    final revoked = _ticketRevoked;
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -1990,16 +2042,18 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             height: 25,
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF9C4),
+              color: revoked ? const Color(0xFFEEEEEE) : const Color(0xFFFFF9C4),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text(
-              'Registered and Generated Ticket',
+            child: Text(
+              revoked
+                  ? 'Your ticket was revoked by the organiser'
+                  : 'Registered and Generated Ticket',
               textAlign: TextAlign.left,
               style: TextStyle(
                 fontWeight: FontWeight.normal,
                 fontSize: 12,
-                color: Color(0xFF5D4037),
+                color: revoked ? const Color(0xFF424242) : const Color(0xFF5D4037),
               ),
             ),
           ),
@@ -2009,10 +2063,11 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             child: FilledButton(
               onPressed: _openTicket,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2C333D),
+                backgroundColor:
+                    revoked ? Colors.grey.shade600 : const Color(0xFF2C333D),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              child: const Text('VIEW TICKET'),
+              child: Text(revoked ? 'TICKET REVOKED' : 'VIEW TICKET'),
             ),
           ),
           const SizedBox(height: 10),
@@ -2069,8 +2124,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                   }
                   // else: Already a full URL, use as-is
 
-                  final Uri url = Uri.parse(finalUrl);
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                  // The site's certificate page, inside the app.
+                  await ref.read(linkLauncherProvider)(Uri.parse(finalUrl));
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -2179,7 +2234,11 @@ class _ClubLogo extends StatelessWidget {
     return CircleAvatar(
       radius: 24,
       backgroundColor: const Color(0xFFF3F3F3),
-      foregroundImage: hasUrl ? NetworkImage(url) : null,
+      foregroundImage: hasUrl
+          ? appImageProvider(url,
+              decodeWidth: decodeWidthFor(
+                  48, 48, MediaQuery.devicePixelRatioOf(context)))
+          : null,
       onForegroundImageError: hasUrl ? (_, __) {} : null,
       child: const Icon(Icons.group, color: Colors.grey),
     );

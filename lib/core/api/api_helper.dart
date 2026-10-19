@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/cache/api_cache.dart';
+import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/network/dio_client.dart';
 import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/core/services/analytics_service.dart';
 
 export 'package:finnet/core/network/api_exception.dart';
 export 'package:finnet/core/network/dio_client.dart' show ApiResult;
+export 'package:finnet/core/cache/api_cache.dart' show CachePolicy, CacheScope;
 
 enum DioMethod { post, get, put, delete, patch }
 
@@ -22,6 +27,10 @@ class APIService {
   final Dio _dio;
 
   APIService._(this._dio);
+
+  /// An APIService over [dio], for tests.
+  @visibleForTesting
+  factory APIService.over(Dio dio) => APIService._(dio);
 
   /// The one real Dio instance used app-wide.
   Dio get dio => _dio;
@@ -39,14 +48,14 @@ class APIService {
   static Dio _buildDio() {
     final dio = buildAppDio();
 
-    // Log API errors to analytics, in addition to the shared ErrorInterceptor
+    // Log API errors to analytics, in addition to the shared ErrorInterceptor.
+    // Never awaited and never allowed to throw: this used to await the log
+    // before passing the error on, so when Firebase had failed to start
+    // (AnalyticsService.instance throws) every failed request hung forever
+    // instead of failing.
     dio.interceptors.add(InterceptorsWrapper(
-      onError: (error, handler) async {
-        await AnalyticsService.instance.logApiError(
-          error.requestOptions.path,
-          error.response?.statusCode,
-          error.message,
-        );
+      onError: (error, handler) {
+        logApiErrorQuietly(error);
         handler.next(error);
       },
     ));
@@ -63,13 +72,18 @@ class APIService {
     dynamic formData,
     bool skipAuth = false,
     Map<String, dynamic>? headers,
+    CachePolicy? cache,
   }) async {
     try {
       // Configure request options
       final options = Options(
         contentType: contentType,
         headers: headers,
-        extra: {'skipAuth': skipAuth},
+        extra: {
+          'skipAuth': skipAuth,
+          // Only a GET is ever saved; ApiCacheInterceptor ignores the rest.
+          if (cache != null) ...cache.extra,
+        },
       );
 
       switch (method) {
@@ -114,6 +128,56 @@ class APIService {
     }
   }
 
+  /// The saved answer to `GET [endpoint]` (with [param]), or null when
+  /// there is none or it is older than the cache keeps anything. Reads the
+  /// disk only; never the network.
+  Future<dynamic> savedCopy(
+    String endpoint, {
+    Map<String, dynamic>? param,
+    CachePolicy policy = CachePolicy.shared,
+  }) async {
+    return ApiCache.instance
+        .savedAnswer(_dio, endpoint, query: param, scope: policy.scope);
+  }
+
+  /// `GET [endpoint]`, stale-while-revalidate: [onData] gets the saved
+  /// answer at once (`fresh: false`) if there is one, then the network's
+  /// (`fresh: true`). A 304 hands back the saved body, which is current.
+  ///
+  /// When the network fails after a saved copy was shown, the copy stays
+  /// and nothing is thrown: the offline strip says why. With nothing saved,
+  /// the failure is thrown as [request] throws it.
+  Future<void> getSavedThenFresh(
+    String endpoint, {
+    Map<String, dynamic>? param,
+    CachePolicy policy = CachePolicy.shared,
+    required void Function(dynamic data, {required bool fresh}) onData,
+  }) async {
+    dynamic saved;
+    try {
+      saved = await savedCopy(endpoint, param: param, policy: policy);
+    } catch (e) {
+      debugPrint('APIService: no saved copy of $endpoint: $e');
+    }
+    if (saved != null) onData(saved, fresh: false);
+    try {
+      final response = await request(
+        endpoint,
+        DioMethod.get,
+        param: param,
+        cache: policy,
+      );
+      final offline =
+          ApiCacheInterceptor.answerOf(response) == CachedAnswer.offline;
+      // Offline, the interceptor answered with the copy already shown.
+      if (offline && saved != null) return;
+      onData(response.data, fresh: !offline);
+    } catch (e) {
+      if (saved == null) rethrow;
+      debugPrint('APIService: kept the saved copy of $endpoint: $e');
+    }
+  }
+
   /// Typed request with automatic JSON parsing.
   Future<ApiResult<T>> requestTyped<T>(
     String endpoint,
@@ -146,6 +210,29 @@ class APIService {
     } catch (e) {
       return ApiResult.failure('An unexpected error occurred');
     }
+  }
+}
+
+/// Report a failed request to analytics without waiting on it or letting
+/// its failure reach the request.
+@visibleForTesting
+void logApiErrorQuietly(
+  DioException error, {
+  Future<void> Function(String path, int? status, String? message)? log,
+}) {
+  try {
+    final report = log ??
+        (path, status, message) =>
+            AnalyticsService.instance.logApiError(path, status, message);
+    unawaited(report(
+      error.requestOptions.path,
+      error.response?.statusCode,
+      error.message,
+    ).catchError((Object e) {
+      debugPrint('APIService: could not log the API error: $e');
+    }));
+  } catch (e) {
+    debugPrint('APIService: could not log the API error: $e');
   }
 }
 

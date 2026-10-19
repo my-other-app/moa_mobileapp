@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/network/dio_client.dart';
 import 'package:finnet/features/notifications/data/models/notification_model.dart';
 
@@ -8,7 +9,7 @@ import 'package:finnet/features/notifications/data/models/notification_model.dar
 final notificationRemoteDataSourceProvider =
     Provider<NotificationRemoteDataSource>((ref) {
   final dio = ref.watch(dioProvider);
-  return NotificationRemoteDataSourceImpl(dio);
+  return NotificationRemoteDataSourceImpl(dio, cache: ref.watch(apiCacheProvider));
 });
 
 /// One page of notifications, with the server's own total.
@@ -42,6 +43,9 @@ abstract class NotificationRemoteDataSource {
     String? cursor,
   });
 
+  /// The first page as last saved on this phone, or null. No network.
+  Future<NotificationPage?> savedFirstPage({required int limit});
+
   /// How many are unread.
   Future<int> unreadCount();
 
@@ -54,8 +58,18 @@ abstract class NotificationRemoteDataSource {
 
 class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
   final Dio _dio;
+  final ApiCache? _cache;
 
-  NotificationRemoteDataSourceImpl(this._dio);
+  NotificationRemoteDataSourceImpl(this._dio, {ApiCache? cache})
+      : _cache = cache;
+
+  static const _list = '/notifications/fetch-list';
+
+  static Map<String, dynamic> _query(int limit, int offset, String? cursor) => {
+        'limit': limit,
+        'offset': offset,
+        if (cursor != null) 'cursor': cursor,
+      };
 
   @override
   Future<NotificationPage> fetchList({
@@ -63,17 +77,37 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
     required int offset,
     String? cursor,
   }) async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/notifications/fetch-list',
-      queryParameters: {
-        'limit': limit,
-        'offset': offset,
-        if (cursor != null) 'cursor': cursor,
-      },
+    final firstPage = offset == 0 && cursor == null;
+    final response = await _dio.get<dynamic>(
+      _list,
+      queryParameters: _query(limit, offset, cursor),
+      // The first page is saved, encrypted: the inbox opens at once, and
+      // offline. Later pages are only ever fresh.
+      options: firstPage
+          ? Options(extra: CachePolicy.personal.extra)
+          : null,
     );
+    return pageFrom(response.data);
+  }
 
-    final data = response.data ?? const <String, dynamic>{};
-    final rawItems = (data['items'] as List<dynamic>?) ?? const [];
+  @override
+  Future<NotificationPage?> savedFirstPage({required int limit}) async {
+    final data = await (_cache ?? ApiCache.instance).savedAnswer(
+      _dio,
+      _list,
+      query: _query(limit, 0, null),
+      scope: CacheScope.personal,
+    );
+    return data == null ? null : pageFrom(data);
+  }
+
+  /// One page from its body. A body or field of the wrong shape reads as
+  /// empty or absent: `as int` on a `total` sent as 3.0 lost the inbox.
+  @visibleForTesting
+  static NotificationPage pageFrom(Object? body) {
+    final data = body is Map ? body : const <String, dynamic>{};
+    final rawItems = data['items'] is List ? data['items'] as List : const [];
+    final total = data['total'];
     return NotificationPage(
       items: rawItems
           .whereType<Map<String, dynamic>>()
@@ -81,16 +115,17 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
           .toList(),
       // `total` absent means the server did not say; falling back to the
       // page length is the closest honest answer, not zero.
-      total: (data['total'] as int?) ?? rawItems.length,
+      total: total is num ? total.toInt() : rawItems.length,
       nextCursor: cursorFromNext(data['next']),
     );
   }
 
   @override
   Future<int> unreadCount() async {
-    final response =
-        await _dio.get<Map<String, dynamic>>('/notifications/unread-count');
-    return (response.data?['count'] as int?) ?? 0;
+    final response = await _dio.get<dynamic>('/notifications/unread-count');
+    final data = response.data;
+    final count = data is Map ? data['count'] : null;
+    return count is num ? count.toInt() : 0;
   }
 
   @override

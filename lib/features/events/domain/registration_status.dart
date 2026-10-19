@@ -31,6 +31,14 @@ const finishPaymentStatus = 'finishPayment';
 bool isAwaitingPayment(Map<dynamic, dynamic> event) =>
     event['is_paid'] == false && event['has_fee'] == true;
 
+/// Whether the organiser revoked [event]'s ticket -- the door refuses it.
+///
+/// `ticket_revoked` is true or false on an item of `/events/list` for a
+/// registration, null when not registered. A revoked ticket stays in the
+/// list. Missing or null (an older server) is not revoked.
+bool isTicketRevoked(Map<dynamic, dynamic> event) =>
+    event['ticket_revoked'] == true;
+
 /// The status `/events/info/{id}` describes.
 ///
 /// [carried] is the status the screen was opened with (from a card that

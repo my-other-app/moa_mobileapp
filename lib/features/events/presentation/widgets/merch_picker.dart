@@ -1,7 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/common/models/events/store_model.dart';
 import 'package:finnet/shared/widgets/quantity_stepper.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// The shelf on the registration form: each item with its price, a size
 /// where it has sizes, and a count. The picks go with the registration and
@@ -90,7 +90,7 @@ class _ItemRow extends StatelessWidget {
                   width: 48,
                   height: 48,
                   child: item.photoUrl != null
-                      ? CachedNetworkImage(imageUrl: item.photoUrl!, fit: BoxFit.cover)
+                      ? AppNetworkImage(url: item.photoUrl, width: 48, height: 48)
                       : Container(color: const Color(0xFFEFEFEF), child: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF9A9A9A))),
                 ),
               ),

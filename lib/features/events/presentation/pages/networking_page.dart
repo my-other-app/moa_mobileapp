@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// Model for a networking attendee.
 class NetworkingAttendee {
@@ -22,15 +24,16 @@ class NetworkingAttendee {
   });
 
   factory NetworkingAttendee.fromJson(Map<String, dynamic> json) {
+    final picture = jsonString(json['profile_pic_url'])?.trim();
     return NetworkingAttendee(
-      userId: json['user_id'],
-      name: json['name'] ?? '',
-      profilePicUrl: json['profile_pic_url'],
-      organization: json['organization'],
-      sharedInterests: (json['shared_interests'] as List? ?? [])
-          .map((i) => SharedInterest.fromJson(i))
+      userId: jsonInt(json['user_id']) ?? 0,
+      name: jsonText(json['name']),
+      profilePicUrl: picture == null || picture.isEmpty ? null : picture,
+      organization: jsonString(json['organization']),
+      sharedInterests: jsonObjects(json['shared_interests'])
+          .map(SharedInterest.fromJson)
           .toList(),
-      matchCount: json['match_count'] ?? 0,
+      matchCount: jsonInt(json['match_count']) ?? 0,
     );
   }
 }
@@ -50,10 +53,10 @@ class SharedInterest {
 
   factory SharedInterest.fromJson(Map<String, dynamic> json) {
     return SharedInterest(
-      id: json['id'],
-      name: json['name'] ?? '',
-      icon: json['icon'],
-      iconType: json['icon_type'],
+      id: jsonInt(json['id']) ?? 0,
+      name: jsonText(json['name']),
+      icon: jsonString(json['icon']),
+      iconType: jsonString(json['icon_type']),
     );
   }
 }
@@ -100,16 +103,16 @@ class _NetworkingPageState extends State<NetworkingPage> {
         DioMethod.get,
       );
 
-      final data = res.data as Map<String, dynamic>;
+      // Read field by field: a row or a date of the wrong shape used to
+      // throw and lose the whole list behind an error.
+      final data = jsonObject(res.data) ?? const <String, dynamic>{};
       if (!mounted) return;
       setState(() {
-        attendees = (data['attendees'] as List? ?? [])
-            .map((a) => NetworkingAttendee.fromJson(a as Map<String, dynamic>))
+        attendees = jsonObjects(data['attendees'])
+            .map(NetworkingAttendee.fromJson)
             .toList();
-        total = data['total'] ?? 0;
-        if (data['window_closes_at'] != null) {
-          windowClosesAt = DateTime.parse(data['window_closes_at']);
-        }
+        total = jsonInt(data['total']) ?? 0;
+        windowClosesAt = jsonDate(data['window_closes_at']) ?? windowClosesAt;
         isLoading = false;
       });
     } catch (e) {
@@ -296,7 +299,15 @@ class _NetworkingPageState extends State<NetworkingPage> {
               radius: 24,
               backgroundColor: const Color(0xFFE8F5E9),
               backgroundImage: attendee.profilePicUrl != null
-                  ? NetworkImage(attendee.profilePicUrl!)
+                  ? appImageProvider(
+                      attendee.profilePicUrl!,
+                      privacy: ImagePrivacy.private,
+                      decodeWidth: decodeWidthFor(
+                          48, 48, MediaQuery.devicePixelRatioOf(context)),
+                    )
+                  : null,
+              onBackgroundImageError: attendee.profilePicUrl != null
+                  ? (_, __) {}
                   : null,
               child: attendee.profilePicUrl == null
                   ? Text(

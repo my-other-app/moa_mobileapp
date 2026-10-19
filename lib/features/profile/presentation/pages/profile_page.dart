@@ -9,6 +9,7 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/shared/widgets/confirmation_dialog.dart';
 import 'package:finnet/features/main/presentation/pages/main_shell.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// Profile Page - exact same UI as original, using Riverpod for state.
 class ProfilePage extends ConsumerStatefulWidget {
@@ -125,24 +126,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ),
                     child: ClipOval(
                       child: avatarUrl != null && avatarUrl.isNotEmpty
-                          ? Image.network(
-                              avatarUrl,
+                          ? AppNetworkImage(
+                              url: avatarUrl,
                               width: 60,
                               height: 60,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  const Icon(Icons.person,
-                                      size: 30, color: Colors.white),
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return const Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                );
-                              },
+                              privacy: ImagePrivacy.private,
+                              errorWidget: (_) => const Icon(Icons.person,
+                                  size: 30, color: Colors.white),
+                              placeholder: (_) => const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
                             )
                           : const Icon(Icons.person,
                               size: 30, color: Colors.white),

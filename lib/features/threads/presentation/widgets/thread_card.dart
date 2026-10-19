@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/core/utils/time_ago.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// A club's post, as a card: who posted and when, what they said, the photo
 /// and the poll if there is one, and the like and comment counts.
@@ -229,15 +229,14 @@ class ThreadClubAvatar extends StatelessWidget {
 
     final image = url == null
         ? fallback
-        : CachedNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.cover,
+        : AppNetworkImage(
+            url: url,
             width: size,
             height: size,
             // A plain tile while loading, so the row does not jump once the
             // image arrives; the initial if it never does.
-            placeholder: (_, __) => const ColoredBox(color: Color(0xFFEFEFEF)),
-            errorWidget: (_, __, ___) => fallback,
+            placeholder: (_) => const ColoredBox(color: Color(0xFFEFEFEF)),
+            errorWidget: (_) => fallback,
           );
 
     return SizedBox(
@@ -319,17 +318,16 @@ class _ThreadImage extends StatelessWidget {
       child: ConstrainedBox(
         // Tall photos are cropped rather than allowed to take the screen.
         constraints: const BoxConstraints(maxHeight: 420),
-        child: CachedNetworkImage(
-          imageUrl: url,
+        child: AppNetworkImage(
+          url: url,
           width: double.infinity,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => Container(
+          placeholder: (_) => Container(
             height: 200,
             color: Colors.grey[200],
           ),
           // A photo that will not load is left out rather than shown broken;
           // the text still says what the post is.
-          errorWidget: (_, __, ___) => const SizedBox.shrink(),
+          errorWidget: (_) => const SizedBox.shrink(),
         ),
       ),
     );

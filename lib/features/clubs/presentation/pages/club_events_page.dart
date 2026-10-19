@@ -85,29 +85,45 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       _isLoading = true;
     });
 
+    final query = {
+      'limit': _limit,
+      'offset': _offset,
+      'is_ended': widget.isPastEvents,
+    };
     try {
-      final Response res = await APIService.instance.request(
-        '/clubs/${widget.clubId}/events',
-        DioMethod.get,
-        param: {
-          'limit': _limit,
-          'offset': _offset,
-          'is_ended': widget.isPastEvents,
-        },
-      );
-
-      final List<Map<String, dynamic>> newEvents =
-          List<Map<String, dynamic>>.from(res.data['items'] ?? []);
-
-      setState(() {
-        _events.addAll(newEvents);
-        _filteredEvents = List.from(_events);
-        _offset += newEvents.length;
-        _hasMore = newEvents.length >= _limit;
-        _isLoading = false;
-        _errorMessage = null;
-      });
+      if (_offset == 0) {
+        // The first page: the saved copy at once, then the network's.
+        await APIService.instance.getSavedThenFresh(
+          '/clubs/${widget.clubId}/events',
+          param: query,
+          onData: (data, {required fresh}) {
+            if (!mounted) return;
+            final page = _eventsOf(data);
+            setState(() {
+              _events
+                ..clear()
+                ..addAll(page);
+              _offset = page.length;
+              _settle(page);
+            });
+          },
+        );
+      } else {
+        final Response res = await APIService.instance.request(
+          '/clubs/${widget.clubId}/events',
+          DioMethod.get,
+          param: query,
+        );
+        if (!mounted) return;
+        final page = _eventsOf(res.data);
+        setState(() {
+          _events.addAll(page);
+          _offset += page.length;
+          _settle(page);
+        });
+      }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = extractErrorMessage(
           e,
@@ -116,6 +132,24 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
         _isLoading = false;
       });
     }
+  }
+
+  void _settle(List<Map<String, dynamic>> page) {
+    _filteredEvents = List.from(_events);
+    _hasMore = page.length >= _limit;
+    _isLoading = false;
+    _errorMessage = null;
+  }
+
+  /// The events in an answer; anything that is not one is skipped rather
+  /// than thrown on.
+  static List<Map<String, dynamic>> _eventsOf(Object? data) {
+    final items = data is Map ? data['items'] : null;
+    return [
+      if (items is List)
+        for (final item in items)
+          if (item is Map) Map<String, dynamic>.from(item),
+    ];
   }
 
   Future<void> _refresh() async {

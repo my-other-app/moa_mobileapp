@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/features/notifications/data/models/notification_model.dart';
 import 'package:finnet/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:finnet/features/profile/presentation/pages/notifications/no_notification_page.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/core/services/notification_service.dart';
 
 /// Notifications page showing in-app notification history.
 class NotificationsNewPage extends ConsumerStatefulWidget {
@@ -258,12 +260,11 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
           color: Colors.grey[200],
         ),
         child: ClipOval(
-          child: Image.network(
-            notification.fromClub!.logo!,
+          child: AppNetworkImage(
+            url: notification.fromClub!.logo!,
             width: 48,
             height: 48,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _buildIconAvatar(notification),
+            errorWidget: (_) => _buildIconAvatar(notification),
           ),
         ),
       );
@@ -305,6 +306,8 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
         return const Color(0xFFEF9A9A); // Red
       case 'club_thread':
         return const Color(0xFFB8DFF2); // Blue, from the club page's palette
+      case 'event_live_join':
+        return const Color(0xFFA7F3D0); // Green, as the event page's live strip
       default:
         return Colors.grey[200]!;
     }
@@ -340,6 +343,15 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
         final threadId = notification.threadId;
         if (threadId != null) {
           context.push('/threads/${Uri.encodeComponent(threadId)}');
+        }
+        break;
+      case 'event_live_join':
+        // A quiz or a poll started: the event, with its live room on top,
+        // as the push opens it.
+        final liveEventId = notification.liveEventId;
+        if (liveEventId != null) {
+          context.push(NotificationService.liveJoinRoute(
+              liveEventId, notification.liveWhat));
         }
         break;
       case 'event_checkin':

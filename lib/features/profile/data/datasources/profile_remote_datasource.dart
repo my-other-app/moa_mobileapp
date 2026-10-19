@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/network/dio_client.dart';
 import 'package:finnet/features/profile/data/models/profile_models.dart';
 
@@ -7,13 +8,16 @@ import 'package:finnet/features/profile/data/models/profile_models.dart';
 final profileRemoteDataSourceProvider =
     Provider<ProfileRemoteDataSource>((ref) {
   final dio = ref.watch(dioProvider);
-  return ProfileRemoteDataSourceImpl(dio);
+  return ProfileRemoteDataSourceImpl(dio, cache: ref.watch(apiCacheProvider));
 });
 
 /// Abstract interface for remote profile operations.
 abstract class ProfileRemoteDataSource {
   /// Get current user's profile.
   Future<UserProfileModel> getMyProfile();
+
+  /// The profile as last saved on this phone, or null. No network.
+  Future<UserProfileModel?> getSavedProfile();
 
   /// Update user's profile.
   Future<UserProfileModel> updateProfile(UpdateProfileRequest request);
@@ -40,8 +44,16 @@ abstract class ProfileRemoteDataSource {
 /// Implementation of profile remote data source.
 class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   final Dio _dio;
+  final ApiCache? _cache;
 
-  ProfileRemoteDataSourceImpl(this._dio);
+  ProfileRemoteDataSourceImpl(this._dio, {ApiCache? cache}) : _cache = cache;
+
+  static const _me = '/user/profile/me';
+
+  /// A body that is not an object reads as an empty one: the model fills
+  /// in its defaults rather than the cast throwing.
+  static Map<String, dynamic> _object(Object? body) =>
+      body is Map<String, dynamic> ? body : const <String, dynamic>{};
 
   /// Pull a list out of a body that may be a bare array or a paginated
   /// envelope. The server uses `items` for the paginated ones; reading the
@@ -56,8 +68,19 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<UserProfileModel> getMyProfile() async {
-    final response = await _dio.get('/user/profile/me');
-    return UserProfileModel.fromJson(response.data as Map<String, dynamic>);
+    final response = await _dio.get(
+      _me,
+      // The person's own details: saved encrypted.
+      options: Options(extra: CachePolicy.personal.extra),
+    );
+    return UserProfileModel.fromJson(_object(response.data));
+  }
+
+  @override
+  Future<UserProfileModel?> getSavedProfile() async {
+    final data = await (_cache ?? ApiCache.instance)
+        .savedAnswer(_dio, _me, scope: CacheScope.personal);
+    return data is Map<String, dynamic> ? UserProfileModel.fromJson(data) : null;
   }
 
   @override
@@ -67,7 +90,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       '/user/profile/update',
       data: request.toJson(),
     );
-    return UserProfileModel.fromJson(response.data as Map<String, dynamic>);
+    return UserProfileModel.fromJson(_object(response.data));
   }
 
   @override
@@ -76,7 +99,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       '/user/profile/create',
       data: request.toJson(),
     );
-    return UserProfileModel.fromJson(response.data as Map<String, dynamic>);
+    return UserProfileModel.fromJson(_object(response.data));
   }
 
   @override
@@ -105,7 +128,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       '/user/avatar/select',
       data: {'avatar_id': avatarId},
     );
-    return UserProfileModel.fromJson(response.data as Map<String, dynamic>);
+    return UserProfileModel.fromJson(_object(response.data));
   }
 
   /// Every interest, flattened out of its topic.
@@ -137,6 +160,6 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       '/user/interests/select',
       data: {'interest_ids': interestIds},
     );
-    return UserProfileModel.fromJson(response.data as Map<String, dynamic>);
+    return UserProfileModel.fromJson(_object(response.data));
   }
 }

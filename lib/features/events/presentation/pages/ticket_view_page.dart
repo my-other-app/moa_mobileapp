@@ -1,16 +1,17 @@
-import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/cache/document_cache.dart';
+import 'package:finnet/core/network/interceptors/retry_interceptor.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:apple_passkit/apple_passkit.dart';
 import 'package:finnet/core/utils/hours.dart';
@@ -28,6 +29,27 @@ class TicketViewPage extends StatefulWidget {
   final String? ticketType;
   final String? posterUrl;
 
+  /// Whether the app can reach the server; defaults to
+  /// [NetworkStatus.instance]. Offline, the ticket is the drawn card, its QR
+  /// made on the phone from [ticketId], with a note that it is the saved
+  /// ticket.
+  final NetworkStatus? networkStatus;
+
+  /// The organiser revoked this ticket. The screen says so instead of
+  /// showing a QR -- online or offline -- and offers nothing to download,
+  /// share or add to a wallet: the door would refuse it.
+  final bool revoked;
+
+  static const revokedKey = ValueKey('ticket-revoked');
+  static const revokedMessage = 'This ticket was revoked by the organiser';
+
+  /// The drawn card's QR, keyed by what it encodes.
+  static Key qrKeyFor(String data) => ValueKey('ticket-qr:$data');
+
+  /// The note shown while offline.
+  static const offlineNoticeKey = ValueKey('ticket-offline-notice');
+  static const offlineNotice = 'Offline — showing your saved ticket';
+
   const TicketViewPage({
     super.key,
     required this.ticketId,
@@ -39,6 +61,8 @@ class TicketViewPage extends StatefulWidget {
     this.ticketHolderName,
     this.ticketType,
     this.posterUrl,
+    this.networkStatus,
+    this.revoked = false,
   });
 
   @override
@@ -60,6 +84,9 @@ class _TicketViewPageState extends State<TicketViewPage>
   /// there to scan.
   Uint8List? _ticketImage;
   bool _ticketImageFailed = false;
+
+  /// No server to ask: the drawn card, with its on-device QR, and a note.
+  bool _offline = false;
   late AnimationController _glowController;
   late AnimationController _pulseController;
 
@@ -97,7 +124,17 @@ class _TicketViewPageState extends State<TicketViewPage>
   @override
   void initState() {
     super.initState();
-    _loadTicketImage();
+    if (widget.revoked) {
+      // Revoked: no QR of any kind, so nothing to fetch.
+      _ticketImageFailed = true;
+    } else if ((widget.networkStatus ?? NetworkStatus.instance).isOffline) {
+      // Known to be offline: straight to the drawn card, without a spinner
+      // waiting on a request that cannot succeed.
+      _offline = true;
+      _ticketImageFailed = true;
+    } else {
+      _loadTicketImage();
+    }
     _glowController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -122,7 +159,12 @@ class _TicketViewPageState extends State<TicketViewPage>
       // image is an entry pass and the endpoint keeps the PDF's access rule.
       final response = await APIService.instance.dio.get<List<int>>(
         '/events/tickets/${widget.ticketId}/image',
-        options: Options(responseType: ResponseType.bytes),
+        // No second try: the drawn card is a ticket too, and the person is
+        // probably standing at the door.
+        options: Options(
+          responseType: ResponseType.bytes,
+          extra: {RetryInterceptor.noRetryKey: true},
+        ),
       );
       final bytes = response.data;
       if (!mounted) return;
@@ -133,8 +175,22 @@ class _TicketViewPageState extends State<TicketViewPage>
       }
     } catch (e) {
       debugPrint('Ticket image unavailable, showing the drawn card: $e');
-      if (mounted) setState(() => _ticketImageFailed = true);
+      if (!mounted) return;
+      setState(() {
+        _ticketImageFailed = true;
+        _offline = e is DioException && RetryInterceptor.isConnectionFailure(e);
+      });
     }
+  }
+
+  /// The ticket's PDF, from the copy kept on the phone when the server says
+  /// it has not changed (or cannot be reached), else downloaded again.
+  Future<SavedDocument> _ticketPdf() {
+    final safeId = DocumentCache.safeName(widget.ticketId);
+    return DocumentCache.instance.fetch(
+      '/events/tickets/${widget.ticketId}/pdf',
+      name: 'ticket_$safeId.pdf',
+    );
   }
 
   Future<void> _downloadTicket() async {
@@ -142,22 +198,13 @@ class _TicketViewPageState extends State<TicketViewPage>
     HapticFeedback.mediumImpact();
 
     try {
-      final response = await APIService.instance.dio.get(
-        '/events/tickets/${widget.ticketId}/pdf',
-        options: Options(responseType: ResponseType.bytes),
-      );
-
-      if (response.statusCode == 200) {
-        final directory = await getApplicationDocumentsDirectory();
-        final filePath = '${directory.path}/ticket_${widget.ticketId}.pdf';
-        await File(filePath).writeAsBytes(response.data as List<int>);
-
-        HapticFeedback.heavyImpact();
-        if (mounted) {
-          _showSuccessSnackBar('Ticket saved!', () => OpenFilex.open(filePath));
-        }
-      } else {
-        throw Exception('Download failed: ${response.statusCode}');
+      final pdf = await _ticketPdf();
+      HapticFeedback.heavyImpact();
+      if (mounted) {
+        _showSuccessSnackBar(
+          pdf.current ? 'Ticket saved!' : 'Offline — this is your saved copy',
+          () => OpenFilex.open(pdf.file.path),
+        );
       }
     } catch (e) {
       debugPrint('Download error: $e');
@@ -185,7 +232,14 @@ class _TicketViewPageState extends State<TicketViewPage>
       androidParams: const AndroidParams(emailInvites: []),
     );
 
-    await Add2Calendar.addEvent2Cal(event);
+    // A platform failure (no calendar app, permission refused) was thrown
+    // from a tap handler, unhandled.
+    try {
+      await Add2Calendar.addEvent2Cal(event);
+    } catch (e) {
+      debugPrint('Add to calendar failed: $e');
+      if (mounted) _showErrorSnackBar("Couldn't open your calendar");
+    }
   }
 
   Future<void> _shareTicket() async {
@@ -194,37 +248,10 @@ class _TicketViewPageState extends State<TicketViewPage>
     setState(() => _isDownloading = true);
 
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      // Sanitize filename
-      final safeId = widget.ticketId.replaceAll(RegExp(r'[^\w\s-]'), '');
-      final filePath = '${directory.path}/ticket_$safeId.pdf';
-      final file = File(filePath);
-
-      // Always download fresh copy to ensure it's valid
-      if (await file.exists()) {
-        await file.delete();
-      }
-
-      final pdfPath = '/events/tickets/${widget.ticketId}/pdf';
-      debugPrint('Downloading ticket from: $pdfPath');
-
-      final response = await APIService.instance.dio.get(
-        pdfPath,
-        options: Options(responseType: ResponseType.bytes),
-      );
-
-      if (response.statusCode == 200) {
-        final bytes = response.data as List<int>;
-        if (bytes.isEmpty) {
-          throw Exception('Downloaded file is empty');
-        }
-        await file.writeAsBytes(bytes);
-        debugPrint('Ticket saved to: $filePath (${bytes.length} bytes)');
-      } else {
-        debugPrint('Download failed with status: ${response.statusCode}');
-        throw Exception(
-            'Failed to download ticket (Status: ${response.statusCode})');
-      }
+      // The kept copy when it is current, or when there is no network; it
+      // used to delete it and download again every time, so sharing a
+      // ticket offline always failed.
+      final filePath = (await _ticketPdf()).file.path;
 
       // Check mounted before accessing context after async gap
       if (!mounted) return;
@@ -523,11 +550,98 @@ class _TicketViewPageState extends State<TicketViewPage>
                 child: Column(
                   children: [
                     const SizedBox(height: 8),
-                    _buildTicketCard(),
-                    const SizedBox(height: 28),
-                    _buildActionButtons(),
+                    if (widget.revoked)
+                      _buildRevokedCard()
+                    else ...[
+                      if (_offline) _buildOfflineNotice(),
+                      _buildTicketCard(),
+                      const SizedBox(height: 28),
+                      _buildActionButtons(),
+                    ],
                   ],
                 ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// In place of the ticket: what happened, the event it was for, and no
+  /// QR -- a revoked ticket must not look like one that gets you in.
+  Widget _buildRevokedCard() {
+    return Container(
+      key: TicketViewPage.revokedKey,
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.red.shade300.withAlpha(120), width: 1.5),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.block, size: 44, color: Colors.red.shade300),
+          const SizedBox(height: 16),
+          const Text(
+            TicketViewPage.revokedMessage,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${widget.eventName} · ${widget.ticketId}',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              fontSize: 13,
+              color: Colors.white.withAlpha(170),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'It will not be accepted at the door. If you think this is a '
+            'mistake, contact the organiser.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              fontSize: 13,
+              color: Colors.white.withAlpha(170),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfflineNotice() {
+    return Container(
+      key: TicketViewPage.offlineNoticeKey,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _accentYellow.withAlpha(60)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.cloud_off, size: 16, color: _accentYellow),
+          const SizedBox(width: 8),
+          const Flexible(
+            child: Text(
+              TicketViewPage.offlineNotice,
+              style: TextStyle(
+                fontFamily: 'DMSans',
+                fontSize: 13,
+                color: Colors.white,
               ),
             ),
           ),
@@ -557,7 +671,8 @@ class _TicketViewPageState extends State<TicketViewPage>
         ],
       ),
       actions: [
-        _buildAppBarButton(Icons.share_outlined, _shareTicket),
+        if (!widget.revoked)
+          _buildAppBarButton(Icons.share_outlined, _shareTicket),
         const SizedBox(width: 8),
       ],
     );
@@ -963,7 +1078,10 @@ class _TicketViewPageState extends State<TicketViewPage>
                 ),
               ],
             ),
+            // Made on the phone from the plain ticket code, what the door
+            // scanner reads: no network needed to show it.
             child: QrImageView(
+              key: TicketViewPage.qrKeyFor(widget.ticketId),
               data: widget.ticketId,
               version: QrVersions.auto,
               size: 160,

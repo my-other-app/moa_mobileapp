@@ -77,13 +77,31 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   Future<void> _loadProfile() async {
     state = state.copyWith(isLoading: true, error: null);
 
+    // The copy saved on this phone first, so every screen that shows the
+    // name or fills a form has it at once -- and offline.
+    if (state.profile == null) {
+      UserProfile? saved;
+      try {
+        saved = await _repository.getSavedProfile();
+      } catch (e) {
+        debugPrint('ProfileNotifier: no saved profile: $e');
+      }
+      if (!mounted) return;
+      if (saved != null && state.profile == null) {
+        state = state.copyWith(profile: saved, isLoading: true);
+      }
+    }
+
     final result = await _repository.getMyProfile();
+    if (!mounted) return;
 
     result.fold(
       (failure) {
         state = state.copyWith(
           isLoading: false,
-          error: failure.message,
+          // With a saved profile on screen, a failed refresh is not an
+          // error to show: the offline strip says why it is not fresh.
+          error: state.profile == null ? failure.message : null,
         );
       },
       (profile) {

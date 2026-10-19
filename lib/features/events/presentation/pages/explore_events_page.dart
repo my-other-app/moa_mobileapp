@@ -68,6 +68,11 @@ class _ExploreEventsPageState extends ConsumerState<ExploreEventsPage> {
   /// Bumped per fetch, so an answer to an older filter is dropped.
   int _generation = 0;
 
+  /// While the first page is still on its way from the network (after the
+  /// saved copy), no more pages are appended: the fresh first page would
+  /// replace them.
+  bool _firstPageInFlight = false;
+
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
 
@@ -147,25 +152,46 @@ class _ExploreEventsPageState extends ConsumerState<ExploreEventsPage> {
       return;
     }
 
-    try {
-      final page = await _page(0);
+    void show(List<Map<String, dynamic>> page) {
       if (!mounted || generation != _generation) return;
       setState(() {
-        _events.addAll(page);
+        _events
+          ..clear()
+          ..addAll(page);
+        _offset = 0;
         _hasMore = page.length >= ExploreEventsPage.pageSize;
         _isLoading = false;
       });
+    }
+
+    _firstPageInFlight = true;
+    try {
+      if (_search.isEmpty) {
+        // A topic's (or everything's) first page: the saved copy at once,
+        // then the network's. A search is always asked fresh.
+        await APIService.instance.getSavedThenFresh(
+          '/events/list',
+          param: exploreEventsQuery(filter: _filter),
+          onData: (data, {required fresh}) => show(_itemsOf(data)),
+        );
+      } else {
+        show(await _page(0));
+      }
     } catch (e) {
       if (!mounted || generation != _generation) return;
       setState(() {
         _errorMessage = readableError(e, fallback: 'Could not load events.');
         _isLoading = false;
       });
+    } finally {
+      if (generation == _generation) _firstPageInFlight = false;
     }
   }
 
   Future<void> _loadMore() async {
-    if (_isLoadingMore || !_hasMore || _isLoading) return;
+    if (_isLoadingMore || !_hasMore || _isLoading || _firstPageInFlight) {
+      return;
+    }
     final generation = _generation;
     final next = _offset + ExploreEventsPage.pageSize;
     setState(() => _isLoadingMore = true);
@@ -191,7 +217,10 @@ class _ExploreEventsPageState extends ConsumerState<ExploreEventsPage> {
       param: exploreEventsQuery(
           filter: _filter, search: _search, offset: offset),
     );
-    final data = res.data;
+    return _itemsOf(res.data);
+  }
+
+  static List<Map<String, dynamic>> _itemsOf(Object? data) {
     final items = data is Map ? data['items'] : null;
     return [
       if (items is List)

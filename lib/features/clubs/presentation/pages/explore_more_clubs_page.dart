@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -144,24 +143,38 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
       return;
     }
 
+    final query = exploreClubsQuery(
+      organizationId: _selectedOrgId,
+      filter: _filter,
+      search: _searchQuery,
+    );
+    void show(Object? data) {
+      if (!mounted || generation != _generation) return;
+      final items = data is Map ? data['items'] : null;
+      setState(() {
+        clubs = items is List ? List<dynamic>.of(items) : [];
+        isLoading = false;
+      });
+    }
+
     try {
-      Response<dynamic> res = await APIService.instance.request(
-        '/clubs/list',
-        DioMethod.get,
+      if (_searchQuery.trim().isEmpty) {
+        // A filter's list: the saved copy at once, then the network's. A
+        // search is always asked fresh.
+        await APIService.instance.getSavedThenFresh(
+          '/clubs/list',
+          param: query,
+          onData: (data, {required fresh}) => show(data),
+        );
+      } else {
         // As query parameters, so the search is encoded: it was pasted
         // into the URL as typed.
-        param: exploreClubsQuery(
-          organizationId: _selectedOrgId,
-          filter: _filter,
-          search: _searchQuery,
-        ),
-      );
-
-      if (mounted && generation == _generation) {
-        setState(() {
-          clubs = res.data['items'] ?? [];
-          isLoading = false;
-        });
+        final res = await APIService.instance.request(
+          '/clubs/list',
+          DioMethod.get,
+          param: query,
+        );
+        show(res.data);
       }
     } catch (e) {
       if (mounted && generation == _generation) {

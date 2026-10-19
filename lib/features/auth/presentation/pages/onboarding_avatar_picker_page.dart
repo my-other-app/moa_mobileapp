@@ -1,9 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/auth/presentation/pages/widgest/avatar_picker_bottom_sheet.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 Widget _buildDragIndicator() {
   return Row(
@@ -55,18 +55,14 @@ Widget _buildProfileImage(String? avatarUrl) {
       color: const Color(0xFFCCC1F0),
       shape: const OvalBorder(),
     ),
-    child: CachedNetworkImage(
-      imageUrl: avatarUrl ?? '',
-      imageBuilder: (context, imageProvider) => Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: imageProvider,
-            fit: BoxFit.cover,
-          ),
-        ),
+    child: ClipOval(
+      child: AppNetworkImage(
+        url: avatarUrl,
+        width: 150,
+        height: 150,
+        placeholder: (_) => const Center(child: CircularProgressIndicator()),
+        errorWidget: (_) => const Icon(Icons.face),
       ),
-      placeholder: (context, url) => const CircularProgressIndicator(),
-      errorWidget: (context, url, error) => const Icon(Icons.face),
     ),
   );
 }

@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -43,52 +42,63 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
     _fetchData();
   }
 
+  static const _pinnedPath = '/clubs/list?is_pinned=true';
+  static const _followingPath = '/clubs/list?is_following=true';
+
+  /// Pinned and followed clubs: the saved copies at once when there are
+  /// both, then the network's.
   Future<void> _fetchData() async {
+    final api = APIService.instance;
+    final savedPinned = await api.savedCopy(_pinnedPath);
+    final savedFollowing = await api.savedCopy(_followingPath);
+    final showedSaved = savedPinned != null && savedFollowing != null;
+    if (showedSaved) _show(savedPinned, savedFollowing);
+
     try {
-      // Fetch pinned clubs
-      Response<dynamic> resPinned = await APIService.instance.request(
-        '/clubs/list?is_pinned=true',
-        DioMethod.get,
-      );
-
-      // Fetch clubs you follow
-      Response<dynamic> resFollowing = await APIService.instance.request(
-        '/clubs/list?is_following=true',
-        DioMethod.get,
-      );
-
-      if (mounted) {
-        // Get pinned club IDs for cross-reference
-        final pinnedClubIds = (resPinned.data['items'] ?? [])
-            .map<int>((c) => c['id'] as int)
-            .toSet();
-
-        setState(() {
-          // Mark pinned clubs with is_pinned=true
-          pinnedClubs = (resPinned.data['items'] ?? [])
-              .map((c) => {...c, 'is_pinned': true})
-              .toList();
-
-          // Mark following clubs with is_pinned based on whether they're in pinned list
-          followingClubs = (resFollowing.data['items'] ?? [])
-              .map((c) => {...c, 'is_pinned': pinnedClubIds.contains(c['id'])})
-              .toList();
-
-          isLoading = false;
-          errorMessage = null;
-        });
-      }
+      final answers = await Future.wait([
+        api.request(_pinnedPath, DioMethod.get, cache: CachePolicy.shared),
+        api.request(_followingPath, DioMethod.get, cache: CachePolicy.shared),
+      ]);
+      _show(answers[0].data, answers[1].data);
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          errorMessage = extractErrorMessage(
-            e,
-            defaultMessage: 'Could not load clubs.',
-          );
-          isLoading = false;
-        });
-      }
+      if (!mounted || showedSaved) return;
+      setState(() {
+        errorMessage = extractErrorMessage(
+          e,
+          defaultMessage: 'Could not load clubs.',
+        );
+        isLoading = false;
+      });
     }
+  }
+
+  /// The clubs in an answer; anything that is not one is skipped. A club's
+  /// id used to be cast with `as int`, and one odd row lost the whole tab.
+  static List<Map<String, dynamic>> _clubsOf(Object? data) {
+    final items = data is Map ? data['items'] : null;
+    return [
+      if (items is List)
+        for (final item in items)
+          if (item is Map) Map<String, dynamic>.from(item),
+    ];
+  }
+
+  void _show(Object? pinnedData, Object? followingData) {
+    if (!mounted) return;
+    final pinned = _clubsOf(pinnedData);
+    // Pinned club IDs, to mark the followed clubs that are also pinned.
+    final pinnedIds = {for (final club in pinned) club['id']};
+    setState(() {
+      pinnedClubs = [
+        for (final club in pinned) {...club, 'is_pinned': true},
+      ];
+      followingClubs = [
+        for (final club in _clubsOf(followingData))
+          {...club, 'is_pinned': pinnedIds.contains(club['id'])},
+      ];
+      isLoading = false;
+      errorMessage = null;
+    });
   }
 
   Future<void> _refresh() async {

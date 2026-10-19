@@ -1,10 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// Page showing events the user is volunteering for
 class VolunteerEventsPage extends ConsumerStatefulWidget {
@@ -183,19 +183,18 @@ class _VolunteerEventsPageState extends ConsumerState<VolunteerEventsPage> {
                     // Club logo
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(
-                        imageUrl: event.clubLogoUrl ?? '',
+                      child: AppNetworkImage(
+                        url: event.clubLogoUrl,
                         width: 40,
                         height: 40,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
+                        placeholder: (context) => Container(
                           width: 40,
                           height: 40,
                           color: Colors.grey[200],
                           child: const Icon(Icons.group,
                               color: Colors.grey, size: 20),
                         ),
-                        errorWidget: (context, url, error) => Container(
+                        errorWidget: (context) => Container(
                           width: 40,
                           height: 40,
                           color: const Color(0xFF2C333D),
