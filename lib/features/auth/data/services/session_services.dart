@@ -2,7 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/auth/jwt_claims.dart';
+import 'package:finnet/core/cache/api_cache.dart';
+import 'package:finnet/core/cache/document_cache.dart';
+import 'package:finnet/core/cache/image_caches.dart';
+import 'package:finnet/core/cache/session_caches.dart';
 import 'package:finnet/core/services/notification_service.dart';
+import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
 
 /// This device's push registration, as signing in and out need it.
 abstract class PushRegistration {
@@ -101,3 +106,17 @@ final pushRegistrationProvider = Provider<PushRegistration>(
 final sessionRevokerProvider = Provider<SessionRevoker>(
   (ref) => const ApiSessionRevoker(),
 );
+
+/// Everything kept on the phone about the person: cleared at sign-out, when
+/// the server ends the session, and at sign-in (so a second account never
+/// sees the first one's tickets, registrations, profile, PDFs or pictures).
+/// Posters and other public pictures stay.
+final sessionCachesProvider = Provider<SessionCaches>((ref) {
+  final tickets = ref.watch(savedTicketsLocalDataSourceProvider);
+  return SessionCaches({
+    'saved answers': () => ApiCache.instance.clear(),
+    'saved tickets': tickets.clear,
+    'kept PDFs': () => DocumentCache.instance.clear(),
+    'private pictures': AppImageCaches.clearPrivate,
+  });
+});

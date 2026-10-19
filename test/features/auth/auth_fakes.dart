@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:finnet/core/cache/session_caches.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/features/auth/data/services/session_services.dart';
 
@@ -109,4 +110,14 @@ String tokenWithSid(String? sid) {
     }),
     'signature',
   ].join('.');
+}
+
+/// Counts how often everything kept about the person was cleared.
+class FakeSessionCaches extends SessionCaches {
+  FakeSessionCaches() : super(const {});
+
+  int cleared = 0;
+
+  @override
+  Future<void> clearAll() async => cleared++;
 }

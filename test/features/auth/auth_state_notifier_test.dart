@@ -11,12 +11,14 @@ void main() {
   late MemoryStorage storage;
   late FakePushRegistration push;
   late FakeSessionRevoker revoker;
+  late FakeSessionCaches caches;
 
   ProviderContainer containerWith({AuthState? seed}) {
     final container = ProviderContainer(overrides: [
       secureStorageServiceProvider.overrideWithValue(storage),
       pushRegistrationProvider.overrideWithValue(push),
       sessionRevokerProvider.overrideWithValue(revoker),
+      sessionCachesProvider.overrideWithValue(caches),
       if (seed != null) authSeedProvider.overrideWithValue(seed),
     ]);
     addTearDown(container.dispose);
@@ -30,6 +32,7 @@ void main() {
     storage = MemoryStorage();
     push = FakePushRegistration();
     revoker = FakeSessionRevoker();
+    caches = FakeSessionCaches();
   });
 
   group('start-up', () {
@@ -64,6 +67,19 @@ void main() {
     });
   });
 
+  test('signing in clears what an earlier session left behind', () async {
+    final container = containerWith();
+    container.read(authStateProvider);
+    await settle();
+
+    await container
+        .read(authStateProvider.notifier)
+        .setAuthenticated(accessToken: 'a', refreshToken: 'r');
+
+    expect(caches.cleared, 1);
+    expect(container.read(authStateProvider).isAuthenticated, isTrue);
+  });
+
   test('signing in asks for push permission -- then, not at start-up',
       () async {
     final container = containerWith();
@@ -95,6 +111,8 @@ void main() {
 
       // FCM token off the server, then the session, then the token itself.
       expect(push.calls, ['restored', 'serverUnregistered', 'signedOut']);
+      // And everything kept about the person.
+      expect(caches.cleared, 1);
       expect(revoker.revoked, [token]);
       // Through the normal path, so the interceptor can refresh once.
       expect(revoker.stored, [true]);
@@ -119,6 +137,7 @@ void main() {
         secureStorageServiceProvider.overrideWithValue(storage),
         pushRegistrationProvider.overrideWithValue(push),
         sessionRevokerProvider.overrideWithValue(revoker),
+      sessionCachesProvider.overrideWithValue(caches),
         signOutServerTimeoutProvider
             .overrideWithValue(const Duration(milliseconds: 50)),
       ]);
@@ -189,6 +208,8 @@ void main() {
       expect(push.calls.last, 'signedOut');
       // Nothing to end on the server: it ended it.
       expect(revoker.revoked, isEmpty);
+      // What was kept about the person goes with the session.
+      expect(caches.cleared, 1);
     });
 
     test('a suspension says so', () async {

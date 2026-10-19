@@ -153,6 +153,12 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
       {required String accessToken,
       required String refreshToken,
       UserProfile? user}) async {
+    // Whoever used the phone before -- this person or another -- leaves
+    // nothing behind for the new session: no saved answers, tickets, PDFs
+    // or private pictures. Normally the last sign-out already did this; an
+    // app killed mid-sign-out, or a session ended while nothing listened,
+    // did not.
+    await _ref.read(sessionCachesProvider).clearAll();
     final storage = _ref.read(secureStorageServiceProvider);
     await storage.saveTokens(
         accessToken: accessToken, refreshToken: refreshToken);
@@ -220,6 +226,8 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
       } catch (e) {
         debugPrint('AuthStateNotifier: Error during logout: $e');
       }
+      // Everything kept about this person goes with them.
+      await _ref.read(sessionCachesProvider).clearAll();
     } finally {
       _signingOut = false;
     }
@@ -242,6 +250,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       debugPrint('AuthStateNotifier: could not clear tokens: $e');
     }
+    await _ref.read(sessionCachesProvider).clearAll();
     if (!mounted) return;
     state = AuthState(isInitialized: true, endedBecause: reason);
   }
