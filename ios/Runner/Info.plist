@@ -75,13 +75,18 @@
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
+	<key>FlutterDeepLinkingEnabled</key>
+	<true/>
 	<key>NSCalendarsUsageDescription</key>
 	<string>This app needs access to your calendar to add event reminders so you never miss an event.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>This app needs access to your calendar to add event reminders so you never miss an event.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>When you add an event to your calendar, Apple's event screen can suggest a place from your contacts. MyOtherApp itself never reads your contacts.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>This app needs camera access to scan QR codes for event check-in.</string>
+	<string>MyOtherApp uses the camera to scan tickets at check-in and to verify certificate QR codes.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

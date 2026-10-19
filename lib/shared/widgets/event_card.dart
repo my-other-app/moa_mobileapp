@@ -6,6 +6,9 @@ import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart'
     show ticketRoute;
 import 'package:finnet/features/events/presentation/utils/event_feed.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/register_bar_parts.dart'
+    show IosSaleBlockedNotice;
+import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
@@ -86,6 +89,10 @@ class EventCard extends StatelessWidget {
   final DateTime? startsAt;
   final bool isOnline;
 
+  /// The event is paid. With [isOnline], an iPhone doesn't sell it
+  /// (canSellInApp): the card then shows no payment cue at all.
+  final bool hasFee;
+
   final List<String> tags;
   final VoidCallback onTap;
   final String orgImage;
@@ -112,6 +119,7 @@ class EventCard extends StatelessWidget {
     this.categoryName,
     this.startsAt,
     this.isOnline = false,
+    this.hasFee = false,
     required this.tags,
     required this.onTap,
     required this.orgImage,
@@ -131,6 +139,15 @@ class EventCard extends StatelessWidget {
   String? get _shareUrl => eventSlug.trim().isNotEmpty || eventId > 0
       ? eventShareUrl(id: eventId, slug: eventSlug)
       : null;
+
+  /// What the card shows for its status. A registration waiting for its
+  /// payment, for an event the iOS app doesn't sell, shows none of it --
+  /// no "Payment due", no FINISH PAYMENT -- but the page's own neutral
+  /// line instead.
+  bool get _saleBlocked => !canSellInApp(hasFee: hasFee, isOnline: isOnline);
+
+  bool get _paymentCue =>
+      status == EventCardStatus.awaitingPayment && !_saleBlocked;
 
   @override
   Widget build(BuildContext context) {
@@ -242,10 +259,11 @@ class EventCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10.0),
               ),
             ),
-            if (status == EventCardStatus.awaitingPayment)
+            if (_paymentCue)
               const Positioned(top: 12, right: 12, child: PaymentDueBadge())
             // Status badge overlay
-            else if (status != EventCardStatus.none)
+            else if (status != EventCardStatus.none &&
+                status != EventCardStatus.awaitingPayment)
               Positioned(
                 top: 12,
                 right: 12,
@@ -375,6 +393,10 @@ class EventCard extends StatelessWidget {
           ),
           child: const Text('VIEW EVENT'),
         );
+      case EventCardStatus.awaitingPayment when _saleBlocked:
+        // The event page shows the same: the line, no price, no button to
+        // pay. Its title and poster still open the event.
+        return const IosSaleBlockedNotice();
       case EventCardStatus.awaitingPayment:
         return FilledButton(
           key: const ValueKey('event-finish-payment'),

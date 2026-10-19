@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:finnet/core/network/network_status.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 
 /// Keeps the person's saved tickets current while the app is online.
@@ -11,7 +12,9 @@ import 'package:finnet/features/events/presentation/providers/saved_tickets_prov
 /// tickets when it first appears, when the app comes back to the front
 /// (at most every [resumeEvery]), and the moment the app is back online
 /// after being offline -- so the ticket on the phone at the door is the
-/// latest one the server gave, and one cancelled since is gone.
+/// latest one the server gave, and one cancelled since is gone. Signed
+/// out there are no tickets to ask about: it asks nothing until someone
+/// signs in, and then at once.
 class SavedTicketsSync extends ConsumerStatefulWidget {
   const SavedTicketsSync({
     super.key,
@@ -60,16 +63,23 @@ class _SavedTicketsSyncState extends ConsumerState<SavedTicketsSync>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && mounted) {
+    if (state == AppLifecycleState.resumed && mounted && _signedIn) {
       ref.read(savedTicketsProvider.notifier).refreshIfOlderThan(widget.resumeEvery);
     }
   }
 
+  bool get _signedIn => ref.read(isAuthenticatedProvider);
+
   void _refresh() {
-    if (!mounted) return;
+    if (!mounted || !_signedIn) return;
     ref.read(savedTicketsProvider.notifier).refresh();
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) {
+    ref.listen<bool>(isAuthenticatedProvider, (was, now) {
+      if (now && was != true) _refresh();
+    });
+    return widget.child;
+  }
 }

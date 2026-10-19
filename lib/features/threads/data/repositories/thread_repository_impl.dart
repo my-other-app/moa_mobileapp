@@ -86,6 +86,41 @@ class ThreadRepositoryImpl implements ThreadRepository {
   }
 
   @override
+  Future<Result<ThreadPage>> getFollowingFeed({
+    String? after,
+    int limit = 20,
+  }) {
+    return _guard('getFollowingFeed', () async {
+      final page =
+          await remoteDataSource.getFollowingFeed(after: after, limit: limit);
+      return page.toEntity(requestedOffset: 0, requestedLimit: limit);
+    });
+  }
+
+  @override
+  Future<ThreadPage?> savedClubThreads(int clubId, {int limit = 20}) async {
+    try {
+      final page =
+          await remoteDataSource.savedClubThreads(clubId, limit: limit);
+      return page?.toEntity(requestedOffset: 0, requestedLimit: limit);
+    } catch (e) {
+      debugPrint('ThreadRepository.savedClubThreads: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<ThreadPage?> savedFollowingFeed({int limit = 20}) async {
+    try {
+      final page = await remoteDataSource.savedFollowingFeed(limit: limit);
+      return page?.toEntity(requestedOffset: 0, requestedLimit: limit);
+    } catch (e) {
+      debugPrint('ThreadRepository.savedFollowingFeed: $e');
+      return null;
+    }
+  }
+
+  @override
   Future<Result<Thread>> getThread(String threadId) async {
     final result = await _guard('getThread', () async {
       return (await remoteDataSource.getThread(threadId)).toEntity();

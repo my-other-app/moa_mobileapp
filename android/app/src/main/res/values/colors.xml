@@ -2,4 +2,8 @@
 <resources>
     <!-- Splash screen background color matching app theme -->
     <color name="splash_background">#FFFFA0</color>
+    <!-- The adaptive launcher icon's background layer: the icon's teal. -->
+    <color name="ic_launcher_background">#17A58F</color>
+    <!-- The accent a notification's small icon and app name are drawn in. -->
+    <color name="notification_accent">#17A58F</color>
 </resources>

@@ -46,6 +46,9 @@ class VolunteerNotifier extends StateNotifier<VolunteerState> {
     state = state.copyWith(isLoading: true, error: null);
 
     final result = await _repository.myEvents();
+    // Signed out (the session's providers disposed) while it was asked:
+    // a slow network made that a crash.
+    if (!mounted) return;
 
     state = result.fold(
       (failure) => state.copyWith(isLoading: false, error: failure.message),

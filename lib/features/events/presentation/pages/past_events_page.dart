@@ -25,7 +25,7 @@ class _PastEventsPageState extends State<PastEventsPage>
 
   /// The person's own registrations: encrypted.
   @override
-  CachePolicy get feedPolicy => CachePolicy.personal;
+  CachePolicy get feedPolicy => CachePolicy.personalKept;
 
   @override
   String get feedErrorFallback => 'Could not load past events.';

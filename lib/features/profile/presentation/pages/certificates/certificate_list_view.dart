@@ -77,7 +77,7 @@ class CertificateListView extends ConsumerWidget {
                       .valueOrNull ??
                   CertificateStyle.fallback;
               final drawn = FittedBox(
-                fit: BoxFit.cover,
+                fit: BoxFit.contain,
                 child: SizedBox(
                   width: 160,
                   child: CertificatePreview(
@@ -88,9 +88,14 @@ class CertificateListView extends ConsumerWidget {
               );
 
               return CertificateListCard(
+                // The whole certificate, at its own shape, in a slot as
+                // wide as one: cropped to a square it was a strip of its
+                // middle, which looked nothing like what the club sent.
+                leadingWidth: CertificateListCard.documentWidth,
                 leading: AppNetworkImage(
                   url: certificate.imageUrl(Env.apiBaseUrl),
                   privacy: ImagePrivacy.private,
+                  fit: BoxFit.contain,
                   decodeWidth: 480,
                   placeholder: (_) => drawn,
                   errorWidget: (_) => drawn,

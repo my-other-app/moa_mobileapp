@@ -35,12 +35,15 @@ Future<RegistrationAction?> showRegistrationRefusal(
 
 /// No order could be made, so nothing was charged. An event this build
 /// can't pay (409 UPDATE_APP_TO_PAY) also offers its page on the website.
+///
+/// The words are [paymentFailureMessage]'s: the server's refusals (full,
+/// ended, paused, sold out) in plain words.
 void showPaymentFailure(BuildContext context, Failure failure) {
   final webUrl = failure is UpdateAppToPayFailure ? failure.webUrl : null;
   final uri = webUrl == null ? null : Uri.tryParse(webUrl);
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text(failure.message),
+      content: Text(paymentFailureMessage(failure)),
       showCloseIcon: uri != null,
       action: uri == null
           ? null

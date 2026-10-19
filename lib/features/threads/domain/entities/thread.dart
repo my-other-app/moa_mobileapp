@@ -208,11 +208,17 @@ class ThreadPage extends Equatable {
   final int limit;
   final int offset;
 
+  /// The cursor for the page after this one, on the lists that page by
+  /// cursor (the follower's feed: its `offset` is always 0 there, so only
+  /// this says whether there is more). Null on the last page.
+  final String? nextCursor;
+
   const ThreadPage({
     this.items = const [],
     this.total = 0,
     this.limit = 20,
     this.offset = 0,
+    this.nextCursor,
   });
 
   /// Whether another page exists after this one.
@@ -222,7 +228,7 @@ class ThreadPage extends Equatable {
   bool get hasMore => items.isNotEmpty && offset + items.length < total;
 
   @override
-  List<Object?> get props => [items, total, limit, offset];
+  List<Object?> get props => [items, total, limit, offset, nextCursor];
 }
 
 /// What the server says after a like is toggled.

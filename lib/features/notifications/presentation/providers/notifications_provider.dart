@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:finnet/features/notifications/data/models/notification_model.dart';
 import 'package:finnet/features/notifications/domain/repositories/notification_repository.dart';
@@ -168,6 +169,16 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
     );
   }
 
+  /// Back online: read again, if the list was read (or failed) before and
+  /// is not being read now (the offline state on screen may already have
+  /// asked).
+  void reloadIfShown() {
+    if (state.isLoading) return;
+    if (state.notifications.isNotEmpty || state.error != null) {
+      loadNotifications();
+    }
+  }
+
   /// Refresh notifications (pull to refresh)
   Future<void> refresh() async {
     state = state.copyWith(
@@ -180,10 +191,17 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 }
 
 /// Provider instance
+///
+/// Read again when the app comes back online, if it has been read at all.
 final notificationsProvider =
-    StateNotifierProvider<NotificationsNotifier, NotificationsState>(
-  (ref) => NotificationsNotifier(ref.watch(notificationRepositoryProvider)),
-);
+    StateNotifierProvider<NotificationsNotifier, NotificationsState>((ref) {
+  final notifier =
+      NotificationsNotifier(ref.watch(notificationRepositoryProvider));
+  ref.listen<int>(backOnlineProvider, (_, __) {
+    if (notifier.mounted) notifier.reloadIfShown();
+  });
+  return notifier;
+});
 
 /// Provider for just unread count (useful for badges in nav)
 final unreadNotificationCountProvider = Provider<int>((ref) {

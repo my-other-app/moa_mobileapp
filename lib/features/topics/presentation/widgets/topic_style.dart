@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
 
 // How a topic looks: its colour and icon, with fallbacks for a server that
 // sends neither (production before the topics migration), and the surface
@@ -51,23 +53,9 @@ Color topicColor(Topic topic) {
   return Color(palette[topic.id.abs() % palette.length]);
 }
 
-/// Whether [icon] is something to draw as text: only an emoji the server
-/// calls one (`icon_type: "emoji"`) and that looks like one.
-///
-/// Anything else gets the built-in icon: a URL (`icon_type: "url"`), no
-/// type at all, or text -- production's topic has the placeholder icon
-/// "string", which must never appear as a word on a chip.
-bool _isGlyph(String? icon, String? iconType) {
-  if (iconType != 'emoji') return false;
-  final text = icon?.trim() ?? '';
-  if (text.isEmpty || text.runes.length > 8) return false;
-  // Letters, digits or URL punctuation: a word or a link, not an emoji.
-  if (RegExp(r'[A-Za-z0-9/.:]').hasMatch(text)) return false;
-  // At least one symbol from the emoji and pictograph ranges.
-  return text.runes.any((r) => r >= 0x2000);
-}
-
-/// The topic's icon: its emoji, else a symbol for its slug.
+/// The topic's icon: its emoji -- the server's, else the default tree's
+/// for its slug -- and a symbol only for a topic the app does not know that
+/// came without one.
 class TopicIcon extends StatelessWidget {
   final Topic topic;
   final double size;
@@ -77,20 +65,31 @@ class TopicIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (_isGlyph(topic.icon, topic.iconType)) {
-      // Not scaled with the text, like an Icon: it marks, it is not read.
-      return Text(topic.icon!.trim(),
-          textScaler: TextScaler.noScaling,
-          style: TextStyle(fontSize: size * 0.9, height: 1.1));
-    }
+    final emoji = topic.emoji;
+    if (emoji != null) return EmojiGlyph(emoji, size: size);
     return Icon(_defaultIcons[topic.slug] ?? Icons.interests_outlined,
         size: size, color: color ?? topicColor(topic));
   }
 }
 
-/// An interest's emoji, or null when it has none to draw.
-String? interestGlyph(String? icon, String? iconType) =>
-    _isGlyph(icon, iconType) ? icon!.trim() : null;
+/// An emoji drawn as an icon: the same size whatever the phone's text size,
+/// like an [Icon] -- it marks, it is not read.
+class EmojiGlyph extends StatelessWidget {
+  final String emoji;
+  final double size;
+
+  const EmojiGlyph(this.emoji, {super.key, this.size = 18});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      emoji,
+      textScaler: TextScaler.noScaling,
+      // The emoji's own height, so it sits centred beside text.
+      style: TextStyle(fontSize: size * 0.9, height: 1.15),
+    );
+  }
+}
 
 /// The neutral colours topic widgets sit on.
 ///
@@ -115,6 +114,55 @@ class TopicSurface {
     }
     return const TopicSurface._(Colors.white, Color(0xFF1E1E1E),
         Color(0xFF6B6B6B), Color(0xFFAFAFAF), false);
+  }
+}
+
+/// The look every chip shares, after the Interests screen: a soft grey
+/// pill with no edge; chosen, the app's yellow with a thin ink edge.
+class ChipLook {
+  /// An unchosen chip's fill.
+  final Color idle;
+
+  /// A chosen chip's fill.
+  final Color chosen;
+
+  /// A chosen chip's edge.
+  final Color edge;
+
+  /// Text on an unchosen chip.
+  final Color ink;
+
+  /// Text on a chosen chip.
+  final Color onChosen;
+
+  /// A count beside the name.
+  final Color muted;
+
+  const ChipLook._(
+      this.idle, this.chosen, this.edge, this.ink, this.onChosen, this.muted);
+
+  /// [idle] replaces the grey -- white, on the yellow of onboarding.
+  factory ChipLook.of(BuildContext context, {Color? idle}) {
+    final theme = Theme.of(context);
+    if (theme.brightness == Brightness.dark) {
+      final scheme = theme.colorScheme;
+      return ChipLook._(
+        idle ?? scheme.surfaceContainerHighest,
+        AppColors.paleYellow,
+        AppColors.paleYellow,
+        scheme.onSurface,
+        AppColors.ink,
+        scheme.onSurfaceVariant,
+      );
+    }
+    return ChipLook._(
+      idle ?? AppColors.softGrey,
+      AppColors.paleYellow,
+      AppColors.ink,
+      const Color(0xFF1E1E1E),
+      AppColors.ink,
+      const Color(0xFF6B6B6B),
+    );
   }
 }
 

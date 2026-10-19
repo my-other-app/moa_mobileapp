@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/domain/topic_rules.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
 
-/// Interests to choose from, grouped by topic.
+/// Interests to choose from, grouped by topic: the Interests screen.
 ///
-/// One section per topic -- its colour, icon and name -- holding its
-/// interests as chips; a search across all of them; how many are chosen.
+/// One section per topic -- its emoji and name in bold -- holding its
+/// interests as emoji chips; a search across all of them; how many are
+/// chosen.
 /// With fewer than two topics (the server before the migration, which files
 /// everything under "arts") the sections are left out and the interests
 /// shown as one set.
@@ -22,6 +25,10 @@ class TopicInterestPicker extends StatefulWidget {
   final int maxSelected;
   final VoidCallback? onLimitReached;
 
+  /// The fill of an unchosen chip and of the search, in place of the soft
+  /// grey: white, on the yellow of onboarding.
+  final Color? idleColor;
+
   const TopicInterestPicker({
     super.key,
     required this.topics,
@@ -29,6 +36,7 @@ class TopicInterestPicker extends StatefulWidget {
     required this.onToggle,
     required this.maxSelected,
     this.onLimitReached,
+    this.idleColor,
   });
 
   @override
@@ -59,9 +67,14 @@ class _TopicInterestPickerState extends State<TopicInterestPicker> {
   @override
   Widget build(BuildContext context) {
     final surface = TopicSurface.of(context);
+    final look = ChipLook.of(context, idle: widget.idleColor);
     final grouped = topicsWorthShowing(widget.topics);
     final shown = searchTopics(widget.topics, _query);
     final hasAny = widget.topics.any((t) => t.interests.isNotEmpty);
+    final field = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(60),
+      borderSide: BorderSide.none,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,16 +86,16 @@ class _TopicInterestPickerState extends State<TopicInterestPicker> {
             controller: _search,
             onChanged: (value) => setState(() => _query = value),
             textInputAction: TextInputAction.search,
-            style: TextStyle(color: surface.ink, fontSize: 14),
+            style: TextStyle(color: look.ink, fontSize: 15),
             decoration: InputDecoration(
               hintText: 'Search interests',
-              hintStyle: TextStyle(color: surface.muted, fontSize: 14),
-              prefixIcon: Icon(Icons.search, color: surface.muted),
+              hintStyle: TextStyle(color: look.muted, fontSize: 15),
+              prefixIcon: Icon(Icons.search, color: look.muted, size: 20),
               suffixIcon: _query.isEmpty
                   ? null
                   : IconButton(
                       tooltip: 'Clear search',
-                      icon: Icon(Icons.close, size: 18, color: surface.muted),
+                      icon: Icon(Icons.close, size: 18, color: look.muted),
                       onPressed: () {
                         _search.clear();
                         setState(() => _query = '');
@@ -90,26 +103,18 @@ class _TopicInterestPickerState extends State<TopicInterestPicker> {
                     ),
               isDense: true,
               filled: true,
-              fillColor: surface.background,
+              fillColor: look.idle,
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: surface.outline),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: surface.outline),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide:
-                    const BorderSide(color: Color(0xFF17A58F), width: 2),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: field,
+              enabledBorder: field,
+              focusedBorder: field.copyWith(
+                borderSide: const BorderSide(color: AppColors.ink),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Semantics(
@@ -119,13 +124,13 @@ class _TopicInterestPickerState extends State<TopicInterestPicker> {
               key: const ValueKey('interest-count'),
               style: TextStyle(
                 fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: _full ? const Color(0xFF17A58F) : surface.muted,
+                fontWeight: _full ? FontWeight.w600 : FontWeight.w400,
+                color: _full ? look.onChosen : look.muted,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         if (!hasAny)
           _message(surface, 'No interests to choose from yet.')
         else if (shown.isEmpty)
@@ -140,9 +145,9 @@ class _TopicInterestPickerState extends State<TopicInterestPicker> {
                   .where((i) => widget.selectedIds.contains(i.id))
                   .length,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             _chips(topic.interests, topic),
-            const SizedBox(height: 28),
+            const SizedBox(height: 32),
           ],
       ],
     );
@@ -156,18 +161,19 @@ class _TopicInterestPickerState extends State<TopicInterestPicker> {
   Widget _chips(List<Interest> interests, Topic? topic) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
+      // Plain chips, as in the owner's design: the padding is the gap, so
+      // the row packs like a line of words.
       child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+        spacing: 4,
+        runSpacing: 6,
         children: [
           for (final interest in interests)
             InterestChip(
               key: ValueKey('interest-chip-${interest.id}'),
               label: interest.name,
-              glyph: interestGlyph(interest.icon, interest.iconType),
-              accent: topic == null
-                  ? const Color(0xFF17A58F)
-                  : topicColor(topic),
+              glyph: interest.emoji,
+              idleColor: widget.idleColor,
+              plain: true,
               topicLabel: topic?.label,
               selected: widget.selectedIds.contains(interest.id),
               enabled: !_full || widget.selectedIds.contains(interest.id),
@@ -187,8 +193,7 @@ class _TopicHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = TopicPalette.of(context, topic);
-    final surface = TopicSurface.of(context);
+    final look = ChipLook.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Semantics(
@@ -199,25 +204,15 @@ class _TopicHeader extends StatelessWidget {
         excludeSemantics: true,
         child: Row(
           children: [
-            Container(
-              width: 4,
-              height: 20,
-              decoration: BoxDecoration(
-                color: palette.accent,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+            TopicIcon(topic: topic, size: 20),
             const SizedBox(width: 8),
-            TopicIcon(topic: topic, size: 18, color: palette.accent),
-            const SizedBox(width: 6),
             Expanded(
               child: Text(
                 topic.label,
                 key: ValueKey('topic-header-${topic.slug}'),
                 style: TextStyle(
-                  color: surface.ink,
-                  fontSize: 16,
-                  fontFamily: 'DMSans',
+                  color: look.ink,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -225,11 +220,7 @@ class _TopicHeader extends StatelessWidget {
             if (selectedCount > 0)
               Text(
                 '$selectedCount selected',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: palette.onTint,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 13, color: look.muted),
               ),
           ],
         ),

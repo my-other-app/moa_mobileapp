@@ -1,3 +1,4 @@
+import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/core/utils/json_read.dart';
 
@@ -37,6 +38,18 @@ class Certificate {
     this.eventType,
     this.thumbnailUrl,
   });
+
+  /// The number printed on the certificate, `CERT-XXXXX-XXXXX`: the ticket
+  /// id's, under the certificate's own prefix -- never readable as the
+  /// ticket (the backend's `certificate_number`).
+  String get number {
+    final dash = ticketId.indexOf('-');
+    return 'CERT-${dash >= 0 ? ticketId.substring(dash + 1) : ticketId}';
+  }
+
+  /// Its page on the website, which anyone with the link can open.
+  String get shareUrl =>
+      '${AppConfig.publicSiteUrl}/certificates/${Uri.encodeComponent(ticketId)}';
 
   /// Where the PDF lives. The endpoint takes no auth, so this can be opened
   /// directly; it refuses for a registration that never checked in.

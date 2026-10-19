@@ -19,11 +19,20 @@ Future<List<(String, Object?)>> _pump(WidgetTester tester, Widget body) async {
   final router = GoRouter(routes: [
     GoRoute(path: '/', builder: (_, __) => Scaffold(body: body)),
     GoRoute(
-      path: '/events/explore',
+      path: '/topics',
       builder: (_, state) {
         went.add((state.uri.path, state.extra));
-        return const Scaffold(body: Text('explore'));
+        return const Scaffold(body: Text('topics'));
       },
+      routes: [
+        GoRoute(
+          path: ':slug',
+          builder: (_, state) {
+            went.add((state.uri.path, state.extra));
+            return const Scaffold(body: Text('a topic'));
+          },
+        ),
+      ],
     ),
   ]);
   await tester.pumpWidget(
@@ -45,18 +54,40 @@ void main() {
 
   setUp(() => api = useFakeApi());
 
-  testWidgets('a card per topic, counted; a tap opens Explore on it',
+  testWidgets("a tile's emoji large, and a glimpse of its interests' emoji",
+      (tester) async {
+    api.on('GET', '/interests/topics', contractTopicsBody);
+    await _pump(tester, const BrowseByTopicRow());
+
+    final dev = find.byKey(const ValueKey('browse-topic-development'));
+    expect(find.descendant(of: dev, matching: find.text('💻')), findsOneWidget);
+    // Web Development and Coding came without emoji: the app's own.
+    expect(
+        tester
+            .widget<Text>(
+                find.byKey(const ValueKey('browse-topic-emoji-development')))
+            .data,
+        '🌐 ⌨️');
+    // Arts came without its emoji, too.
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('browse-topic-arts')),
+            matching: find.text('🎭')),
+        findsOneWidget);
+  });
+
+  testWidgets("a card per topic, counted; a tap opens the topic's page",
       (tester) async {
     api.on('GET', '/interests/topics', contractTopicsBody);
     final went = await _pump(tester, const BrowseByTopicRow());
 
     expect(find.text('BROWSE BY TOPIC'), findsOneWidget);
-    expect(find.byKey(const ValueKey('browse-topic-development')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('browse-topic-development')), findsOneWidget);
     expect(find.text('12 upcoming'), findsOneWidget);
     expect(
-      tester.getSemantics(
-          find.byKey(const ValueKey('browse-topic-development'))),
+      tester
+          .getSemantics(find.byKey(const ValueKey('browse-topic-development'))),
       isSemantics(
           label: 'Development, 12 upcoming events',
           isButton: true,
@@ -65,8 +96,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('browse-topic-arts')));
     await _settle(tester);
-    expect(went.single.$1, '/events/explore');
-    expect(went.single.$2, {'topic': 'arts'});
+    expect(went.single.$1, '/topics/arts');
   });
 
   testWidgets('large text still fits the cards', (tester) async {
@@ -86,14 +116,13 @@ void main() {
     expect(find.text('12 upcoming'), findsOneWidget);
   });
 
-  testWidgets('"See all" opens Explore unfiltered', (tester) async {
+  testWidgets('"See all" opens every topic', (tester) async {
     api.on('GET', '/interests/topics', contractTopicsBody);
     final went = await _pump(tester, const BrowseByTopicRow());
 
     await tester.tap(find.byKey(const ValueKey('browse-by-topic-all')));
     await _settle(tester);
-    expect(went.single.$1, '/events/explore');
-    expect(went.single.$2, isNull);
+    expect(went.single.$1, '/topics');
   });
 
   testWidgets('without counts (the /interests/list fallback) still shows',
@@ -101,8 +130,8 @@ void main() {
     api.on('GET', '/interests/list', contractListBody);
     await _pump(tester, const BrowseByTopicRow());
 
-    expect(find.byKey(const ValueKey('browse-topic-development')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('browse-topic-development')), findsOneWidget);
     expect(find.textContaining('upcoming'), findsNothing);
   });
 

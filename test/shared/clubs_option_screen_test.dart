@@ -4,6 +4,8 @@ import 'package:finnet/features/notifications/data/repositories/push_settings_re
 import 'package:finnet/features/notifications/domain/entities/push_switches.dart';
 import 'package:finnet/features/notifications/domain/repositories/push_settings_repository.dart';
 import 'package:finnet/shared/widgets/clubs_option_screen.dart';
+import 'package:finnet/shared/widgets/app_toggle.dart';
+import 'package:finnet/shared/widgets/settings_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -72,12 +74,24 @@ Future<List<Object?>> _open(WidgetTester tester, _FakeMutes mutes) async {
   return results;
 }
 
+const _mute = ValueKey('club-option-mute');
+
+/// The club's notifications switch: on until the club is muted.
+bool _notificationsOn(WidgetTester tester) =>
+    tester.widget<SettingsRow>(find.byKey(_mute)).value!;
+
 void main() {
   testWidgets('a club that is not muted can be muted', (tester) async {
     final mutes = _FakeMutes(false);
     final results = await _open(tester, mutes);
 
-    expect(find.text('Mute notifications'), findsOneWidget);
+    // A switch of the Settings design, on while the club is not muted.
+    expect(find.text('Notifications'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(_mute), matching: find.byType(AppToggle)),
+        findsOneWidget);
+    expect(_notificationsOn(tester), isTrue);
     await tester.tap(find.byKey(const ValueKey('club-option-mute')));
     await tester.pumpAndSettle();
 
@@ -90,7 +104,8 @@ void main() {
     final mutes = _FakeMutes(true);
     final results = await _open(tester, mutes);
 
-    expect(find.text('Unmute notifications'), findsOneWidget);
+    expect(find.text('Notifications'), findsOneWidget);
+    expect(_notificationsOn(tester), isFalse);
     await tester.tap(find.byKey(const ValueKey('club-option-mute')));
     await tester.pumpAndSettle();
 
@@ -115,6 +130,6 @@ void main() {
 
     expect(find.textContaining('You do not follow this club'), findsOneWidget);
     expect(results, isEmpty);
-    expect(find.text('Mute notifications'), findsOneWidget);
+    expect(_notificationsOn(tester), isTrue);
   });
 }

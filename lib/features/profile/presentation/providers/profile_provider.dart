@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/network/network_status.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/profile/domain/repositories/profile_repository.dart';
@@ -33,10 +35,18 @@ class ProfileState {
 }
 
 /// Provider for profile state management.
+///
+/// Read again when the app comes back online, so a profile drawn from the
+/// saved copy -- or one that could not load at all -- is brought up to date
+/// without a visit to the Profile tab.
 final profileProvider =
     StateNotifierProvider<ProfileNotifier, ProfileState>((ref) {
   final repository = ref.watch(profileRepositoryProvider);
-  return ProfileNotifier(repository);
+  final notifier = ProfileNotifier(repository);
+  ref.listen<int>(backOnlineProvider, (_, __) {
+    if (ref.read(isAuthenticatedProvider)) notifier.loadProfile();
+  });
+  return notifier;
 });
 
 /// Notifier for profile operations.

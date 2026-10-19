@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
@@ -108,7 +109,9 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           param: data);
 
       if (response.statusCode == 200 && mounted) {
-        context.go('/onboarding/interests', extra: {'isOnboarding': true});
+        context.go(
+            withSignInFrom('/onboarding/interests', signInFromOf(context)),
+            extra: {'isOnboarding': true});
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -123,7 +126,9 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
       // it already had been.
       if (isProfileAlreadyExists(error)) {
         if (mounted) {
-          context.go('/onboarding/interests', extra: {'isOnboarding': true});
+          context.go(
+            withSignInFrom('/onboarding/interests', signInFromOf(context)),
+            extra: {'isOnboarding': true});
         }
         return;
       }

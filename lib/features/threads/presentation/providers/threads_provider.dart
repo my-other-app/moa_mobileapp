@@ -1,7 +1,10 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/error/failures.dart';
+import 'package:finnet/core/network/network_status.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/threads/data/repositories/thread_repository_impl.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
@@ -17,8 +20,11 @@ const maxCommentLength = 500;
 /// The signed-in person's user id, for "is this my comment".
 ///
 /// From the profile, which loads itself on first read. Null until it has, or
-/// when signed out -- either way no delete button is offered.
+/// when signed out -- either way no delete button is offered. Signed out,
+/// the profile is not even asked for: reading a club's posts must not cost
+/// a refused `/user/profile/me`.
 final threadViewerIdProvider = Provider<int?>((ref) {
+  if (!ref.watch(isAuthenticatedProvider)) return null;
   final id = int.tryParse(ref.watch(profileProvider).profile?.id ?? '');
   return (id == null || id <= 0) ? null : id;
 });
@@ -157,11 +163,18 @@ class ClubThreadsState {
 
 /// A club's posts, pinned first then newest, loaded on first read.
 ///
-/// Auto-disposed with the club page, so opening the club again shows what
-/// it has posted since rather than a cached list.
+/// Auto-disposed with the club page, so opening the club again asks for
+/// what it has posted since -- drawing the first page kept on the phone
+/// meanwhile, and instead when offline. Read again when the app comes back
+/// online.
 final clubThreadsProvider = StateNotifierProvider.autoDispose
     .family<ClubThreadsNotifier, ClubThreadsState, int>((ref, clubId) {
-  return ClubThreadsNotifier(ref.watch(threadRepositoryProvider), clubId);
+  final notifier =
+      ClubThreadsNotifier(ref.watch(threadRepositoryProvider), clubId);
+  ref.listen<int>(backOnlineProvider, (_, __) {
+    if (notifier.mounted) notifier.refresh();
+  });
+  return notifier;
 });
 
 /// Notifier for a club's posts: paging, refresh, likes and votes.
@@ -182,15 +195,32 @@ class ClubThreadsNotifier extends StateNotifier<ClubThreadsState>
         nextOffset: page.offset + page.items.length,
       );
 
-  /// Load the first page, replacing whatever was there.
+  /// Load the first page, replacing whatever was there: the copy kept on
+  /// the phone at once when nothing is shown, then the server's. With the
+  /// kept copy on screen a failure is not an error (the offline strip says
+  /// why).
   Future<void> load() async {
     state = state.copyWith(isLoading: true, clearError: true);
+    if (state.threads.isEmpty) {
+      ThreadPage? saved;
+      try {
+        saved =
+            await repository.savedClubThreads(clubId, limit: threadsPageSize);
+      } catch (e) {
+        debugPrint('ClubThreads: no kept copy: $e');
+      }
+      if (!mounted) return;
+      if (saved != null && saved.items.isNotEmpty && state.threads.isEmpty) {
+        state = _firstPage(saved).copyWith(isLoading: true);
+      }
+    }
     final result =
         await repository.getClubThreads(clubId, limit: threadsPageSize);
     if (!mounted) return;
     result.fold(
-      (failure) =>
-          state = state.copyWith(isLoading: false, error: failure.message),
+      (failure) => state = state.threads.isEmpty
+          ? state.copyWith(isLoading: false, error: failure.message)
+          : state.copyWith(isLoading: false),
       (page) => state = _firstPage(page),
     );
   }
@@ -251,6 +281,152 @@ class ClubThreadsNotifier extends StateNotifier<ClubThreadsState>
   void upsert(Thread thread) => putThread(thread);
 
   /// Drop a post the server says is gone.
+  void remove(String threadId) {
+    if (!state.threads.any((t) => t.id == threadId)) return;
+    state = state.copyWith(
+      threads: state.threads.where((t) => t.id != threadId).toList(),
+    );
+  }
+
+  @override
+  Thread? findThread(String threadId) {
+    for (final t in state.threads) {
+      if (t.id == threadId) return t;
+    }
+    return null;
+  }
+
+  @override
+  void putThread(Thread thread) {
+    final index = state.threads.indexWhere((t) => t.id == thread.id);
+    if (index == -1) return;
+    final threads = List<Thread>.of(state.threads)..[index] = thread;
+    state = state.copyWith(threads: threads);
+  }
+}
+
+// --- Posts from the clubs you follow ------------------------------------------
+
+/// The newest posts from every club this person follows, a page at a time
+/// (`GET /threads/feed`, paged by cursor).
+///
+/// Needs an account: signed out it loads nothing, and the page asks the
+/// person to sign in. The first page kept on the phone shows at once; the
+/// server's replaces it.
+final followingThreadsProvider = StateNotifierProvider.autoDispose<
+    FollowingThreadsNotifier, ClubThreadsState>((ref) {
+  final notifier = FollowingThreadsNotifier(
+    ref.watch(threadRepositoryProvider),
+    signedIn: ref.watch(isAuthenticatedProvider),
+  );
+  // Back online: the feed again, over the kept page.
+  ref.listen<int>(backOnlineProvider, (_, __) {
+    if (notifier.mounted) notifier.refresh();
+  });
+  return notifier;
+});
+
+class FollowingThreadsNotifier extends StateNotifier<ClubThreadsState>
+    with ThreadInteractions<ClubThreadsState> {
+  FollowingThreadsNotifier(this.repository, {required this.signedIn})
+      : super(ClubThreadsState(isLoading: signedIn)) {
+    if (signedIn) load();
+  }
+
+  @override
+  final ThreadRepository repository;
+  final bool signedIn;
+
+  /// Where the next page starts: the last page's `next_cursor`.
+  String? _cursor;
+
+  ClubThreadsState _firstPage(ThreadPage page) {
+    _cursor = page.nextCursor;
+    return ClubThreadsState(
+      threads: page.items,
+      hasMore: page.nextCursor != null && page.items.isNotEmpty,
+    );
+  }
+
+  /// Load the first page: the kept copy at once, then the server's.
+  Future<void> load() async {
+    if (!signedIn) return;
+    state = state.copyWith(isLoading: true, clearError: true);
+    if (state.threads.isEmpty) {
+      final saved = await repository.savedFollowingFeed(limit: threadsPageSize);
+      if (!mounted) return;
+      if (saved != null && saved.items.isNotEmpty && state.threads.isEmpty) {
+        state = _firstPage(saved).copyWith(isLoading: true);
+      }
+    }
+    final result = await repository.getFollowingFeed(limit: threadsPageSize);
+    if (!mounted) return;
+    result.fold(
+      (failure) => state = state.copyWith(
+        isLoading: false,
+        // With the kept page on screen, a failed refresh is not an error
+        // to show: the offline strip says why it is not fresh.
+        error: state.threads.isEmpty ? failure.message : null,
+      ),
+      (page) => state = _firstPage(page),
+    );
+  }
+
+  /// Pull to refresh; answers with the failure message, if any.
+  Future<String?> refresh() async {
+    if (!signedIn) return null;
+    if (state.threads.isEmpty) {
+      await load();
+      return null;
+    }
+    final result = await repository.getFollowingFeed(limit: threadsPageSize);
+    if (!mounted) return null;
+    return result.fold(
+      (failure) => failure.message,
+      (page) {
+        state = _firstPage(page);
+        return null;
+      },
+    );
+  }
+
+  /// The page after the last one, if there is one and nothing is loading.
+  Future<void> loadMore() async {
+    final after = _cursor;
+    if (after == null ||
+        state.isLoading ||
+        state.isLoadingMore ||
+        !state.hasMore) {
+      return;
+    }
+    state = state.copyWith(isLoadingMore: true, clearLoadMoreError: true);
+    final result = await repository.getFollowingFeed(
+      after: after,
+      limit: threadsPageSize,
+    );
+    if (!mounted) return;
+    result.fold(
+      (failure) => state = state.copyWith(
+        isLoadingMore: false,
+        loadMoreError: failure.message,
+      ),
+      (page) {
+        _cursor = page.nextCursor;
+        final seen = {for (final t in state.threads) t.id};
+        state = state.copyWith(
+          isLoadingMore: false,
+          threads: [
+            ...state.threads,
+            ...page.items.where((t) => seen.add(t.id)),
+          ],
+          hasMore: page.nextCursor != null && page.items.isNotEmpty,
+        );
+      },
+    );
+  }
+
+  void upsert(Thread thread) => putThread(thread);
+
   void remove(String threadId) {
     if (!state.threads.any((t) => t.id == threadId)) return;
     state = state.copyWith(
@@ -500,11 +676,18 @@ class ThreadDetailNotifier extends StateNotifier<ThreadDetailState>
       final list = clubThreadsProvider(clubId);
       if (_ref.exists(list)) _ref.read(list.notifier).remove(threadId);
     }
+    if (_ref.exists(followingThreadsProvider)) {
+      _ref.read(followingThreadsProvider.notifier).remove(threadId);
+    }
   }
 
-  /// Tell the club's list, if it is open, how this post looks now.
+  /// Tell the club's list and the following feed, if they are open, how
+  /// this post looks now.
   void _syncToList(Thread thread) {
     final list = clubThreadsProvider(thread.club.id);
     if (_ref.exists(list)) _ref.read(list.notifier).upsert(thread);
+    if (_ref.exists(followingThreadsProvider)) {
+      _ref.read(followingThreadsProvider.notifier).upsert(thread);
+    }
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/domain/topic_filter.dart';
 import 'package:finnet/features/topics/domain/topic_rules.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
@@ -79,9 +80,8 @@ class TopicFilterBar extends StatelessWidget {
                 InterestChip(
                   key: ValueKey('interest-filter-${interest.id}'),
                   label: interest.name,
-                  accent: selectedTopic == null
-                      ? const Color(0xFF17A58F)
-                      : topicColor(selectedTopic),
+                  glyph: interest.emoji,
+                  compact: true,
                   topicLabel: selectedTopic?.label,
                   count: interestCount?.call(interest),
                   selected: filter.interest?.id == interest.id,
@@ -120,7 +120,6 @@ class _AllChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = TopicSurface.of(context);
     return Semantics(
       container: true,
       button: true,
@@ -128,31 +127,11 @@ class _AllChip extends StatelessWidget {
       label: 'All topics',
       onTap: onTap,
       excludeSemantics: true,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          key: const ValueKey('topic-filter-all'),
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: selected ? surface.ink : surface.background,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                  color: selected ? surface.ink : surface.outline),
-            ),
-            child: Text(
-              'All',
-              style: TextStyle(
-                fontSize: 13,
-                color: selected ? surface.background : surface.ink,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ),
-        ),
+      child: _PlainPill(
+        key: const ValueKey('topic-filter-all'),
+        label: 'All',
+        selected: selected,
+        onTap: onTap,
       ),
     );
   }
@@ -173,8 +152,6 @@ class PlainFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = TopicSurface.of(context);
-    const teal = Color(0xFF17A58F);
     return Semantics(
       container: true,
       button: true,
@@ -182,30 +159,57 @@ class PlainFilterChip extends StatelessWidget {
       label: label,
       onTap: onTap,
       excludeSemantics: true,
-      child: GestureDetector(
+      child: _PlainPill(
+        label: label,
+        selected: selected,
         onTap: onTap,
+        icon: Icons.school_outlined,
+      ),
+    );
+  }
+}
+
+/// A chip with no emoji, in the shared chip look: "All", a college.
+class _PlainPill extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  const _PlainPill({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final look = ChipLook.of(context);
+    final radius = BorderRadius.circular(60);
+    final ink = selected ? look.onChosen : look.ink;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: radius,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: selected ? teal : surface.background,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: selected ? teal : surface.outline),
+            color: selected ? look.chosen : look.idle,
+            borderRadius: radius,
+            border: Border.all(color: selected ? look.edge : look.idle),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.school_outlined,
-                  size: 14, color: selected ? Colors.white : surface.muted),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: selected ? Colors.white : surface.ink,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                ),
-              ),
+              if (icon != null) ...[
+                Icon(icon, size: 15, color: ink),
+                const SizedBox(width: 5),
+              ],
+              Text(label, style: TextStyle(fontSize: 14, color: ink)),
             ],
           ),
         ),

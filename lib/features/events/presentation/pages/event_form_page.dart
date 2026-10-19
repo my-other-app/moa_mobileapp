@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
@@ -10,21 +11,45 @@ import 'package:finnet/features/events/presentation/utils/question_answers.dart'
 import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
 import 'package:finnet/features/events/presentation/widgets/merch_picker.dart';
 import 'package:finnet/features/events/presentation/widgets/registration_feedback.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/events/domain/event_page_rules.dart';
+import 'package:finnet/features/events/presentation/utils/event_sign_in.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/register_bar_parts.dart';
 import 'package:finnet/features/payments/checkout.dart';
+import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
+import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 
 class EventFormPage extends ConsumerStatefulWidget {
-  final int eventId;
-  final List<AdditionalDetail> additionalDetails;
+  /// The event's id; null when the form was opened by the event's slug (a
+  /// link to `/events/{slug}/register`), and then read from `/events/info`.
+  final int? eventId;
+
+  /// The event's slug or id, as the address has it.
+  final String? eventRef;
+
+  /// The event's own questions, from the event page; null to read them
+  /// from `/events/info` (a link straight to the form).
+  final List<AdditionalDetail>? additionalDetails;
+
+  /// Whether the event is paid, and online: an iPhone doesn't sell a paid
+  /// online event (canSellInApp). Null when not known -- read from
+  /// `/events/info` on an iPhone, where it matters.
+  final bool? hasFee;
+  final bool? isOnline;
 
   const EventFormPage({
     super.key,
-    required this.eventId,
-    required this.additionalDetails,
-  });
+    this.eventId,
+    this.eventRef,
+    this.additionalDetails,
+    this.hasFee,
+    this.isOnline,
+  }) : assert(eventId != null || eventRef != null,
+            'A registration form needs an event');
 
   @override
   ConsumerState<EventFormPage> createState() => _EventFormPageState();
@@ -63,30 +88,109 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
 
   /// Each question's place in the scroll, in order, to bring the first
   /// refused answer into view.
-  late final List<GlobalKey> _questionKeys = [
-    for (final _ in widget.additionalDetails) GlobalKey(),
-  ];
+  List<GlobalKey> _questionKeys = const [];
+
+  /// The event's questions: given, or read from `/events/info`.
+  List<AdditionalDetail> _questions = const [];
+
+  int? _eventId;
+  bool? _hasFee;
+  bool? _isOnline;
+
+  /// `/events/info` is being read (opened from a link), or failed.
+  bool _loadingEvent = false;
+  String? _loadError;
+
+  bool get _onIos => defaultTargetPlatform == TargetPlatform.iOS;
+
+  /// Whether this phone sells a place at the event (canSellInApp).
+  bool get _sellable =>
+      canSellInApp(hasFee: _hasFee ?? false, isOnline: _isOnline ?? false);
 
   @override
   void initState() {
     super.initState();
-    _fetchCatalog();
-    // A controller for every field that is typed into. Previously only
-    // 'text' got one, so a 'tel' or 'textarea' field had nowhere to put a
-    // value even once it rendered.
-    for (var detail in widget.additionalDetails) {
+    // An id of 0 is what an older router made of a slug: not an id.
+    final given = widget.eventId;
+    _eventId = given != null && given > 0
+        ? given
+        : eventIdOf(widget.eventRef ?? '');
+    _hasFee = widget.hasFee;
+    _isOnline = widget.isOnline;
+    final questions = widget.additionalDetails;
+    if (questions != null) _setQuestions(questions);
+    final mustRead = questions == null ||
+        _eventId == null ||
+        (_onIos && (_hasFee == null || _isOnline == null));
+    if (mustRead) {
+      _loadEvent();
+    } else {
+      _fetchCatalog();
+    }
+  }
+
+  /// A controller for every field that is typed into. Previously only
+  /// 'text' got one, so a 'tel' or 'textarea' field had nowhere to put a
+  /// value even once it rendered.
+  void _setQuestions(List<AdditionalDetail> questions) {
+    _questions = questions;
+    _questionKeys = [for (final _ in questions) GlobalKey()];
+    for (final detail in questions) {
       final control = questionControlOf(detail.fieldType);
       if (control == QuestionControl.text || isPickerControl(control)) {
-        _additionalTextControllers[detail.key] = TextEditingController();
+        _additionalTextControllers.putIfAbsent(
+            detail.key, TextEditingController.new);
       }
+    }
+  }
+
+  /// The event from `/events/info/{ref}`: its id, its questions, and
+  /// whether it is paid and online.
+  Future<void> _loadEvent() async {
+    setState(() {
+      _loadingEvent = true;
+      _loadError = null;
+    });
+    final ref = widget.eventRef?.trim().isNotEmpty == true
+        ? widget.eventRef!.trim()
+        : '${widget.eventId}';
+    try {
+      final res = await APIService.instance.request(
+        '/events/info/${Uri.encodeComponent(ref)}',
+        DioMethod.get,
+        cache: CachePolicy.personal,
+      );
+      final data = res.data;
+      final info =
+          EventInfo.fromJson(data is Map<String, dynamic> ? data : const {});
+      if (!mounted) return;
+      setState(() {
+        if (info.id > 0) _eventId = info.id;
+        _hasFee ??= info.hasFee;
+        _isOnline ??= info.isOnline;
+        if (widget.additionalDetails == null) {
+          _setQuestions(info.additionalDetails);
+        }
+        _loadingEvent = false;
+      });
+      _fetchCatalog();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingEvent = false;
+        _loadError =
+            readableError(e, fallback: "We couldn't load this event's form.");
+      });
     }
   }
 
   /// The shelf is public and optional: an event that sells nothing, or a
   /// failed call, simply shows no shelf.
   Future<void> _fetchCatalog() async {
+    final id = _eventId;
+    if (id == null) return;
     try {
-      final res = await APIService.instance.request('/events/${widget.eventId}/store/catalog', DioMethod.get, skipAuth: true);
+      final res = await APIService.instance.request('/events/$id/store/catalog', DioMethod.get, skipAuth: true);
       final data = res.data;
       if (data is Map<String, dynamic> && mounted) {
         setState(() => _catalog = StoreCatalog.fromJson(data));
@@ -461,10 +565,13 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             ),
           ),
           validator: (value) {
-            if (detail.requiredField && (value == null || value.isEmpty)) {
+            if (detail.requiredField &&
+                (value == null || value.trim().isEmpty)) {
               return 'Please enter ${detail.label.toLowerCase()}';
             }
-            return null;
+            // An email, a web address, a phone number or a number that
+            // isn't one: said here, as the website does, not after sending.
+            return typedAnswerProblem(detail.fieldType, value ?? '');
           },
         ),
       );
@@ -740,7 +847,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   /// act on.
   Future<void> _showRefusal(Object error) async {
     final refused = invalidAnswersOf(
-        error, widget.additionalDetails.map((detail) => detail.key));
+        error, _questions.map((detail) => detail.key));
     if (refused != null) {
       _showAnswerErrors(refused, serverMessageOf(error));
       return;
@@ -760,7 +867,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         ..clear()
         ..addAll(refused);
     });
-    final first = widget.additionalDetails
+    final first = _questions
         .indexWhere((detail) => refused.containsKey(detail.key));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final place = _questionKeys[first].currentContext;
@@ -820,11 +927,14 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           'phone': _phoneController.text.trim(),
           'additional_details': additionalDetailsMap,
           if (organizationName != null) 'organization': organizationName,
-          if (picksToPayload(_catalog, _picks).isNotEmpty) 'store': picksToPayload(_catalog, _picks),
+          // Whenever the event sells merch, what is picked now -- even
+          // nothing: a registration coming back to pay with its picks
+          // cleared must drop the earlier order, not keep charging for it.
+          if (_catalog.hasAnything) 'store': picksToPayload(_catalog, _picks),
         };
 
         final response = await APIService.instance.request(
-          '/events/registration/${widget.eventId}/register',
+          '/events/registration/$_eventId/register',
           DioMethod.post,
           param: requestData,
         );
@@ -847,7 +957,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           if (due > 0) {
             final outcome = await RegistrationCheckout.pay(
               repository: ref.read(paymentRepositoryProvider),
-              eventId: widget.eventId,
+              eventId: _eventId!,
+              sellable: _sellable,
               registrationId: registrationId as String,
               name: _nameController.text.trim(),
               email: _emailController.text.trim(),
@@ -898,6 +1009,62 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     }
   }
 
+  /// What shows instead of the form: a way to sign in, the event loading
+  /// or failing to, or -- on an iPhone, for a paid online event -- that it
+  /// isn't sold here. Null for the form.
+  Widget? _notAForm(BuildContext context) {
+    if (!ref.watch(isAuthenticatedProvider)) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Icon(Icons.lock_outline, size: 48, color: Color(0xFF6B7280)),
+            const SizedBox(height: 16),
+            const Text(
+              'Sign in to register',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Your ticket is kept with your account, so you need one to register.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 15, color: Color(0xFF4B5563)),
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: () => ensureSignedInFor(context, ref,
+                  reason: 'Sign in, then fill in the form.'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2C333D),
+                minimumSize: const Size.fromHeight(48),
+              ),
+              child: const Text('Sign in'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_loadingEvent) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_loadError != null) {
+      return ErrorView(message: _loadError, onRetry: _loadEvent);
+    }
+    if (!_sellable) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [IosSaleBlockedNotice()],
+        ),
+      );
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     // Get profile data for pre-filling
@@ -919,7 +1086,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         backgroundColor: Colors.white,
         elevation: 0,
       ),
-      body: Padding(
+      body: _notAForm(context) ??
+          Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
@@ -1191,7 +1359,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
 
                       // Additional dynamic fields
                       for (final (i, detail)
-                          in widget.additionalDetails.indexed)
+                          in _questions.indexed)
                         Padding(
                           key: _questionKeys[i],
                           padding: const EdgeInsets.only(top: 24),

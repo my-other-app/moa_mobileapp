@@ -22,10 +22,16 @@ import 'package:finnet/core/storage/secure_storage_service.dart';
 /// installed a `badCertificateCallback`, which the platform only calls for a
 /// certificate it has already rejected -- so it could never pin a valid one,
 /// and with no fingerprints configured it did nothing at all.
-Dio buildAppDio() {
+///
+/// [status] and [baseUrl] are for tests, which run this same stack against
+/// a server of their own; the app's are [NetworkStatus.instance] and
+/// [Env.apiBaseUrl].
+Dio buildAppDio({NetworkStatus? status, String? baseUrl}) {
+  final network = status ?? NetworkStatus.instance;
+  final base = baseUrl ?? Env.apiBaseUrl;
   final dio = Dio(
     BaseOptions(
-      baseUrl: Env.apiBaseUrl,
+      baseUrl: base,
       // 15 s to connect, then one retry for a read (RetryInterceptor): a
       // dead network is reported in about half a minute, not a minute.
       connectTimeout: const Duration(seconds: 15),
@@ -39,7 +45,7 @@ Dio buildAppDio() {
     ),
   );
 
-  NetworkStatus.instance.probeTarget = Uri.tryParse(Env.apiBaseUrl);
+  network.probeTarget = Uri.tryParse(base);
 
   // Add interceptors - order matters! Errors pass through them in this
   // order: a connection failure on a GET is retried first; only a failure
@@ -47,7 +53,7 @@ Dio buildAppDio() {
   // answered from the saved copy if the request asked for one.
   dio.interceptors.addAll([
     RetryInterceptor(dio),
-    NetworkStatusInterceptor(),
+    NetworkStatusInterceptor(network),
     ApiCacheInterceptor(),
     AuthInterceptor(SecureStorageService(), dio),
     ErrorInterceptor(),

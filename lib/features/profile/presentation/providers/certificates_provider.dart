@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/core/cache/saved_then_fresh.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_pin_store.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_remote_datasource.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
+import 'package:finnet/features/profile/domain/entities/certificate_verification.dart';
 
 /// Every certificate the user has earned, newest first.
 ///
@@ -11,6 +13,7 @@ import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
 /// to fetch it. The list saved on this phone comes first, then the
 /// server's.
 final certificatesProvider = StreamProvider<List<Certificate>>((ref) {
+  ref.watch(backOnlineProvider);
   final source = ref.watch(certificateRemoteDataSourceProvider);
   return savedThenFresh(
     saved: source.savedCertificates,
@@ -31,6 +34,13 @@ final certificateStyleProvider =
   } catch (_) {
     return CertificateStyle.fallback;
   }
+});
+
+/// What checking the certificate with [code] found (`certificateCodeFrom`
+/// has already made it the server's code).
+final certificateVerificationProvider = FutureProvider.autoDispose
+    .family<CertificateVerification, String>((ref, code) {
+  return ref.watch(certificateRemoteDataSourceProvider).verify(code);
 });
 
 /// The ticket ids the user has pinned, device-local.

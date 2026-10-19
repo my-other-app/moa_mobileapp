@@ -70,8 +70,9 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   Future<UserProfileModel> getMyProfile() async {
     final response = await _dio.get(
       _me,
-      // The person's own details: saved encrypted.
-      options: Options(extra: CachePolicy.personal.extra),
+      // The person's own details: saved encrypted, and never pruned to
+      // make room -- the Profile tab and every form lean on it offline.
+      options: Options(extra: CachePolicy.personalKept.extra),
     );
     return UserProfileModel.fromJson(_object(response.data));
   }

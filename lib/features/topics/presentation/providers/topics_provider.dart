@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/core/cache/saved_then_fresh.dart';
 import 'package:finnet/features/topics/data/repositories/topic_repository_impl.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
@@ -13,6 +14,7 @@ import 'package:finnet/features/topics/domain/entities/topic.dart';
 /// offer a retry (`ref.invalidate`); screens that only decorate use
 /// `valueOrNull`.
 final topicCatalogueProvider = StreamProvider<List<Topic>>((ref) {
+  ref.watch(backOnlineProvider);
   final repository = ref.watch(topicRepositoryProvider);
   return savedThenFresh(
     saved: repository.savedCatalogue,
@@ -30,6 +32,7 @@ final topicCatalogueProvider = StreamProvider<List<Topic>>((ref) {
 /// interests without the numbers -- read through [topicCatalogueProvider] so
 /// it is not fetched twice. The copy saved on this phone comes first.
 final topicDirectoryProvider = StreamProvider<List<Topic>>((ref) {
+  ref.watch(backOnlineProvider);
   final repository = ref.watch(topicRepositoryProvider);
   return savedThenFresh(
     saved: repository.savedDirectory,

@@ -26,9 +26,10 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage>
   String feedPage(int offset) =>
       '/events/list?is_registered=true&is_ended=false&offset=$offset&limit=${SavedFirstPageFeed.pageSize}';
 
-  /// The person's own registrations, with their tickets: encrypted.
+  /// The person's own registrations, with their tickets: encrypted, and
+  /// never pruned to make room.
   @override
-  CachePolicy get feedPolicy => CachePolicy.personal;
+  CachePolicy get feedPolicy => CachePolicy.personalKept;
 
   @override
   String get feedErrorFallback => 'Could not load upcoming events.';

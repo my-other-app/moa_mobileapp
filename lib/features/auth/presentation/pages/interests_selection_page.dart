@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
@@ -98,7 +99,8 @@ class _InterestsSelectionPageState
           }
 
           if (widget.isOnboarding && mounted) {
-            context.go('/onboarding/avatar');
+            context.go(
+                withSignInFrom('/onboarding/avatar', signInFromOf(context)));
           } else if (mounted) {
             context.pop();
           }
@@ -138,6 +140,8 @@ class _InterestsSelectionPageState
           ? null
           : AppBar(
               backgroundColor: Colors.white,
+              surfaceTintColor: Colors.white,
+              scrolledUnderElevation: 0,
               elevation: 0,
               leading: IconButton(
                 icon: Icon(Icons.arrow_back_ios, color: Color(0xFF2C333D)),
@@ -164,17 +168,18 @@ class _InterestsSelectionPageState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title Section
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
+                    // The headline and the ask.
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 16, 16, 20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
                             'SPILL THE TEA ON YOUR VIBES AND INTERESTS',
                             style: TextStyle(
                               color: Color(0xFF1E1E1E),
-                              fontSize: 24,
+                              fontSize: 28,
+                              height: 1.05,
                               fontFamily: 'BebasNeue',
                             ),
                           ),
@@ -182,10 +187,9 @@ class _InterestsSelectionPageState
                           Text(
                             'Choose up to $maxInterests vibes that speak to you',
                             style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
+                              color: Color(0xFF1E1E1E),
+                              fontSize: 15,
                               fontFamily: 'DMSans',
-                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
@@ -198,6 +202,9 @@ class _InterestsSelectionPageState
                         maxSelected: maxInterests,
                         onToggle: _toggle,
                         onLimitReached: _limitReached,
+                        // White chips on the yellow of onboarding.
+                        idleColor:
+                            widget.isOnboarding ? Colors.white : null,
                       ),
                       loading: () => const Padding(
                         padding: EdgeInsets.all(48),
@@ -271,11 +278,14 @@ class _InterestsSelectionPageState
     );
   }
 
+  /// CONTINUE, the full width, held at the bottom; faded until something
+  /// is chosen.
   Widget _buildContinueButton() {
+    const ink = Color(0xFF2C333D);
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: SizedBox(
-        width: 361,
+        width: double.infinity,
         height: 56,
         child: ElevatedButton(
           key: const ValueKey('interests-continue'),
@@ -283,7 +293,11 @@ class _InterestsSelectionPageState
               ? _submitInterests
               : null,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2C333D),
+            backgroundColor: ink,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: ink.withValues(alpha: 0.35),
+            disabledForegroundColor: Colors.white,
+            elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),

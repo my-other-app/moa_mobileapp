@@ -10,6 +10,11 @@ const supportEmail = 'support@myotherapp.in';
 final privacyPolicyUri = Uri.parse('${AppConfig.publicSiteUrl}/privacy');
 final termsUri = Uri.parse('${AppConfig.publicSiteUrl}/terms');
 final websiteUri = Uri.parse(AppConfig.publicSiteUrl);
+
+/// Help: how MyOtherApp works -- finding events, registering, tickets,
+/// certificates, live rooms -- on the site's About page, until there is a
+/// help centre of its own.
+final helpCentreUri = Uri.parse('${AppConfig.publicSiteUrl}/about');
 final supportEmailUri = Uri(
   scheme: 'mailto',
   path: supportEmail,
@@ -25,13 +30,6 @@ typedef LinkLauncher = Future<bool> Function(Uri uri);
 typedef PlatformLauncher = Future<bool> Function(Uri uri, LaunchMode mode);
 
 Future<bool> _launch(Uri uri, LaunchMode mode) => launchUrl(uri, mode: mode);
-
-/// The live room of [eventId]: the website's page, so polls, Q&A and the
-/// quiz are the same on every phone. The quiz is joined from here with the
-/// code on the screen; the site's `/play/{id}` only works for someone who
-/// has already joined, and shows anyone else a link back to this room.
-Uri liveRoomUri(Object eventId) =>
-    Uri.parse('${AppConfig.publicSiteUrl}/$eventId/live');
 
 /// Whether [uri] is a page of our own site (myotherapp.in or a subdomain).
 bool isOwnSite(Uri uri) {

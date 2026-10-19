@@ -1,9 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
+import 'package:finnet/features/threads/domain/entities/moderation.dart';
+import 'package:finnet/features/threads/presentation/providers/moderation_provider.dart';
+import 'package:finnet/features/threads/presentation/widgets/moderation_actions.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/features/topics/domain/topic_emoji.dart';
 
 /// Model for a networking attendee.
 class NetworkingAttendee {
@@ -62,7 +67,11 @@ class SharedInterest {
 }
 
 /// "People Like You" networking discovery page.
-class NetworkingPage extends StatefulWidget {
+///
+/// Each person can be reported or blocked from their card, with the same
+/// report (`POST /reports`, a `user`) and block (`/user/blocks`) as in
+/// Threads. Someone blocked leaves the list at once.
+class NetworkingPage extends ConsumerStatefulWidget {
   final int eventId;
   final String eventName;
 
@@ -73,10 +82,10 @@ class NetworkingPage extends StatefulWidget {
   });
 
   @override
-  State<NetworkingPage> createState() => _NetworkingPageState();
+  ConsumerState<NetworkingPage> createState() => _NetworkingPageState();
 }
 
-class _NetworkingPageState extends State<NetworkingPage> {
+class _NetworkingPageState extends ConsumerState<NetworkingPage> {
   bool isLoading = true;
   String? errorMessage;
   bool unavailable = false;
@@ -155,6 +164,13 @@ class _NetworkingPageState extends State<NetworkingPage> {
         onRetry: unavailable ? null : _fetchNetworking,
       );
     }
+
+    // Blocked -- here or anywhere else this session -- they are not shown.
+    final hidden = ref.watch(moderationProvider).hiddenUserIds;
+    final attendees = [
+      for (final a in this.attendees)
+        if (!hidden.contains(a.userId)) a,
+    ];
 
     if (attendees.isEmpty) {
       return Center(
@@ -363,7 +379,15 @@ class _NetworkingPageState extends State<NetworkingPage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            '${interest.icon ?? ''} ${interest.name}'.trim(),
+                            // Its emoji: the server's, else the app's --
+                            // never the server's placeholder word.
+                            [
+                              interestEmoji(
+                                  icon: interest.icon,
+                                  iconType: interest.iconType,
+                                  name: interest.name),
+                              interest.name,
+                            ].nonNulls.join(' '),
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
@@ -375,6 +399,22 @@ class _NetworkingPageState extends State<NetworkingPage> {
                     ),
                   ],
                 ],
+              ),
+            ),
+            _PersonMenu(
+              attendee: attendee,
+              onReport: () => reportContent(
+                context,
+                ref,
+                target: ReportTarget.user(attendee.userId),
+                what: 'person',
+              ),
+              onBlock: () => confirmAndBlock(
+                context,
+                ref,
+                userId: attendee.userId,
+                name: attendee.name.isEmpty ? 'this person' : attendee.name,
+                avatarUrl: attendee.profilePicUrl,
               ),
             ),
           ],
@@ -390,6 +430,52 @@ class _NetworkingPageState extends State<NetworkingPage> {
     if (hour12 == 0) hour12 = 12;
     String minute = dt.toLocal().minute.toString().padLeft(2, '0');
     return "$hour12:$minute $period";
+  }
+}
+
+/// Report or block someone, from their card.
+class _PersonMenu extends StatelessWidget {
+  final NetworkingAttendee attendee;
+  final VoidCallback onReport;
+  final VoidCallback onBlock;
+
+  const _PersonMenu({
+    required this.attendee,
+    required this.onReport,
+    required this.onBlock,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Without an id there is no one to report or block.
+    if (attendee.userId <= 0) return const SizedBox.shrink();
+    return PopupMenuButton<String>(
+      key: ValueKey('person-menu-${attendee.userId}'),
+      tooltip: 'More for ${attendee.name}',
+      icon: const Icon(Icons.more_vert, color: Color(0xFF6B7280)),
+      onSelected: (choice) {
+        if (choice == 'report') onReport();
+        if (choice == 'block') onBlock();
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: 'report',
+          child: ListTile(
+            leading: Icon(Icons.flag_outlined),
+            title: Text('Report'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        PopupMenuItem(
+          value: 'block',
+          child: ListTile(
+            leading: Icon(Icons.block),
+            title: Text('Block'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+      ],
+    );
   }
 }
 
