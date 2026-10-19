@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
@@ -98,7 +99,8 @@ class _InterestsSelectionPageState
           }
 
           if (widget.isOnboarding && mounted) {
-            context.go('/onboarding/avatar');
+            context.go(
+                withSignInFrom('/onboarding/avatar', signInFromOf(context)));
           } else if (mounted) {
             context.pop();
           }

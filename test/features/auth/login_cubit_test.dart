@@ -30,10 +30,31 @@ class _FakeAuthService implements AuthenticationService {
     return tokens;
   }
 
+  /// The authenticator codes sent with each email sign-in.
+  final List<String?> totpCodes = [];
+
+  /// When set, a sign-in without this exact code is refused as the server
+  /// refuses an account with two-step verification on.
+  String? requiresTotp;
+
   @override
   Future<Map<String, dynamic>> signInWithEmail(
-          {required String email, required String password}) =>
-      _answer();
+      {required String email, required String password, String? totpCode}) {
+    totpCodes.add(totpCode);
+    final needed = requiresTotp;
+    if (needed != null && totpCode != needed) {
+      throw totpCode == null
+          ? _refused(401, {
+              'message': 'Enter the code from your authenticator app',
+              'error_code': 'TOTP_REQUIRED',
+            })
+          : _refused(401, {
+              'message': 'That code is not valid',
+              'error_code': 'TOTP_INVALID',
+            });
+    }
+    return _answer();
+  }
 
   @override
   Future<Map<String, dynamic>> signUpWithEmail(
@@ -96,8 +117,22 @@ void main() {
       await cubit.loginWithEmail('a@b.c', 'nope');
 
       // It used to read "ApiException: Unauthorized. Please log in again.
-      // (unauthorized, code: 401)".
-      expect(failureOf(states), 'Incorrect username or password');
+      // (unauthorized, code: 401)", then the server's "Incorrect username or
+      // password"; now it says what to do about it.
+      expect(failureOf(states), wrongPasswordMessage);
+    });
+
+    test('too many wrong passwords: the server says how long to wait',
+        () async {
+      auth.signInThrows = _refused(429, {
+        'message': 'Too many wrong passwords. Try again in 5 min.',
+        'error_code': 'LOGIN_LOCKED',
+      });
+
+      await cubit.loginWithEmail('a@b.c', 'nope');
+
+      expect(
+          failureOf(states), 'Too many wrong passwords. Try again in 5 min.');
     });
 
     test('a suspended account', () async {
@@ -109,17 +144,6 @@ void main() {
       await cubit.loginWithEmail('a@b.c', 'pw');
 
       expect(failureOf(states), ApiException.accountSuspendedMessage);
-    });
-
-    test('an account with two-step verification on', () async {
-      auth.signInThrows = _refused(401, {
-        'message': 'Enter the code from your authenticator app',
-        'error_code': 'TOTP_REQUIRED',
-      });
-
-      await cubit.loginWithEmail('a@b.c', 'pw');
-
-      expect(failureOf(states), twoStepMessage);
     });
 
     test('a club waiting for approval', () async {
@@ -173,8 +197,10 @@ void main() {
     });
 
     test('is refused when the server says the club is unverified', () async {
-      auth.accountType =
-          _refused(403, {'message': 'Club is not verified', 'error_code': 'CLUB_NOT_VERIFIED'});
+      auth.accountType = _refused(403, {
+        'message': 'Club is not verified',
+        'error_code': 'CLUB_NOT_VERIFIED'
+      });
 
       await cubit.loginWithEmail('club@b.c', 'pw');
 
@@ -191,8 +217,7 @@ void main() {
       expect(revoker.revoked, isEmpty);
     });
 
-    test('a check that cannot be made does not lock an attendee out',
-        () async {
+    test('a check that cannot be made does not lock an attendee out', () async {
       auth.accountType = const ApiException(
         message: ApiException.networkMessage,
         type: ApiExceptionType.network,
@@ -209,5 +234,51 @@ void main() {
 
     expect(states.last, isA<LoginSuccess>());
     expect(auth.accountChecks, isEmpty);
+  });
+
+  group('two-step verification', () {
+    test('the right password asks for the code, and nothing is stored',
+        () async {
+      auth.requiresTotp = '123456';
+
+      await cubit.loginWithEmail('a@b.c', 'pw');
+
+      final asked = states.last as LoginNeedsTwoStep;
+      expect(asked.email, 'a@b.c');
+      expect(asked.password, 'pw');
+      expect(asked.error, isNull);
+      expect(storage.values, isEmpty);
+    });
+
+    test('the code goes with the same email and password, and signs in',
+        () async {
+      auth.requiresTotp = '123456';
+      await cubit.loginWithEmail('a@b.c', 'pw');
+
+      await cubit.loginWithEmail('a@b.c', 'pw', totpCode: '123456');
+
+      expect(auth.totpCodes, [null, '123456']);
+      expect(states.last, isA<LoginSuccess>());
+      expect(storage.values['access_token'], 'access');
+    });
+
+    test('a wrong code asks again, saying so', () async {
+      auth.requiresTotp = '123456';
+
+      await cubit.loginWithEmail('a@b.c', 'pw', totpCode: '000000');
+
+      final asked = states.last as LoginNeedsTwoStep;
+      expect(asked.error, twoStepWrongCodeMessage);
+      expect(storage.values, isEmpty);
+    });
+
+    test('a recovery code is sent as the code', () async {
+      auth.requiresTotp = 'ab12-cd34-ef56-7890';
+
+      await cubit.loginWithEmail('a@b.c', 'pw',
+          totpCode: 'ab12-cd34-ef56-7890');
+
+      expect(states.last, isA<LoginSuccess>());
+    });
   });
 }

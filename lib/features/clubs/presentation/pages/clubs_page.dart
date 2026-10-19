@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/shared/widgets/custom_search_delegate.dart';
@@ -36,6 +38,10 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
   bool isLoading = true;
   String? errorMessage;
 
+  /// Nobody is signed in, and the server would not list clubs without an
+  /// account: the tab says how to get clubs of your own instead.
+  bool _signedOut = false;
+
   @override
   void initState() {
     super.initState();
@@ -54,14 +60,25 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
     final showedSaved = savedPinned != null && savedFollowing != null;
     if (showedSaved) _show(savedPinned, savedFollowing);
 
+    // Signed out there is no session to send, or to renew on a 401.
+    final signedIn = ref.read(isAuthenticatedProvider);
     try {
       final answers = await Future.wait([
-        api.request(_pinnedPath, DioMethod.get, cache: CachePolicy.shared),
-        api.request(_followingPath, DioMethod.get, cache: CachePolicy.shared),
+        api.request(_pinnedPath, DioMethod.get,
+            cache: CachePolicy.shared, skipAuth: !signedIn),
+        api.request(_followingPath, DioMethod.get,
+            cache: CachePolicy.shared, skipAuth: !signedIn),
       ]);
       _show(answers[0].data, answers[1].data);
     } catch (e) {
       if (!mounted || showedSaved) return;
+      if (!signedIn && statusCodeOf(e) == 401) {
+        setState(() {
+          _signedOut = true;
+          isLoading = false;
+        });
+        return;
+      }
       setState(() {
         errorMessage = extractErrorMessage(
           e,
@@ -130,6 +147,12 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_signedOut) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: _SignedOutClubs(),
+      );
+    }
     final profileState = ref.watch(profileProvider);
     final topicsAsync = ref.watch(topicDirectoryProvider);
 
@@ -185,6 +208,11 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
                 child: Divider(height: 0, thickness: 1),
               ),
               const SizedBox(height: 16),
+            ],
+            // What the clubs you follow have posted, in one feed.
+            if (followingClubs.isNotEmpty) ...[
+              const _FollowingPostsCard(),
+              const SizedBox(height: 20),
             ],
             // Header with "Explore More Clubs" link
             Padding(
@@ -371,6 +399,102 @@ class _FilterChip extends StatelessWidget {
               const SizedBox(width: 4),
               Icon(Icons.close, size: 14, color: Colors.white),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The way into the posts from every club you follow.
+class _FollowingPostsCard extends StatelessWidget {
+  const _FollowingPostsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Material(
+        color: const Color(0xFFF9FFA1),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFF1E1E1E), width: 1.5),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: const ValueKey('clubs-following-posts'),
+          onTap: () => context.push('/following/posts'),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Icon(Icons.forum_outlined, color: Color(0xFF1E1E1E)),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'POSTS FROM YOUR CLUBS',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontFamily: 'BebasNeue',
+                          color: Color(0xFF1E1E1E),
+                        ),
+                      ),
+                      Text(
+                        'Updates and polls from every club you follow',
+                        style: TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: Color(0xFF1E1E1E)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The Clubs tab with nobody signed in: following is what fills it.
+class _SignedOutClubs extends ConsumerWidget {
+  const _SignedOutClubs();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Padding(
+        key: const ValueKey('clubs-signed-out'),
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.groups_outlined, size: 56, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            const Text(
+              'Your clubs live here',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 26, fontFamily: 'BebasNeue'),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Sign in to follow clubs, pin your favourites and see what '
+              'they post.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              key: const ValueKey('clubs-sign-in'),
+              onPressed: () => startSignIn(context, ref),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2C333D),
+              ),
+              child: const Text('SIGN IN'),
+            ),
           ],
         ),
       ),

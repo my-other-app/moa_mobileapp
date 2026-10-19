@@ -20,7 +20,11 @@ class AppConfig {
   /// Google OAuth Client ID
   String get googleClientId => Env.googleClientId;
 
-  /// Whether analytics is enabled
+  /// Whether this build may collect usage analytics at all
+  /// (`ENABLE_ANALYTICS`). True for store builds; false keeps a development
+  /// build out of the production numbers. Within a build that allows it,
+  /// the person's "Share usage analytics" switch decides
+  /// (`AnalyticsService.applyChoices`). Crash reports do not depend on it.
   bool get isAnalyticsEnabled => Env.enableAnalytics.toLowerCase() == 'true';
 
   /// Initialize app configuration

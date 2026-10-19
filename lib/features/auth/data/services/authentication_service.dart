@@ -1,21 +1,36 @@
 import 'package:finnet/core/api/api_helper.dart';
 
 class AuthenticationService {
+  AuthenticationService({APIService? api}) : _apiOverride = api;
+
+  final APIService? _apiOverride;
+
+  /// The app's API client; a test hands in its own.
+  APIService get _api => _apiOverride ?? APIService.instance;
+
   /// What a sign-in call throws when it answers 2xx without tokens. Never
   /// the response body: that is what the sign-in screen used to show.
   static Exception _noTokens() =>
       Exception("We couldn't sign you in. Please try again.");
 
+  /// `POST /auth/token`. [totpCode] is the second step for an account with
+  /// two-step verification on: the authenticator's six digits, or one of
+  /// its recovery codes. Without it such an account is refused with
+  /// TOTP_REQUIRED (after the password is checked); a wrong one is
+  /// TOTP_INVALID.
   Future<Map<String, dynamic>> signInWithEmail({
     required String email,
     required String password,
+    String? totpCode,
   }) async {
     // OAuth2 token endpoint requires application/x-www-form-urlencoded
     // Dio's FormData sends multipart/form-data, so we need to send as encoded string
+    final code = totpCode?.trim() ?? '';
     final encodedData =
-        'username=${Uri.encodeComponent(email)}&password=${Uri.encodeComponent(password)}';
+        'username=${Uri.encodeComponent(email)}&password=${Uri.encodeComponent(password)}'
+        '${code.isEmpty ? '' : '&totp_code=${Uri.encodeComponent(code)}'}';
 
-    final response = await APIService.instance.request(
+    final response = await _api.request(
       '/auth/token',
       DioMethod.post,
       contentType: 'application/x-www-form-urlencoded',
@@ -33,7 +48,7 @@ class AuthenticationService {
     required String email,
     required String password,
   }) async {
-    final response = await APIService.instance.request(
+    final response = await _api.request(
       '/user/register',
       DioMethod.post,
       param: {
@@ -53,7 +68,7 @@ class AuthenticationService {
     required String idToken,
     required String platform,
   }) async {
-    final response = await APIService.instance.request(
+    final response = await _api.request(
       '/auth/google',
       DioMethod.post,
       param: {
@@ -74,7 +89,7 @@ class AuthenticationService {
     String? userName,
     String? userEmail,
   }) async {
-    final response = await APIService.instance.request(
+    final response = await _api.request(
       '/auth/apple',
       DioMethod.post,
       param: {
@@ -97,7 +112,7 @@ class AuthenticationService {
   /// Sent with the new token by hand: it is not stored yet, and must not be
   /// until it is known to be an account the app can use.
   Future<String?> accountTypeOf(String accessToken) async {
-    final response = await APIService.instance.request(
+    final response = await _api.request(
       '/auth/me',
       DioMethod.get,
       skipAuth: true,

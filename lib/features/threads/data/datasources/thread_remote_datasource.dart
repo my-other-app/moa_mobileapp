@@ -1,12 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/network/dio_client.dart';
 import 'package:finnet/features/threads/data/models/thread_models.dart';
 
 /// Provider for the threads remote data source.
 final threadRemoteDataSourceProvider = Provider<ThreadRemoteDataSource>((ref) {
   final dio = ref.watch(dioProvider);
-  return ThreadRemoteDataSourceImpl(dio);
+  return ThreadRemoteDataSourceImpl(dio, cache: ref.watch(apiCacheProvider));
 });
 
 /// Remote calls for club Threads.
@@ -22,6 +23,15 @@ abstract class ThreadRemoteDataSource {
     required int offset,
     required int limit,
   });
+
+  /// `GET /threads/feed` -- posts from the clubs this person follows,
+  /// newest first; [after] is the `next_cursor` of the page before. Needs a
+  /// session. The first page is kept on the phone (encrypted: who you
+  /// follow is yours).
+  Future<ThreadPageModel> getFollowingFeed({String? after, required int limit});
+
+  /// The first page of the feed as last kept on this phone, or null.
+  Future<ThreadPageModel?> savedFollowingFeed({required int limit});
 
   /// `GET /threads/{thread_id}` -- one post; 404 once it is removed.
   Future<ThreadModel> getThread(String threadId);
@@ -45,12 +55,16 @@ abstract class ThreadRemoteDataSource {
 /// Implementation of [ThreadRemoteDataSource] over the app's Dio.
 class ThreadRemoteDataSourceImpl implements ThreadRemoteDataSource {
   final Dio _dio;
+  final ApiCache? _cache;
 
-  ThreadRemoteDataSourceImpl(this._dio);
+  ThreadRemoteDataSourceImpl(this._dio, {ApiCache? cache}) : _cache = cache;
+
+  static const _feedPath = '/threads/feed';
 
   /// Ids come from notification payloads as well as from the server's own
   /// lists, so they are escaped rather than trusted to be path-safe.
-  String _thread(String threadId) => '/threads/${Uri.encodeComponent(threadId)}';
+  String _thread(String threadId) =>
+      '/threads/${Uri.encodeComponent(threadId)}';
 
   @override
   Future<ThreadPageModel> getClubThreads(
@@ -63,6 +77,37 @@ class ThreadRemoteDataSourceImpl implements ThreadRemoteDataSource {
       queryParameters: {'offset': offset, 'limit': limit},
     );
     return ThreadPageModel.fromJson(response.data);
+  }
+
+  @override
+  Future<ThreadPageModel> getFollowingFeed({
+    String? after,
+    required int limit,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      _feedPath,
+      queryParameters: {
+        'limit': limit,
+        if (after != null) 'after': after,
+      },
+      // Only the first page is worth keeping: it is what opens first.
+      options:
+          after == null ? Options(extra: CachePolicy.personal.extra) : null,
+    );
+    return ThreadPageModel.fromJson(response.data);
+  }
+
+  @override
+  Future<ThreadPageModel?> savedFollowingFeed({required int limit}) async {
+    final data = await (_cache ?? ApiCache.instance).savedAnswer(
+      _dio,
+      _feedPath,
+      query: {'limit': limit},
+      scope: CacheScope.personal,
+    );
+    return data is Map
+        ? ThreadPageModel.fromJson(Map<String, dynamic>.from(data))
+        : null;
   }
 
   @override
