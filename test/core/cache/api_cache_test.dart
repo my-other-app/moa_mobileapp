@@ -129,6 +129,31 @@ void main() {
       expect((await t.cache.read(key, CacheScope.shared))!.data['name'], 'B');
     });
 
+    test('the same answer is not written again within 12 hours', () async {
+      var name = 'A';
+      final t = _setUp({
+        'GET /clubs/info/3': (_) => _json('{"name":"$name"}'),
+      });
+      Future<DateTime> written() async =>
+          (await t.shared.list()).single.modified;
+
+      await t.dio.get('/clubs/info/3', options: _cached());
+      final first = await written();
+
+      t.clock.now = t.clock.now.add(const Duration(hours: 1));
+      await t.dio.get('/clubs/info/3', options: _cached());
+      expect(await written(), first, reason: 'unchanged, and recent');
+
+      name = 'B';
+      await t.dio.get('/clubs/info/3', options: _cached());
+      expect(await written(), t.clock.now, reason: 'changed');
+
+      t.clock.now = t.clock.now.add(const Duration(hours: 13));
+      await t.dio.get('/clubs/info/3', options: _cached());
+      expect(await written(), t.clock.now, reason: 'unchanged, but its week '
+          'is renewed twice a day');
+    });
+
     test('offline, the saved copy is the answer, after one retry', () async {
       var online = true;
       final t = _setUp({

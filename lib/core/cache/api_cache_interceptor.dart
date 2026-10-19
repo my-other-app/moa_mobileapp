@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -54,30 +56,41 @@ class ApiCacheInterceptor extends Interceptor {
     return policy;
   }
 
+  /// A copy written or confirmed less than this long ago is not written
+  /// again for the same answer, so the store is not rewritten on every
+  /// view. Its week still counts from the last write.
+  static const rewriteAfter = Duration(hours: 12);
+
   @override
   Future<void> onRequest(
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    final policy = _policyFor(options);
-    if (policy == null) {
-      handler.next(options);
-      return;
+    // Whatever happens here, the request goes on: a cache that fails is a
+    // cache that missed.
+    try {
+      await _prepare(options);
+    } catch (e) {
+      debugPrint('ApiCacheInterceptor: could not prepare ${options.path}: $e');
     }
+    handler.next(options);
+  }
+
+  Future<void> _prepare(RequestOptions options) async {
+    final policy = _policyFor(options);
+    if (policy == null) return;
     final key = ApiCache.keyFor(options.uri);
     options.extra[_keyKey] = key;
     options.extra[_epochKey] = cache.epoch;
     final entry = await cache.read(key, policy.scope);
-    if (entry != null) {
-      options.extra[_entryKey] = entry;
-      final etag = entry.etag;
-      if (etag != null) {
-        options.headers['If-None-Match'] = etag;
-        final validate = options.validateStatus;
-        options.validateStatus = (status) => status == 304 || validate(status);
-      }
+    if (entry == null) return;
+    options.extra[_entryKey] = entry;
+    final etag = entry.etag;
+    if (etag != null) {
+      options.headers['If-None-Match'] = etag;
+      final validate = options.validateStatus;
+      options.validateStatus = (status) => status == 304 || validate(status);
     }
-    handler.next(options);
   }
 
   @override
@@ -85,40 +98,60 @@ class ApiCacheInterceptor extends Interceptor {
     Response<dynamic> response,
     ResponseInterceptorHandler handler,
   ) async {
+    var answer = response;
+    try {
+      answer = await _settle(response);
+    } catch (e) {
+      debugPrint('ApiCacheInterceptor: could not save '
+          '${response.requestOptions.path}: $e');
+    }
+    handler.next(answer);
+  }
+
+  Future<Response<dynamic>> _settle(Response<dynamic> response) async {
     final options = response.requestOptions;
     final policy = _policyFor(options);
     final key = options.extra[_keyKey];
-    if (policy == null || key is! String) {
-      handler.next(response);
-      return;
-    }
+    if (policy == null || key is! String) return response;
     final epoch = options.extra[_epochKey] as int?;
     final saved = options.extra[_entryKey];
+    final recent = saved is CacheEntry &&
+        cache.now().difference(saved.savedAt) < rewriteAfter;
 
     if (response.statusCode == 304 && saved is CacheEntry) {
-      await cache.confirm(key, policy.scope, saved, epoch: epoch);
-      handler.next(_fromSaved(response.requestOptions, saved,
-          CachedAnswer.revalidated,
-          headers: response.headers));
-      return;
+      if (!recent) await cache.confirm(key, policy.scope, saved, epoch: epoch);
+      return _fromSaved(options, saved, CachedAnswer.revalidated,
+          headers: response.headers);
     }
 
     final status = response.statusCode ?? 0;
     final data = response.data;
     if (status == 200 && (data is Map || data is List)) {
-      await cache.write(
-        key,
-        policy.scope,
-        CacheEntry(
-          data: data,
-          savedAt: cache.now(),
-          etag: response.headers.value('etag'),
-          lastModified: response.headers.value('last-modified'),
-        ),
-        epoch: epoch,
-      );
+      final etag = response.headers.value('etag');
+      final unchanged = recent && saved.etag == etag && _same(saved.data, data);
+      if (!unchanged) {
+        await cache.write(
+          key,
+          policy.scope,
+          CacheEntry(
+            data: data,
+            savedAt: cache.now(),
+            etag: etag,
+            lastModified: response.headers.value('last-modified'),
+          ),
+          epoch: epoch,
+        );
+      }
     }
-    handler.next(response);
+    return response;
+  }
+
+  static bool _same(Object? a, Object? b) {
+    try {
+      return jsonEncode(a) == jsonEncode(b);
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
