@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/common/models/events/event_page_model.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_section.dart';
+import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 
 /// "More from this club" or "Similar events": a row of cards that scrolls
@@ -69,7 +70,12 @@ class EventSummaryCard extends StatelessWidget {
         : DateFormat("EEE, d MMM '·' h:mm a").format(start);
   }
 
-  String get _price {
+  /// "Free", "₹99", "Paid"; null for an event the iOS app doesn't sell
+  /// (a price there reads as an offer).
+  String? get _price {
+    if (!canSellInApp(hasFee: event.hasFee, isOnline: event.isOnline)) {
+      return null;
+    }
     if (!event.hasFee) return 'Free';
     final fee = event.fee;
     return fee == null ? 'Paid' : '₹${NumberFormat('#,##0', 'en_IN').format(fee)}';
@@ -128,7 +134,7 @@ class EventSummaryCard extends StatelessWidget {
                               fontSize: 12, color: Color(0xFF6B7280))),
                     ],
                     Text(
-                      '$where · $_price',
+                      _price == null ? where : '$where · $_price',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(

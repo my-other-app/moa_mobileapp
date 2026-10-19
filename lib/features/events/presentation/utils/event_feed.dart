@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/core/utils/hours.dart';
+import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/event_cover.dart';
@@ -34,13 +35,22 @@ String? eventLengthLabel(Object? hours) {
 /// The tags under a card: category, online or offline, free or paid, and
 /// the length when there is one. Empty ones are left out rather than drawn
 /// as a star with nothing beside it.
-List<String> eventCardTags(Map<String, dynamic> event) {
+///
+/// A paid online event on an iPhone ([platform], the running one by
+/// default) gets no "Paid": the iOS app doesn't sell it, and a price cue
+/// reads as one (canSellInApp).
+List<String> eventCardTags(Map<String, dynamic> event,
+    {TargetPlatform? platform}) {
   final category = _string(_map(event['category'])['name']).trim();
   final length = eventLengthLabel(event['duration']);
+  final online = event['is_online'] == true;
+  final paid = event['has_fee'] == true;
+  final sellable =
+      canSellInApp(hasFee: paid, isOnline: online, platform: platform);
   return [
     if (category.isNotEmpty) category,
-    event['is_online'] == true ? 'Online' : 'Offline',
-    event['has_fee'] == true ? 'Paid' : 'Free',
+    online ? 'Online' : 'Offline',
+    if (sellable) paid ? 'Paid' : 'Free',
     if (length != null) length,
   ];
 }
@@ -83,6 +93,7 @@ EventCard eventCardFromJson(
         category['name'] is String ? category['name'] as String : null,
     startsAt: parseEventStart(event['event_datetime']),
     isOnline: event['is_online'] == true,
+    hasFee: event['has_fee'] == true,
     eventId: _int(event['id']) ?? 0,
     clubId: eventClubId(event),
     eventSlug: _string(event['slug']),

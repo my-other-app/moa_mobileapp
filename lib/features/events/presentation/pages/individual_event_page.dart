@@ -1809,18 +1809,22 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _showFeePopup(context),
-                    child: _infoCard(
-                      context,
-                      icon: AssetResources.regfee,
-                      title: 'Registration Fee',
-                      value: hasFee == true ? '₹ $regFee' : 'Free',
+                // No price on an iPhone for an event it doesn't sell: a
+                // price reads as an offer.
+                if (_sellable) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _showFeePopup(context),
+                      child: _infoCard(
+                        context,
+                        icon: AssetResources.regfee,
+                        title: 'Registration Fee',
+                        value: hasFee == true ? '₹ $regFee' : 'Free',
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
             const SizedBox(height: 16),
@@ -2075,7 +2079,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             const SizedBox(height: 16),
 
             // ========== ON SALE WITH THE TICKET ==========
-            if (catalog.hasAnything) _buildStoreSection(context),
+            // Bought with the ticket, so not offered where the ticket isn't.
+            if (catalog.hasAnything && _sellable) _buildStoreSection(context),
 
             // ========== RATE AND RATING SECTION (only for attended) ==========
             if (isAttended) ...[
