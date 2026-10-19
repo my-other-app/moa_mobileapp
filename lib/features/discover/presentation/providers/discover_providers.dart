@@ -174,6 +174,19 @@ class DiscoverThreadsNotifier extends PagedNotifier<Thread, Object?>
   @override
   Object keyOf(Thread item) => item.id;
 
+  /// Read [threadId] again -- back from its page, where it may have been
+  /// liked, voted on, commented on or removed -- so its card says so.
+  Future<void> reread(String threadId) async {
+    final result = await repository.getThread(threadId);
+    if (!mounted) return;
+    result.fold(
+      (failure) {
+        if (failure.code == '404') removeItem(threadId);
+      },
+      replaceItem,
+    );
+  }
+
   @override
   Thread? findThread(String threadId) => itemWithKey(threadId);
 

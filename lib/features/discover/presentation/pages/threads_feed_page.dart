@@ -66,7 +66,7 @@ class ThreadsFeedPage extends ConsumerWidget {
             return ThreadCard(
               key: ValueKey(thread.id),
               thread: thread,
-              onTap: () => openDiscoverThread(context, thread.id),
+              onTap: () => _open(context, ref, thread),
               onClubTap: () => openDiscoverClub(
                 context,
                 id: thread.club.id,
@@ -100,6 +100,13 @@ class ThreadsFeedPage extends ConsumerWidget {
       ),
       body: body,
     );
+  }
+
+  /// The post's page; back from it, the card is read again.
+  Future<void> _open(BuildContext context, WidgetRef ref, Thread thread) async {
+    final notifier = ref.read(discoverThreadsProvider.notifier);
+    await context.push('/threads/${Uri.encodeComponent(thread.id)}');
+    await notifier.reread(thread.id);
   }
 
   Future<void> _like(BuildContext context, WidgetRef ref, Thread thread) async {

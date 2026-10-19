@@ -20,6 +20,15 @@ import 'discover_fixtures.dart';
 
 class _Threads implements ThreadRepository {
   final likes = <String>[];
+  final reads = <String>[];
+  Result<Thread> thread = Either.left(
+      const ServerFailure(message: 'Not found', code: '404'));
+
+  @override
+  Future<Result<Thread>> getThread(String threadId) async {
+    reads.add(threadId);
+    return thread;
+  }
 
   @override
   Future<Result<LikeResult>> toggleLike(String threadId) async {
@@ -147,6 +156,27 @@ void main() {
       await tester.tap(find.text('Hello from the club'));
       await settle(tester);
       expect(h.went.single, '/threads/t-1');
+    });
+
+    testWidgets('back from a post, its card is read again', (tester) async {
+      final h = await _pump(tester, '/discover/threads');
+      h.threads.thread = Either.right(parseThread(threadOut('t-1', body: 'Edited'))!);
+      await tester.tap(find.text('Hello from the club'));
+      await settle(tester);
+      h.router.pop();
+      await settle(tester, 12);
+      expect(h.threads.reads, ['t-1']);
+      expect(find.text('Edited'), findsOneWidget);
+
+      // Removed meanwhile: the card goes.
+      h.threads.thread = Either.left(
+          const ServerFailure(message: 'Not found', code: '404'));
+      await tester.tap(find.text('Edited'));
+      await settle(tester);
+      h.router.pop();
+      await settle(tester, 12);
+      expect(find.text('Edited'), findsNothing);
+      expect(find.byKey(const ValueKey('discover-threads-empty')), findsOneWidget);
     });
 
     testWidgets('signed out, a like asks to sign in and sends nothing',

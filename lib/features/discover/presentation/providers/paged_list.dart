@@ -219,6 +219,13 @@ abstract class PagedNotifier<T, M> extends StateNotifier<PagedState<T, M>> {
     state = state.copyWith(items: List<T>.of(state.items)..[index] = item);
   }
 
+  /// Drop the row with [key] (a post the server says is gone).
+  void removeItem(Object key) {
+    if (!state.items.any((i) => keyOf(i) == key)) return;
+    state = state.copyWith(
+        items: state.items.where((i) => keyOf(i) != key).toList());
+  }
+
   /// The row shown with [key], if any.
   T? itemWithKey(Object key) {
     for (final item in state.items) {
