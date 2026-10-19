@@ -1,6 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import 'package:finnet/core/cache/image_caches.dart';
+import 'package:finnet/shared/utils/image_url.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart'
+    show decodeWidthFor, screenDecodeWidth;
 import 'package:finnet/shared/widgets/event_cover.dart';
 
 /// Where a poster is shown, which decides which of its sizes to fetch.
@@ -51,21 +55,9 @@ String? _usableUrl(Object? value) {
   return url;
 }
 
-/// The key a poster is cached under: its URL without the query string.
-///
-/// Posters are presigned S3 links that are re-signed on every API call, so
-/// the full URL is new every time and a cache keyed on it never hits --
-/// every scroll downloaded every poster again. The path is the S3 object,
-/// which is a fresh uuid per upload, so it is stable for one image and
-/// changes when the poster does.
-String posterCacheKey(String url) {
-  var end = url.length;
-  final query = url.indexOf('?');
-  if (query >= 0) end = query;
-  final fragment = url.indexOf('#');
-  if (fragment >= 0 && fragment < end) end = fragment;
-  return url.substring(0, end);
-}
+/// The key a poster is cached under: [imageCacheKey], which every picture
+/// in the app now uses. Kept under this name for the callers that had it.
+String posterCacheKey(String url) => imageCacheKey(url);
 
 /// An event's poster, or the drawn cover when there is none.
 ///
@@ -165,14 +157,20 @@ class EventPosterImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = this.url;
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
     Widget child = url == null
         ? _cover(null)
         : CachedNetworkImage(
             imageUrl: url,
             cacheKey: posterCacheKey(url),
+            cacheManager: AppImageCaches.public,
             width: width,
             height: height,
             fit: fit,
+            // Decoded at the size it is drawn, not the upload's: a card is
+            // ~360pt wide, and an original can be a 4000px phone photo.
+            memCacheWidth: decodeWidthFor(width, height, dpr) ??
+                screenDecodeWidth(context),
             fadeInDuration: const Duration(milliseconds: 200),
             fadeOutDuration: const Duration(milliseconds: 100),
             placeholder: (_, __) => _cover(loadingKey),

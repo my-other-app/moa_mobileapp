@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 class CertificateListCard extends StatelessWidget {
   final String title;
@@ -70,10 +71,11 @@ class CertificateListCard extends StatelessWidget {
                 child: leading ??
                     (imageUrl.isEmpty
                         ? const ColoredBox(color: Color(0xFFEFEFEF))
-                        : Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                        : AppNetworkImage(
+                            url: imageUrl,
+                            width: 48,
+                            height: 48,
+                            errorWidget: (_) =>
                                 const ColoredBox(color: Color(0xFFEFEFEF)),
                           )),
               ),

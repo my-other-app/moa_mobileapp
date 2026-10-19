@@ -1,9 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/presentation/utils/event_feed.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
 import 'package:share_plus/share_plus.dart';
@@ -148,32 +148,18 @@ class EventCard extends StatelessWidget {
               child: SizedBox(
                 width: 48,
                 height: 48,
-                child: CachedNetworkImage(
-                  imageUrl: orgImage,
-                  // Logos are presigned too: key the cache on the object,
-                  // not the signature, or it never hits.
-                  cacheKey: orgImage.isEmpty ? null : posterCacheKey(orgImage),
-                  imageBuilder: (context, imageProvider) => Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                        image: imageProvider,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  placeholder: (context, url) => Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
+                child: ClipOval(
+                  // Logos are presigned too: AppNetworkImage keys the cache
+                  // on the object, not the signature, or it never hits.
+                  child: AppNetworkImage(
+                    url: orgImage,
+                    width: 48,
+                    height: 48,
+                    errorWidget: (_) => Container(
                       color: Colors.grey[300],
+                      child: const Icon(Icons.group, color: Colors.grey),
                     ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.grey[300],
-                    ),
-                    child: const Icon(Icons.group, color: Colors.grey),
+                    placeholder: (_) => ColoredBox(color: Colors.grey[300]!),
                   ),
                 ),
               ),

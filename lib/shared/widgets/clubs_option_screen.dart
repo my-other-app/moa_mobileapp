@@ -5,6 +5,7 @@ import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/notifications/data/repositories/push_settings_repository_impl.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 class ClubsOptionScreen extends ConsumerStatefulWidget {
   final String clubName;
@@ -212,7 +213,11 @@ class _ClubsOptionScreenState extends ConsumerState<ClubsOptionScreen> {
                 // A club without a logo has no address to load.
                 backgroundImage: widget.imageUrl.isEmpty
                     ? null
-                    : NetworkImage(widget.imageUrl),
+                    : appImageProvider(
+                        widget.imageUrl,
+                        decodeWidth: decodeWidthFor(
+                            48, 48, MediaQuery.devicePixelRatioOf(context)),
+                      ),
                 onBackgroundImageError:
                     widget.imageUrl.isEmpty ? null : (_, __) {},
               ),

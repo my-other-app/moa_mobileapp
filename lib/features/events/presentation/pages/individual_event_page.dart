@@ -36,6 +36,7 @@ import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart'
 import 'package:finnet/features/events/presentation/pages/networking_page.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/core/config/app_config.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 class IndividualEventPage extends ConsumerStatefulWidget {
   final int eventId;
@@ -2179,7 +2180,11 @@ class _ClubLogo extends StatelessWidget {
     return CircleAvatar(
       radius: 24,
       backgroundColor: const Color(0xFFF3F3F3),
-      foregroundImage: hasUrl ? NetworkImage(url) : null,
+      foregroundImage: hasUrl
+          ? appImageProvider(url,
+              decodeWidth: decodeWidthFor(
+                  48, 48, MediaQuery.devicePixelRatioOf(context)))
+          : null,
       onForegroundImageError: hasUrl ? (_, __) {} : null,
       child: const Icon(Icons.group, color: Colors.grey),
     );

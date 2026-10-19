@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:finnet/shared/widgets/app_network_image.dart';
+
 /// A club's logo, or a plain placeholder tile when it has none or the image
 /// will not load.
 ///
@@ -38,12 +40,14 @@ class ClubLogo extends StatelessWidget {
 
     final image = link.isEmpty
         ? placeholder
-        : Image.network(
-            link,
+        : AppNetworkImage(
+            url: link,
             width: size,
             height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => placeholder,
+            // Plain grey while it loads; the placeholder's icon is for a
+            // club that has no logo, or one that will not load.
+            placeholder: (_) => const ColoredBox(color: Color(0xFFEFEFEF)),
+            errorWidget: (_) => placeholder,
           );
 
     return SizedBox(

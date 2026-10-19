@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// Onboarding Final Page - migrated to Riverpod.
 class OnboardingFinalPage extends ConsumerWidget {
@@ -127,10 +128,13 @@ class OnboardingFinalPage extends ConsumerWidget {
       ),
       child: ClipOval(
         child: imageUrl != null && imageUrl.isNotEmpty
-            ? Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
+            ? AppNetworkImage(
+                url: imageUrl,
+                width: 120,
+                height: 120,
+                privacy: ImagePrivacy.private,
+                placeholder: (_) => const SizedBox.shrink(),
+                errorWidget: (_) =>
                     Icon(Icons.person, size: 60, color: Colors.white),
               )
             : Icon(Icons.person, size: 60, color: Colors.white),

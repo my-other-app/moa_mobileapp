@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/shared/widgets/clubs_option_screen.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 class ClubListTile extends StatelessWidget {
   final int clubId;
@@ -72,12 +73,11 @@ class ClubListTile extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
-              child: Image.network(
-                imageUrl,
+              child: AppNetworkImage(
+                url: imageUrl,
                 width: 36,
                 height: 36,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorWidget: (_) => Container(
                   width: 36,
                   height: 36,
                   color: Colors.grey[200],

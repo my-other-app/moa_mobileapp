@@ -48,6 +48,10 @@ dependencies:
   flutter_svg: ^2.0.17
   dropdown_button2: ^2.3.9
   cached_network_image: ^3.4.1
+  # Already in the tree through cached_network_image (same version). Named
+  # here because the app configures its picture caches itself: a size cap,
+  # a stale period, and a private cache a sign-out empties.
+  flutter_cache_manager: ^3.4.1
   razorpay_flutter: ^1.4.0
   shimmer: ^3.0.0
   

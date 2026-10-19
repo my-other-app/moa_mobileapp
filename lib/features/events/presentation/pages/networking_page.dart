@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// Model for a networking attendee.
 class NetworkingAttendee {
@@ -296,7 +297,15 @@ class _NetworkingPageState extends State<NetworkingPage> {
               radius: 24,
               backgroundColor: const Color(0xFFE8F5E9),
               backgroundImage: attendee.profilePicUrl != null
-                  ? NetworkImage(attendee.profilePicUrl!)
+                  ? appImageProvider(
+                      attendee.profilePicUrl!,
+                      privacy: ImagePrivacy.private,
+                      decodeWidth: decodeWidthFor(
+                          48, 48, MediaQuery.devicePixelRatioOf(context)),
+                    )
+                  : null,
+              onBackgroundImageError: attendee.profilePicUrl != null
+                  ? (_, __) {}
                   : null,
               child: attendee.profilePicUrl == null
                   ? Text(

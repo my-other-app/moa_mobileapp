@@ -8,6 +8,7 @@ import 'package:finnet/core/config/env/env.dart';
 import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
 import 'package:finnet/features/profile/presentation/pages/certificates/certificate_preview.dart';
 import 'package:finnet/shared/widgets/certificate_list_card.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// The list behind both the ALL and PINNED tabs.
 ///
@@ -87,12 +88,12 @@ class CertificateListView extends ConsumerWidget {
               );
 
               return CertificateListCard(
-                leading: Image.network(
-                  certificate.imageUrl(Env.apiBaseUrl),
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, progress) =>
-                      progress == null ? child : drawn,
-                  errorBuilder: (_, __, ___) => drawn,
+                leading: AppNetworkImage(
+                  url: certificate.imageUrl(Env.apiBaseUrl),
+                  privacy: ImagePrivacy.private,
+                  decodeWidth: 480,
+                  placeholder: (_) => drawn,
+                  errorWidget: (_) => drawn,
                 ),
                 title: certificate.title,
                 organization: certificate.clubName ?? '',

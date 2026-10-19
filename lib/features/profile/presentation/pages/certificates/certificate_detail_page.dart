@@ -8,6 +8,7 @@ import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
 import 'package:finnet/features/profile/presentation/pages/certificates/certificate_preview.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// One certificate, to the design: preview, title, id, club, two facts,
 /// a pin action, the status banner and the download button.
@@ -92,14 +93,15 @@ class CertificateDetailPage extends ConsumerWidget {
                       aspectRatio: 800 / 519,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
-                        child: Image.network(
-                          certificate.imageUrl(Env.apiBaseUrl),
+                        child: AppNetworkImage(
+                          url: certificate.imageUrl(Env.apiBaseUrl),
                           fit: BoxFit.contain,
-                          loadingBuilder: (context, child, progress) =>
-                              progress == null ? child : placeholder,
+                          // Carries the person's name: emptied on sign-out.
+                          privacy: ImagePrivacy.private,
+                          placeholder: (_) => placeholder,
                           // Falls back to the drawn version rather than an
                           // empty panel if the render fails.
-                          errorBuilder: (_, __, ___) => placeholder,
+                          errorWidget: (_) => placeholder,
                         ),
                       ),
                     ),
@@ -253,10 +255,11 @@ class _ClubRow extends StatelessWidget {
             height: 28,
             child: logoUrl == null || logoUrl!.isEmpty
                 ? const ColoredBox(color: Color(0xFFEFEFEF))
-                : Image.network(
-                    logoUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
+                : AppNetworkImage(
+                    url: logoUrl,
+                    width: 28,
+                    height: 28,
+                    errorWidget: (_) =>
                         const ColoredBox(color: Color(0xFFEFEFEF)),
                   ),
           ),

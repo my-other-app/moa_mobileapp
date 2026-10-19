@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/features/notifications/data/models/notification_model.dart';
 import 'package:finnet/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:finnet/features/profile/presentation/pages/notifications/no_notification_page.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// Notifications page showing in-app notification history.
 class NotificationsNewPage extends ConsumerStatefulWidget {
@@ -258,12 +259,11 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
           color: Colors.grey[200],
         ),
         child: ClipOval(
-          child: Image.network(
-            notification.fromClub!.logo!,
+          child: AppNetworkImage(
+            url: notification.fromClub!.logo!,
             width: 48,
             height: 48,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _buildIconAvatar(notification),
+            errorWidget: (_) => _buildIconAvatar(notification),
           ),
         ),
       );
