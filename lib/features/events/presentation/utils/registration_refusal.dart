@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 
 /// What a refused registration offers next.
@@ -17,6 +18,16 @@ abstract final class RegistrationErrorCodes {
   static const eventFull = 'EVENT_FULL';
   static const soldOut = 'SOLD_OUT';
   static const clubEmail = 'CLUB_EMAIL';
+
+  /// Signed in, the email sent wasn't the account's.
+  static const emailMismatch = 'EMAIL_MISMATCH';
+
+  /// The shelf: the event stopped selling merchandise, an item went or is
+  /// not for this person, a size is missing, or an item is there twice.
+  static const storeClosed = 'STORE_CLOSED';
+  static const itemUnavailable = 'ITEM_UNAVAILABLE';
+  static const sizeRequired = 'SIZE_REQUIRED';
+  static const itemRepeated = 'ITEM_REPEATED';
 
   /// An answer to the event's own questions was refused: required and
   /// missing, not one of the options, or not a number, email address, web
@@ -104,6 +115,16 @@ RegistrationRefusal describeRegistrationError(Object? error) {
         action: RegistrationAction.finishPayment,
       );
     case RegistrationErrorCodes.registrationsClosed:
+      // Not open yet: `errors.closed_reason` is "not_started", with when it
+      // opens. Asking again later will work, so it isn't "closed".
+      final opens = _notStartedUntil(error);
+      if (opens != null) {
+        return RegistrationRefusal(
+          title: "Registration hasn't opened yet",
+          message: 'Registration opens ${DateFormat("EEE d MMM 'at' h:mm a").format(opens.toLocal())}. '
+              'Come back then to register.',
+        );
+      }
       return const RegistrationRefusal(
         title: 'Registrations are closed',
         message: "This event isn't taking more registrations right now.",
@@ -117,6 +138,27 @@ RegistrationRefusal describeRegistrationError(Object? error) {
         message: said != null
             ? '${_sentence(said)} Change your picks and try again.'
             : 'Something you picked has sold out. Change your picks and try again.',
+      );
+    case RegistrationErrorCodes.emailMismatch:
+      return const RegistrationRefusal(
+        title: "That email isn't your account's",
+        message:
+            'Register with the email you signed in with, or sign in with the other account.',
+      );
+    case RegistrationErrorCodes.storeClosed:
+      return const RegistrationRefusal(
+        title: 'Merchandise is off sale',
+        message:
+            "This event isn't selling merchandise any more. Take your picks off and register.",
+      );
+    case RegistrationErrorCodes.itemUnavailable:
+    case RegistrationErrorCodes.sizeRequired:
+    case RegistrationErrorCodes.itemRepeated:
+      return RegistrationRefusal(
+        title: 'Check your picks',
+        message: said != null
+            ? '${_sentence(said)} Change your picks and try again.'
+            : 'One of your picks needs changing. Change it and try again.',
       );
     case RegistrationErrorCodes.clubEmail:
       return const RegistrationRefusal(
@@ -149,6 +191,15 @@ RegistrationRefusal describeRegistrationError(Object? error) {
       fallback: 'Registration failed. Please try again.',
     ),
   );
+}
+
+/// When registration opens, for a refusal because it hasn't
+/// (`errors: {closed_reason: "not_started", opens_at}`); null otherwise.
+DateTime? _notStartedUntil(Object? error) {
+  final errors = apiExceptionOf(error)?.errors;
+  if (errors == null || errors['closed_reason'] != 'not_started') return null;
+  final at = errors['opens_at'];
+  return at is String ? DateTime.tryParse(at) : null;
 }
 
 const _full = RegistrationRefusal(
