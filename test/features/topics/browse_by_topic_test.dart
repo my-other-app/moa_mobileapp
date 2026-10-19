@@ -19,11 +19,20 @@ Future<List<(String, Object?)>> _pump(WidgetTester tester, Widget body) async {
   final router = GoRouter(routes: [
     GoRoute(path: '/', builder: (_, __) => Scaffold(body: body)),
     GoRoute(
-      path: '/events/explore',
+      path: '/topics',
       builder: (_, state) {
         went.add((state.uri.path, state.extra));
-        return const Scaffold(body: Text('explore'));
+        return const Scaffold(body: Text('topics'));
       },
+      routes: [
+        GoRoute(
+          path: ':slug',
+          builder: (_, state) {
+            went.add((state.uri.path, state.extra));
+            return const Scaffold(body: Text('a topic'));
+          },
+        ),
+      ],
     ),
   ]);
   await tester.pumpWidget(
@@ -45,7 +54,7 @@ void main() {
 
   setUp(() => api = useFakeApi());
 
-  testWidgets('a card per topic, counted; a tap opens Explore on it',
+  testWidgets("a card per topic, counted; a tap opens the topic's page",
       (tester) async {
     api.on('GET', '/interests/topics', contractTopicsBody);
     final went = await _pump(tester, const BrowseByTopicRow());
@@ -65,8 +74,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('browse-topic-arts')));
     await _settle(tester);
-    expect(went.single.$1, '/events/explore');
-    expect(went.single.$2, {'topic': 'arts'});
+    expect(went.single.$1, '/topics/arts');
   });
 
   testWidgets('large text still fits the cards', (tester) async {
@@ -86,14 +94,13 @@ void main() {
     expect(find.text('12 upcoming'), findsOneWidget);
   });
 
-  testWidgets('"See all" opens Explore unfiltered', (tester) async {
+  testWidgets('"See all" opens every topic', (tester) async {
     api.on('GET', '/interests/topics', contractTopicsBody);
     final went = await _pump(tester, const BrowseByTopicRow());
 
     await tester.tap(find.byKey(const ValueKey('browse-by-topic-all')));
     await _settle(tester);
-    expect(went.single.$1, '/events/explore');
-    expect(went.single.$2, isNull);
+    expect(went.single.$1, '/topics');
   });
 
   testWidgets('without counts (the /interests/list fallback) still shows',
