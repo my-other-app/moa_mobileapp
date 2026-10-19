@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:finnet/common/widgets/custom_option_tile.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/notifications/data/repositories/push_settings_repository_impl.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/settings_row.dart';
 
 class ClubsOptionScreen extends ConsumerStatefulWidget {
   final String clubName;
@@ -241,38 +241,38 @@ class _ClubsOptionScreenState extends ConsumerState<ClubsOptionScreen> {
             )
           else
             Column(
-              children: [
-                CustomOptionTile(
-                  leadingImageName: AssetResources.unfollow,
-                  title: const Text('Unfollow'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: dividedRows([
+                SettingsRow(
+                  asset: AssetResources.unfollow,
+                  label: 'Unfollow',
                   onTap: _unfollowClub,
+                  padding: EdgeInsets.zero,
                 ),
-                const Divider(height: 0),
-                CustomOptionTile(
-                  leadingImageName: AssetResources.hideevents,
-                  title: Text(_isHidden ? 'Show Events' : 'Hide Events'),
+                SettingsRow(
+                  asset: AssetResources.hideevents,
+                  label: _isHidden ? 'Show Events' : 'Hide Events',
                   onTap: _toggleHideClub,
+                  padding: EdgeInsets.zero,
                 ),
-                const Divider(height: 0),
-                CustomOptionTile(
-                  leadingImageName: AssetResources.pinit,
-                  title: Text(_isPinned ? 'Unpin' : 'Pin It'),
+                SettingsRow(
+                  asset: AssetResources.pinit,
+                  label: _isPinned ? 'Unpin' : 'Pin It',
                   onTap: _togglePinClub,
+                  padding: EdgeInsets.zero,
                 ),
-                if (_isMuted != null) ...[
-                  const Divider(height: 0),
-                  CustomOptionTile(
+                // Its pushes, on until muted: still following, but nothing
+                // from it arrives.
+                if (_isMuted != null)
+                  SettingsRow(
                     key: const ValueKey('club-option-mute'),
-                    leadingIcon: _isMuted!
-                        ? Icons.notifications_active_outlined
-                        : Icons.notifications_off_outlined,
-                    title: Text(_isMuted!
-                        ? 'Unmute notifications'
-                        : 'Mute notifications'),
-                    onTap: _toggleMute,
+                    asset: AssetResources.notifications,
+                    label: 'Notifications',
+                    value: !_isMuted!,
+                    onChanged: (_) => _toggleMute(),
+                    padding: EdgeInsets.zero,
                   ),
-                ],
-              ],
+              ], indent: 0),
             )
         ],
       ),

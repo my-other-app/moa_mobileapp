@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:finnet/common/widgets/custom_option_tile.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/utils/error_utils.dart';
@@ -12,9 +11,11 @@ import 'package:finnet/features/notifications/presentation/widgets/push_switches
 import 'package:finnet/features/profile/presentation/pages/settings/blocked_users_page.dart';
 import 'package:finnet/features/profile/presentation/pages/settings/privacy_switches_section.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/profile/presentation/sign_out.dart';
 import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/confirmation_dialog.dart';
+import 'package:finnet/shared/widgets/settings_row.dart';
 import 'package:finnet/features/main/presentation/pages/main_shell.dart';
 
 /// Settings page - fully migrated to Riverpod (no Bloc).
@@ -53,56 +54,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        scrolledUnderElevation: 0,
         foregroundColor: Colors.black,
         elevation: 0,
       ),
+      // One flat list of the Settings design: an emoji in a grey circle and
+      // a name, a divider between each two -- switches first, then what
+      // opens something, then leaving.
       body: ListView(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.only(top: 4, bottom: 32),
         children: [
-          // Only for an email/password account that has not verified yet.
-          if (profile != null && profile.needsEmailVerification) ...[
-            CustomOptionTile(
-              key: const ValueKey('settings-verify-email'),
-              verticalSpacing: 16,
-              leadingIcon: Icons.mark_email_unread_outlined,
-              leadingIconColor: const Color(0xFF17A58F),
-              title: const Text(
-                'Verify Email',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: const Text(
-                'Bring in tickets you booked on the website',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              onTap: () => openEmailVerification(context, profile.email),
-              trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-            ),
-            const Divider(height: 0),
-          ],
-
-          // Volunteer section (only show if user has volunteer events)
-          if (hasVolunteerEvents) ...[
-            CustomOptionTile(
-              verticalSpacing: 16,
-              leadingIcon: Icons.qr_code_scanner,
-              leadingIconColor: const Color(0xFF17A58F),
-              title: const Text(
-                'Volunteer Check-in',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: const Text(
-                'Scan tickets for your assigned events',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              onTap: () {
-                context.push('/volunteer/events');
-              },
-              trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-            ),
-            const Divider(height: 0),
-            const SizedBox(height: 8),
-          ],
-
           // The notification switches, which the server keeps: off stops
           // that kind of push and takes this device out of its FCM topics.
           // Nothing shows on a server that keeps none (the system settings
@@ -113,80 +75,90 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           // this phone, applied at once and at every start.
           const PrivacySwitchesSection(),
 
-          CustomOptionTile(
-            key: const ValueKey('settings-blocked-users'),
-            verticalSpacing: 16,
-            leadingIcon: Icons.block,
-            title: const Text('Blocked Users'),
-            subtitle: const Text(
-              'People whose comments you have hidden',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const BlockedUsersPage(),
+          ...dividedRows([
+            // Only for an email/password account that has not verified yet:
+            // it brings in tickets booked on the website.
+            if (profile != null && profile.needsEmailVerification)
+              SettingsRow(
+                key: const ValueKey('settings-verify-email'),
+                emoji: '📧',
+                label: 'Verify Email',
+                onTap: () => openEmailVerification(context, profile.email),
+              ),
+
+            // Only for a volunteer: scan tickets at their assigned events.
+            if (hasVolunteerEvents)
+              SettingsRow(
+                key: const ValueKey('settings-volunteer'),
+                emoji: '🎟️',
+                label: 'Volunteer Check-in',
+                onTap: () => context.push('/volunteer/events'),
+              ),
+
+            // People whose comments are hidden.
+            SettingsRow(
+              key: const ValueKey('settings-blocked-users'),
+              emoji: '🚫',
+              label: 'Blocked Users',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const BlockedUsersPage(),
+                ),
               ),
             ),
-            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-          ),
-          const Divider(height: 0),
 
-          // Contact Support: the team inbox, not a personal WhatsApp.
-          CustomOptionTile(
-            key: const ValueKey('settings-support'),
-            verticalSpacing: 16,
-            leadingImageName: AssetResources.contsctsupport,
-            title: const Text('Contact Support'),
-            subtitle: const Text(
-              supportEmail,
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            SettingsRow(
+              key: const ValueKey('settings-help'),
+              emoji: '🚨',
+              label: 'Help Centre',
+              onTap: () => _open(helpCentreUri),
             ),
-            onTap: _emailSupport,
-          ),
-          const Divider(height: 0),
 
-          CustomOptionTile(
-            key: const ValueKey('settings-website'),
-            verticalSpacing: 16,
-            leadingIcon: Icons.language,
-            title: const Text('Website'),
-            subtitle: const Text(
-              'myotherapp.in',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            // Contact Support: the team inbox, not a personal WhatsApp.
+            SettingsRow(
+              key: const ValueKey('settings-support'),
+              asset: AssetResources.contsctsupport,
+              label: 'Contact Support',
+              onTap: _emailSupport,
             ),
-            onTap: () => _open(websiteUri),
-          ),
-          const Divider(height: 0),
 
-          // The policies live on the website, so the copy people read is
-          // the one we keep current.
-          CustomOptionTile(
-            key: const ValueKey('settings-terms'),
-            verticalSpacing: 16,
-            leadingImageName: AssetResources.termsandcondition,
-            title: const Text('Terms and Conditions'),
-            onTap: () => _open(termsUri),
-          ),
-          const Divider(height: 0),
+            // The policies live on the website, so the copy people read is
+            // the one we keep current.
+            SettingsRow(
+              key: const ValueKey('settings-terms'),
+              asset: AssetResources.termsandcondition,
+              label: 'Terms and Conditions',
+              onTap: () => _open(termsUri),
+            ),
 
-          CustomOptionTile(
-            key: const ValueKey('settings-privacy'),
-            verticalSpacing: 16,
-            leadingImageName: AssetResources.privacypolicy,
-            title: const Text('Privacy Policy'),
-            onTap: () => _open(privacyPolicyUri),
-          ),
-          const Divider(height: 0),
+            SettingsRow(
+              key: const ValueKey('settings-privacy'),
+              asset: AssetResources.privacypolicy,
+              label: 'Privacy Policy',
+              onTap: () => _open(privacyPolicyUri),
+            ),
 
-          // Delete Account Row
-          CustomOptionTile(
-            verticalSpacing: 16,
-            leadingImageName: AssetResources.deleteaccount,
-            title: const Text('Delete Account'),
-            onTap: () {
-              _showDeleteAccountDialog(context, ref);
-            },
-          ),
+            SettingsRow(
+              key: const ValueKey('settings-website'),
+              emoji: '🌐',
+              label: 'Website',
+              onTap: () => _open(websiteUri),
+            ),
+
+            SettingsRow(
+              key: const ValueKey('settings-delete-account'),
+              asset: AssetResources.deleteaccount,
+              label: 'Delete Account',
+              onTap: () => _showDeleteAccountDialog(context, ref),
+            ),
+
+            SettingsRow(
+              key: const ValueKey('settings-log-out'),
+              asset: AssetResources.logout,
+              label: 'Log Out',
+              onTap: () => confirmSignOut(context, ref),
+            ),
+          ]),
         ],
       ),
     );
