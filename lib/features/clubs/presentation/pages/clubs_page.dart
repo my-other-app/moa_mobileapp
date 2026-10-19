@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
@@ -27,7 +28,8 @@ class ClubsPage extends ConsumerStatefulWidget {
   ConsumerState<ClubsPage> createState() => _ClubsPageState();
 }
 
-class _ClubsPageState extends ConsumerState<ClubsPage> {
+class _ClubsPageState extends ConsumerState<ClubsPage>
+    with RefreshWhenBackOnline<ClubsPage> {
   List<dynamic> pinnedClubs = [];
   List<dynamic> followingClubs = [];
 
@@ -46,6 +48,14 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
   void initState() {
     super.initState();
     _fetchData();
+  }
+
+  /// Back online: the clubs again, over the saved ones. A failure on
+  /// screen retries by itself (ErrorView), and signed out there is nothing
+  /// to ask.
+  @override
+  void onBackOnline() {
+    if (errorMessage == null && !_signedOut && !isLoading) _fetchData();
   }
 
   static const _pinnedPath = '/clubs/list?is_pinned=true';

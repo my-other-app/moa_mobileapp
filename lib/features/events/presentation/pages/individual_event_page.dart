@@ -52,6 +52,7 @@ import 'package:finnet/features/events/presentation/pages/networking_page.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 
 class IndividualEventPage extends ConsumerStatefulWidget {
@@ -93,7 +94,7 @@ class IndividualEventPage extends ConsumerStatefulWidget {
 }
 
 class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, RefreshWhenBackOnline<IndividualEventPage> {
   // State variables for event fields.
   int? id;
   String? name;
@@ -267,6 +268,13 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         // A call coming in, the app switcher opening: still on screen.
         break;
     }
+  }
+
+  /// Back online: the event again, over the saved copy shown offline. A
+  /// failure on screen retries by itself (ErrorView).
+  @override
+  void onBackOnline() {
+    if (!isLoading && errorMessage == null) _fetchData();
   }
 
   RegistrationStatus get _status {

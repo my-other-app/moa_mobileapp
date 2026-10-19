@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/common/models/events/event_page_model.dart';
 import 'package:finnet/core/cache/saved_then_fresh.dart';
 import 'package:finnet/features/events/data/datasources/event_page_remote_datasource.dart';
@@ -13,6 +14,7 @@ import 'package:finnet/features/events/data/datasources/event_page_remote_dataso
 /// has, as it always did, so it reads `valueOrNull`.
 final eventPageDetailsProvider = StreamProvider.autoDispose
     .family<EventPageDetails?, String>((ref, eventRef) {
+  ref.watch(backOnlineProvider);
   final source = ref.watch(eventPageRemoteDataSourceProvider);
   return savedThenFresh(
     saved: () => source.savedPage(eventRef),

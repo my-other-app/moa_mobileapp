@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/core/cache/saved_then_fresh.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/clubs/data/datasources/club_page_source.dart';
@@ -16,6 +17,7 @@ export 'package:finnet/features/clubs/data/datasources/club_page_source.dart'
 final clubInfoProvider =
     StreamProvider.autoDispose.family<ClubInfo, ClubKey>((ref, key) {
   final signedIn = ref.watch(isAuthenticatedProvider);
+  ref.watch(backOnlineProvider);
   final source = ref.watch(clubPageSourceProvider);
   return savedThenFresh(
     saved: () => source.saved(key, signedIn: signedIn),

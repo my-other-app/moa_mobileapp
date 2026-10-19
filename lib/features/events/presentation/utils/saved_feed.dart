@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 
 /// The `items` of a paginated answer, or nothing when the body is not one.
@@ -22,9 +24,32 @@ List<dynamic> feedItems(Object? body) {
 /// A screen gives the address of a page ([feedPage]), whose answer it is
 /// ([feedPolicy]), and the words for a failure ([feedErrorFallback]); it
 /// calls [fetchFirstPage] in `initState` and on pull-to-refresh, and hands
-/// its scroll notifications to [onFeedScroll].
+/// its scroll notifications to [onFeedScroll]. The first page is read again
+/// by itself each time the app comes back online ([feedNetworkStatus]).
 mixin SavedFirstPageFeed<W extends StatefulWidget> on State<W> {
   static const pageSize = 10;
+
+  /// Whose coming back online reads the first page again; the app's own
+  /// unless a test gives another.
+  NetworkStatus get feedNetworkStatus => NetworkStatus.instance;
+
+  ValueListenable<int>? _backOnline;
+
+  void _onBackOnline() {
+    if (mounted) fetchFirstPage();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _backOnline = feedNetworkStatus.backOnline..addListener(_onBackOnline);
+  }
+
+  @override
+  void dispose() {
+    _backOnline?.removeListener(_onBackOnline);
+    super.dispose();
+  }
 
   final List<dynamic> events = [];
   bool isLoading = true;

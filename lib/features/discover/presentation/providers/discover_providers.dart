@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/cache/saved_then_fresh.dart';
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/error/failures.dart';
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/discover/data/repositories/discover_repository_impl.dart';
 import 'package:finnet/features/discover/domain/discover_paging.dart';
@@ -27,8 +28,9 @@ T _orThrow<T>(Result<T> result) =>
 
 /// `/discover/home`: the saved copy first, then the server's. A failure with
 /// nothing saved is the provider's error, for the screen to offer a retry
-/// (`ref.invalidate`).
+/// (`ref.invalidate`). Read again when the app comes back online.
 final discoverHomeProvider = StreamProvider<DiscoverHome>((ref) {
+  ref.watch(backOnlineProvider);
   final repository = ref.watch(discoverRepositoryProvider);
   return savedThenFresh(
     saved: repository.savedHome,
@@ -42,6 +44,7 @@ final discoverHomeProvider = StreamProvider<DiscoverHome>((ref) {
 final followingRailProvider =
     StreamProvider.autoDispose<List<DiscoverEvent>>((ref) {
   if (!ref.watch(isAuthenticatedProvider)) return Stream.value(const []);
+  ref.watch(backOnlineProvider);
   final repository = ref.watch(discoverRepositoryProvider);
   return savedThenFresh(
     saved: repository.savedFollowingEvents,
@@ -55,12 +58,16 @@ typedef EventSearchState = PagedState<DiscoverEvent, EventResults>;
 
 /// The events matching a set of filters, a page at a time. One per set:
 /// changing a filter starts a fresh list, and going back to a screen finds
-/// its list as it was.
+/// its list as it was. Its first page is read again when the app comes
+/// back online.
 final eventSearchProvider = StateNotifierProvider.autoDispose
     .family<EventSearchNotifier, EventSearchState, EventFilters>(
         (ref, filters) {
-  return EventSearchNotifier(ref.watch(discoverRepositoryProvider), filters)
-    ..load();
+  final notifier =
+      EventSearchNotifier(ref.watch(discoverRepositoryProvider), filters)
+        ..load();
+  refreshWhenBackOnline(ref, notifier);
+  return notifier;
 });
 
 class EventSearchNotifier extends PagedNotifier<DiscoverEvent, EventResults> {
@@ -93,6 +100,7 @@ typedef CalendarKey = ({EventFilters filters, String month});
 
 final calendarMonthProvider =
     StreamProvider.autoDispose.family<CalendarMonth, CalendarKey>((ref, key) {
+  ref.watch(backOnlineProvider);
   final repository = ref.watch(discoverRepositoryProvider);
   final filters = key.filters.normalized();
   return savedThenFresh(
@@ -107,8 +115,11 @@ typedef ClubSearchState = PagedState<DiscoverClub, ClubResults>;
 
 final clubSearchProvider = StateNotifierProvider.autoDispose
     .family<ClubSearchNotifier, ClubSearchState, ClubFilters>((ref, filters) {
-  return ClubSearchNotifier(ref.watch(discoverRepositoryProvider), filters)
-    ..load();
+  final notifier =
+      ClubSearchNotifier(ref.watch(discoverRepositoryProvider), filters)
+        ..load();
+  refreshWhenBackOnline(ref, notifier);
+  return notifier;
 });
 
 class ClubSearchNotifier extends PagedNotifier<DiscoverClub, ClubResults> {
@@ -142,10 +153,12 @@ typedef ThreadsFeedState = PagedState<Thread, Object?>;
 /// Every club's newest posts (`/discover/threads`), with likes and votes.
 final discoverThreadsProvider = StateNotifierProvider.autoDispose<
     DiscoverThreadsNotifier, ThreadsFeedState>((ref) {
-  return DiscoverThreadsNotifier(
+  final notifier = DiscoverThreadsNotifier(
     ref.watch(discoverRepositoryProvider),
     ref.watch(threadRepositoryProvider),
   )..load();
+  refreshWhenBackOnline(ref, notifier);
+  return notifier;
 });
 
 class DiscoverThreadsNotifier extends PagedNotifier<Thread, Object?>
@@ -201,6 +214,7 @@ class DiscoverThreadsNotifier extends PagedNotifier<Thread, Object?>
 /// topic anywhere.
 final topicPageProvider =
     StreamProvider.autoDispose.family<Topic?, String>((ref, slug) {
+  ref.watch(backOnlineProvider);
   final repository = ref.watch(discoverRepositoryProvider);
   final key = slug.trim().toLowerCase();
 

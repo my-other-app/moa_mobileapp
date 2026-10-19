@@ -17,12 +17,17 @@ final threadRemoteDataSourceProvider = Provider<ThreadRemoteDataSource>((ref) {
 /// user's token whenever there is one, which is what lets the server answer
 /// `liked` and `voted_option_id` for this person.
 abstract class ThreadRemoteDataSource {
-  /// `GET /clubs/{club_id}/threads` -- a club's posts, pinned first.
+  /// `GET /clubs/{club_id}/threads` -- a club's posts, pinned first. The
+  /// first page is kept on the phone (encrypted: it says what this person
+  /// liked and voted for).
   Future<ThreadPageModel> getClubThreads(
     int clubId, {
     required int offset,
     required int limit,
   });
+
+  /// The first page of a club's posts as last kept on this phone, or null.
+  Future<ThreadPageModel?> savedClubThreads(int clubId, {required int limit});
 
   /// `GET /threads/feed` -- posts from the clubs this person follows,
   /// newest first; [after] is the `next_cursor` of the page before. Needs a
@@ -73,10 +78,27 @@ class ThreadRemoteDataSourceImpl implements ThreadRemoteDataSource {
     required int limit,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '/clubs/$clubId/threads',
+      _clubThreads(clubId),
       queryParameters: {'offset': offset, 'limit': limit},
+      options: offset == 0 ? Options(extra: CachePolicy.personal.extra) : null,
     );
     return ThreadPageModel.fromJson(response.data);
+  }
+
+  static String _clubThreads(int clubId) => '/clubs/$clubId/threads';
+
+  @override
+  Future<ThreadPageModel?> savedClubThreads(int clubId,
+      {required int limit}) async {
+    final data = await (_cache ?? ApiCache.instance).savedAnswer(
+      _dio,
+      _clubThreads(clubId),
+      query: {'offset': 0, 'limit': limit},
+      scope: CacheScope.personal,
+    );
+    return data is Map
+        ? ThreadPageModel.fromJson(Map<String, dynamic>.from(data))
+        : null;
   }
 
   @override
@@ -92,7 +114,7 @@ class ThreadRemoteDataSourceImpl implements ThreadRemoteDataSource {
       },
       // Only the first page is worth keeping: it is what opens first.
       options:
-          after == null ? Options(extra: CachePolicy.personal.extra) : null,
+          after == null ? Options(extra: CachePolicy.personalKept.extra) : null,
     );
     return ThreadPageModel.fromJson(response.data);
   }
