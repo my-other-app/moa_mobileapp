@@ -9,6 +9,7 @@ import 'package:finnet/features/clubs/presentation/pages/club_events_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_individual_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_profile_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/clubs_page.dart';
+import 'package:finnet/features/clubs/presentation/pages/explore_more_clubs_page.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/utils/share_links.dart';
@@ -495,5 +496,21 @@ void main() {
       await _tap(tester, find.byKey(const ValueKey('clubs-sign-in')));
       expect(find.text('sign-in screen'), findsOneWidget);
     });
+  });
+
+  testWidgets(
+      'signed out, Explore Clubs says it needs an account, with SIGN IN',
+      (tester) async {
+    final api = useFakeApi()
+      ..on('GET', '/interests/topics', const [])
+      ..on('GET', '/clubs/list', {'message': 'Could not validate credentials'},
+          status: 401);
+    await _pump(tester, const ExploreMoreClubsPage(),
+        signedIn: false, width: 900);
+
+    expect(api.sent('GET', '/clubs/list'), isNotEmpty);
+    expect(find.byKey(const ValueKey('explore-clubs-sign-in')), findsOneWidget);
+    await _tap(tester, find.text('SIGN IN'));
+    expect(find.text('sign-in screen'), findsOneWidget);
   });
 }
