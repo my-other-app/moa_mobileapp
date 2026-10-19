@@ -3,9 +3,14 @@ import 'package:flutter/material.dart';
 
 import 'package:finnet/core/network/network_status.dart';
 
-/// A strip across the top of every screen while the server cannot be
-/// reached: "You're offline. Showing what was saved." with a way to check
-/// again. Screens that have a saved copy keep showing it underneath.
+/// The app's one offline cue: a slim strip under the status bar, on every
+/// screen, while the server cannot be reached -- "You're offline, showing
+/// what's saved". Screens that have a saved copy keep showing it
+/// underneath; there are no per-screen banners.
+///
+/// It goes by itself when the app is back online, which is also when the
+/// screens on show read themselves again ([NetworkStatus.backOnline]). A
+/// tap checks at once rather than waiting for the next probe.
 ///
 /// The child keeps its place in the tree whether or not the strip shows,
 /// so the navigator and every screen keep their state when it comes and
@@ -18,7 +23,10 @@ class OfflineBanner extends StatelessWidget {
   /// Defaults to [NetworkStatus.instance].
   final NetworkStatus? status;
 
-  static const message = "You're offline. Showing what was saved.";
+  static const message = "You're offline, showing what's saved";
+
+  /// The strip, for finding it in tests.
+  static const stripKey = ValueKey('offline-banner');
 
   @override
   Widget build(BuildContext context) {
@@ -63,28 +71,27 @@ class _Strip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
+      key: OfflineBanner.stripKey,
       color: const Color(0xFF2C333D),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, top + 6, 8, 6),
-        child: Row(
-          children: [
-            const Icon(Icons.cloud_off, size: 16, color: Colors.white70),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                OfflineBanner.message,
-                style: TextStyle(color: Colors.white, fontSize: 13),
+      child: InkWell(
+        onTap: onRetry,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, top + 4, 16, 5),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.cloud_off, size: 14, color: Colors.white70),
+              SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  OfflineBanner.message,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.white, fontSize: 12.5),
+                ),
               ),
-            ),
-            TextButton(
-              onPressed: onRetry,
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFF9FFA1),
-                visualDensity: VisualDensity.compact,
-              ),
-              child: const Text('Try again'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

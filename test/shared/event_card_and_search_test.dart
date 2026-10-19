@@ -87,11 +87,27 @@ void main() {
           message: 'ignored',
           exception: ApiException(
             message: 'x',
+            type: ApiExceptionType.server,
+          ),
+        ),
+      ));
+      expect(find.text(ApiException.serverErrorMessage), findsOneWidget);
+      expect(find.text('ignored'), findsNothing);
+    });
+
+    testWidgets('no connection is the offline state, not an error',
+        (tester) async {
+      await tester.pumpWidget(const MaterialApp(
+        home: ErrorView(
+          message: 'ignored',
+          exception: ApiException(
+            message: 'x',
             type: ApiExceptionType.network,
           ),
         ),
       ));
-      expect(find.text(ApiException.networkMessage), findsOneWidget);
+      expect(find.text(ErrorView.offlineTitle), findsOneWidget);
+      expect(find.text(ErrorView.offlineMessage), findsOneWidget);
       expect(find.text('ignored'), findsNothing);
     });
   });
