@@ -2337,9 +2337,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                   ),
                 ),
               ),
-            if (state.note != null &&
-                !(showCountdown && state.kind == RegisterKind.open &&
-                    !state.urgent))
+            if (state.note != null)
               Padding(
                 padding: EdgeInsets.only(top: showCountdown ? 8 : 0),
                 child: SizedBox(

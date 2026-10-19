@@ -377,6 +377,20 @@ void main() {
       expect(signInLocationFrom(h.went.single.$1), '/events/7');
     });
 
+    testWidgets('signed out, the page and its rails work as for anyone',
+        (tester) async {
+      api
+        ..on('GET', '/events/info/7', eventInfo())
+        ..on('GET', '/discover/events/7', discoverEventPage());
+      await _pump(tester, signedIn: false);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Speaker'), findsOneWidget);
+      expect(find.text('Similar events'), findsOneWidget);
+      expect(find.text('More from Tinkerhub'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'REGISTER NOW'), findsOneWidget);
+    });
+
     testWidgets('signed out, "Not now" leaves them on the event',
         (tester) async {
       api.on('GET', '/events/info/7', eventInfo());
