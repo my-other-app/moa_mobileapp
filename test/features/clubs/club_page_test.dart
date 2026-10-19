@@ -56,6 +56,9 @@ Future<List<Uri>> _pump(
     GoRoute(
         path: '/following/posts',
         builder: (_, __) => const Scaffold(body: Text('following posts'))),
+    GoRoute(
+        path: '/discover/clubs',
+        builder: (_, s) => Scaffold(body: Text('directory ${s.uri}'))),
   ]);
   addTearDown(router.dispose);
   await tester.pumpWidget(ProviderScope(
@@ -512,5 +515,18 @@ void main() {
     expect(find.byKey(const ValueKey('explore-clubs-sign-in')), findsOneWidget);
     await _tap(tester, find.text('SIGN IN'));
     expect(find.text('sign-in screen'), findsOneWidget);
+  });
+
+  testWidgets('signed out, Explore Clubs offers the public directory',
+      (tester) async {
+    useFakeApi()
+      ..on('GET', '/interests/topics', const [])
+      ..on('GET', '/clubs/list', {'message': 'Could not validate credentials'},
+          status: 401);
+    await _pump(tester, const ExploreMoreClubsPage(),
+        signedIn: false, width: 900);
+
+    await _tap(tester, find.byKey(const ValueKey('explore-clubs-browse')));
+    expect(find.text('directory /discover/clubs'), findsOneWidget);
   });
 }

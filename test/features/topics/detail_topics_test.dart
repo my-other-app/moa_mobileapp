@@ -76,6 +76,7 @@ Future<List<(String, Object?)>> _pump(WidgetTester tester, Widget page) async {
     GoRoute(path: '/', builder: (_, __) => page),
     GoRoute(path: '/events/explore', builder: (_, s) => record(s)),
     GoRoute(path: '/clubs/explore', builder: (_, s) => record(s)),
+    GoRoute(path: '/topics/:slug', builder: (_, s) => record(s)),
   ]);
   await tester.pumpWidget(ProviderScope(
     overrides: [
@@ -148,7 +149,7 @@ void main() {
       expect(find.text('Coding'), findsOneWidget);
     });
 
-    testWidgets('a topic opens Explore Events on it', (tester) async {
+    testWidgets('a topic opens its topic page', (tester) async {
       api
         ..on('GET', '/events/info/7', _event(topics: _topicsJson))
         ..on('GET', '/interests/list', contractListBody);
@@ -159,8 +160,7 @@ void main() {
       await tester.tap(_topic('arts'));
       await _settle(tester);
 
-      expect(went.single.$1, '/events/explore');
-      expect(went.single.$2, {'topic': 'arts'});
+      expect(went.single.$1, '/topics/arts');
     });
 
     testWidgets('no topics and no interests draw nothing', (tester) async {
@@ -173,7 +173,7 @@ void main() {
   });
 
   group('a club\'s page', () {
-    testWidgets('topics above its interests; a topic opens Explore Clubs',
+    testWidgets('topics above its interests; a topic opens its page',
         (tester) async {
       api
         ..on(
@@ -194,8 +194,7 @@ void main() {
 
       await tester.tap(_topic('development'));
       await _settle(tester);
-      expect(went.single.$1, '/clubs/explore');
-      expect(went.single.$2, {'topic': 'development'});
+      expect(went.single.$1, '/topics/development');
     });
 
     testWidgets('derived from interests when the server sends no topics',

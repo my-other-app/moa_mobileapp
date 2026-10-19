@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
+import 'package:finnet/features/discover/domain/event_filters.dart';
+import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/domain/topic_filter.dart';
@@ -321,6 +324,18 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
                   backgroundColor: const Color(0xFF2C333D),
                 ),
                 child: const Text('SIGN IN'),
+              ),
+              const SizedBox(height: 8),
+              // The public directory needs no account; it keeps the topic.
+              TextButton(
+                key: const ValueKey('explore-clubs-browse'),
+                onPressed: () => context.pushReplacement(
+                  clubsDirectoryLocation(ClubFilters(
+                    topic: _filter.topic?.slug,
+                    interest: _filter.interest?.id,
+                  )),
+                ),
+                child: const Text('Browse clubs without signing in'),
               ),
             ],
           ),

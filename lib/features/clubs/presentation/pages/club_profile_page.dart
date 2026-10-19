@@ -19,6 +19,7 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_tag_strip.dart';
+import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 
 export 'package:finnet/features/clubs/data/models/club_info.dart'
     show ClubInfo, ClubTeamMember, ClubPartner, Interest, Org;
@@ -246,15 +247,15 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
                         style: const TextStyle(fontSize: 12),
                       ),
                       // Its topics in their colours, above its interests.
-                      // A topic opens Explore Clubs on it.
+                      // A topic opens its own page, as on the site.
                       TopicTagStrip(
                         topGap: 8,
                         declared: club.topics,
                         interests: [
                           for (final i in club.interests) i.toEntity(),
                         ],
-                        onTopicTap: (topic) => context.push('/clubs/explore',
-                            extra: {'topic': topic.slug}),
+                        onTopicTap: (topic) =>
+                            context.push(topicLocation(topic.slug)),
                       ),
                       const SizedBox(height: 8),
                       Wrap(

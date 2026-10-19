@@ -52,6 +52,7 @@ import 'package:finnet/features/events/presentation/pages/networking_page.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 
 class IndividualEventPage extends ConsumerStatefulWidget {
   /// The event's id, when it was opened by id.
@@ -1777,14 +1778,13 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               ],
             ),
             // Its topics in their colours, then its interests. A topic
-            // opens Explore on it.
+            // opens its own page, as on the site.
             TopicTagStrip(
               topGap: 16,
               declared: topics,
               interests: [for (final i in interests) i.toEntity()],
               showInterests: true,
-              onTopicTap: (topic) => context.push('/events/explore',
-                  extra: {'topic': topic.slug}),
+              onTopicTap: (topic) => context.push(topicLocation(topic.slug)),
             ),
 
             const SizedBox(height: 16),
