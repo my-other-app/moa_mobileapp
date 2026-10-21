@@ -230,6 +230,8 @@ class _TicketViewPageState extends State<TicketViewPage>
     if (offline) return;
     try {
       final fresh = await _images.fetch(widget.ticketId);
+      // And its PDF, so Download and Share work with no network later.
+      unawaited(_images.keepPdf(widget.ticketId));
       if (!mounted) return;
       setState(() {
         _ticketImage = fresh.bytes;
@@ -254,10 +256,9 @@ class _TicketViewPageState extends State<TicketViewPage>
   /// The ticket's PDF, from the copy kept on the phone when the server says
   /// it has not changed (or cannot be reached), else downloaded again.
   Future<SavedDocument> _ticketPdf() {
-    final safeId = DocumentCache.safeName(widget.ticketId);
     return DocumentCache.instance.fetch(
-      '/events/tickets/${widget.ticketId}/pdf',
-      name: 'ticket_$safeId.pdf',
+      TicketImages.pdfPathFor(widget.ticketId),
+      name: TicketImages.pdfNameFor(widget.ticketId),
     );
   }
 

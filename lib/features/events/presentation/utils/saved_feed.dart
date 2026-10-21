@@ -70,6 +70,10 @@ mixin SavedFirstPageFeed<W extends StatefulWidget> on State<W> {
   /// What a failure with nothing saved to show says.
   String get feedErrorFallback;
 
+  /// The first page has arrived: [fresh] from the server, or else the copy
+  /// saved on the phone. Nothing by default.
+  void onFirstPage(List<dynamic> items, {required bool fresh}) {}
+
   /// Load (or reload) the first page. The list on screen stays while it
   /// reloads; the shimmer shows only when there is nothing to show.
   Future<void> fetchFirstPage() async {
@@ -94,6 +98,7 @@ mixin SavedFirstPageFeed<W extends StatefulWidget> on State<W> {
             hasMore = items.length >= pageSize;
             isLoading = false;
           });
+          onFirstPage(items, fresh: fresh);
         },
       );
     } catch (e) {
