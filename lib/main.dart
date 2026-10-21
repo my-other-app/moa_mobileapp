@@ -9,6 +9,7 @@ import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/cache/image_caches.dart';
 import 'package:finnet/core/services/analytics_service.dart';
 import 'package:finnet/core/services/notification_service.dart';
+import 'package:finnet/features/discover/data/datasources/discover_place_store.dart';
 import 'package:finnet/firebase_options.dart';
 
 void main() async {
@@ -35,9 +36,15 @@ void main() async {
       } catch (_) {}
     }
 
+    // The place the discover lists are about, read before the first frame
+    // so the first list is already asked about it. One store for the run:
+    // a new session after sign-out keeps the place.
+    final place = await FileDiscoverPlaceStore.open();
+
     runApp(
-      const SessionScope(
-        child: MyApp(),
+      SessionScope(
+        overrides: [discoverPlaceStoreProvider.overrideWithValue(place)],
+        child: const MyApp(),
       ),
     );
 

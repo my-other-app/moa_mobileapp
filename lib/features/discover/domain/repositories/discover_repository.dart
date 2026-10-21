@@ -2,6 +2,7 @@ import 'package:finnet/core/error/either.dart';
 import 'package:finnet/features/discover/domain/discover_paging.dart';
 import 'package:finnet/features/discover/domain/entities/discover_event.dart';
 import 'package:finnet/features/discover/domain/entities/discover_results.dart';
+import 'package:finnet/features/discover/domain/entities/discover_where.dart';
 import 'package:finnet/features/discover/domain/event_filters.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
@@ -13,23 +14,30 @@ import 'package:finnet/features/topics/domain/entities/topic.dart';
 ///
 /// The `saved*` reads are the copy last saved on this phone (no network),
 /// for the screens to draw at once: the front page and the first page of
-/// each list.
+/// each list, each for the place it was asked about.
+///
+/// `at` is the place the lists are about; without it, the server places
+/// the caller by their connection.
 abstract class DiscoverRepository {
-  /// `GET /discover/home`, placing the caller by their connection.
-  Future<Result<DiscoverHome>> home();
-  Future<DiscoverHome?> savedHome();
+  /// `GET /discover/home`.
+  Future<Result<DiscoverHome>> home({DiscoverPoint? at});
+  Future<DiscoverHome?> savedHome({DiscoverPoint? at});
 
   /// `GET /discover/events`.
-  Future<Result<EventResults>> events(EventFilters filters, PageRequest page);
-  Future<EventResults?> savedEvents(EventFilters filters);
+  Future<Result<EventResults>> events(EventFilters filters, PageRequest page,
+      {DiscoverPoint? at});
+  Future<EventResults?> savedEvents(EventFilters filters, {DiscoverPoint? at});
 
   /// `GET /discover/calendar` for [month] (`YYYY-MM`).
-  Future<Result<CalendarMonth>> calendar(EventFilters filters, String month);
-  Future<CalendarMonth?> savedCalendar(EventFilters filters, String month);
+  Future<Result<CalendarMonth>> calendar(EventFilters filters, String month,
+      {DiscoverPoint? at});
+  Future<CalendarMonth?> savedCalendar(EventFilters filters, String month,
+      {DiscoverPoint? at});
 
   /// `GET /discover/clubs`.
-  Future<Result<ClubResults>> clubs(ClubFilters filters, PageRequest page);
-  Future<ClubResults?> savedClubs(ClubFilters filters);
+  Future<Result<ClubResults>> clubs(ClubFilters filters, PageRequest page,
+      {DiscoverPoint? at});
+  Future<ClubResults?> savedClubs(ClubFilters filters, {DiscoverPoint? at});
 
   /// `GET /discover/threads`: every club's newest posts.
   Future<Result<DiscoverPage<Thread>>> threads(PageRequest page);

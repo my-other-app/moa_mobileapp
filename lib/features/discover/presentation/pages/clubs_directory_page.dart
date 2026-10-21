@@ -5,6 +5,7 @@ import 'package:finnet/features/discover/domain/entities/discover_results.dart';
 import 'package:finnet/features/discover/domain/entities/discover_where.dart';
 import 'package:finnet/features/discover/domain/event_filters.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
+import 'package:finnet/features/discover/presentation/providers/discover_place_provider.dart';
 import 'package:finnet/features/discover/presentation/providers/discover_providers.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_club_card.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_format.dart';
@@ -58,7 +59,9 @@ class _ClubsDirectoryPageState extends ConsumerState<ClubsDirectoryPage> {
     final state = ref.watch(clubSearchProvider(_filters));
     final notifier = ref.read(clubSearchProvider(_filters).notifier);
     final topics = ref.watch(topicDirectoryProvider).valueOrNull ?? const [];
-    final where = state.meta?.where ?? DiscoverWhere.unknown;
+    final where = state.meta?.where ??
+        ref.watch(discoverPlaceProvider).place ??
+        DiscoverWhere.unknown;
     final names = FilterNames(topics: topics);
     final sortLabel = (_filters.sort ?? ClubSort.popular).label;
 

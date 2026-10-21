@@ -9,8 +9,10 @@ import 'package:finnet/features/discover/domain/discover_paging.dart';
 import 'package:finnet/features/discover/domain/entities/discover_club.dart';
 import 'package:finnet/features/discover/domain/entities/discover_event.dart';
 import 'package:finnet/features/discover/domain/entities/discover_results.dart';
+import 'package:finnet/features/discover/domain/entities/discover_where.dart';
 import 'package:finnet/features/discover/domain/event_filters.dart';
 import 'package:finnet/features/discover/domain/repositories/discover_repository.dart';
+import 'package:finnet/features/discover/presentation/providers/discover_place_provider.dart';
 import 'package:finnet/features/discover/presentation/providers/paged_list.dart';
 import 'package:finnet/features/threads/data/repositories/thread_repository_impl.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
@@ -24,17 +26,51 @@ import 'package:finnet/features/topics/presentation/providers/topics_provider.da
 T _orThrow<T>(Result<T> result) =>
     result.fold((failure) => throw failure, (value) => value);
 
+/// The place a list made now is about ([discoverPlaceProvider]); the list
+/// is made again when the person changes it.
+DiscoverWhere? _placeFor(Ref ref) {
+  ref.watch(discoverPlaceProvider.select((s) => s.changes));
+  return ref.read(discoverPlaceProvider).place;
+}
+
+/// The copy saved for [at]. Else, the one saved before the place was kept
+/// -- asked without a point, the launch that guessed it -- if the server
+/// put that one at the same place; never another place's.
+Future<T?> _savedFor<T>(
+  DiscoverPoint? at,
+  Future<T?> Function(DiscoverPoint? at) read,
+  DiscoverWhere Function(T copy) whereOf,
+) async {
+  final copy = await read(at);
+  if (copy != null || at == null) return copy;
+  final before = await read(null);
+  return before != null && whereOf(before).point == at ? before : null;
+}
+
 // --- The front page -----------------------------------------------------------
 
-/// `/discover/home`: the saved copy first, then the server's. A failure with
-/// nothing saved is the provider's error, for the screen to offer a retry
-/// (`ref.invalidate`). Read again when the app comes back online.
+/// `/discover/home` about the kept place: the saved copy first, then the
+/// server's. With no place yet, the server places the connection and that
+/// guess is kept. A failure with nothing saved is the provider's error, for
+/// the screen to offer a retry (`ref.invalidate`). Read again when the app
+/// comes back online.
 final discoverHomeProvider = StreamProvider<DiscoverHome>((ref) {
   ref.watch(backOnlineProvider);
   final repository = ref.watch(discoverRepositoryProvider);
+  final place = _placeFor(ref);
+  final places = ref.read(discoverPlaceProvider.notifier);
+  final at = place?.point;
   return savedThenFresh(
-    saved: repository.savedHome,
-    fresh: () async => _orThrow(await repository.home()),
+    saved: () async {
+      final copy = await _savedFor(
+          at, (at) => repository.savedHome(at: at), (h) => h.where);
+      return copy?.about(place);
+    },
+    fresh: () async {
+      final home = _orThrow(await repository.home(at: at));
+      if (place == null) places.guessed(home.where);
+      return home.about(place);
+    },
   );
 });
 
@@ -56,38 +92,54 @@ final followingRailProvider =
 
 typedef EventSearchState = PagedState<DiscoverEvent, EventResults>;
 
-/// The events matching a set of filters, a page at a time. One per set:
-/// changing a filter starts a fresh list, and going back to a screen finds
-/// its list as it was. Its first page is read again when the app comes
-/// back online.
+/// The events matching a set of filters, a page at a time, about the kept
+/// place. One per set: changing a filter starts a fresh list, and going
+/// back to a screen finds its list as it was. Its first page is read again
+/// when the app comes back online.
 final eventSearchProvider = StateNotifierProvider.autoDispose
     .family<EventSearchNotifier, EventSearchState, EventFilters>(
         (ref, filters) {
-  final notifier =
-      EventSearchNotifier(ref.watch(discoverRepositoryProvider), filters)
-        ..load();
+  final notifier = EventSearchNotifier(
+    ref.watch(discoverRepositoryProvider),
+    filters,
+    place: _placeFor(ref),
+    onGuess: ref.read(discoverPlaceProvider.notifier).guessed,
+  )..load();
   refreshWhenBackOnline(ref, notifier);
   return notifier;
 });
 
 class EventSearchNotifier extends PagedNotifier<DiscoverEvent, EventResults> {
-  EventSearchNotifier(this._repository, EventFilters filters)
+  EventSearchNotifier(this._repository, EventFilters filters,
+      {this.place, this.onGuess})
       : filters = filters.normalized();
 
   final DiscoverRepository _repository;
   final EventFilters filters;
 
+  /// The place every page is asked about, the same for all of them; null
+  /// for the server to place the connection.
+  final DiscoverWhere? place;
+
+  /// Told where the server placed the connection, when [place] is null.
+  final void Function(DiscoverWhere)? onGuess;
+
   @override
   Future<Result<PageWithMeta<DiscoverEvent, EventResults>>> fetchPage(
       PageRequest page) async {
-    final result = await _repository.events(filters, page);
-    return result.map((r) => (r.page, r));
+    final result =
+        await _repository.events(filters, page, at: place?.point);
+    return result.map((r) {
+      if (place == null) onGuess?.call(r.where);
+      return (r.page, r.about(place));
+    });
   }
 
   @override
   Future<PageWithMeta<DiscoverEvent, EventResults>?> savedFirstPage() async {
-    final saved = await _repository.savedEvents(filters);
-    return saved == null ? null : (saved.page, saved);
+    final saved = await _savedFor(place?.point,
+        (at) => _repository.savedEvents(filters, at: at), (r) => r.where);
+    return saved == null ? null : (saved.page, saved.about(place));
   }
 
   @override
@@ -103,9 +155,11 @@ final calendarMonthProvider =
   ref.watch(backOnlineProvider);
   final repository = ref.watch(discoverRepositoryProvider);
   final filters = key.filters.normalized();
+  final at = _placeFor(ref)?.point;
   return savedThenFresh(
-    saved: () => repository.savedCalendar(filters, key.month),
-    fresh: () async => _orThrow(await repository.calendar(filters, key.month)),
+    saved: () => repository.savedCalendar(filters, key.month, at: at),
+    fresh: () async =>
+        _orThrow(await repository.calendar(filters, key.month, at: at)),
   );
 });
 
@@ -113,33 +167,47 @@ final calendarMonthProvider =
 
 typedef ClubSearchState = PagedState<DiscoverClub, ClubResults>;
 
+/// The clubs matching a set of filters, about the kept place, as
+/// [eventSearchProvider].
 final clubSearchProvider = StateNotifierProvider.autoDispose
     .family<ClubSearchNotifier, ClubSearchState, ClubFilters>((ref, filters) {
-  final notifier =
-      ClubSearchNotifier(ref.watch(discoverRepositoryProvider), filters)
-        ..load();
+  final notifier = ClubSearchNotifier(
+    ref.watch(discoverRepositoryProvider),
+    filters,
+    place: _placeFor(ref),
+    onGuess: ref.read(discoverPlaceProvider.notifier).guessed,
+  )..load();
   refreshWhenBackOnline(ref, notifier);
   return notifier;
 });
 
 class ClubSearchNotifier extends PagedNotifier<DiscoverClub, ClubResults> {
-  ClubSearchNotifier(this._repository, ClubFilters filters)
+  ClubSearchNotifier(this._repository, ClubFilters filters,
+      {this.place, this.onGuess})
       : filters = filters.normalized();
 
   final DiscoverRepository _repository;
   final ClubFilters filters;
 
+  /// As [EventSearchNotifier.place].
+  final DiscoverWhere? place;
+  final void Function(DiscoverWhere)? onGuess;
+
   @override
   Future<Result<PageWithMeta<DiscoverClub, ClubResults>>> fetchPage(
       PageRequest page) async {
-    final result = await _repository.clubs(filters, page);
-    return result.map((r) => (r.page, r));
+    final result = await _repository.clubs(filters, page, at: place?.point);
+    return result.map((r) {
+      if (place == null) onGuess?.call(r.where);
+      return (r.page, r.about(place));
+    });
   }
 
   @override
   Future<PageWithMeta<DiscoverClub, ClubResults>?> savedFirstPage() async {
-    final saved = await _repository.savedClubs(filters);
-    return saved == null ? null : (saved.page, saved);
+    final saved = await _savedFor(place?.point,
+        (at) => _repository.savedClubs(filters, at: at), (r) => r.where);
+    return saved == null ? null : (saved.page, saved.about(place));
   }
 
   @override

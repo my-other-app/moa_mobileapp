@@ -58,7 +58,8 @@ const _statuses = {
 List<Topic> _topics(Object? value) =>
     value is List ? TopicModel.listFromJson(value) : const [];
 
-/// `where`: the place the server put the caller in.
+/// `where`: the place the server put the caller in (or the place the app
+/// keeps, written by [whereToJson]).
 DiscoverWhere parseWhere(Object? value) {
   final o = jsonObject(value) ?? const <String, dynamic>{};
   final lat = _finite(o['lat']);
@@ -66,6 +67,7 @@ DiscoverWhere parseWhere(Object? value) {
   final source = switch (o['source']) {
     'browser' => WhereSource.browser,
     'ip' => WhereSource.ip,
+    'picked' => WhereSource.picked,
     'none' => WhereSource.none,
     _ => lat != null && lng != null ? WhereSource.ip : WhereSource.none,
   };
@@ -77,6 +79,15 @@ DiscoverWhere parseWhere(Object? value) {
     source: source,
   );
 }
+
+/// A place as [parseWhere] reads it back.
+Map<String, dynamic> whereToJson(DiscoverWhere where) => {
+      'city': where.city,
+      'region': where.region,
+      'lat': where.lat,
+      'lng': where.lng,
+      'source': where.source.name,
+    };
 
 DiscoverClubRef? parseClubRef(Object? value) {
   final o = jsonObject(value);

@@ -9,6 +9,7 @@ import 'package:finnet/features/discover/domain/entities/discover_results.dart';
 import 'package:finnet/features/discover/domain/entities/discover_where.dart';
 import 'package:finnet/features/discover/domain/event_filters.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
+import 'package:finnet/features/discover/presentation/providers/discover_place_provider.dart';
 import 'package:finnet/features/discover/presentation/providers/discover_providers.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_format.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_sections.dart';
@@ -30,9 +31,9 @@ const _muted = Color(0xFF6B6B6B);
 
 /// The DISCOVER tab: the website's front page, natively.
 ///
-/// At the top, where the lists are about (placed by the person's
-/// connection: the server says the city), what is on in numbers, and quick
-/// ways into Find events. Then what is on near them, from the clubs they
+/// At the top, where the lists are about (the place the app keeps: the
+/// connection's first guess, or a city the person picked), what is on in
+/// numbers, and quick ways into Find events. Then what is on near them, from the clubs they
 /// follow when signed in, the topics as tiles, this week, the clubs near
 /// them (or the most followed), online, popular, and the clubs' latest
 /// posts. A rail with nothing in it is left out. Every card opens the app's
@@ -67,10 +68,16 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
   Widget build(BuildContext context) {
     super.build(context);
     final home = ref.watch(discoverHomeProvider);
-    final data = home.valueOrNull;
+    // A page asked about another place -- the one before the person picked
+    // this one -- is not drawn under it: neither its rails nor its name.
+    final place = ref.watch(discoverPlaceProvider.select((s) => s.place?.point));
+    final data = switch (home.valueOrNull) {
+      final DiscoverHome h when place == null || h.where.point == place => h,
+      _ => null,
+    };
 
     // The skeleton gives way to the page with a cross-fade.
-    if (data == null && home.isLoading) {
+    if (data == null && !home.hasError) {
       return const FadeSwitch(
           phase: ScreenPhase.loading, child: _HomeSkeleton());
     }

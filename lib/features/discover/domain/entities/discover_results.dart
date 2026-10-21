@@ -67,6 +67,13 @@ class EventResults extends Equatable {
   final List<CategoryCount> categories;
   final List<TopicFacet> topics;
 
+  /// The page as asked about [place]'s point: under its name. Without one,
+  /// as the server placed the caller.
+  EventResults about(DiscoverWhere? place) => place == null
+      ? this
+      : EventResults(
+          page: page, where: place, categories: categories, topics: topics);
+
   @override
   List<Object?> get props => [page, where, categories, topics];
 }
@@ -82,6 +89,11 @@ class ClubResults extends Equatable {
   final DiscoverPage<DiscoverClub> page;
   final DiscoverWhere where;
   final List<InterestCount> interests;
+
+  /// As [EventResults.about].
+  ClubResults about(DiscoverWhere? place) => place == null
+      ? this
+      : ClubResults(page: page, where: place, interests: interests);
 
   @override
   List<Object?> get props => [page, where, interests];
@@ -138,6 +150,22 @@ class DiscoverHome extends Equatable {
   /// rather than the most followed.
   bool get clubsAreNear =>
       where.isPlaced && clubs.any((c) => c.distanceKm != null);
+
+  /// The page as asked about [place]'s point: under its name. Without one,
+  /// as the server placed the caller.
+  DiscoverHome about(DiscoverWhere? place) => place == null
+      ? this
+      : DiscoverHome(
+          where: place,
+          near: near,
+          thisWeek: thisWeek,
+          online: online,
+          popular: popular,
+          categories: categories,
+          clubs: clubs,
+          threads: threads,
+          stats: stats,
+        );
 
   @override
   List<Object?> get props => [
