@@ -73,6 +73,21 @@ void main() {
           '/topics/development?interest=12');
     });
 
+    test('the city pages are the directories, never an event called "in"', () {
+      expect(at('https://myotherapp.in/events/in'), '/discover/events');
+      expect(at('https://myotherapp.in/events/in/kochi'), '/discover/events');
+      expect(at('https://myotherapp.in/events/IN/Kochi?utm=wa'),
+          '/discover/events?utm=wa');
+      expect(at('https://myotherapp.in/clubs/in'), '/discover/clubs');
+      expect(at('https://myotherapp.in/clubs/in/thrissur'), '/discover/clubs');
+      // A city's feed is still a file, and deeper paths the browser's.
+      expect(at('https://myotherapp.in/events/in/kochi/rss.xml'), isNull);
+      expect(at('https://myotherapp.in/events/in/kochi/x'), isNull);
+      // An event whose slug starts with "in" is still that event.
+      expect(at('https://myotherapp.in/events/intro-night-a1b2c3'),
+          '/events/intro-night-a1b2c3');
+    });
+
     test('the query comes along (a club link\'s ref, say)', () {
       expect(at('https://myotherapp.in/clubs/circuit-society?ref=abc'),
           '/clubs/circuit-society?ref=abc');
