@@ -48,7 +48,7 @@ import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
-import 'package:finnet/features/events/presentation/pages/networking_page.dart';
+import 'package:finnet/features/events/presentation/widgets/networking/people_like_you_card.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
@@ -173,6 +173,10 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   // Registration/Attendance status
   bool isRegistered = false;
   bool isAttended = false;
+
+  /// Whether the event has People Like You (its `networking`; null when
+  /// not registered, or from an older server).
+  bool? _networking;
 
   /// Registered for a paid event and not paid: no ticket until they pay.
   bool awaitingPayment = false;
@@ -394,6 +398,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       isRegistered = status != RegistrationStatus.none;
       awaitingPayment = status == RegistrationStatus.awaitingPayment;
       ticketRevoked = eventInfo.ticketRevoked;
+      _networking = raw['networking'] is bool ? raw['networking'] as bool : null;
       registrationId = eventInfo.registrationId;
       // Only update URLs if API provides them
       if (eventInfo.ticketUrl != null && eventInfo.ticketUrl!.isNotEmpty) {
@@ -1452,15 +1457,6 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     }
   }
 
-  /// Check if current time is within the networking window (event start → end + 1hr).
-  bool _isWithinNetworkingWindow() {
-    if (eventDateTime == null) return false;
-    final now = DateTime.now();
-    final eventEnd = eventDateTime!.add(hoursToDuration(duration ?? 0));
-    final windowEnd = eventEnd.add(const Duration(hours: 1));
-    return now.isAfter(eventDateTime!) && now.isBefore(windowEnd);
-  }
-
   /// Shows rating bottom sheet
   void _showRatingDialog(BuildContext context) {
     int selectedRating = 0;
@@ -1831,6 +1827,17 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               showInterests: true,
               onTopicTap: (topic) => context.push(topicLocation(topic.slug)),
             ),
+            // People Like You: the way in while checked in, a word on the
+            // day before that; nothing otherwise.
+            PeopleLikeYouCard(
+              eventId: _eventId,
+              eventName: name,
+              status: _status,
+              networking: _networking,
+              startsAt: eventDateTime,
+              durationHours: duration,
+              revoked: _ticketRevoked,
+            ),
 
             const SizedBox(height: 16),
             // Info Grid.
@@ -2058,44 +2065,6 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                 const SizedBox(height: 4),
               ],
 
-              // 4. "People Like You" networking button (only during event + 1hr)
-              if (_isWithinNetworkingWindow()) ...[
-                FilledButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => NetworkingPage(
-                          eventId: _idOrZero,
-                          eventName: name ?? 'Event',
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Text('🤝', style: TextStyle(fontSize: 18)),
-                  label: const Text(
-                    'People Like You',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                    backgroundColor: const Color(0xFF2E7D32),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Discover attendees who share your interests',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                ),
-                const SizedBox(height: 12),
-              ],
             ],
 
             // ========== FEEDBACK (after attending) ==========
