@@ -54,6 +54,9 @@ import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
+import 'package:finnet/shared/widgets/poster_hero.dart';
+import 'package:finnet/shared/widgets/pressable.dart';
+import 'package:finnet/shared/widgets/toast.dart';
 
 class IndividualEventPage extends ConsumerStatefulWidget {
   /// The event's id, when it was opened by id.
@@ -71,6 +74,14 @@ class IndividualEventPage extends ConsumerStatefulWidget {
   /// the event.
   final bool openLiveRoom;
 
+  /// The hero tag of the card's poster that opened this page, which flies
+  /// into this page's poster; null from anywhere else.
+  final String? posterHero;
+
+  /// What that card knew of the poster, drawn while the event loads so the
+  /// flight lands on the very poster the page then shows.
+  final PosterHint? posterHint;
+
   const IndividualEventPage({
     super.key,
     this.eventId,
@@ -79,6 +90,8 @@ class IndividualEventPage extends ConsumerStatefulWidget {
     this.initialTicketUrl,
     this.initialCertificateUrl,
     this.openLiveRoom = false,
+    this.posterHero,
+    this.posterHint,
   }) : assert(eventId != null || eventRef != null,
             'An event page needs an id or a slug');
 
@@ -1613,12 +1626,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Thanks for your rating!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showToast(context, 'Thanks for your rating!',
+            icon: Icons.star_rounded);
       }
     } catch (e) {
       if (mounted) {
@@ -1649,7 +1658,28 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             style: TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
           ),
         ),
-        body: const ShimmerEventDetail(),
+        body: ShimmerEventDetail(
+          poster: widget.posterHero == null
+              ? null
+              : PosterHero(
+                  tag: widget.posterHero,
+                  child: AspectRatio(
+                    aspectRatio: 1.0,
+                    child: EventPosterImage(
+                      poster: widget.posterHint?.poster,
+                      eventId: widget.eventId ?? widget.ref,
+                      categoryId: widget.posterHint?.categoryId,
+                      categoryName: widget.posterHint?.categoryName,
+                      startsAt: widget.posterHint?.startsAt,
+                      isOnline: widget.posterHint?.isOnline ?? false,
+                      slot: PosterSlot.hero,
+                      borderRadius: BorderRadius.circular(8.0),
+                      placeholder: widget.posterHint
+                          ?.cardPoster(widget.eventId ?? widget.ref),
+                    ),
+                  ),
+                ),
+        ),
       );
     }
     if (errorMessage != null) {
@@ -1707,20 +1737,27 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Event poster, or its drawn cover when it has none.
-            AspectRatio(
-              aspectRatio: 1.0,
-              child: EventPosterImage(
-                poster: poster,
-                eventId: _eventId ?? widget.ref,
-                // A missing category parses as id 0 and an empty name.
-                categoryId:
-                    (category?.id ?? 0) != 0 ? category!.id : null,
-                categoryName: category?.name,
-                startsAt: eventDateTime,
-                isOnline: isOnline ?? false,
-                slot: PosterSlot.hero,
-                borderRadius: BorderRadius.circular(8.0),
+            // Event poster, or its drawn cover when it has none -- where a
+            // card's poster flies to (and back from).
+            PosterHero(
+              tag: widget.posterHero,
+              child: AspectRatio(
+                aspectRatio: 1.0,
+                child: EventPosterImage(
+                  poster: poster,
+                  eventId: _eventId ?? widget.ref,
+                  // A missing category parses as id 0 and an empty name.
+                  categoryId:
+                      (category?.id ?? 0) != 0 ? category!.id : null,
+                  categoryName: category?.name,
+                  startsAt: eventDateTime,
+                  isOnline: isOnline ?? false,
+                  slot: PosterSlot.hero,
+                  borderRadius: BorderRadius.circular(8.0),
+                  // Opened from a card: its poster until this one loads.
+                  placeholder:
+                      widget.posterHint?.cardPoster(_eventId ?? widget.ref),
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -2251,20 +2288,23 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              onPressed: (_paying || blocked != null) ? null : _finishPayment,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2C333D),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Pressable(
+              enabled: !_paying && blocked == null,
+              child: FilledButton(
+                onPressed: (_paying || blocked != null) ? null : _finishPayment,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2C333D),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: _paying
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : Text(blocked ?? 'FINISH PAYMENT'),
               ),
-              child: _paying
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : Text(blocked ?? 'FINISH PAYMENT'),
             ),
           ),
           const SizedBox(height: 10),
@@ -2378,9 +2418,12 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               ),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
-                onPressed: onPressed,
-                child: Text(isLoading ? 'LOADING...' : state.label),
+              child: Pressable(
+                enabled: onPressed != null,
+                child: FilledButton(
+                  onPressed: onPressed,
+                  child: Text(isLoading ? 'LOADING...' : state.label),
+                ),
               ),
             ),
           ],
@@ -2453,14 +2496,16 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              onPressed: _openTicket,
-              style: FilledButton.styleFrom(
-                backgroundColor:
-                    revoked ? Colors.grey.shade600 : const Color(0xFF2C333D),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Pressable(
+              child: FilledButton(
+                onPressed: _openTicket,
+                style: FilledButton.styleFrom(
+                  backgroundColor:
+                      revoked ? Colors.grey.shade600 : const Color(0xFF2C333D),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: Text(revoked ? 'TICKET REVOKED' : 'VIEW TICKET'),
               ),
-              child: Text(revoked ? 'TICKET REVOKED' : 'VIEW TICKET'),
             ),
           ),
           const SizedBox(height: 10),
@@ -2499,40 +2544,42 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              onPressed: () async {
-                if (certificateUrl != null && certificateUrl!.isNotEmpty) {
-                  String finalUrl = certificateUrl!;
+            child: Pressable(
+              child: FilledButton(
+                onPressed: () async {
+                  if (certificateUrl != null && certificateUrl!.isNotEmpty) {
+                    String finalUrl = certificateUrl!;
 
-                  // Handle old format: /api/v1/events/certificates/{id} → {publicSiteUrl}/certificates/{id}
-                  if (certificateUrl!
-                      .startsWith('/api/v1/events/certificates/')) {
-                    final certId = certificateUrl!
-                        .replaceFirst('/api/v1/events/certificates/', '');
-                    finalUrl =
-                        '${AppConfig.publicSiteUrl}/certificates/$certId';
-                  } else if (certificateUrl!.startsWith('/')) {
-                    // Other relative URLs - use API domain
-                    finalUrl = 'https://api.myotherapp.in$certificateUrl';
+                    // Handle old format: /api/v1/events/certificates/{id} → {publicSiteUrl}/certificates/{id}
+                    if (certificateUrl!
+                        .startsWith('/api/v1/events/certificates/')) {
+                      final certId = certificateUrl!
+                          .replaceFirst('/api/v1/events/certificates/', '');
+                      finalUrl =
+                          '${AppConfig.publicSiteUrl}/certificates/$certId';
+                    } else if (certificateUrl!.startsWith('/')) {
+                      // Other relative URLs - use API domain
+                      finalUrl = 'https://api.myotherapp.in$certificateUrl';
+                    }
+                    // else: Already a full URL, use as-is
+
+                    // The site's certificate page, inside the app.
+                    await ref.read(linkLauncherProvider)(Uri.parse(finalUrl));
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            'Certificate is being generated. Please check back later.'),
+                      ),
+                    );
                   }
-                  // else: Already a full URL, use as-is
-
-                  // The site's certificate page, inside the app.
-                  await ref.read(linkLauncherProvider)(Uri.parse(finalUrl));
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                          'Certificate is being generated. Please check back later.'),
-                    ),
-                  );
-                }
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2C333D),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2C333D),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text('VIEW CERTIFICATE'),
               ),
-              child: const Text('VIEW CERTIFICATE'),
             ),
           ),
           const SizedBox(height: 10),

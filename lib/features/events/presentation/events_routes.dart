@@ -6,6 +6,7 @@ import 'package:finnet/features/events/presentation/pages/competition_page.dart'
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
 import 'package:finnet/features/events/presentation/pages/feedback_survey_page.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
+import 'package:finnet/shared/widgets/poster_hero.dart';
 
 // The event routes batch B adds, and the builders for the two event routes
 // app_router.dart (batch D's) already has.
@@ -25,7 +26,8 @@ String eventRefOf(GoRouterState state) {
 /// (`/events/hack-night`).
 ///
 /// extra (from a card): `status` ('registered', 'attended',
-/// 'awaitingPayment', 'finishPayment'), `ticketUrl`, `certificateUrl`.
+/// 'awaitingPayment', 'finishPayment'), `ticketUrl`, `certificateUrl`;
+/// `posterHero` and `posterHint`, for the card's poster to fly in.
 /// `?live=room|quiz|poll` (a "join now" push) opens the live room at once.
 Widget buildEventPage(BuildContext context, GoRouterState state) {
   final ref = eventRefOf(state);
@@ -39,6 +41,8 @@ Widget buildEventPage(BuildContext context, GoRouterState state) {
     initialTicketUrl: extra['ticketUrl'] as String?,
     initialCertificateUrl: extra['certificateUrl'] as String?,
     openLiveRoom: state.uri.queryParameters.containsKey('live'),
+    posterHero: extra['posterHero'] as String?,
+    posterHint: extra['posterHint'] as PosterHint?,
   );
 }
 

@@ -7,6 +7,7 @@ import 'package:finnet/features/discover/presentation/widgets/discover_club_card
 import 'package:finnet/features/discover/presentation/widgets/discover_event_card.dart';
 import 'package:finnet/shared/widgets/section_header.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/poster_hero.dart';
 
 export 'package:finnet/shared/widgets/section_header.dart' show SeeAllLink;
 
@@ -78,24 +79,35 @@ const railSpacing = 12.0;
 
 /// Events side by side, scrolled sideways: every card the same size.
 class EventRail extends StatelessWidget {
-  const EventRail({super.key, required this.events, this.limit = 10});
+  const EventRail({
+    super.key,
+    required this.events,
+    this.limit = 10,
+    this.heroScope,
+  });
 
   final List<DiscoverEvent> events;
   final int limit;
 
+  /// The rail's name among the screen's rails, for its posters to fly into
+  /// the event's page; none without one.
+  final String? heroScope;
+
   @override
   Widget build(BuildContext context) {
     final shown = events.take(limit).toList();
-    return SizedBox(
+    final rail = SizedBox(
       height: DiscoverEventCard.heightFor(context),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: railGutter),
         itemCount: shown.length,
         separatorBuilder: (_, __) => const SizedBox(width: railSpacing),
-        itemBuilder: (_, i) => DiscoverEventCard(event: shown[i]),
+        itemBuilder: (_, i) => DiscoverEventCard(event: shown[i], index: i),
       ),
     );
+    final scope = heroScope;
+    return scope == null ? rail : PosterHeroScope(name: scope, child: rail);
   }
 }
 
@@ -116,8 +128,8 @@ class ClubRail extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: railGutter),
         itemCount: shown.length,
         separatorBuilder: (_, __) => const SizedBox(width: railSpacing),
-        itemBuilder: (_, i) => DiscoverClubCard(
-            club: shown[i], width: DiscoverClubCard.railWidth),
+        itemBuilder: (_, i) =>
+            DiscoverClubCard(club: shown[i], width: DiscoverClubCard.railWidth),
       ),
     );
   }
@@ -181,8 +193,8 @@ class ListSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height =
-        rowHeight ?? EventCardSlots.of(context, maxScale: tileMaxTextScale).content;
+    final height = rowHeight ??
+        EventCardSlots.of(context, maxScale: tileMaxTextScale).content;
     final skeleton = Shimmer.fromColors(
       key: const ValueKey('discover-list-loading'),
       baseColor: Colors.grey.shade200,

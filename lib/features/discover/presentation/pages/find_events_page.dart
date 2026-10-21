@@ -18,6 +18,8 @@ import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/entrance.dart';
+import 'package:finnet/shared/widgets/fade_switch.dart';
 
 const _ink = Color(0xFF1E1E1E);
 
@@ -370,6 +372,20 @@ class _Results extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // The skeleton gives way to the results with a cross-fade.
+    return FadeSwitch(
+      phase: state.isLoading && state.items.isEmpty
+          ? ScreenPhase.loading
+          : state.error != null && state.items.isEmpty
+              ? ScreenPhase.error
+              : state.items.isEmpty
+                  ? ScreenPhase.empty
+                  : ScreenPhase.content,
+      child: _results(context, ref),
+    );
+  }
+
+  Widget _results(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(eventSearchProvider(filters).notifier);
     if (state.isLoading && state.items.isEmpty) return const ListSkeleton();
     if (state.error != null && state.items.isEmpty) {
@@ -408,7 +424,8 @@ class _Results extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: notifier.refresh,
-      child: ListView.builder(
+      child: EntranceScope(
+          child: ListView.builder(
         key: const ValueKey('discover-events-list'),
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -443,9 +460,12 @@ class _Results extends ConsumerWidget {
           if (i == state.items.length + 1) {
             return PagedFooter(state: state, onLoadMore: notifier.loadMore);
           }
-          return DiscoverEventTile(event: state.items[i - 1]);
+          return Entrance(
+            index: i - 1,
+            child: DiscoverEventTile(event: state.items[i - 1]),
+          );
         },
-      ),
+      )),
     );
   }
 }

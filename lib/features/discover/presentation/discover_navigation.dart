@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/features/discover/domain/event_filters.dart';
+import 'package:finnet/shared/widgets/poster_hero.dart';
 
 // Where the discover screens live, and how a card opens the existing event,
 // club and post pages. The addresses carry the same parameters as the
@@ -33,10 +34,21 @@ String topicLocation(String slug, {int? interest}) => locationWith(
       {if (interest != null) 'interest': '$interest'},
     );
 
-/// The event's page.
-void openDiscoverEvent(BuildContext context, int eventId) {
+/// The event's page. With [posterHero], the tapped card's poster (tagged
+/// so, and drawn from [hint]) flies into the page's.
+void openDiscoverEvent(
+  BuildContext context,
+  int eventId, {
+  String? posterHero,
+  PosterHint? hint,
+}) {
   if (eventId <= 0) return;
-  context.push('/events/$eventId');
+  context.push(
+    '/events/$eventId',
+    extra: posterHero == null
+        ? null
+        : {'posterHero': posterHero, if (hint != null) 'posterHint': hint},
+  );
 }
 
 /// The club's page, by id, or by slug for a club the server sent without
