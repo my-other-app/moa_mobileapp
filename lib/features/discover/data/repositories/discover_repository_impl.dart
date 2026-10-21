@@ -66,8 +66,8 @@ class DiscoverRepositoryImpl implements DiscoverRepository {
   @override
   Future<CalendarMonth?> savedCalendar(EventFilters filters, String month,
           {DiscoverPoint? at}) =>
-      _saved('savedCalendar',
-          () => _remote.savedCalendar(filters, month, at: at));
+      _saved(
+          'savedCalendar', () => _remote.savedCalendar(filters, month, at: at));
 
   @override
   Future<Result<ClubResults>> clubs(ClubFilters filters, PageRequest page,

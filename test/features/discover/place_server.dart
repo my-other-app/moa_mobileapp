@@ -65,7 +65,9 @@ double km(double aLat, double aLng, double bLat, double bLng) {
   final dLat = rad(bLat - aLat);
   final dLng = rad(bLng - aLng);
   final h = math.pow(math.sin(dLat / 2), 2) +
-      math.cos(rad(aLat)) * math.cos(rad(bLat)) * math.pow(math.sin(dLng / 2), 2);
+      math.cos(rad(aLat)) *
+          math.cos(rad(bLat)) *
+          math.pow(math.sin(dLng / 2), 2);
   return 2 * 6371 * math.asin(math.min(1, math.sqrt(h)));
 }
 
@@ -125,8 +127,8 @@ class PlaceServer implements HttpClientAdapter {
     ];
     final clubs = [for (final c in demoClubs) _club(where, c)];
     if (placed) {
-      clubs.sort((a, b) => (a['distance_km'] as double)
-          .compareTo(b['distance_km'] as double));
+      clubs.sort((a, b) =>
+          (a['distance_km'] as double).compareTo(b['distance_km'] as double));
     }
     return homeBody(
       where: where,

@@ -127,8 +127,7 @@ class EventSearchNotifier extends PagedNotifier<DiscoverEvent, EventResults> {
   @override
   Future<Result<PageWithMeta<DiscoverEvent, EventResults>>> fetchPage(
       PageRequest page) async {
-    final result =
-        await _repository.events(filters, page, at: place?.point);
+    final result = await _repository.events(filters, page, at: place?.point);
     return result.map((r) {
       if (place == null) onGuess?.call(r.where);
       return (r.page, r.about(place));

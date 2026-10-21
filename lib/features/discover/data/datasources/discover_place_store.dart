@@ -72,7 +72,9 @@ class FileDiscoverPlaceStore implements DiscoverPlaceStore {
         if (await file.exists()) await file.delete();
         return;
       }
-      if (!await file.parent.exists()) await file.parent.create(recursive: true);
+      if (!await file.parent.exists()) {
+        await file.parent.create(recursive: true);
+      }
       // Written aside and moved into place, so a crash halfway leaves the
       // old place rather than half a file.
       final temp = File('${file.path}.tmp');
