@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/features/events/presentation/widgets/networking/networking_visibility_switch.dart';
 import 'package:finnet/features/profile/presentation/providers/privacy_choices_provider.dart';
 import 'package:finnet/shared/widgets/settings_row.dart';
 
@@ -9,6 +10,9 @@ import 'package:finnet/shared/widgets/settings_row.dart';
 ///
 /// Two switches rather than one, because they are different things: an
 /// analytics opt-out should not have to give up getting a crash fixed.
+///
+/// Then "Show me in People Like You", which the server keeps: whether
+/// people at the same event can find this person.
 ///
 /// Rows of the Settings design, with one grey line under them for what the
 /// names do not say, then a divider, so the list goes on beneath them.
@@ -44,6 +48,7 @@ class PrivacySwitchesSection extends ConsumerWidget {
           'or email.',
         ),
         const SettingsDivider(),
+        const NetworkingVisibilityRow(),
       ],
     );
   }

@@ -21,6 +21,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../events/events_fakes.dart' show useFakeApi;
 import '../threads/moderation_fakes.dart';
 
 const _profile = UserProfile(
@@ -432,6 +433,73 @@ void main() {
 
       expect(on(tester, 'privacy-switch-analytics'), isFalse);
       expect(on(tester, 'privacy-switch-crash-reports'), isFalse);
+    });
+  });
+
+  group('Show me in People Like You', () {
+    const key = 'privacy-switch-people-like-you';
+    final shown = _profile.copyWith(networkingVisible: true);
+
+    testWidgets('on for someone who has not turned it off, with its line',
+        (tester) async {
+      _tall(tester);
+      useFakeApi();
+      await _pump(tester, profile: shown);
+
+      expect(find.text('Show me in People Like You'), findsOneWidget);
+      expect(on(tester, key), isTrue);
+      expect(find.textContaining('people who share your interests can find you'),
+          findsOneWidget);
+      // In the privacy group, after the two the phone keeps.
+      expect(tester.getTopLeft(find.text('Show me in People Like You')).dy,
+          greaterThan(tester.getTopLeft(find.text('Crash Reports')).dy));
+    });
+
+    testWidgets('turned off: shown at once, and the server told',
+        (tester) async {
+      _tall(tester);
+      final api = useFakeApi()
+        ..on('PATCH', '/user/preferences', {'networking_visible': false});
+      await _pump(tester, profile: shown);
+
+      await _tap(tester, key);
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      expect(on(tester, key), isFalse);
+      final sent = api.sent('PATCH', '/user/preferences');
+      expect(sent, hasLength(1));
+      expect(sent.single.data, {'networking_visible': false});
+    });
+
+    testWidgets('a change the server refuses goes back, and says why',
+        (tester) async {
+      _tall(tester);
+      useFakeApi().on('PATCH', '/user/preferences', {'message': 'Try later'},
+          status: 500);
+      await _pump(tester, profile: shown);
+
+      await _tap(tester, key);
+      // Off at once, before the server has answered...
+      expect(on(tester, key), isFalse);
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      // ...and back on when it refuses, with why in red.
+      expect(on(tester, key), isTrue);
+      final reds = tester
+          .widgetList<SettingsCaption>(find.byType(SettingsCaption))
+          .where((c) => c.color == Colors.red);
+      expect(reds, hasLength(1));
+      expect(find.textContaining('people who share your interests can find you'),
+          findsNothing);
+    });
+
+    testWidgets('no switch from a server without one', (tester) async {
+      _tall(tester);
+      await _pump(tester);
+      expect(find.text('Show me in People Like You'), findsNothing);
     });
   });
 }
