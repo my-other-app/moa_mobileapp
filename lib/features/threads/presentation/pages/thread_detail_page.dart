@@ -35,10 +35,12 @@ class ThreadDetailPage extends ConsumerStatefulWidget {
 
 class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
   final _composer = TextEditingController();
+  final _composerFocus = FocusNode();
 
   @override
   void dispose() {
     _composer.dispose();
+    _composerFocus.dispose();
     super.dispose();
   }
 
@@ -108,6 +110,9 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
                   expanded: true,
                   onLike: _like,
                   onVote: _vote,
+                  // The post's one comment button: here it opens the box
+                  // below rather than the page it is already on.
+                  onComments: _startComment,
                   onClubTap: () => _openClub(thread),
                   onReport: () => reportContent(
                     context,
@@ -136,6 +141,7 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
         ),
         _Composer(
           controller: _composer,
+          focusNode: _composerFocus,
           isPosting: state.isPosting,
           onSend: _send,
         ),
@@ -233,6 +239,13 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
     if (failure != null && mounted) showThreadFailure(context, ref, failure);
   }
 
+  /// The comment button under the post: the keyboard in the comment box,
+  /// or -- signed out -- the sign-in prompt the box itself would give.
+  void _startComment() {
+    if (!ensureSignedIn(context, ref, 'Sign in to comment.')) return;
+    _composerFocus.requestFocus();
+  }
+
   Future<void> _send() async {
     if (!ensureSignedIn(context, ref, 'Sign in to comment.')) return;
     final failure = await _notifier.addComment(_composer.text);
@@ -284,11 +297,13 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
 /// into that could be sent.
 class _Composer extends ConsumerWidget {
   final TextEditingController controller;
+  final FocusNode focusNode;
   final bool isPosting;
   final VoidCallback onSend;
 
   const _Composer({
     required this.controller,
+    required this.focusNode,
     required this.isPosting,
     required this.onSend,
   });
@@ -332,6 +347,7 @@ class _Composer extends ConsumerWidget {
               child: TextField(
                 key: const ValueKey('comment-field'),
                 controller: controller,
+                focusNode: focusNode,
                 // Read-only rather than disabled while sending, so the
                 // keyboard stays up if it fails and needs another go.
                 readOnly: isPosting,
