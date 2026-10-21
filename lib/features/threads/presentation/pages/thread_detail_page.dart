@@ -17,6 +17,7 @@ import 'package:finnet/features/threads/presentation/widgets/thread_share.dart';
 import 'package:finnet/shared/widgets/confirmation_dialog.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/fade_switch.dart';
 
 /// One club post with its comments -- `/threads/:threadId`.
 ///
@@ -76,7 +77,14 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
             ),
         ],
       ),
-      body: _body(state),
+      body: FadeSwitch(
+        phase: state.isRemoved || (state.thread == null && state.error != null)
+            ? ScreenPhase.error
+            : state.thread == null
+                ? ScreenPhase.loading
+                : ScreenPhase.content,
+        child: _body(state),
+      ),
     );
   }
 
