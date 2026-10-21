@@ -14,6 +14,8 @@ import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/entrance.dart';
+import 'package:finnet/shared/widgets/fade_switch.dart';
 
 const _ink = Color(0xFF1E1E1E);
 
@@ -61,11 +63,15 @@ class _ClubsDirectoryPageState extends ConsumerState<ClubsDirectoryPage> {
     final sortLabel = (_filters.sort ?? ClubSort.popular).label;
 
     Widget body;
+    final ScreenPhase phase;
     if (state.isLoading && state.items.isEmpty) {
+      phase = ScreenPhase.loading;
       body = const ListSkeleton(rowHeight: 64);
     } else if (state.error != null && state.items.isEmpty) {
+      phase = ScreenPhase.error;
       body = ErrorView(message: state.error, onRetry: notifier.load);
     } else if (state.items.isEmpty) {
+      phase = ScreenPhase.empty;
       final narrowed = _filters.activeCount > 0 || _filters.q.isNotEmpty;
       body = ListView(
         children: [
@@ -85,9 +91,11 @@ class _ClubsDirectoryPageState extends ConsumerState<ClubsDirectoryPage> {
         ],
       );
     } else {
+      phase = ScreenPhase.content;
       body = RefreshIndicator(
         onRefresh: notifier.refresh,
-        child: ListView.separated(
+        child: EntranceScope(
+            child: ListView.separated(
           key: const ValueKey('discover-clubs-list'),
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -114,9 +122,12 @@ class _ClubsDirectoryPageState extends ConsumerState<ClubsDirectoryPage> {
               return PagedFooter(
                   state: state, onLoadMore: notifier.loadMore, noun: 'clubs');
             }
-            return DiscoverClubCard(club: state.items[i - 1]);
+            return Entrance(
+              index: i - 1,
+              child: DiscoverClubCard(club: state.items[i - 1]),
+            );
           },
-        ),
+        )),
       );
     }
 
@@ -198,7 +209,7 @@ class _ClubsDirectoryPageState extends ConsumerState<ClubsDirectoryPage> {
             onChanged: (id) => _apply(_filters.copyWith(interest: id)),
           ),
           const SizedBox(height: 4),
-          Expanded(child: body),
+          Expanded(child: FadeSwitch(phase: phase, child: body)),
         ],
       ),
     );

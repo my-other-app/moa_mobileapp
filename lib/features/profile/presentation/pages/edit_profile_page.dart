@@ -10,6 +10,7 @@ import 'package:finnet/features/auth/presentation/pages/onboarding_details_page.
     show Organization;
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/topics/presentation/widgets/interest_tags.dart';
+import 'package:finnet/shared/widgets/toast.dart';
 
 /// Edit Profile Page - fully migrated to Riverpod.
 class EditProfilePage extends ConsumerStatefulWidget {
@@ -363,9 +364,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           await ref.read(profileProvider.notifier).loadProfile();
 
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Profile updated successfully')),
-            );
+            showToast(context, 'Profile updated successfully');
             Navigator.of(context).pop();
           }
         }

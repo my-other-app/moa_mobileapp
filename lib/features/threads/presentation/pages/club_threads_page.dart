@@ -12,6 +12,8 @@ import 'package:finnet/features/threads/presentation/widgets/thread_list_footer.
 import 'package:finnet/features/threads/presentation/widgets/thread_share.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/entrance.dart';
+import 'package:finnet/shared/widgets/fade_switch.dart';
 
 /// The THREADS tab on a club's page: what the club has posted, pinned first
 /// then newest, a page at a time.
@@ -48,7 +50,9 @@ class _ClubThreadsPageState extends ConsumerState<ClubThreadsPage>
     final notifier = ref.read(clubThreadsProvider(clubId).notifier);
 
     Widget body;
+    final ScreenPhase phase;
     if (state.isLoading && state.threads.isEmpty) {
+      phase = ScreenPhase.loading;
       body = ListView.separated(
         padding: const EdgeInsets.all(16),
         physics: const NeverScrollableScrollPhysics(),
@@ -60,8 +64,10 @@ class _ClubThreadsPageState extends ConsumerState<ClubThreadsPage>
       // Distinct from the empty state on purpose: "this club has posted
       // nothing" and "we could not reach the server" are different facts,
       // and only the second is worth retrying.
+      phase = ScreenPhase.error;
       body = ErrorView(message: state.error, onRetry: notifier.load);
     } else {
+      phase = ScreenPhase.content;
       body = RefreshIndicator(
         color: ThreadCard.ink,
         onRefresh: () async {
@@ -78,7 +84,10 @@ class _ClubThreadsPageState extends ConsumerState<ClubThreadsPage>
       );
     }
 
-    return ColoredBox(color: Colors.white, child: body);
+    return ColoredBox(
+      color: Colors.white,
+      child: FadeSwitch(phase: phase, child: body),
+    );
   }
 }
 
@@ -97,36 +106,41 @@ class _ThreadList extends ConsumerWidget {
     final showFooter =
         state.hasMore || state.isLoadingMore || state.loadMoreError != null;
 
-    return ListView.separated(
-      // No controller of its own: inside the club page's NestedScrollView
-      // the list must use the primary one, or the header stops collapsing.
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-      itemCount: threads.length + (showFooter ? 1 : 0),
-      separatorBuilder: (_, __) => const SizedBox(height: 20),
-      itemBuilder: (context, index) {
-        if (index == threads.length) {
-          return ThreadListFooter(
-            state: state,
-            onLoadMore: notifier.loadMore,
+    return EntranceScope(
+      child: ListView.separated(
+        // No controller of its own: inside the club page's NestedScrollView
+        // the list must use the primary one, or the header stops collapsing.
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        itemCount: threads.length + (showFooter ? 1 : 0),
+        separatorBuilder: (_, __) => const SizedBox(height: 20),
+        itemBuilder: (context, index) {
+          if (index == threads.length) {
+            return ThreadListFooter(
+              state: state,
+              onLoadMore: notifier.loadMore,
+            );
+          }
+          final thread = threads[index];
+          return Entrance(
+            index: index,
+            child: ThreadCard(
+              key: ValueKey(thread.id),
+              thread: thread,
+              onTap: () => _open(context, thread),
+              onLike: () => _like(context, ref, thread),
+              onVote: (optionId) => _vote(context, ref, thread, optionId),
+              onReport: () => reportContent(
+                context,
+                ref,
+                target: ReportTarget.thread(thread.id),
+                what: 'post',
+              ),
+              onShare: (button) => shareThread(button, ref, thread),
+            ),
           );
-        }
-        final thread = threads[index];
-        return ThreadCard(
-          key: ValueKey(thread.id),
-          thread: thread,
-          onTap: () => _open(context, thread),
-          onLike: () => _like(context, ref, thread),
-          onVote: (optionId) => _vote(context, ref, thread, optionId),
-          onReport: () => reportContent(
-            context,
-            ref,
-            target: ReportTarget.thread(thread.id),
-            what: 'post',
-          ),
-          onShare: (button) => shareThread(button, ref, thread),
-        );
-      },
+        },
+      ),
     );
   }
 

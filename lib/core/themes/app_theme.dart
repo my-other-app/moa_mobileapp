@@ -41,6 +41,22 @@ class AppTheme {
             ),
           ),
         ),
+        // Every snack bar and toast: a small floating bar in the app's ink
+        // that slides up into place and leaves by itself.
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: ColorResources.buttonColor,
+          contentTextStyle: const TextStyle(
+            fontFamily: 'DMSans',
+            fontSize: 14,
+            color: Colors.white,
+          ),
+          actionTextColor: AppColors.paleYellow,
+          insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
         dividerTheme:
             DividerThemeData(color: Color(0xff979797), thickness: 0.5),
         switchTheme: SwitchThemeData(

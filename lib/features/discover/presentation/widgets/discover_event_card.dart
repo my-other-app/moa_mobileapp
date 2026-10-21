@@ -9,6 +9,8 @@ import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/poster_hero.dart';
+import 'package:finnet/shared/widgets/pressable.dart';
 
 const _ink = Color(0xFF1E1E1E);
 const _muted = Color(0xFF6B6B6B);
@@ -69,8 +71,7 @@ class EventCardSlots {
       scaler.scale(_badge) * _lineHeight + 6);
 
   /// The club, the name, when and where.
-  double get facts =>
-      club + clubGap + title + titleGap + line + lineGap + line;
+  double get facts => club + clubGap + title + titleGap + line + lineGap + line;
 
   /// The text and the bottom row.
   double get content => facts + footGap + foot;
@@ -78,14 +79,14 @@ class EventCardSlots {
   /// Everything under a card's poster.
   double get cardBody => padding + content + padding;
 
-  static const smallStrut = StrutStyle(
-      fontSize: _small, height: _lineHeight, forceStrutHeight: true);
+  static const smallStrut =
+      StrutStyle(fontSize: _small, height: _lineHeight, forceStrutHeight: true);
   static const titleStrut = StrutStyle(
       fontSize: _title, height: _titleHeight, forceStrutHeight: true);
-  static const priceStrut = StrutStyle(
-      fontSize: _price, height: _lineHeight, forceStrutHeight: true);
-  static const badgeStrut = StrutStyle(
-      fontSize: _badge, height: _lineHeight, forceStrutHeight: true);
+  static const priceStrut =
+      StrutStyle(fontSize: _price, height: _lineHeight, forceStrutHeight: true);
+  static const badgeStrut =
+      StrutStyle(fontSize: _badge, height: _lineHeight, forceStrutHeight: true);
 }
 
 /// What a screen reader says for an event card or row.
@@ -112,12 +113,16 @@ class DiscoverEventCard extends StatelessWidget {
     super.key,
     required this.event,
     this.width = defaultWidth,
+    this.index = 0,
   });
 
   static const defaultWidth = 248.0;
 
   final DiscoverEvent event;
   final double width;
+
+  /// Its place in its rail, which keeps its poster's hero tag unique.
+  final int index;
 
   /// How tall a card [width] wide is at [context]'s text size: every card
   /// is exactly this tall, whatever it holds.
@@ -129,7 +134,20 @@ class DiscoverEventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final slots = EventCardSlots.of(context);
     final posterHeight = width * 9 / 16;
-    void open() => openDiscoverEvent(context, event.id);
+    final heroTag = PosterHeroScope.tagFor(context, event.id, index);
+    void open() => openDiscoverEvent(
+          context,
+          event.id,
+          posterHero: heroTag,
+          hint: PosterHint(
+            poster: event.poster,
+            categoryId: event.category?.id,
+            categoryName: event.category?.name,
+            startsAt: event.startsAt,
+            isOnline: event.isOnline,
+            size: Size(width, posterHeight),
+          ),
+        );
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: cardMaxTextScale,
@@ -139,39 +157,44 @@ class DiscoverEventCard extends StatelessWidget {
         label: discoverEventLabel(event),
         excludeSemantics: true,
         onTap: open,
-        child: SizedBox(
-          width: width,
-          height: posterHeight + slots.cardBody,
-          child: Material(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: const BorderSide(color: AppColors.border, width: 0.5),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              key: ValueKey('discover-event-${event.id}'),
-              onTap: open,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  EventPosterImage(
-                    poster: event.poster,
-                    eventId: event.id,
-                    categoryId: event.category?.id,
-                    categoryName: event.category?.name,
-                    startsAt: event.startsAt,
-                    isOnline: event.isOnline,
-                    width: width,
-                    height: posterHeight,
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(EventCardSlots.padding),
-                      child: _EventFacts(event: event, slots: slots),
+        child: Pressable(
+          child: SizedBox(
+            width: width,
+            height: posterHeight + slots.cardBody,
+            child: Material(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: const BorderSide(color: AppColors.border, width: 0.5),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                key: ValueKey('discover-event-${event.id}'),
+                onTap: open,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PosterHero(
+                      tag: heroTag,
+                      child: EventPosterImage(
+                        poster: event.poster,
+                        eventId: event.id,
+                        categoryId: event.category?.id,
+                        categoryName: event.category?.name,
+                        startsAt: event.startsAt,
+                        isOnline: event.isOnline,
+                        width: width,
+                        height: posterHeight,
+                      ),
                     ),
-                  ),
-                ],
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(EventCardSlots.padding),
+                        child: _EventFacts(event: event, slots: slots),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -208,42 +231,44 @@ class DiscoverEventTile extends StatelessWidget {
         // them is evenly spaced.
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Opacity(
-            opacity: event.isEnded ? 0.6 : 1,
-            child: Material(
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-                side: const BorderSide(color: AppColors.border, width: 0.5),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                key: ValueKey('discover-event-${event.id}'),
-                onTap: open,
-                child: Padding(
-                  padding: const EdgeInsets.all(_padding),
-                  child: SizedBox(
-                    height: slots.content,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        EventPosterImage(
-                          poster: event.poster,
-                          eventId: event.id,
-                          categoryId: event.category?.id,
-                          categoryName: event.category?.name,
-                          startsAt: event.startsAt,
-                          isOnline: event.isOnline,
-                          slot: PosterSlot.thumb,
-                          width: thumbWidth,
-                          height: slots.content,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _EventFacts(event: event, slots: slots),
-                        ),
-                      ],
+          child: Pressable(
+            child: Opacity(
+              opacity: event.isEnded ? 0.6 : 1,
+              child: Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: const BorderSide(color: AppColors.border, width: 0.5),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  key: ValueKey('discover-event-${event.id}'),
+                  onTap: open,
+                  child: Padding(
+                    padding: const EdgeInsets.all(_padding),
+                    child: SizedBox(
+                      height: slots.content,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          EventPosterImage(
+                            poster: event.poster,
+                            eventId: event.id,
+                            categoryId: event.category?.id,
+                            categoryName: event.category?.name,
+                            startsAt: event.startsAt,
+                            isOnline: event.isOnline,
+                            slot: PosterSlot.thumb,
+                            width: thumbWidth,
+                            height: slots.content,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _EventFacts(event: event, slots: slots),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

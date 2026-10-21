@@ -14,6 +14,8 @@ import 'package:finnet/features/threads/presentation/widgets/thread_list_footer.
 import 'package:finnet/features/threads/presentation/widgets/thread_share.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/entrance.dart';
+import 'package:finnet/shared/widgets/fade_switch.dart';
 
 /// Posts from the clubs you follow, newest first -- `/following/posts`,
 /// from the Clubs tab. The website's "From the clubs" shows every club;
@@ -52,28 +54,38 @@ class _Feed extends ConsumerWidget {
     final notifier = ref.read(followingThreadsProvider.notifier);
 
     if (state.isLoading && state.threads.isEmpty) {
-      return ListView.separated(
-        padding: const EdgeInsets.all(16),
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: 3,
-        separatorBuilder: (_, __) => const SizedBox(height: 20),
-        itemBuilder: (_, __) => const ShimmerThreadCard(),
+      return FadeSwitch(
+        phase: ScreenPhase.loading,
+        child: ListView.separated(
+          padding: const EdgeInsets.all(16),
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 3,
+          separatorBuilder: (_, __) => const SizedBox(height: 20),
+          itemBuilder: (_, __) => const ShimmerThreadCard(),
+        ),
       );
     }
     if (state.error != null && state.threads.isEmpty) {
-      return ErrorView(message: state.error, onRetry: notifier.load);
+      return FadeSwitch(
+        phase: ScreenPhase.error,
+        child: ErrorView(message: state.error, onRetry: notifier.load),
+      );
     }
-    return RefreshIndicator(
-      color: ThreadCard.ink,
-      onRefresh: () async {
-        final error = await notifier.refresh();
-        if (error != null && context.mounted) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(content: Text(error)));
-        }
-      },
-      child: state.threads.isEmpty ? const _NothingYet() : _List(state: state),
+    return FadeSwitch(
+      phase: ScreenPhase.content,
+      child: RefreshIndicator(
+        color: ThreadCard.ink,
+        onRefresh: () async {
+          final error = await notifier.refresh();
+          if (error != null && context.mounted) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text(error)));
+          }
+        },
+        child:
+            state.threads.isEmpty ? const _NothingYet() : _List(state: state),
+      ),
     );
   }
 }
@@ -90,48 +102,54 @@ class _List extends ConsumerWidget {
     final showFooter =
         state.hasMore || state.isLoadingMore || state.loadMoreError != null;
 
-    return ListView.separated(
-      key: const ValueKey('following-posts'),
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-      itemCount: threads.length + (showFooter ? 1 : 0),
-      separatorBuilder: (_, __) => const SizedBox(height: 20),
-      itemBuilder: (context, index) {
-        if (index == threads.length) {
-          return ThreadListFooter(state: state, onLoadMore: notifier.loadMore);
-        }
-        final thread = threads[index];
-        return ThreadCard(
-          key: ValueKey(thread.id),
-          thread: thread,
-          onTap: () =>
-              context.push('/threads/${Uri.encodeComponent(thread.id)}'),
-          onClubTap: () => _openClub(context, thread),
-          onLike: () async {
-            if (!ensureSignedIn(context, ref, 'Sign in to like posts.')) {
-              return;
-            }
-            final failure = await notifier.toggleLike(thread.id);
-            if (failure != null && context.mounted) {
-              showThreadFailure(context, ref, failure);
-            }
-          },
-          onVote: (optionId) async {
-            if (!ensureSignedIn(context, ref, 'Sign in to vote.')) return;
-            final failure = await notifier.vote(thread.id, optionId);
-            if (failure != null && context.mounted) {
-              showThreadFailure(context, ref, failure);
-            }
-          },
-          onReport: () => reportContent(
-            context,
-            ref,
-            target: ReportTarget.thread(thread.id),
-            what: 'post',
-          ),
-          onShare: (button) => shareThread(button, ref, thread),
-        );
-      },
+    return EntranceScope(
+      child: ListView.separated(
+        key: const ValueKey('following-posts'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        itemCount: threads.length + (showFooter ? 1 : 0),
+        separatorBuilder: (_, __) => const SizedBox(height: 20),
+        itemBuilder: (context, index) {
+          if (index == threads.length) {
+            return ThreadListFooter(
+                state: state, onLoadMore: notifier.loadMore);
+          }
+          final thread = threads[index];
+          return Entrance(
+            index: index,
+            child: ThreadCard(
+              key: ValueKey(thread.id),
+              thread: thread,
+              onTap: () =>
+                  context.push('/threads/${Uri.encodeComponent(thread.id)}'),
+              onClubTap: () => _openClub(context, thread),
+              onLike: () async {
+                if (!ensureSignedIn(context, ref, 'Sign in to like posts.')) {
+                  return;
+                }
+                final failure = await notifier.toggleLike(thread.id);
+                if (failure != null && context.mounted) {
+                  showThreadFailure(context, ref, failure);
+                }
+              },
+              onVote: (optionId) async {
+                if (!ensureSignedIn(context, ref, 'Sign in to vote.')) return;
+                final failure = await notifier.vote(thread.id, optionId);
+                if (failure != null && context.mounted) {
+                  showThreadFailure(context, ref, failure);
+                }
+              },
+              onReport: () => reportContent(
+                context,
+                ref,
+                target: ReportTarget.thread(thread.id),
+                what: 'post',
+              ),
+              onShare: (button) => shareThread(button, ref, thread),
+            ),
+          );
+        },
+      ),
     );
   }
 

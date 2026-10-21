@@ -13,6 +13,7 @@ import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
+import 'package:finnet/shared/widgets/pressable.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// Status type for event cards
@@ -243,22 +244,25 @@ class EventCard extends StatelessWidget {
         /// Image with status badge
         Stack(
           children: [
-            InkWell(
-              onTap: () {
-                context.push('/events/$eventId', extra: _getNavigationExtras());
-              },
-              child: EventPosterImage(
-                poster: poster,
-                eventId: eventId,
-                categoryId: categoryId,
-                categoryName: categoryName,
-                startsAt: startsAt,
-                isOnline: isOnline,
-                width: double.infinity,
-                height: size.height * 0.5,
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-            ),
+            Pressable(
+                scale: 0.98,
+                child: InkWell(
+                  onTap: () {
+                    context.push('/events/$eventId',
+                        extra: _getNavigationExtras());
+                  },
+                  child: EventPosterImage(
+                    poster: poster,
+                    eventId: eventId,
+                    categoryId: categoryId,
+                    categoryName: categoryName,
+                    startsAt: startsAt,
+                    isOnline: isOnline,
+                    width: double.infinity,
+                    height: size.height * 0.5,
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                )),
             if (_paymentCue)
               const Positioned(top: 12, right: 12, child: PaymentDueBadge())
             // Status badge overlay
@@ -319,8 +323,11 @@ class EventCard extends StatelessWidget {
           }).toList(),
         ),
 
-        // Action button based on status
-        _buildActionButton(context),
+        // Action button based on status; the buttons sink under a finger.
+        switch (_buildActionButton(context)) {
+          final FilledButton button => Pressable(child: button),
+          final other => other,
+        },
       ],
     );
   }

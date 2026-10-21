@@ -5,6 +5,7 @@ import 'package:finnet/features/events/presentation/utils/saved_feed.dart';
 import 'package:finnet/features/topics/presentation/widgets/browse_by_topic_row.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/entrance.dart';
 
 class ForYouEventsPage extends StatefulWidget {
   const ForYouEventsPage({super.key});
@@ -91,7 +92,8 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
     // Content with NotificationListener for pagination
     return NotificationListener<ScrollNotification>(
       onNotification: onFeedScroll,
-      child: RefreshIndicator(
+      child: EntranceScope(
+          child: RefreshIndicator(
         onRefresh: fetchFirstPage,
         child: ListView.separated(
           // Use primary: true to cooperate with NestedScrollView
@@ -124,10 +126,11 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
 
             final event = Map<String, dynamic>.from(
                 events[index] as Map? ?? const <String, dynamic>{});
-            return eventCardFromJson(event);
+            // The first few cards come in one after another.
+            return Entrance(index: index, child: eventCardFromJson(event));
           },
         ),
-      ),
+      )),
     );
   }
 }

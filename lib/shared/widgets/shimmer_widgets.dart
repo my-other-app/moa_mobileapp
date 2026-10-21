@@ -285,14 +285,62 @@ class ShimmerList extends StatelessWidget {
 
 /// Shimmer loading skeleton for event detail page.
 class ShimmerEventDetail extends StatelessWidget {
-  const ShimmerEventDetail({super.key});
+  const ShimmerEventDetail({super.key, this.poster});
+
+  /// The event's poster, when the way in already had it (a card's poster
+  /// flying in): drawn as itself, above the rest still shimmering.
+  final Widget? poster;
 
   @override
   Widget build(BuildContext context) {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey.shade200,
-      highlightColor: Colors.grey.shade100,
-      child: SingleChildScrollView(
+    Widget shimmer(Widget child) => Shimmer.fromColors(
+          baseColor: Colors.grey.shade200,
+          highlightColor: Colors.grey.shade100,
+          child: child,
+        );
+    final rest = <Widget>[
+      // Event title
+      const ShimmerBox(height: 28, width: 280),
+      const SizedBox(height: 12),
+      // Organizer
+      Row(
+        children: const [
+          ShimmerBox(height: 40, width: 40, borderRadius: 20),
+          SizedBox(width: 12),
+          ShimmerBox(height: 16, width: 150),
+        ],
+      ),
+      const SizedBox(height: 24),
+      // Tags
+      Row(
+        children: const [
+          ShimmerBox(height: 28, width: 70, borderRadius: 14),
+          SizedBox(width: 8),
+          ShimmerBox(height: 28, width: 60, borderRadius: 14),
+          SizedBox(width: 8),
+          ShimmerBox(height: 28, width: 50, borderRadius: 14),
+        ],
+      ),
+      const SizedBox(height: 24),
+      // Date/time info
+      const ShimmerBox(height: 60, borderRadius: 8),
+      const SizedBox(height: 16),
+      // Location
+      const ShimmerBox(height: 60, borderRadius: 8),
+      const SizedBox(height: 24),
+      // Description
+      const ShimmerBox(height: 16),
+      const SizedBox(height: 8),
+      const ShimmerBox(height: 16),
+      const SizedBox(height: 8),
+      const ShimmerBox(height: 16, width: 250),
+      const SizedBox(height: 32),
+      // Register button
+      const ShimmerBox(height: 50, borderRadius: 25),
+    ];
+    final poster = this.poster;
+    if (poster == null) {
+      return shimmer(SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,46 +348,23 @@ class ShimmerEventDetail extends StatelessWidget {
             // Event poster
             const ShimmerBox(height: 220, borderRadius: 12),
             const SizedBox(height: 20),
-            // Event title
-            const ShimmerBox(height: 28, width: 280),
-            const SizedBox(height: 12),
-            // Organizer
-            Row(
-              children: const [
-                ShimmerBox(height: 40, width: 40, borderRadius: 20),
-                SizedBox(width: 12),
-                ShimmerBox(height: 16, width: 150),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // Tags
-            Row(
-              children: const [
-                ShimmerBox(height: 28, width: 70, borderRadius: 14),
-                SizedBox(width: 8),
-                ShimmerBox(height: 28, width: 60, borderRadius: 14),
-                SizedBox(width: 8),
-                ShimmerBox(height: 28, width: 50, borderRadius: 14),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // Date/time info
-            const ShimmerBox(height: 60, borderRadius: 8),
-            const SizedBox(height: 16),
-            // Location
-            const ShimmerBox(height: 60, borderRadius: 8),
-            const SizedBox(height: 24),
-            // Description
-            const ShimmerBox(height: 16),
-            const SizedBox(height: 8),
-            const ShimmerBox(height: 16),
-            const SizedBox(height: 8),
-            const ShimmerBox(height: 16, width: 250),
-            const SizedBox(height: 32),
-            // Register button
-            const ShimmerBox(height: 50, borderRadius: 25),
+            ...rest,
           ],
         ),
+      ));
+    }
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          poster,
+          const SizedBox(height: 20),
+          shimmer(Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: rest,
+          )),
+        ],
       ),
     );
   }

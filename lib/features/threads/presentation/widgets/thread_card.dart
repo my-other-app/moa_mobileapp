@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/core/utils/time_ago.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
+import 'package:finnet/shared/motion.dart';
+import 'package:finnet/shared/widgets/animated_count.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/pressable.dart';
 
 /// A club's post, as a card: who posted and when, what they said, the photo
 /// and the poll if there is one, and the like and comment counts.
@@ -66,56 +69,61 @@ class ThreadCard extends StatelessWidget {
     final body = thread.body.trim();
     final imageUrl = thread.imageUrl;
 
-    return Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(_radius),
-        side: const BorderSide(color: ink, width: 1.5),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _Header(
-                thread: thread,
-                onClubTap: onClubTap,
-                onReport: onReport,
-              ),
-              if (body.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                Text(
-                  body,
-                  maxLines: expanded ? null : collapsedLines,
-                  overflow:
-                      expanded ? TextOverflow.visible : TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    height: 1.5,
-                    color: ink,
+    // Sinks under a finger where it opens the post; still on the post's own
+    // page, where it opens nothing.
+    return Pressable(
+      enabled: onTap != null,
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_radius),
+          side: const BorderSide(color: ink, width: 1.5),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _Header(
+                  thread: thread,
+                  onClubTap: onClubTap,
+                  onReport: onReport,
+                ),
+                if (body.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    body,
+                    maxLines: expanded ? null : collapsedLines,
+                    overflow:
+                        expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: ink,
+                    ),
                   ),
+                ],
+                if (imageUrl != null) ...[
+                  const SizedBox(height: 14),
+                  _ThreadImage(url: imageUrl),
+                ],
+                if (thread.hasPoll) ...[
+                  const SizedBox(height: 14),
+                  ThreadPollView(poll: thread.poll!, onVote: onVote),
+                ],
+                const SizedBox(height: 12),
+                _Actions(
+                  thread: thread,
+                  onLike: onLike,
+                  onComments: onComments ?? onTap,
+                  onShare: onShare,
                 ),
               ],
-              if (imageUrl != null) ...[
-                const SizedBox(height: 14),
-                _ThreadImage(url: imageUrl),
-              ],
-              if (thread.hasPoll) ...[
-                const SizedBox(height: 14),
-                ThreadPollView(poll: thread.poll!, onVote: onVote),
-              ],
-              const SizedBox(height: 12),
-              _Actions(
-                thread: thread,
-                onLike: onLike,
-                onComments: onComments ?? onTap,
-                onShare: onShare,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -137,11 +145,14 @@ class _Header extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        GestureDetector(
-          onTap: onClubTap,
-          child: ThreadClubAvatar(
-            name: name,
-            logoUrl: thread.club.logoUrl,
+        Pressable(
+          enabled: onClubTap != null,
+          child: GestureDetector(
+            onTap: onClubTap,
+            child: ThreadClubAvatar(
+              name: name,
+              logoUrl: thread.club.logoUrl,
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -174,7 +185,8 @@ class _Header extends StatelessWidget {
           const SizedBox(width: 8),
           const _PinnedChip(),
         ],
-        if (onReport != null) _PostMenu(onReport: onReport!),
+        if (onReport != null)
+          Pressable(scale: 0.9, child: _PostMenu(onReport: onReport!)),
       ],
     );
   }
@@ -344,14 +356,42 @@ class _ThreadImage extends StatelessWidget {
 /// own choice marked, and the total underneath.
 ///
 /// Tapping an option votes for it; tapping another later moves the vote.
-class ThreadPollView extends StatelessWidget {
+/// The bars slide to their new shares, and a vote that lands is felt.
+class ThreadPollView extends StatefulWidget {
   final Poll poll;
   final ValueChanged<String>? onVote;
 
   const ThreadPollView({super.key, required this.poll, this.onVote});
 
   @override
+  State<ThreadPollView> createState() => _ThreadPollViewState();
+}
+
+class _ThreadPollViewState extends State<ThreadPollView> {
+  /// An option was tapped here: the next change of choice is that vote.
+  bool _voting = false;
+
+  void _vote(String optionId) {
+    _voting = true;
+    widget.onVote!(optionId);
+  }
+
+  @override
+  void didUpdateWidget(ThreadPollView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_voting) return;
+    _voting = false;
+    // Felt only when the vote went in -- not when the tap asked to sign in.
+    if (oldWidget.poll.votedOptionId != widget.poll.votedOptionId &&
+        widget.poll.hasVoted) {
+      Haptics.light();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final poll = widget.poll;
+    final onVote = widget.onVote;
     final votes = poll.votes;
     final summary =
         '$votes ${votes == 1 ? 'vote' : 'votes'}${poll.hasVoted ? ' · You voted' : ''}';
@@ -364,7 +404,7 @@ class ThreadPollView extends StatelessWidget {
             key: ValueKey('poll-option-${option.id}'),
             option: option,
             isChoice: option.id == poll.votedOptionId,
-            onTap: onVote == null ? null : () => onVote!(option.id),
+            onTap: onVote == null ? null : () => _vote(option.id),
           ),
           const SizedBox(height: 8),
         ],
@@ -392,6 +432,7 @@ class _PollOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final share = option.share.clamp(0, 100);
+    final duration = motionDuration(context, Motion.slow);
 
     return Semantics(
       button: onTap != null,
@@ -401,66 +442,96 @@ class _PollOptionTile extends StatelessWidget {
       // would otherwise take the InkWell's action with it.
       onTap: onTap,
       excludeSemantics: true,
-      child: Material(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(
-            color: isChoice ? ThreadCard.ink : const Color(0xFFAFAFAF),
-            width: isChoice ? 1.5 : 1,
+      child: Pressable(
+        enabled: onTap != null,
+        scale: 0.98,
+        child: Material(
+          color: Colors.white,
+          animationDuration: duration,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(
+              color: isChoice ? ThreadCard.ink : const Color(0xFFAFAFAF),
+              width: isChoice ? 1.5 : 1,
+            ),
           ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Stack(
-            children: [
-              // The share bar, behind the label.
-              Positioned.fill(
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: share / 100,
-                  child: ColoredBox(
-                    color: isChoice
-                        ? AppColors.paleYellow
-                        : const Color(0xFFEFEFEF),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Stack(
+              children: [
+                // The share bar, behind the label: it slides to a new share
+                // rather than jumping there.
+                Positioned.fill(
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(end: share / 100),
+                    duration: duration,
+                    curve: Motion.curve,
+                    builder: (context, factor, _) => FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: factor,
+                      child: AnimatedContainer(
+                        duration: duration,
+                        curve: Motion.curve,
+                        color: isChoice
+                            ? AppColors.paleYellow
+                            : const Color(0xFFEFEFEF),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                child: Row(
-                  children: [
-                    if (isChoice) ...[
-                      const Icon(Icons.check_circle,
-                          size: 18, color: ThreadCard.ink),
-                      const SizedBox(width: 8),
-                    ],
-                    Expanded(
-                      child: Text(
-                        option.label,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight:
-                              isChoice ? FontWeight.w700 : FontWeight.w500,
-                          color: ThreadCard.ink,
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                  child: Row(
+                    children: [
+                      // The tick grows in beside the choice.
+                      EasedSize(
+                        child: AnimatedSwitcher(
+                          duration: motionDuration(context, Motion.medium),
+                          transitionBuilder: (child, animation) =>
+                              ScaleTransition(scale: animation, child: child),
+                          child: isChoice
+                              ? const Padding(
+                                  key: ValueKey('tick'),
+                                  padding: EdgeInsets.only(right: 8),
+                                  child: Icon(Icons.check_circle,
+                                      size: 18, color: ThreadCard.ink),
+                                )
+                              : const SizedBox(key: ValueKey('no-tick')),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '$share%',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: ThreadCard.ink,
+                      Expanded(
+                        child: Text(
+                          option.label,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight:
+                                isChoice ? FontWeight.w700 : FontWeight.w500,
+                            color: ThreadCard.ink,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      // The share counts to its new value with the bar.
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(end: share.toDouble()),
+                        duration: duration,
+                        curve: Motion.curve,
+                        builder: (context, value, _) => Text(
+                          '${value.round()}%',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: ThreadCard.ink,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -488,12 +559,10 @@ class _Actions extends StatelessWidget {
     return Wrap(
       spacing: 12,
       children: [
-        _ActionButton(
+        LikeButton(
           key: const ValueKey('thread-like'),
-          icon: thread.liked ? Icons.favorite : Icons.favorite_border,
-          iconColor: thread.liked ? const Color(0xFFE53935) : ThreadCard.ink,
+          liked: thread.liked,
           count: thread.likes,
-          semanticLabel: thread.liked ? 'Unlike' : 'Like',
           onTap: onLike,
         ),
         const SizedBox(width: 12),
@@ -513,13 +582,17 @@ class _Actions extends StatelessWidget {
               button: true,
               label: 'Share post',
               excludeSemantics: true,
-              child: InkWell(
-                key: const ValueKey('thread-share'),
-                onTap: () => onShare!(buttonContext),
-                customBorder: const StadiumBorder(),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                  child: Icon(Icons.ios_share, size: 22, color: ThreadCard.ink),
+              child: Pressable(
+                scale: _iconPress,
+                child: InkWell(
+                  key: const ValueKey('thread-share'),
+                  onTap: () => onShare!(buttonContext),
+                  customBorder: const StadiumBorder(),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    child:
+                        Icon(Icons.ios_share, size: 22, color: ThreadCard.ink),
+                  ),
                 ),
               ),
             ),
@@ -544,6 +617,16 @@ String compactCount(int n) {
   return scaled(n / 1000000, 'M');
 }
 
+/// How small a small icon button gets while pressed: 3% of 22 points
+/// would not be seen.
+const _iconPress = 0.88;
+
+const _countStyle = TextStyle(
+  fontSize: 14,
+  fontWeight: FontWeight.w600,
+  color: ThreadCard.ink,
+);
+
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -567,27 +650,158 @@ class _ActionButton extends StatelessWidget {
       label: '$semanticLabel, $count',
       onTap: onTap,
       excludeSemantics: true,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const StadiumBorder(),
-        child: Padding(
-          // The padding is the tap target: a 22px icon alone is below the
-          // 44px minimum.
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 22, color: iconColor),
-              const SizedBox(width: 6),
-              Text(
-                compactCount(count),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: ThreadCard.ink,
+      child: Pressable(
+        enabled: onTap != null,
+        scale: _iconPress,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const StadiumBorder(),
+          child: Padding(
+            // The padding is the tap target: a 22px icon alone is below the
+            // 44px minimum.
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 22, color: iconColor),
+                const SizedBox(width: 6),
+                AnimatedCount(
+                  value: count,
+                  format: compactCount,
+                  style: _countStyle,
                 ),
-              ),
-            ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The heart under a post, with its count.
+///
+/// A like that lands pops the heart -- up, past, and back to size -- as it
+/// fills red, the count ticks up, and the phone gives a light tap; taking
+/// it back empties the heart and ticks the count down. Only a like made
+/// here does that: one that arrives with fresh data is just drawn.
+class LikeButton extends StatefulWidget {
+  const LikeButton({
+    super.key,
+    required this.liked,
+    required this.count,
+    this.onTap,
+  });
+
+  final bool liked;
+  final int count;
+  final VoidCallback? onTap;
+
+  static const likedColor = Color(0xFFE53935);
+
+  @override
+  State<LikeButton> createState() => LikeButtonState();
+}
+
+/// Public for tests, which watch [popping].
+class LikeButtonState extends State<LikeButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pop =
+      AnimationController(vsync: this, duration: Motion.slow);
+
+  /// Up past full size, a touch under, then home.
+  late final Animation<double> _scale = _pop.drive(TweenSequence([
+    TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 1.3)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 40),
+    TweenSequenceItem(
+        tween: Tween(begin: 1.3, end: 0.92)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 30),
+    TweenSequenceItem(
+        tween: Tween(begin: 0.92, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 30),
+  ]));
+
+  /// The heart was just tapped: the next change of [LikeButton.liked] is
+  /// this person's own.
+  bool _tapped = false;
+
+  /// Whether the heart is popping now.
+  bool get popping => _pop.isAnimating;
+
+  void _tap() {
+    _tapped = true;
+    widget.onTap!();
+  }
+
+  @override
+  void didUpdateWidget(LikeButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_tapped) return;
+    _tapped = false;
+    // Nothing changed -- the tap asked them to sign in -- nothing to feel.
+    if (oldWidget.liked == widget.liked) return;
+    Haptics.light();
+    if (widget.liked && !reduceMotion(context)) _pop.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final liked = widget.liked;
+    final onTap = widget.onTap == null ? null : _tap;
+    return Semantics(
+      button: onTap != null,
+      label: '${liked ? 'Unlike' : 'Like'}, ${widget.count}',
+      onTap: onTap,
+      excludeSemantics: true,
+      child: Pressable(
+        enabled: onTap != null,
+        scale: _iconPress,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const StadiumBorder(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ScaleTransition(
+                  scale: _scale,
+                  child: AnimatedSwitcher(
+                    duration: motionDuration(context, Motion.fast),
+                    switchInCurve: Motion.curve,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: Tween(begin: 0.6, end: 1.0).animate(animation),
+                        child: child,
+                      ),
+                    ),
+                    child: Icon(
+                      liked ? Icons.favorite : Icons.favorite_border,
+                      key: ValueKey(liked),
+                      size: 22,
+                      color: liked ? LikeButton.likedColor : ThreadCard.ink,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                AnimatedCount(
+                  value: widget.count,
+                  format: compactCount,
+                  style: _countStyle,
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -8,6 +8,7 @@ import 'package:finnet/features/topics/domain/topic_rules.dart';
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
 import 'package:finnet/shared/widgets/section_header.dart';
+import 'package:finnet/shared/widgets/pressable.dart';
 
 /// "Browse by topic" on Home: a tile per topic in its own colour, its emoji
 /// large, a glimpse of its interests' emoji, and how many events are coming
@@ -44,8 +45,8 @@ class BrowseByTopicRow extends ConsumerWidget {
   }
 
   Widget _content(BuildContext context, List<Topic> topics) {
-    final scale = MediaQuery.textScalerOf(context)
-        .clamp(maxScaleFactor: _maxTextScale);
+    final scale =
+        MediaQuery.textScalerOf(context).clamp(maxScaleFactor: _maxTextScale);
     return Column(
       key: const ValueKey('browse-by-topic'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -68,8 +69,8 @@ class BrowseByTopicRow extends ConsumerWidget {
               padding: EdgeInsets.symmetric(horizontal: gutter),
               itemCount: topics.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, i) =>
-                  _TopicCard(topic: topics[i], width: _TopicCard.widthFor(scale)),
+              itemBuilder: (context, i) => _TopicCard(
+                  topic: topics[i], width: _TopicCard.widthFor(scale)),
             ),
           ),
         ),
@@ -133,7 +134,8 @@ class _TopicCard extends StatelessWidget {
       ].join(', '),
       onTap: () => _open(context),
       excludeSemantics: true,
-      child: Material(
+      child: Pressable(
+          child: Material(
         color: palette.tint,
         borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
@@ -200,7 +202,7 @@ class _TopicCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 

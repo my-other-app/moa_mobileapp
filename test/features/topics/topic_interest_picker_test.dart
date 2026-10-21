@@ -185,9 +185,11 @@ void main() {
         .widget<AnimatedContainer>(find.descendant(
             of: _chip(id), matching: find.byType(AnimatedContainer)))
         .decoration! as BoxDecoration;
+    // The fade is eased in and out (an AnimatedOpacity); this is where it
+    // is headed.
     double opacity(int id) => tester
-        .widget<Opacity>(
-            find.descendant(of: _chip(id), matching: find.byType(Opacity)))
+        .widget<AnimatedOpacity>(find.descendant(
+            of: _chip(id), matching: find.byType(AnimatedOpacity)))
         .opacity;
 
     expect(pill(15).color, Colors.transparent);

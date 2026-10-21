@@ -93,6 +93,15 @@ class EventPosterImage extends StatelessWidget {
   final BoxFit fit;
   final BorderRadius? borderRadius;
 
+  /// Shown while the poster loads, in place of the drawn cover: the same
+  /// poster as a card already drew it, so a page opened from that card
+  /// never flashes the cover first.
+  final Widget? placeholder;
+
+  /// Decode at this many pixels across rather than at the size drawn: to
+  /// draw a picture another screen has already decoded, at once.
+  final int? decodeWidth;
+
   /// Shown on the cover while the poster loads.
   static const loadingKey = ValueKey('event-poster-loading');
 
@@ -112,6 +121,8 @@ class EventPosterImage extends StatelessWidget {
     this.height,
     this.fit = BoxFit.cover,
     this.borderRadius,
+    this.placeholder,
+    this.decodeWidth,
   });
 
   /// From an event as the API sends it (`id`, `poster`, `category`,
@@ -169,11 +180,14 @@ class EventPosterImage extends StatelessWidget {
             fit: fit,
             // Decoded at the size it is drawn, not the upload's: a card is
             // ~360pt wide, and an original can be a 4000px phone photo.
-            memCacheWidth: decodeWidthFor(width, height, dpr) ??
+            memCacheWidth: decodeWidth ??
+                decodeWidthFor(width, height, dpr) ??
                 screenDecodeWidth(context),
             fadeInDuration: const Duration(milliseconds: 200),
             fadeOutDuration: const Duration(milliseconds: 100),
-            placeholder: (_, __) => _cover(loadingKey),
+            placeholder: (_, __) => placeholder == null
+                ? _cover(loadingKey)
+                : KeyedSubtree(key: loadingKey, child: placeholder!),
             errorWidget: (_, __, ___) => _cover(fallbackKey),
           );
     child = SizedBox(width: width, height: height, child: child);

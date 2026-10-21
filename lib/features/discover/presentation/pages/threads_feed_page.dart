@@ -11,6 +11,8 @@ import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_feedback.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/entrance.dart';
+import 'package:finnet/shared/widgets/fade_switch.dart';
 
 /// "From the clubs": the newest posts and polls from every club, newest
 /// first -- the website's `/threads`. The club's own THREADS tab's card and
@@ -24,7 +26,9 @@ class ThreadsFeedPage extends ConsumerWidget {
     final notifier = ref.read(discoverThreadsProvider.notifier);
 
     Widget body;
+    final ScreenPhase phase;
     if (state.isLoading && state.items.isEmpty) {
+      phase = ScreenPhase.loading;
       body = ListView.separated(
         padding: const EdgeInsets.all(16),
         physics: const NeverScrollableScrollPhysics(),
@@ -33,8 +37,10 @@ class ThreadsFeedPage extends ConsumerWidget {
         itemBuilder: (_, __) => const ShimmerThreadCard(),
       );
     } else if (state.error != null && state.items.isEmpty) {
+      phase = ScreenPhase.error;
       body = ErrorView(message: state.error, onRetry: notifier.load);
     } else if (state.items.isEmpty) {
+      phase = ScreenPhase.empty;
       body = ListView(
         children: [
           DiscoverEmpty(
@@ -49,41 +55,47 @@ class ThreadsFeedPage extends ConsumerWidget {
         ],
       );
     } else {
+      phase = ScreenPhase.content;
       body = RefreshIndicator(
         color: ThreadCard.ink,
         onRefresh: notifier.refresh,
-        child: ListView.separated(
-          key: const ValueKey('discover-threads-list'),
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          itemCount: state.items.length + 1,
-          separatorBuilder: (_, __) => const SizedBox(height: 20),
-          itemBuilder: (context, i) {
-            if (i == state.items.length) {
-              return PagedFooter(
-                  state: state, onLoadMore: notifier.loadMore, noun: 'posts');
-            }
-            final thread = state.items[i];
-            return ThreadCard(
-              key: ValueKey(thread.id),
-              thread: thread,
-              onTap: () => _open(context, ref, thread),
-              onClubTap: () => openDiscoverClub(
-                context,
-                id: thread.club.id,
-                slug: thread.club.slug,
-                name: thread.club.name,
-              ),
-              onLike: () => _like(context, ref, thread),
-              onVote: (option) => _vote(context, ref, thread, option),
-              onReport: () => reportContent(
-                context,
-                ref,
-                target: ReportTarget.thread(thread.id),
-                what: 'post',
-              ),
-            );
-          },
+        child: EntranceScope(
+          child: ListView.separated(
+            key: const ValueKey('discover-threads-list'),
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            itemCount: state.items.length + 1,
+            separatorBuilder: (_, __) => const SizedBox(height: 20),
+            itemBuilder: (context, i) {
+              if (i == state.items.length) {
+                return PagedFooter(
+                    state: state, onLoadMore: notifier.loadMore, noun: 'posts');
+              }
+              final thread = state.items[i];
+              return Entrance(
+                index: i,
+                child: ThreadCard(
+                  key: ValueKey(thread.id),
+                  thread: thread,
+                  onTap: () => _open(context, ref, thread),
+                  onClubTap: () => openDiscoverClub(
+                    context,
+                    id: thread.club.id,
+                    slug: thread.club.slug,
+                    name: thread.club.name,
+                  ),
+                  onLike: () => _like(context, ref, thread),
+                  onVote: (option) => _vote(context, ref, thread, option),
+                  onReport: () => reportContent(
+                    context,
+                    ref,
+                    target: ReportTarget.thread(thread.id),
+                    what: 'post',
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       );
     }
@@ -99,7 +111,7 @@ class ThreadsFeedPage extends ConsumerWidget {
           style: TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
         ),
       ),
-      body: body,
+      body: FadeSwitch(phase: phase, child: body),
     );
   }
 

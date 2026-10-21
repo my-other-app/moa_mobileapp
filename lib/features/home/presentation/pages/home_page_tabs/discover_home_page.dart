@@ -17,6 +17,9 @@ import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
 import 'package:finnet/features/topics/presentation/widgets/browse_by_topic_row.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/entrance.dart';
+import 'package:finnet/shared/widgets/fade_switch.dart';
+import 'package:finnet/shared/widgets/pressable.dart';
 import 'package:shimmer/shimmer.dart';
 
 /// Posts shown on the front page; the rest are in From the clubs.
@@ -66,19 +69,24 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
     final home = ref.watch(discoverHomeProvider);
     final data = home.valueOrNull;
 
+    // The skeleton gives way to the page with a cross-fade.
     if (data == null && home.isLoading) {
-      return const _HomeSkeleton();
+      return const FadeSwitch(
+          phase: ScreenPhase.loading, child: _HomeSkeleton());
     }
     if (data == null) {
-      return ColoredBox(
-        color: Colors.white,
-        child: ErrorView(
-          key: const ValueKey('discover-home-error'),
-          message: switch (home.error) {
-            Failure f => f.message,
-            _ => "Couldn't load what's on.",
-          },
-          onRetry: () => ref.invalidate(discoverHomeProvider),
+      return FadeSwitch(
+        phase: ScreenPhase.error,
+        child: ColoredBox(
+          color: Colors.white,
+          child: ErrorView(
+            key: const ValueKey('discover-home-error'),
+            message: switch (home.error) {
+              Failure f => f.message,
+              _ => "Couldn't load what's on.",
+            },
+            onRetry: () => ref.invalidate(discoverHomeProvider),
+          ),
         ),
       );
     }
@@ -108,14 +116,14 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
           title: 'Events near you',
           onSeeAll: () => context.push(findEventsLocation(const EventFilters(
               place: DiscoverPlace.near, sort: EventSort.distance))),
-          child: EventRail(events: data.near),
+          child: EventRail(events: data.near, heroScope: 'near'),
         ),
       if (following.isNotEmpty)
         DiscoverSection(
           key: const ValueKey('rail-following'),
           title: 'From clubs you follow',
           onSeeAll: widget.onSeeFollowing,
-          child: EventRail(events: following),
+          child: EventRail(events: following, heroScope: 'following'),
         ),
       // The topics, as tiles in their colours, after what is on nearby.
       const BrowseByTopicRow(
@@ -126,7 +134,7 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
           title: 'This week',
           onSeeAll: () => context.push(
               findEventsLocation(const EventFilters(when: EventWhen.thisWeek))),
-          child: EventRail(events: data.thisWeek),
+          child: EventRail(events: data.thisWeek, heroScope: 'this-week'),
         ),
       if (data.clubs.isNotEmpty)
         DiscoverSection(
@@ -144,7 +152,7 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
           title: 'Online events',
           onSeeAll: () => context.push(findEventsLocation(
               const EventFilters(format: EventFormat.online))),
-          child: EventRail(events: data.online),
+          child: EventRail(events: data.online, heroScope: 'online'),
         ),
       if (data.popular.isNotEmpty)
         DiscoverSection(
@@ -152,23 +160,32 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
           title: 'Popular',
           onSeeAll: () => context.push(
               findEventsLocation(const EventFilters(sort: EventSort.popular))),
-          child: EventRail(events: data.popular),
+          child: EventRail(events: data.popular, heroScope: 'popular'),
         ),
       if (data.threads.isNotEmpty) _Threads(home: data),
       const SizedBox(height: 24),
     ];
 
-    return ColoredBox(
-      color: Colors.white,
-      child: RefreshIndicator(
-        onRefresh: _refresh,
-        child: ListView(
-          key: const ValueKey('discover-home'),
-          // Inside the header's NestedScrollView: the primary controller.
-          primary: true,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(top: 4),
-          children: sections,
+    return FadeSwitch(
+      phase: ScreenPhase.content,
+      child: ColoredBox(
+        color: Colors.white,
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          // The sections come in one after another, the first time only.
+          child: EntranceScope(
+            child: ListView(
+              key: const ValueKey('discover-home'),
+              // Inside the header's NestedScrollView: the primary controller.
+              primary: true,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: 4),
+              children: [
+                for (final (i, section) in sections.indexed)
+                  Entrance(index: i, child: section),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -186,7 +203,8 @@ class _DiscoverTop extends StatelessWidget {
   Widget build(BuildContext context) {
     final stats = home.stats;
     final counts = [
-      if (stats.upcomingEvents > 0) plural(stats.upcomingEvents, 'upcoming event'),
+      if (stats.upcomingEvents > 0)
+        plural(stats.upcomingEvents, 'upcoming event'),
       if (stats.clubs > 0) plural(stats.clubs, 'club'),
     ].join(' · ');
     return Padding(
@@ -249,53 +267,55 @@ class _WherePill extends StatelessWidget {
       button: true,
       label: '$label. Change',
       excludeSemantics: true,
-      child: Material(
-        color: AppColors.paleYellow,
-        shape: const StadiumBorder(
-          side: BorderSide(color: AppColors.border, width: 0.5),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          key: const ValueKey('discover-home-where'),
-          onTap: () async {
-            final picked = await showWhereSheet(context,
-                where: where,
-                place: where.isPlaced
-                    ? DiscoverPlace.near
-                    : DiscoverPlace.everywhere);
-            if (picked == null || !context.mounted) return;
-            context.push(findEventsLocation(picked == DiscoverPlace.near
-                ? const EventFilters(
-                    place: DiscoverPlace.near, sort: EventSort.distance)
-                : EventFilters.none));
-          },
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  where.isPlaced ? Icons.place : Icons.public,
-                  size: 16,
-                  color: _ink,
-                ),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: Text(
-                    label,
-                    key: const ValueKey('discover-home-place'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: _ink,
+      child: Pressable(
+        child: Material(
+          color: AppColors.paleYellow,
+          shape: const StadiumBorder(
+            side: BorderSide(color: AppColors.border, width: 0.5),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            key: const ValueKey('discover-home-where'),
+            onTap: () async {
+              final picked = await showWhereSheet(context,
+                  where: where,
+                  place: where.isPlaced
+                      ? DiscoverPlace.near
+                      : DiscoverPlace.everywhere);
+              if (picked == null || !context.mounted) return;
+              context.push(findEventsLocation(picked == DiscoverPlace.near
+                  ? const EventFilters(
+                      place: DiscoverPlace.near, sort: EventSort.distance)
+                  : EventFilters.none));
+            },
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    where.isPlaced ? Icons.place : Icons.public,
+                    size: 16,
+                    color: _ink,
+                  ),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      label,
+                      key: const ValueKey('discover-home-place'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _ink,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 2),
-                const Icon(Icons.expand_more, size: 18, color: _ink),
-              ],
+                  const SizedBox(width: 2),
+                  const Icon(Icons.expand_more, size: 18, color: _ink),
+                ],
+              ),
             ),
           ),
         ),
@@ -335,8 +355,7 @@ class _QuickFilters extends StatelessWidget {
           'This weekend',
           Icons.weekend_outlined,
           const Color(0xFF7C3AED),
-          findEventsLocation(
-              const EventFilters(when: EventWhen.thisWeekend))),
+          findEventsLocation(const EventFilters(when: EventWhen.thisWeekend))),
       _Quick(
           'free',
           'Free',
@@ -348,8 +367,7 @@ class _QuickFilters extends StatelessWidget {
           'Online',
           Icons.videocam_outlined,
           const Color(0xFF2563EB),
-          findEventsLocation(
-              const EventFilters(format: EventFormat.online))),
+          findEventsLocation(const EventFilters(format: EventFormat.online))),
       if (where.isPlaced)
         _Quick(
             'near',
@@ -361,8 +379,8 @@ class _QuickFilters extends StatelessWidget {
       _Quick('calendar', 'Calendar', Icons.calendar_month_outlined, _ink,
           findEventsLocation(EventFilters.none, calendar: true)),
     ];
-    final scale = MediaQuery.textScalerOf(context)
-        .clamp(maxScaleFactor: _maxTextScale);
+    final scale =
+        MediaQuery.textScalerOf(context).clamp(maxScaleFactor: _maxTextScale);
     final height = scale.scale(13) * 1.3 + 22;
 
     return MediaQuery.withClampedTextScaling(
@@ -394,41 +412,44 @@ class _QuickChip extends StatelessWidget {
       label: quick.label,
       excludeSemantics: true,
       onTap: () => context.push(quick.location),
-      child: Material(
-        color: Colors.white,
-        shape: const StadiumBorder(
-          side: BorderSide(color: AppColors.border, width: 0.5),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          key: ValueKey('discover-quick-${quick.id}'),
-          onTap: () => context.push(quick.location),
-          child: Padding(
-            padding: const EdgeInsets.only(left: 5, right: 14),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: quick.color.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
+      child: Pressable(
+        scale: 0.94,
+        child: Material(
+          color: Colors.white,
+          shape: const StadiumBorder(
+            side: BorderSide(color: AppColors.border, width: 0.5),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            key: ValueKey('discover-quick-${quick.id}'),
+            onTap: () => context.push(quick.location),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 5, right: 14),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: quick.color.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(quick.icon, size: 16, color: quick.color),
                   ),
-                  alignment: Alignment.center,
-                  child: Icon(quick.icon, size: 16, color: quick.color),
-                ),
-                const SizedBox(width: 7),
-                Text(
-                  quick.label,
-                  maxLines: 1,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _ink,
+                  const SizedBox(width: 7),
+                  Text(
+                    quick.label,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _ink,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -519,7 +540,9 @@ class _HomeSkeleton extends StatelessWidget {
                       itemCount: 5,
                       separatorBuilder: (_, __) => const SizedBox(width: 8),
                       itemBuilder: (_, i) => ShimmerBox(
-                          height: 40, width: i == 1 ? 132 : 92, borderRadius: 20),
+                          height: 40,
+                          width: i == 1 ? 132 : 92,
+                          borderRadius: 20),
                     ),
                   ),
                 ],

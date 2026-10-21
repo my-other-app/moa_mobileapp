@@ -3,6 +3,8 @@ import 'package:finnet/features/discover/presentation/widgets/discover_format.da
     show formatCount;
 import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
+import 'package:finnet/shared/motion.dart';
+import 'package:finnet/shared/widgets/pressable.dart';
 
 // The chips topics and interests are drawn as, after the Interests screen:
 // an emoji, then the name, on a soft pill with no edge; chosen, the app's
@@ -38,6 +40,15 @@ class TopicChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final isFilter = selected != null;
     final on = selected ?? false;
+    // A filter being chosen is felt; a tag opening its topic is a tap.
+    final tap = onTap == null
+        ? null
+        : isFilter
+            ? () {
+                Haptics.selection();
+                onTap!();
+              }
+            : onTap;
     final look = ChipLook.of(context);
     final palette = TopicPalette.of(context, topic);
 
@@ -66,13 +77,13 @@ class TopicChip extends StatelessWidget {
         '${topic.label} topic',
         if (count != null) '$count $countUnit',
       ].join(', '),
-      onTap: onTap,
+      onTap: tap,
       excludeSemantics: true,
       child: _Pill(
         key: ValueKey('topic-chip-${topic.slug}'),
         background: background,
         edge: edge,
-        onTap: onTap,
+        onTap: tap,
         compact: true,
         leading: TopicIcon(topic: topic, size: 15, color: palette.accent),
         label: topic.label,
@@ -137,6 +148,13 @@ class InterestChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final look = ChipLook.of(context, idle: idleColor);
     final idle = plain ? Colors.transparent : look.idle;
+    // Choosing and unchoosing are felt.
+    final tap = onTap == null
+        ? null
+        : () {
+            Haptics.selection();
+            onTap!();
+          };
 
     return Semantics(
       container: true,
@@ -149,12 +167,12 @@ class InterestChip extends StatelessWidget {
         if (count != null) '$count $countUnit',
       ].join(', '),
       hint: !enabled && !selected ? 'Limit reached' : null,
-      onTap: onTap,
+      onTap: tap,
       excludeSemantics: true,
       child: _Pill(
         background: selected ? look.chosen : idle,
         edge: selected ? look.edge : idle,
-        onTap: onTap,
+        onTap: tap,
         compact: compact,
         plain: plain,
         // Past the limit the name and emoji fade; the fill stays, so a
@@ -283,51 +301,63 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: _radius,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: compact
-              ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
-              : plain
-                  ? const EdgeInsets.symmetric(horizontal: 10, vertical: 8)
-                  : const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: background,
+    // Choosing it fills it and draws its edge, eased rather than switched;
+    // a finger on it presses it in a little.
+    final duration = motionDuration(context, Motion.medium);
+    final base = DefaultTextStyle.of(context).style;
+    return Pressable(
+        enabled: onTap != null,
+        scale: 0.94,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
             borderRadius: _radius,
-            border: Border.all(color: edge),
-          ),
-          child: Opacity(
-            opacity: faded ? 0.4 : 1,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (leading != null) ...[
-                  leading!,
-                  SizedBox(width: compact ? 5 : 6),
-                ],
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: compact ? 14 : 15,
-                    color: labelColor,
-                    fontWeight: labelWeight,
-                  ),
+            child: AnimatedContainer(
+              duration: duration,
+              curve: Motion.curve,
+              padding: compact
+                  ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
+                  : plain
+                      ? const EdgeInsets.symmetric(horizontal: 10, vertical: 8)
+                      : const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: background,
+                borderRadius: _radius,
+                border: Border.all(color: edge),
+              ),
+              child: AnimatedOpacity(
+                duration: duration,
+                opacity: faded ? 0.4 : 1,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (leading != null) ...[
+                      leading!,
+                      SizedBox(width: compact ? 5 : 6),
+                    ],
+                    AnimatedDefaultTextStyle(
+                      duration: duration,
+                      curve: Motion.curve,
+                      style: base.copyWith(
+                        fontSize: compact ? 14 : 15,
+                        color: labelColor,
+                        fontWeight: labelWeight,
+                      ),
+                      child: Text(label),
+                    ),
+                    if (count != null) ...[
+                      const SizedBox(width: 6),
+                      Text(formatCount(count!),
+                          style: TextStyle(
+                              fontSize: compact ? 12 : 13, color: countColor)),
+                    ],
+                  ],
                 ),
-                if (count != null) ...[
-                  const SizedBox(width: 6),
-                  Text(formatCount(count!),
-                      style: TextStyle(
-                          fontSize: compact ? 12 : 13, color: countColor)),
-                ],
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 }

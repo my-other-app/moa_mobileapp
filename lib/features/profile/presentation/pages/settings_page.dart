@@ -17,6 +17,7 @@ import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/confirmation_dialog.dart';
 import 'package:finnet/shared/widgets/settings_row.dart';
 import 'package:finnet/features/main/presentation/pages/main_shell.dart';
+import 'package:finnet/shared/widgets/toast.dart';
 
 /// Settings page - fully migrated to Riverpod (no Bloc).
 class SettingsPage extends ConsumerStatefulWidget {
@@ -184,7 +185,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final opened = await ref.read(linkLauncherProvider)(supportEmailUri);
     if (opened || !mounted) return;
     await Clipboard.setData(const ClipboardData(text: supportEmail));
-    if (mounted) _snack('No email app found. $supportEmail is copied.');
+    if (mounted) {
+      showToast(context, 'No email app found. $supportEmail is copied.',
+          icon: Icons.copy_rounded);
+    }
   }
 
   void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
