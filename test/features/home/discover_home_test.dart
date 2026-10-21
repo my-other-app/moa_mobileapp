@@ -151,6 +151,45 @@ void main() {
       expect(h.went.last, '/discover/events');
     });
 
+    testWidgets('a city picked on the pill: the page is about it',
+        (tester) async {
+      final h = await _pump(tester);
+      expect(h.repo.homeAts.single, isNull);
+
+      await tester.tap(find.byKey(const ValueKey('discover-home-where')));
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('discover-where-city-kochi')));
+      await settle(tester);
+
+      // Read again about Kochi, and named for it; nowhere else opened.
+      expect(h.repo.homeAts.last, (lat: 9.982, lng: 76.3));
+      expect(find.text('Near Kochi'), findsOneWidget);
+      expect(h.went, isEmpty);
+
+      await tester.tap(find.byKey(const ValueKey('discover-home-where')));
+      await settle(tester);
+      expect(find.text('You picked Kochi.'), findsOneWidget);
+      expect(find.text("Use my connection's guess"), findsOneWidget);
+    });
+
+    testWidgets('guess again: asked without a point, and the guess kept',
+        (tester) async {
+      final h = await _pump(tester);
+      await tester.tap(find.byKey(const ValueKey('discover-home-where')));
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('discover-where-city-kochi')));
+      await settle(tester);
+      expect(find.text('Near Kochi'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('discover-home-where')));
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('discover-where-guess')));
+      await settle(tester);
+
+      expect(h.repo.homeAts.last, isNull);
+      expect(find.text('Near Thiruvananthapuram'), findsOneWidget);
+    });
+
     testWidgets('the top: the counts the server sent, and quick ways in',
         (tester) async {
       final h = await _pump(tester);

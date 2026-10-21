@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/themes/app_colors.dart';
+import 'package:finnet/features/discover/domain/discover_cities.dart';
 import 'package:finnet/features/discover/domain/discover_days.dart';
 import 'package:finnet/features/discover/domain/entities/discover_results.dart';
 import 'package:finnet/features/discover/domain/entities/discover_where.dart';
 import 'package:finnet/features/discover/domain/event_filters.dart';
+import 'package:finnet/features/discover/presentation/providers/discover_place_provider.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/domain/topic_filter.dart';
@@ -27,9 +30,10 @@ String nearPhrase(DiscoverWhere where) =>
 /// "Near Thiruvananthapuram ▾" or "Everywhere ▾": what the list is about.
 ///
 /// The app never asks for the phone's location (the owner's call): near is
-/// where the server places the connection, so the choice is between that
-/// and everywhere.
-class WherePill extends StatelessWidget {
+/// the place the app keeps -- the connection's first guess, or a city the
+/// person picks here. Picking a city, or asking the connection to guess
+/// again, changes it for every list, and this one shows what is near it.
+class WherePill extends ConsumerWidget {
   const WherePill({
     super.key,
     required this.where,
@@ -45,7 +49,7 @@ class WherePill extends StatelessWidget {
       place == DiscoverPlace.near ? nearLabel(where) : 'Everywhere';
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Semantics(
       button: true,
       label: 'Where: $_label. Change',
@@ -56,7 +60,19 @@ class WherePill extends StatelessWidget {
         onTap: () async {
           final picked =
               await showWhereSheet(context, where: where, place: place);
-          if (picked != null && picked != place) onChanged(picked);
+          final places = ref.read(discoverPlaceProvider.notifier);
+          switch (picked) {
+            case null:
+              return;
+            case PlacePick(:final place):
+              if (place != this.place) onChanged(place);
+            case CityPick(:final city):
+              places.pick(city);
+              onChanged(DiscoverPlace.near);
+            case GuessAgainPick():
+              places.guessAgain();
+              onChanged(DiscoverPlace.near);
+          }
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -93,22 +109,51 @@ class WherePill extends StatelessWidget {
   }
 }
 
-/// Near the person, or everywhere.
-Future<DiscoverPlace?> showWhereSheet(
+/// What was chosen in the place sheet.
+sealed class WherePick {
+  const WherePick();
+}
+
+/// Near the place the lists are about, or everywhere.
+class PlacePick extends WherePick {
+  const PlacePick(this.place);
+  final DiscoverPlace place;
+}
+
+/// A city, to be the place instead.
+class CityPick extends WherePick {
+  const CityPick(this.city);
+  final DiscoverCity city;
+}
+
+/// Forget the place, for the connection to guess again.
+class GuessAgainPick extends WherePick {
+  const GuessAgainPick();
+}
+
+/// Near the place, or everywhere; or another place: a city, or the
+/// connection's guess again.
+Future<WherePick?> showWhereSheet(
   BuildContext context, {
   required DiscoverWhere where,
   required DiscoverPlace place,
 }) {
-  return showModalBottomSheet<DiscoverPlace>(
+  final picked = where.source == WhereSource.picked;
+  return showModalBottomSheet<WherePick>(
     context: context,
     backgroundColor: Colors.white,
     showDragHandle: true,
-    builder: (context) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+    isScrollControlled: true,
+    builder: (context) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      builder: (context, scroll) => SafeArea(
+        child: ListView(
+          key: const ValueKey('discover-where-sheet'),
+          controller: scroll,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
             const Text('WHERE',
                 style: TextStyle(fontSize: 24, fontFamily: 'BebasNeue')),
@@ -122,7 +167,8 @@ Future<DiscoverPlace?> showWhereSheet(
               label: nearLabel(where),
               detail: 'Closest first when sorted by distance',
               selected: place == DiscoverPlace.near,
-              onTap: () => Navigator.of(context).pop(DiscoverPlace.near),
+              onTap: () => Navigator.of(context)
+                  .pop(const PlacePick(DiscoverPlace.near)),
             ),
             _PlaceOption(
               key: const ValueKey('discover-where-everywhere'),
@@ -130,8 +176,35 @@ Future<DiscoverPlace?> showWhereSheet(
               label: 'Everywhere',
               detail: 'Every event and club, wherever it is',
               selected: place == DiscoverPlace.everywhere,
-              onTap: () => Navigator.of(context).pop(DiscoverPlace.everywhere),
+              onTap: () => Navigator.of(context)
+                  .pop(const PlacePick(DiscoverPlace.everywhere)),
             ),
+            _PlaceOption(
+              key: const ValueKey('discover-where-guess'),
+              icon: Icons.wifi_find_outlined,
+              label: picked
+                  ? "Use my connection's guess"
+                  : 'Guess again from my connection',
+              detail: picked
+                  ? 'Instead of the city you picked'
+                  : "If you've moved, or the guess is wrong",
+              selected: false,
+              onTap: () => Navigator.of(context).pop(const GuessAgainPick()),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 16, bottom: 4),
+              child: Text('OR PICK A CITY',
+                  style: TextStyle(fontSize: 20, fontFamily: 'BebasNeue')),
+            ),
+            for (final city in discoverCities)
+              _PlaceOption(
+                key: ValueKey('discover-where-city-${city.slug}'),
+                icon: Icons.location_city_outlined,
+                label: city.name,
+                detail: city.state,
+                selected: picked && where.city == city.name,
+                onTap: () => Navigator.of(context).pop(CityPick(city)),
+              ),
           ],
         ),
       ),

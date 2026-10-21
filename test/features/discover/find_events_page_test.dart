@@ -251,6 +251,21 @@ void main() {
     expect(find.text('Rust Webinar'), findsOneWidget);
   });
 
+  testWidgets('a city picked in Find events: the list is near it',
+      (tester) async {
+    final h = await _pump(tester);
+    expect(find.text('Everywhere'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('discover-where')));
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('discover-where-city-kochi')));
+    await settle(tester);
+
+    expect(_last(h.repo).place, DiscoverPlace.near);
+    expect(h.repo.eventAts.last, (lat: 9.982, lng: 76.3));
+    expect(find.text('Near Kochi'), findsOneWidget);
+  });
+
   testWidgets('nothing matches: a way to clear the filters', (tester) async {
     final repo = FakeDiscoverRepository()
       ..onEvents = (f, __) => Either.right(parseEventResults(eventsPage(

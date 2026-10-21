@@ -71,7 +71,8 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
     final home = ref.watch(discoverHomeProvider);
     // A page asked about another place -- the one before the person picked
     // this one -- is not drawn under it: neither its rails nor its name.
-    final place = ref.watch(discoverPlaceProvider.select((s) => s.place?.point));
+    final place =
+        ref.watch(discoverPlaceProvider.select((s) => s.place?.point));
     final data = switch (home.valueOrNull) {
       final DiscoverHome h when place == null || h.where.point == place => h,
       _ => null,
@@ -272,15 +273,16 @@ class _DiscoverTop extends StatelessWidget {
   }
 }
 
-/// "📍 Near Thiruvananthapuram ⌄": the place the server put the person in.
-/// Tapped, it says how that was worked out and offers everywhere instead.
-class _WherePill extends StatelessWidget {
+/// "📍 Near Thiruvananthapuram ⌄": the place the page is about. Tapped, it
+/// says how that was come by, and offers Find events near it or
+/// everywhere, a city instead, or the connection's guess again.
+class _WherePill extends ConsumerWidget {
   const _WherePill({required this.where});
 
   final DiscoverWhere where;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final label = where.isPlaced ? nearLabel(where) : 'Everywhere';
     return Semantics(
       button: true,
@@ -302,10 +304,19 @@ class _WherePill extends StatelessWidget {
                       ? DiscoverPlace.near
                       : DiscoverPlace.everywhere);
               if (picked == null || !context.mounted) return;
-              context.push(findEventsLocation(picked == DiscoverPlace.near
-                  ? const EventFilters(
-                      place: DiscoverPlace.near, sort: EventSort.distance)
-                  : EventFilters.none));
+              final places = ref.read(discoverPlaceProvider.notifier);
+              switch (picked) {
+                case PlacePick(:final place):
+                  context.push(findEventsLocation(place == DiscoverPlace.near
+                      ? const EventFilters(
+                          place: DiscoverPlace.near, sort: EventSort.distance)
+                      : EventFilters.none));
+                // The page is read again, about the new place.
+                case CityPick(:final city):
+                  places.pick(city);
+                case GuessAgainPick():
+                  places.guessAgain();
+              }
             },
             child: Padding(
               padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),

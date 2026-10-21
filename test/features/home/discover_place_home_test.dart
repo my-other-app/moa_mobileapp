@@ -58,6 +58,8 @@ void main() {
   }
 
   Finder place() => find.byKey(const ValueKey('discover-home-place'));
+  Finder nearRail(String name) => find.descendant(
+      of: find.byKey(const ValueKey('rail-near')), matching: find.text(name));
   String placeText(WidgetTester tester) => tester.widget<Text>(place()).data!;
 
   testWidgets('a new place: the old place\'s rails are not drawn under it',
@@ -82,7 +84,7 @@ void main() {
     server.holdHome = null;
     await settle(tester);
     expect(placeText(tester), 'Near Kochi');
-    expect(find.text('Profiling in Production'), findsWidgets);
+    expect(nearRail('Profiling in Production'), findsOneWidget);
   });
 
   testWidgets('offline after picking: an error, never the old place',
@@ -99,5 +101,24 @@ void main() {
     expect(find.byKey(const ValueKey('discover-home-error')), findsOneWidget);
     expect(find.text('Near Thiruvananthapuram'), findsNothing);
     expect(find.text('Neural Tide Demo Day'), findsNothing);
+  });
+
+  testWidgets('picked on the pill, kept at the next launch on any network',
+      (tester) async {
+    await pump(tester);
+    await tester.tap(find.byKey(const ValueKey('discover-home-where')));
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('discover-where-city-kochi')));
+    await settle(tester);
+    expect(placeText(tester), 'Near Kochi');
+    expect(nearRail('Profiling in Production'), findsOneWidget);
+    expect(nearRail('Neural Tide Demo Day'), findsNothing);
+
+    // The app starts again, on mobile data.
+    await tester.pumpWidget(const SizedBox());
+    server.ip = ipMumbai;
+    await pump(tester);
+    expect(placeText(tester), 'Near Kochi');
+    expect(nearRail('Profiling in Production'), findsOneWidget);
   });
 }
