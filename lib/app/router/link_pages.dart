@@ -105,6 +105,9 @@ class CertificateLinkPage extends ConsumerWidget {
         ref.watch(authStateProvider.select((auth) => auth.isAuthenticated));
     if (!signedIn) return _CertificateOnWeb(ticketId: ticketId);
     final mine = ref.watch(certificatesProvider);
+    // Opened from an event's VIEW CERTIFICATE: the person's other
+    // certificates are kept for offline too, as the list keeps them.
+    ref.watch(certificatesKeptProvider);
     return mine.when(
       data: (certificates) {
         final certificate = _find(certificates);
