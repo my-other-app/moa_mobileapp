@@ -73,6 +73,19 @@ void main() {
           isFalse);
     });
 
+    test('near asks for in-person events: online ones are near no one', () {
+      const near = EventFilters(place: DiscoverPlace.near);
+      expect(near.eventsQuery()['type'], 'in_person');
+      expect(near.calendarQuery('2026-11')['type'], 'in_person');
+      // Online picked on purpose is online.
+      expect(near.copyWith(format: EventFormat.online).eventsQuery()['type'],
+          'online');
+      // Everywhere asks for any.
+      expect(EventFilters.none.eventsQuery().containsKey('type'), isFalse);
+      // The address keeps what the reader chose, not what was asked.
+      expect(near.toParams().containsKey('type'), isFalse);
+    });
+
     test('everywhere drops a radius and an order by distance', () {
       final f = const EventFilters(place: DiscoverPlace.near)
           .copyWith(radiusKm: 10, sort: EventSort.distance)

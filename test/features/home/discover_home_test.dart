@@ -280,6 +280,72 @@ void main() {
       expect(find.text('Hack Night'), findsOneWidget);
     });
 
+    testWidgets('the near rail holds only what is near the place',
+        (tester) async {
+      // A server that pads "near" with an event 178 km off and an online
+      // one: neither is near anyone.
+      final repo = FakeDiscoverRepository()
+        ..homeResult = Either.right(parseHome(homeBody(near: [
+          eventCard(1, name: 'Hack Night', distanceKm: 3.2),
+          eventCard(7, name: 'Kochi Meetup', distanceKm: 178),
+          eventCard(8, name: 'Online Hour', online: true),
+        ])));
+      await _pump(tester, repo: repo);
+
+      expect(
+          find.descendant(of: _rail('near'), matching: find.text('Hack Night')),
+          findsOneWidget);
+      expect(
+          find.descendant(
+              of: _rail('near'), matching: find.text('Kochi Meetup')),
+          findsNothing);
+      expect(
+          find.descendant(
+              of: _rail('near'), matching: find.text('Online Hour')),
+          findsNothing);
+    });
+
+    testWidgets('clubs further than near are under More clubs, not near you',
+        (tester) async {
+      // What the server sends: the nearest few, however far.
+      final repo = FakeDiscoverRepository()
+        ..homeResult = Either.right(parseHome(homeBody(clubs: [
+          clubCard(5, name: 'Tinkerhub', distanceKm: 2.1),
+          clubCard(6, name: 'Borrow Checkers Kochi', distanceKm: 177.7),
+          clubCard(7, name: 'Kandal Kootam', distanceKm: 414.9),
+        ])));
+      await _pump(tester, repo: repo);
+
+      await _scrollTo(tester, find.text('CLUBS NEAR YOU'));
+      expect(
+          find.descendant(
+              of: _rail('clubs'),
+              matching: find.byKey(const ValueKey('discover-club-club-5'))),
+          findsOneWidget);
+      expect(
+          find.descendant(
+              of: _rail('clubs'),
+              matching: find.byKey(const ValueKey('discover-club-club-6'))),
+          findsNothing);
+      await _scrollTo(tester, find.text('MORE CLUBS'));
+      expect(
+          find.descendant(
+              of: _rail('more-clubs'),
+              matching: find.byKey(const ValueKey('discover-club-club-6'))),
+          findsOneWidget);
+    });
+
+    testWidgets('no club near: no "Clubs near you" at all', (tester) async {
+      final repo = FakeDiscoverRepository()
+        ..homeResult = Either.right(parseHome(homeBody(clubs: [
+          clubCard(6, name: 'Borrow Checkers Kochi', distanceKm: 1074.4),
+        ])));
+      await _pump(tester, repo: repo);
+
+      await _scrollTo(tester, find.text('MORE CLUBS'));
+      expect(find.text('CLUBS NEAR YOU'), findsNothing);
+    });
+
     testWidgets('not placed: no near rail, the clubs are the popular ones',
         (tester) async {
       final repo = FakeDiscoverRepository()

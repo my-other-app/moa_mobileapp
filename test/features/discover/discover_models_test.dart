@@ -83,10 +83,11 @@ void main() {
     expect(parseWhere(null), DiscoverWhere.unknown);
   });
 
-  test('home: the rails, and whether the clubs are the near ones', () {
+  test('home: the rails, and which clubs are the near ones', () {
     final home = parseHome(homeBody());
     expect(home.thisWeek.single.name, 'Design Jam');
-    expect(home.clubsAreNear, isTrue);
+    expect(home.nearClubs.single.name, 'Tinkerhub');
+    expect(home.moreClubs, isEmpty);
     expect(home.isEmpty, isFalse);
     expect(parseHome(emptyHomeBody()).isEmpty, isTrue);
     expect(parseHome(null).isEmpty, isTrue);

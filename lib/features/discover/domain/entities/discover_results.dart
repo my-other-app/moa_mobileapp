@@ -114,6 +114,9 @@ class DiscoverStats extends Equatable {
 
 /// `/discover/home`: what is on near the caller, this week, online and
 /// popular; the clubs (nearest, or most followed); the clubs' latest posts.
+///
+/// [nearEvents], [nearClubs] and [moreClubs] are what the page shows: only
+/// what is within [nearKm] is called near.
 class DiscoverHome extends Equatable {
   const DiscoverHome({
     this.where = DiscoverWhere.unknown,
@@ -146,10 +149,30 @@ class DiscoverHome extends Equatable {
       clubs.isEmpty &&
       threads.isEmpty;
 
-  /// The clubs are the ones nearest the caller (some have a distance),
-  /// rather than the most followed.
-  bool get clubsAreNear =>
-      where.isPlaced && clubs.any((c) => c.distanceKm != null);
+  /// The near rail: in-person events within [nearKm]. The server sends
+  /// only those; anything else it might add is near no one, and is left
+  /// out rather than shown as near.
+  List<DiscoverEvent> get nearEvents => [
+        if (where.isPlaced)
+          for (final e in near)
+            if (!e.isOnline && isNearby(e.distanceKm)) e,
+      ];
+
+  /// "Clubs near you": the clubs within [nearKm].
+  List<DiscoverClub> get nearClubs => [
+        if (where.isPlaced)
+          for (final c in clubs)
+            if (isNearby(c.distanceKm)) c,
+      ];
+
+  /// The other clubs the server sent. Placed, it sends the nearest few
+  /// however far (near Thiruvananthapuram: two within 11 km, then six from
+  /// 126 to 415 km off), so these are further away: "More clubs". Not
+  /// placed, they are the most followed.
+  List<DiscoverClub> get moreClubs => [
+        for (final c in clubs)
+          if (!where.isPlaced || !isNearby(c.distanceKm)) c,
+      ];
 
   /// The page as asked about [place]'s point: under its name. Without one,
   /// as the server placed the caller.

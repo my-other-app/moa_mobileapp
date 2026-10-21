@@ -56,8 +56,8 @@ void main() {
   /// Every front page the screen would draw, in order, once all is in.
   Future<List<DiscoverHome>> homes(ProviderContainer c) async {
     final seen = <DiscoverHome>[];
-    final sub = c.listen<AsyncValue<DiscoverHome>>(discoverHomeProvider,
-        (_, next) {
+    final sub =
+        c.listen<AsyncValue<DiscoverHome>>(discoverHomeProvider, (_, next) {
       final v = next.valueOrNull;
       if (v != null && !next.isLoading && (seen.isEmpty || seen.last != v)) {
         seen.add(v);
@@ -116,7 +116,7 @@ void main() {
     final list = c.read(eventSearchProvider(near));
 
     expect(list.meta?.where.city, 'Thiruvananthapuram');
-    expect(names(list.items.where((e) => !e.isOnline)), tvmEvents);
+    expect(names(list.items), tvmEvents);
 
     const clubsNear =
         ClubFilters(place: DiscoverPlace.near, sort: ClubSort.nearby);
@@ -138,8 +138,7 @@ void main() {
     expect(sent.last.queryParameters, {'lat': 8.483, 'lng': 76.917});
   });
 
-  test('a picked city beats the connection, and outlasts the launch',
-      () async {
+  test('a picked city beats the connection, and outlasts the launch', () async {
     final c = launch();
     await homes(c);
     c
@@ -168,5 +167,17 @@ void main() {
       'GET /api/v1/discover/home',
       'GET /api/v1/discover/home?lat=8.483&lng=76.917',
     ]);
+  });
+
+  test('events near you are near: no online events padding the list', () async {
+    final c = launch();
+    const near = EventFilters(place: DiscoverPlace.near);
+    final sub = c.listen(eventSearchProvider(near), (_, __) {});
+    addTearDown(sub.close);
+    await turns();
+    final list = c.read(eventSearchProvider(near));
+
+    expect(names(list.items), tvmEvents);
+    expect(list.total, 2);
   });
 }

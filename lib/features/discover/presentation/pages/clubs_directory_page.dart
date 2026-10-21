@@ -62,6 +62,8 @@ class _ClubsDirectoryPageState extends ConsumerState<ClubsDirectoryPage> {
     final where = state.meta?.where ??
         ref.watch(discoverPlaceProvider).place ??
         DiscoverWhere.unknown;
+    // Without a place the server drops the radius: near is every club.
+    final unplaced = state.meta != null && !state.meta!.where.isPlaced;
     final names = FilterNames(topics: topics);
     final sortLabel = (_filters.sort ?? ClubSort.popular).label;
 
@@ -179,7 +181,7 @@ class _ClubsDirectoryPageState extends ConsumerState<ClubsDirectoryPage> {
               children: [
                 WherePill(
                   where: where,
-                  place: _filters.place,
+                  place: unplaced ? DiscoverPlace.everywhere : _filters.place,
                   onChanged: (p) => _apply(_filters.copyWith(place: p)),
                 ),
                 const SizedBox(width: 8),
