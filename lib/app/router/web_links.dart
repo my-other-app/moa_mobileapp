@@ -11,11 +11,13 @@ import 'package:finnet/core/config/app_config.dart';
 /// | Website                          | App                                   |
 /// | -------------------------------- | ------------------------------------- |
 /// | `/events?…`                      | `/discover/events?…` (Find events)    |
+/// | `/events/in`, `/events/in/{city}`| `/discover/events?…` (Find events)    |
 /// | `/events/{slug or id}`           | the event's page                      |
 /// | `/events/{ref}/live`             | the event, with its live room open    |
 /// | `/events/{ref}/register`         | registration                          |
 /// | `/events/{ref}/compete`          | the competition                       |
 /// | `/clubs?…`                       | `/discover/clubs?…` (the directory)   |
+/// | `/clubs/in`, `/clubs/in/{city}`  | `/discover/clubs?…` (the directory)   |
 /// | `/clubs/{slug or id}`            | the club                              |
 /// | `/threads`                       | `/discover/threads` (every club's)    |
 /// | `/threads/{id}`                  | the post                              |
@@ -75,6 +77,9 @@ String? webLocation(Uri uri) {
     case 'events':
       // The directory: Find events, with the site's own filters.
       if (rest.isEmpty) return at('/discover/events');
+      // The city pages ("Events in Kochi") are the directory too; read as
+      // an event, `/events/in` would open an event called "in".
+      if (_isCityPage(rest)) return at('/discover/events');
       final ref = one(rest.first);
       if (rest.length == 1) return at('/events/$ref');
       if (rest.length == 2) {
@@ -89,7 +94,7 @@ String? webLocation(Uri uri) {
       }
       return null;
     case 'clubs':
-      if (rest.isEmpty) return at('/discover/clubs');
+      if (rest.isEmpty || _isCityPage(rest)) return at('/discover/clubs');
       return rest.length == 1 ? at('/clubs/${one(rest.first)}') : null;
     case 'threads':
       if (rest.isEmpty) return at('/discover/threads');
@@ -125,6 +130,12 @@ String? webLocation(Uri uri) {
   }
   return null;
 }
+
+/// The site's city pages under `/events` and `/clubs`: `in`, then at most
+/// the city's name. No event or club is called "in" (an event's slug ends
+/// in its six-character code).
+bool _isCityPage(List<String> rest) =>
+    rest.first.toLowerCase() == 'in' && rest.length <= 2;
 
 /// Where the router goes for a [uri] it was handed: a link to the website
 /// becomes the app's location for it ([webLocation]); a page of the site
