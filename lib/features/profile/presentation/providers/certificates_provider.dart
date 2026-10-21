@@ -1,6 +1,10 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/core/cache/saved_then_fresh.dart';
+import 'package:finnet/features/profile/data/certificate_documents.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_pin_store.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_remote_datasource.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
@@ -19,6 +23,33 @@ final certificatesProvider = StreamProvider<List<Certificate>>((ref) {
     saved: source.savedCertificates,
     fresh: source.getMyCertificates,
   );
+});
+
+/// Certificate [ticketId]'s render as kept on the phone, or null. Reads
+/// the disk only: the list's thumbnails show it, [certificatesKeptProvider]
+/// and the certificate screen fill it.
+final keptCertificateImageProvider =
+    FutureProvider.autoDispose.family<Uint8List?, String>((ref, ticketId) {
+  return ref.watch(certificateDocumentsProvider).savedImage(ticketId);
+});
+
+/// Keeps every listed certificate's render and PDF on the phone, in the
+/// background, each time the list arrives -- so one never opened opens
+/// offline too, as the club designed it. Watched by the list.
+final certificatesKeptProvider = Provider<void>((ref) {
+  final documents = ref.watch(certificateDocumentsProvider);
+  final network = ref.watch(networkStatusProvider);
+  ref.listen<AsyncValue<List<Certificate>>>(certificatesProvider, (_, next) {
+    final certificates = next.valueOrNull;
+    if (certificates == null || certificates.isEmpty) return;
+    // Nothing to ask for with no network; the list is read again, and this
+    // runs again, when it is back.
+    if (network.isOffline) return;
+    unawaited(documents.prefetch(
+      certificates,
+      onKept: (id) => ref.invalidate(keptCertificateImageProvider(id)),
+    ));
+  }, fireImmediately: true);
 });
 
 /// How one certificate should look, from its club's template.

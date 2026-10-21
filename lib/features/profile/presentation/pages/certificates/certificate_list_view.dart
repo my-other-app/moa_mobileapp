@@ -4,11 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:finnet/features/profile/presentation/pages/certificates/no_certificate_page.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
-import 'package:finnet/core/config/env/env.dart';
-import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
-import 'package:finnet/features/profile/presentation/pages/certificates/certificate_preview.dart';
 import 'package:finnet/shared/widgets/certificate_list_card.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// The list behind both the ALL and PINNED tabs.
 ///
@@ -24,6 +20,8 @@ class CertificateListView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final certificatesAsync = ref.watch(certificatesProvider);
+    // Each listed certificate's render and PDF, kept in the background.
+    ref.watch(certificatesKeptProvider);
     final pinned = ref.watch(pinnedCertificatesProvider);
     final query = ref.watch(certificateSearchProvider);
     final sort = ref.watch(certificateSortProvider);
@@ -69,37 +67,13 @@ class CertificateListView extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               final certificate = shown[index];
-              // The real certificate, same render as the detail panel, so a
-              // thumbnail is a small version of what opens rather than an
-              // approximation of it. Cached by the server for a day.
-              final style = ref
-                      .watch(certificateStyleProvider(certificate.ticketId))
-                      .valueOrNull ??
-                  CertificateStyle.fallback;
-              final drawn = FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width: 160,
-                  child: CertificatePreview(
-                    certificate: certificate,
-                    style: style,
-                  ),
-                ),
-              );
 
               return CertificateListCard(
                 // The whole certificate, at its own shape, in a slot as
                 // wide as one: cropped to a square it was a strip of its
                 // middle, which looked nothing like what the club sent.
                 leadingWidth: CertificateListCard.documentWidth,
-                leading: AppNetworkImage(
-                  url: certificate.imageUrl(Env.apiBaseUrl),
-                  privacy: ImagePrivacy.private,
-                  fit: BoxFit.contain,
-                  decodeWidth: 480,
-                  placeholder: (_) => drawn,
-                  errorWidget: (_) => drawn,
-                ),
+                leading: CertificateThumbnail(ticketId: certificate.ticketId),
                 title: certificate.title,
                 organization: certificate.clubName ?? '',
                 type: certificate.eventType ?? '',
@@ -114,6 +88,43 @@ class CertificateListView extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// A certificate in the list: the club's render as kept on the phone (the
+/// same file the certificate screen shows), or a plain slot until it is
+/// there -- never the app's drawing, which looks nothing like what the
+/// club designed.
+class CertificateThumbnail extends ConsumerWidget {
+  const CertificateThumbnail({super.key, required this.ticketId});
+
+  final String ticketId;
+
+  static const blankKey = ValueKey('certificate-thumbnail-blank');
+  static const renderedKey = ValueKey('certificate-thumbnail-rendered');
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bytes = ref.watch(keptCertificateImageProvider(ticketId)).valueOrNull;
+    if (bytes == null) {
+      return const ColoredBox(
+        key: blankKey,
+        color: Color(0xFFEFEFEF),
+        child: Center(
+          child: Icon(Icons.workspace_premium_outlined,
+              size: 20, color: Colors.black38),
+        ),
+      );
+    }
+    return Image.memory(
+      bytes,
+      key: renderedKey,
+      fit: BoxFit.contain,
+      cacheWidth: 480,
+      gaplessPlayback: true,
+      errorBuilder: (_, __, ___) =>
+          const ColoredBox(color: Color(0xFFEFEFEF)),
     );
   }
 }

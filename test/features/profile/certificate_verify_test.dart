@@ -210,7 +210,7 @@ void main() {
         overrides: [
           profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
           certificateSharerProvider
-              .overrideWithValue((text, {subject, origin}) async {
+              .overrideWithValue((text, {subject, origin, pdfPath}) async {
             shared.add(text);
           }),
         ],

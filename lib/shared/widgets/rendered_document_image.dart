@@ -27,7 +27,8 @@ class RenderedDocumentImage extends StatefulWidget {
   final double placeholderAspectRatio;
   final ImagePrivacy privacy;
 
-  /// The picture, instead of [url]'s: for tests.
+  /// The picture, instead of [url]'s: one already on the phone (a kept
+  /// certificate), or for tests.
   final ImageProvider? image;
 
   /// The picture itself, once loaded.
