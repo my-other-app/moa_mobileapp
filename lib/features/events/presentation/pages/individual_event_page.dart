@@ -46,11 +46,11 @@ import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
+import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/pages/networking_page.dart';
 import 'package:finnet/core/utils/hours.dart';
-import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
@@ -2546,25 +2546,13 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             width: double.infinity,
             child: Pressable(
               child: FilledButton(
-                onPressed: () async {
-                  if (certificateUrl != null && certificateUrl!.isNotEmpty) {
-                    String finalUrl = certificateUrl!;
-
-                    // Handle old format: /api/v1/events/certificates/{id} → {publicSiteUrl}/certificates/{id}
-                    if (certificateUrl!
-                        .startsWith('/api/v1/events/certificates/')) {
-                      final certId = certificateUrl!
-                          .replaceFirst('/api/v1/events/certificates/', '');
-                      finalUrl =
-                          '${AppConfig.publicSiteUrl}/certificates/$certId';
-                    } else if (certificateUrl!.startsWith('/')) {
-                      // Other relative URLs - use API domain
-                      finalUrl = 'https://api.myotherapp.in$certificateUrl';
-                    }
-                    // else: Already a full URL, use as-is
-
-                    // The site's certificate page, inside the app.
-                    await ref.read(linkLauncherProvider)(Uri.parse(finalUrl));
+                onPressed: () {
+                  // The certificate inside the app, as the club designed it
+                  // and saved for offline -- not the website's page, which
+                  // draws one stand-in design for every club.
+                  final id = certificateIdFromUrl(certificateUrl);
+                  if (id != null) {
+                    context.push(certificateRoute(id));
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(

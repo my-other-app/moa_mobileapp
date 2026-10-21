@@ -9,7 +9,7 @@ import 'package:finnet/features/events/presentation/utils/event_feed.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/register_bar_parts.dart'
     show IosSaleBlockedNotice;
 import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
-import 'package:finnet/shared/utils/external_links.dart';
+import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
@@ -372,15 +372,14 @@ class EventCard extends StatelessWidget {
         );
       case EventCardStatus.attended:
         return FilledButton(
-          onPressed: () async {
-            final url = Uri.tryParse(certificateUrl ?? '');
-            if (url != null && url.hasScheme) {
-              // The site's certificate page: inside the app.
-              if (isOwnSite(url)) {
-                await openInAppThenBrowser(url);
-              } else {
-                await openExternally(url);
-              }
+          onPressed: () {
+            // The certificate inside the app, as the club designed it and
+            // saved for offline. It used to open the website's certificate
+            // page, which draws one stand-in design for every club and
+            // keeps nothing without a network.
+            final id = certificateIdFromUrl(certificateUrl);
+            if (id != null) {
+              context.push(certificateRoute(id));
             } else {
               context.push('/events/$eventId', extra: _getNavigationExtras());
             }
