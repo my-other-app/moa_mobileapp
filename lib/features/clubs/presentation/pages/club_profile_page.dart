@@ -22,6 +22,10 @@ import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_tag_strip.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
+import 'package:finnet/shared/motion.dart';
+import 'package:finnet/shared/widgets/pressable.dart';
+import 'package:finnet/shared/widgets/swap_label.dart';
+import 'package:finnet/shared/widgets/fade_switch.dart';
 
 export 'package:finnet/features/clubs/data/models/club_info.dart'
     show ClubInfo, ClubTeamMember, ClubPartner, Interest, Org;
@@ -65,6 +69,7 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
       _following = !was;
       _followerDelta += was ? -1 : 1;
     });
+    Haptics.light();
 
     try {
       await APIService.instance.request(endpoint, DioMethod.post);
@@ -128,11 +133,20 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: club.when(
-        skipLoadingOnReload: true,
-        loading: () => const ShimmerClubDetail(),
-        error: (error, _) => _failure(error),
-        data: _page,
+      // The skeleton gives way to the club with a cross-fade.
+      body: FadeSwitch(
+        phase: club.when(
+          skipLoadingOnReload: true,
+          loading: () => ScreenPhase.loading,
+          error: (_, __) => ScreenPhase.error,
+          data: (_) => ScreenPhase.content,
+        ),
+        child: club.when(
+          skipLoadingOnReload: true,
+          loading: () => const ShimmerClubDetail(),
+          error: (error, _) => _failure(error),
+          data: _page,
+        ),
       ),
     );
   }
@@ -275,16 +289,20 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
             // nothing behind it -- a dead button is a review rejection.
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
-                key: const ValueKey('club-follow'),
-                onPressed: () => _toggleFollow(club),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2C333D),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: Text(
-                  following ? 'UNFOLLOW' : 'FOLLOW',
-                  style: const TextStyle(fontSize: 24),
+              child: Pressable(
+                child: FilledButton(
+                  key: const ValueKey('club-follow'),
+                  onPressed: () => _toggleFollow(club),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2C333D),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  // FOLLOW turns into UNFOLLOW, and back, rather than
+                  // flicking between them.
+                  child: SwapLabel(
+                    following ? 'UNFOLLOW' : 'FOLLOW',
+                    style: const TextStyle(fontSize: 24),
+                  ),
                 ),
               ),
             ),

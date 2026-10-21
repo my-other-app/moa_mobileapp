@@ -6,6 +6,8 @@ import 'package:finnet/features/topics/domain/topic_filter.dart';
 import 'package:finnet/features/topics/domain/topic_rules.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
+import 'package:finnet/shared/widgets/pressable.dart';
+import 'package:finnet/shared/motion.dart';
 
 /// Filter chips for an explore list: topics, then the chosen topic's
 /// interests as a second row.
@@ -189,31 +191,38 @@ class _PlainPill extends StatelessWidget {
     final look = ChipLook.of(context);
     final radius = BorderRadius.circular(60);
     final ink = selected ? look.onChosen : look.ink;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: radius,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: selected ? look.chosen : look.idle,
+    final duration = motionDuration(context, Motion.medium);
+    return Pressable(
+        scale: 0.94,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              Haptics.selection();
+              onTap();
+            },
             borderRadius: radius,
-            border: Border.all(color: selected ? look.edge : look.idle),
+            child: AnimatedContainer(
+              duration: duration,
+              curve: Motion.curve,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: selected ? look.chosen : look.idle,
+                borderRadius: radius,
+                border: Border.all(color: selected ? look.edge : look.idle),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 15, color: ink),
+                    const SizedBox(width: 5),
+                  ],
+                  Text(label, style: TextStyle(fontSize: 14, color: ink)),
+                ],
+              ),
+            ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 15, color: ink),
-                const SizedBox(width: 5),
-              ],
-              Text(label, style: TextStyle(fontSize: 14, color: ink)),
-            ],
-          ),
-        ),
-      ),
-    );
+        ));
   }
 }

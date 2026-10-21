@@ -5,6 +5,7 @@ import 'package:finnet/features/threads/presentation/providers/moderation_provid
 import 'package:finnet/features/threads/presentation/widgets/moderation_actions.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/toast.dart';
 
 /// Settings > Blocked Users: everyone this person has blocked, each with an
 /// Unblock button.
@@ -41,9 +42,7 @@ class _BlockedUsersPageState extends ConsumerState<BlockedUsersPage> {
       );
       return;
     }
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('${user.name} is unblocked.')));
+    showToast(context, '${user.name} is unblocked.');
   }
 
   @override

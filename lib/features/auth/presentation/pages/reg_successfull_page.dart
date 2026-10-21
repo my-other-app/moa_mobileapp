@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
+import 'package:finnet/shared/motion.dart';
 
 class RegSuccessfullPage extends StatefulWidget {
   final String? ticketId;
@@ -72,22 +73,21 @@ class _RegSuccessfullPageState extends State<RegSuccessfullPage>
           eventDateTime: eventDateTime,
           ticketHolderName: widget.fullName,
         ),
+        // The ticket rises a little as it fades in, on the app's timing.
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final eased = CurvedAnimation(parent: animation, curve: Motion.curve);
           return FadeTransition(
-            opacity: animation,
+            opacity: eased,
             child: SlideTransition(
               position: Tween<Offset>(
-                begin: const Offset(0, 0.1),
+                begin: const Offset(0, 0.04),
                 end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOut,
-              )),
+              ).animate(eased),
               child: child,
             ),
           );
         },
-        transitionDuration: const Duration(milliseconds: 500),
+        transitionDuration: motionDuration(context, Motion.slow),
       ),
     );
   }

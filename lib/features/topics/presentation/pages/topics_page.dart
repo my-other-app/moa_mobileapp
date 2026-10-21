@@ -9,6 +9,7 @@ import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/pressable.dart';
 
 /// The counts under a topic: "12 upcoming events · 30 clubs"; null when
 /// the server did not count.
@@ -124,7 +125,8 @@ class _TopicCard extends StatelessWidget {
       label: [topic.label, if (counts != null) counts].join(', '),
       excludeSemantics: true,
       onTap: open,
-      child: Material(
+      child: Pressable(
+          child: Material(
         color: palette.tint,
         borderRadius: BorderRadius.circular(10),
         clipBehavior: Clip.antiAlias,
@@ -218,7 +220,7 @@ class _TopicCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }

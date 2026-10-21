@@ -22,6 +22,7 @@ import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:apple_passkit/apple_passkit.dart';
 import 'package:finnet/core/config/app_config.dart';
+import 'package:finnet/shared/motion.dart';
 
 /// Premium ticket page with stunning glow effects and Apple Wallet-like design.
 class TicketViewPage extends StatefulWidget {
@@ -123,6 +124,13 @@ class _TicketViewPageState extends State<TicketViewPage>
   late AnimationController _glowController;
   late AnimationController _pulseController;
 
+  /// One pass of light across the ticket when it first appears.
+  late final AnimationController _shine = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+  bool _shone = false;
+
   // Design colors inspired by app theme
   static const _accentYellow = Color(0xFFF9FFA1);
   static const _accentGreen = Color(0xFFB8FF9F);
@@ -165,21 +173,41 @@ class _TicketViewPageState extends State<TicketViewPage>
     } else {
       _loadTicketImage();
     }
+    // Started (or held still) in didChangeDependencies, which can ask
+    // whether the phone wants less motion.
     _glowController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
-    )..repeat(reverse: true);
+    );
 
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
-    )..repeat(reverse: true);
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The glow breathes -- unless the phone asks for less motion, when it
+    // stays lit, half way.
+    final still = reduceMotion(context);
+    for (final controller in [_glowController, _pulseController]) {
+      if (still) {
+        controller
+          ..stop()
+          ..value = 0.5;
+      } else if (!controller.isAnimating) {
+        controller.repeat(reverse: true);
+      }
+    }
   }
 
   @override
   void dispose() {
     _glowController.dispose();
     _pulseController.dispose();
+    _shine.dispose();
     super.dispose();
   }
 
@@ -818,8 +846,15 @@ class _TicketViewPageState extends State<TicketViewPage>
     return _buildDrawnTicketCard();
   }
 
-  /// The club's design, rendered server-side, with the same glow treatment.
+  /// The club's design, rendered server-side, with the same glow treatment
+  /// and, the first time it is shown, one pass of light across it.
   Widget _buildRenderedTicket(Uint8List bytes) {
+    if (!_shone) {
+      _shone = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !reduceMotion(context)) _shine.forward();
+      });
+    }
     return AnimatedBuilder(
       animation: _pulseController,
       builder: (context, child) {
@@ -842,11 +877,18 @@ class _TicketViewPageState extends State<TicketViewPage>
       child: ClipRRect(
         key: TicketViewPage.renderedKey,
         borderRadius: BorderRadius.circular(20),
-        child: Image.memory(
-          bytes,
-          fit: BoxFit.contain,
-          width: double.infinity,
-          gaplessPlayback: true,
+        child: Stack(
+          children: [
+            Image.memory(
+              bytes,
+              fit: BoxFit.contain,
+              width: double.infinity,
+              gaplessPlayback: true,
+            ),
+            Positioned.fill(
+              child: IgnorePointer(child: _TicketShine(animation: _shine)),
+            ),
+          ],
         ),
       ),
     );
@@ -1397,6 +1439,36 @@ class _WalletButton extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A soft band of light sweeping once across the ticket, corner to corner;
+/// nothing at all before and after.
+class _TicketShine extends AnimatedWidget {
+  const _TicketShine({required Animation<double> animation})
+      : super(listenable: animation);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = (listenable as Animation<double>).value;
+    if (t == 0 || t == 1) return const SizedBox.shrink();
+    // The band's centre runs from before the left edge to past the right.
+    final centre = Curves.easeInOut.transform(t) * 1.6 - 0.3;
+    double at(double offset) => (centre + offset).clamp(0.0, 1.0);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withAlpha(0),
+            Colors.white.withAlpha(56),
+            Colors.white.withAlpha(0),
+          ],
+          stops: [at(-0.12), at(0), at(0.12)],
         ),
       ),
     );

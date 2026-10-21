@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
+import 'package:finnet/shared/motion.dart';
+import 'package:finnet/shared/widgets/pressable.dart';
+import 'package:finnet/shared/widgets/swap_label.dart';
 
 import '../../../core/themes/app_colors.dart';
 
@@ -36,7 +39,8 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Pressable(
+        child: InkWell(
       onTap: () {
         context.push('/clubs/${widget.id}', extra: {
           'clubSlug': widget.clubSlug,
@@ -106,14 +110,16 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
               // used to share the row with nothing behind it.
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
-                  onPressed: _toggleFollow,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF2C333D),
-                  ),
-                  child: Text(
-                    _isFollowing ? 'UNFOLLOW' : 'FOLLOW',
-                    style: const TextStyle(color: Colors.white),
+                child: Pressable(
+                  child: FilledButton(
+                    onPressed: _toggleFollow,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF2C333D),
+                    ),
+                    child: SwapLabel(
+                      _isFollowing ? 'UNFOLLOW' : 'FOLLOW',
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ),
@@ -121,7 +127,7 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
           ),
         ),
       ),
-    );
+    ));
   }
 
   @override
@@ -133,6 +139,7 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
 
   //TODO: need to handle this toggle in a better way
   Future<void> _toggleFollow() async {
+    Haptics.light();
     final String endpoint;
     if (!_isFollowing) {
       endpoint = '/clubs/follow/${widget.id}';
