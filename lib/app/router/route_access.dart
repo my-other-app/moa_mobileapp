@@ -4,7 +4,8 @@
 /// discover, events, clubs, topics, posts, a ticket's QR from its link, a
 /// certificate and the policies all open signed out. What is about the
 /// person -- their events and tickets, their clubs, profile, settings,
-/// inbox, badges, certificates, the volunteer scanner -- asks them to sign
+/// inbox, badges, certificates, the volunteer scanner, who else is at an
+/// event they are checked in to -- asks them to sign
 /// in first, and comes back to it afterwards.
 ///
 /// Anything not listed here is open: a new screen works without an account
@@ -26,6 +27,8 @@ final List<RegExp> _private = [
   // The Events tab: the person's registrations and tickets.
   RegExp(r'^/events/?$', caseSensitive: false),
   RegExp(r'^/events/registration-success/?$', caseSensitive: false),
+  // People Like You at an event: who else is checked in.
+  RegExp(r'^/events/[^/]+/people/?$', caseSensitive: false),
   // The Clubs tab: the clubs they follow and pinned.
   RegExp(r'^/clubs/?$', caseSensitive: false),
   // Profile, settings, inbox, badges, certificates.
