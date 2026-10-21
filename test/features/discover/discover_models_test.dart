@@ -88,6 +88,16 @@ void main() {
     expect(home.thisWeek.single.name, 'Design Jam');
     expect(home.nearClubs.single.name, 'Tinkerhub');
     expect(home.moreClubs, isEmpty);
+    expect(home.popularClubs, isEmpty);
+    // Left out by an older server: null, so its clubs are split here.
+    expect(home.clubsMore, isNull);
+    expect(parseHome(homeBody(clubsMore: const [])).clubsMore, isEmpty);
+    expect(
+        parseHome(homeBody(clubsMore: [clubCard(6, distanceKm: 177.7)]))
+            .moreClubs
+            .single
+            .distanceKm,
+        177.7);
     expect(home.isEmpty, isFalse);
     expect(parseHome(emptyHomeBody()).isEmpty, isTrue);
     expect(parseHome(null).isEmpty, isTrue);

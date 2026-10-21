@@ -297,6 +297,9 @@ DiscoverHome parseHome(Object? body) {
     popular: _list(o['popular'], parseEvent),
     categories: _list(o['categories'], _categoryCount),
     clubs: _list(o['clubs'], parseClub),
+    // Left out by a server from before it was sent: null, not empty.
+    clubsMore:
+        o['clubs_more'] == null ? null : _list(o['clubs_more'], parseClub),
     threads: _list(o['threads'], parseThread),
     stats: DiscoverStats(
       upcomingEvents: _count(stats['upcoming_events']),

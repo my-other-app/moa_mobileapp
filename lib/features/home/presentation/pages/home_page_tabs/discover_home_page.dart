@@ -35,11 +35,11 @@ const _muted = Color(0xFF6B6B6B);
 /// connection's first guess, or a city the person picked), what is on in
 /// numbers, and quick ways into Find events. Then what is on near them,
 /// from the clubs they follow when signed in, the topics as tiles, this
-/// week, the clubs near them and then the others (or the most followed),
+/// week, the clubs near them, those further away, the most followed,
 /// online, popular, and the clubs' latest posts. Only what is within
-/// [nearKm] is called near. A rail with nothing in it is left out. Every card opens the app's
-/// own event, club or post page. The saved copy is drawn first, and kept
-/// when the server cannot be reached.
+/// [nearKm] is called near. A rail with nothing in it is left out. Every
+/// card opens the app's own event, club or post page. The saved copy is
+/// drawn first, and kept when the server cannot be reached.
 class DiscoverHomePage extends ConsumerStatefulWidget {
   const DiscoverHomePage({super.key, this.onSeeFollowing});
 
@@ -105,10 +105,10 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
         ? (ref.watch(followingRailProvider).valueOrNull ??
             const <DiscoverEvent>[])
         : const <DiscoverEvent>[];
-    final where = data.where;
     final nearEvents = data.nearEvents;
     final nearClubs = data.nearClubs;
     final moreClubs = data.moreClubs;
+    final popularClubs = data.popularClubs;
 
     final sections = <Widget>[
       _DiscoverTop(home: data),
@@ -156,15 +156,22 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
               place: DiscoverPlace.near, sort: ClubSort.nearby))),
           child: ClubRail(clubs: nearClubs),
         ),
-      // Placed, the clubs further off than near, nearest first; not
-      // placed, the most followed.
+      // The clubs further off than near, each with its distance.
       if (moreClubs.isNotEmpty)
         DiscoverSection(
-          key: ValueKey(where.isPlaced ? 'rail-more-clubs' : 'rail-clubs'),
-          title: where.isPlaced ? 'More clubs' : 'Popular clubs',
-          subtitle: where.isPlaced ? 'Further away, nearest first' : null,
+          key: const ValueKey('rail-more-clubs'),
+          title: 'More clubs',
+          subtitle: 'Further away, nearest first',
           onSeeAll: () => context.push(clubsDirectoryLocation()),
           child: ClubRail(clubs: moreClubs),
+        ),
+      // Clubs with no distance: the most followed. Nothing about where.
+      if (popularClubs.isNotEmpty)
+        DiscoverSection(
+          key: const ValueKey('rail-popular-clubs'),
+          title: 'Popular clubs',
+          onSeeAll: () => context.push(clubsDirectoryLocation()),
+          child: ClubRail(clubs: popularClubs),
         ),
       if (data.online.isNotEmpty)
         DiscoverSection(
