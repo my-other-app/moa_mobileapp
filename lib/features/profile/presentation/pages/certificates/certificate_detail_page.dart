@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,14 +7,15 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:finnet/core/cache/document_cache.dart';
 import 'package:finnet/core/config/env/env.dart';
+import 'package:finnet/features/profile/data/certificate_documents.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
 import 'package:finnet/features/profile/presentation/pages/certificates/certificate_preview.dart';
+import 'package:finnet/features/profile/presentation/pages/certificates/certificate_render.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/utils/certificate_share.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
-import 'package:finnet/shared/widgets/rendered_document_image.dart';
 
 /// One certificate, to the design: preview, title, id, club, two facts,
 /// a pin action, the status banner and the download button.
@@ -30,14 +32,14 @@ class CertificateDetailPage extends ConsumerWidget {
   /// ETag says it changed (a new design, a corrected name, a revocation),
   /// opened in the system's viewer -- which can save and share it, and
   /// works offline from the kept copy. Without a viewer, or without the
-  /// PDF, the browser as before.
-  Future<void> _open(BuildContext context, String url) async {
+  /// PDF, the browser as before; with no network and nothing kept, a note
+  /// rather than a browser that cannot load it either.
+  Future<void> _open(BuildContext context, WidgetRef ref, String url) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final pdf = await DocumentCache.instance.fetch(
-        '/events/certificates/${certificate.ticketId}/pdf',
-        name: 'certificate_${DocumentCache.safeName(certificate.ticketId)}.pdf',
-      );
+      final pdf = await ref
+          .read(certificateDocumentsProvider)
+          .pdf(certificate.ticketId);
       if (!pdf.current) {
         messenger.showSnackBar(const SnackBar(
             content: Text('Offline — this is your saved copy')));
@@ -46,6 +48,12 @@ class CertificateDetailPage extends ConsumerWidget {
       if (opened.type == ResultType.done) return;
     } catch (e) {
       debugPrint('Certificate PDF unavailable, opening the link: $e');
+      if (e is DioException && DocumentCache.noAnswer(e)) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text(
+                "You're offline, and this PDF hasn't been saved yet")));
+        return;
+      }
     }
     // externalApplication: a PDF belongs in the browser or a viewer, not an
     // in-app webview that cannot save it.
@@ -68,8 +76,8 @@ class CertificateDetailPage extends ConsumerWidget {
     // The profile loads itself, so the name is here without this screen
     // having to ask for it.
     final recipient = ref.watch(profileProvider).profile?.fullName;
-    // Held while the rendered certificate loads, and used if it cannot be
-    // rendered at all, so the panel keeps its shape either way.
+    // Used only if the club's render cannot be had at all, marked as a
+    // preview.
     final placeholder = CertificatePreview(
       certificate: certificate,
       style: style.valueOrNull ?? CertificateStyle.fallback,
@@ -112,7 +120,7 @@ class CertificateDetailPage extends ConsumerWidget {
           IconButton(
             tooltip: 'Open the PDF',
             icon: const Icon(Icons.open_in_new, color: _ink),
-            onPressed: () => _open(context, pdfUrl),
+            onPressed: () => _open(context, ref, pdfUrl),
           ),
         ],
       ),
@@ -127,16 +135,13 @@ class CertificateDetailPage extends ConsumerWidget {
                     background: _preview,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      // At the render's own shape, once it is in: a layered
-                      // design is not always the classic 800 x 519, and a
-                      // fixed shape cropped or letterboxed it. Kept on the
-                      // phone (private: it carries the person's name, and
-                      // is emptied at sign-out), so it opens offline.
-                      child: RenderedDocumentImage(
-                        url: certificate.imageUrl(Env.apiBaseUrl),
-                        // Held while it loads, and used if it cannot be
-                        // rendered at all, rather than an empty panel.
-                        placeholder: placeholder,
+                      // The club's own render, at its own shape, kept on
+                      // the phone under the certificate's id (and deleted
+                      // at sign-out), so it opens offline. The app's
+                      // drawing only when there is no render to be had.
+                      child: CertificateRender(
+                        certificate: certificate,
+                        fallback: placeholder,
                       ),
                     ),
                   ),
@@ -227,7 +232,7 @@ class CertificateDetailPage extends ConsumerWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => _open(context, pdfUrl),
+                      onPressed: () => _open(context, ref, pdfUrl),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2C333D),
                         foregroundColor: Colors.white,

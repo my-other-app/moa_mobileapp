@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:finnet/app/app.dart';
 import 'package:finnet/app/session_scope.dart';
 import 'package:finnet/core/cache/api_cache.dart';
+import 'package:finnet/core/cache/document_cache.dart';
 import 'package:finnet/core/cache/image_caches.dart';
 import 'package:finnet/core/services/analytics_service.dart';
 import 'package:finnet/core/services/notification_service.dart';
@@ -51,6 +52,8 @@ void main() async {
     // The picture caches count files; this holds them to their bytes too.
     // Off the start-up path, and harmless if it fails.
     unawaited(AppImageCaches.trim());
+    // The kept tickets and certificates, held to their cap.
+    unawaited(DocumentCache.instance.trim());
     // Saved answers past their week, or over their caps, go the same way.
     unawaited(ApiCache.instance.prune());
 

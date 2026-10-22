@@ -4,15 +4,16 @@ import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/profile/domain/entities/certificate_style.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 
-/// A rendering of the certificate itself, styled by the club's template.
+/// The app's own drawing of a certificate, from the template's flat style
+/// fields (colours, title, logo) -- the ones the website's certificate page
+/// draws from too.
 ///
-/// The detail screen used to show the event's poster here, falling back to
-/// an icon when there was none -- which is most events, so the panel showed
-/// a logo and nothing of the certificate.
-///
-/// There is no image to fetch: certificates are generated as PDFs on
-/// request and nothing stores a picture of one. So the preview is drawn
-/// from the same style config the event website renders from.
+/// It is a stand-in, not the certificate: a design made in the clubs
+/// dashboard's layer designer keeps everything in its layers, which this
+/// cannot draw, so for those it comes out as the same default card for
+/// every club. The certificate screen shows the server's render of the
+/// club's design (CertificateRender) and falls back to this, marked as a
+/// preview, only when no render can be had.
 class CertificatePreview extends StatelessWidget {
   final Certificate certificate;
   final CertificateStyle style;

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 
 final certificatePinStoreProvider = Provider<CertificatePinStore>((ref) {
-  return CertificatePinStore(SecureStorageService());
+  return CertificatePinStore(ref.watch(secureStorageServiceProvider));
 });
 
 /// Which certificates the user has pinned.
@@ -33,6 +33,10 @@ class CertificatePinStore {
       return <String>{};
     }
   }
+
+  /// Forget every pin: they name the person's certificates, and go with
+  /// them at sign-out.
+  Future<void> clear() => _storage.delete(key: _key);
 
   Future<Set<String>> toggle(String ticketId) async {
     final pinned = await read();

@@ -128,6 +128,7 @@ void main() {
         const {'type': 'event_live_update', 'event_id': '12'},
         const {'type': 'event_started', 'event_id': '12'},
         const {'type': 'event_checkin', 'event_id': '12'},
+        const {'type': 'event_checkin', 'event_id': '12', 'open': 'people'},
         const {'type': 'club_thread', 'thread_id': 'abc'},
         const {'url': 'https://myotherapp.in/events/hack-night-04'},
         const {'url': 'https://myotherapp.in/tickets/abc-123'},

@@ -111,6 +111,7 @@ void main() {
     late _Renderer renderer;
     late NetworkStatus status;
     late TicketImages images;
+    late DocumentCache documents;
 
     setUp(() async {
       FlutterSecureStorage.setMockInitialValues({'access_token': 'a'});
@@ -121,9 +122,8 @@ void main() {
       status = NetworkStatus(probe: () async => false);
       final dio = buildAppDio(status: status, baseUrl: 'https://api.test')
         ..httpClientAdapter = renderer;
-      images = TicketImages(
-        cache: DocumentCache(dio: dio, root: () async => dir),
-      );
+      documents = DocumentCache(dio: dio, root: () async => dir);
+      images = TicketImages(cache: documents);
     });
 
     tearDown(() async {
@@ -171,8 +171,36 @@ void main() {
 
       expect(await images.saved('MOA-REVOKED'), isNull);
       expect(await images.saved('MOA-NEW'), _png);
-      expect(renderer.requests.map((r) => r.path),
+      expect(
+          renderer.requests
+              .map((r) => r.path)
+              .where((path) => path.endsWith('/image')),
           ['/events/tickets/MOA-NEW/image']);
+    });
+
+    test('prefetch keeps the PDF too: Download and Share open offline '
+        'without a tap on Download while online', () async {
+      await images.prefetch(const [
+        SavedTicket(code: 'MOA-1', eventId: 1, eventName: 'A'),
+      ]);
+
+      renderer.offline = true;
+      // The ticket screen's Download and Share read this file.
+      final pdf = await documents.fetch('/events/tickets/MOA-1/pdf',
+          name: 'ticket_MOA-1.pdf');
+      expect(pdf.current, isFalse);
+      expect(await pdf.file.readAsBytes(), isNotEmpty);
+    });
+
+    test('a revoked ticket loses its PDF as well as its design', () async {
+      await images.prefetch(const [
+        SavedTicket(code: 'MOA-1', eventId: 1, eventName: 'A'),
+      ]);
+      await images.prefetch(const [
+        SavedTicket(code: 'MOA-1', eventId: 1, eventName: 'A', revoked: true),
+      ]);
+      expect(await documents.kept('ticket_MOA-1.pdf'), isNull);
+      expect(await documents.kept(TicketImages.nameFor('MOA-1')), isNull);
     });
 
     test('prefetch: one that came without an ETag is asked for again, but '
@@ -182,12 +210,14 @@ void main() {
       renderer.requests.clear();
       const tickets = [SavedTicket(code: 'MOA-1', eventId: 1, eventName: 'A')];
 
+      Iterable<RequestOptions> designs() =>
+          renderer.requests.where((r) => r.path.endsWith('/image'));
       await images.prefetch(tickets);
-      expect(renderer.requests, isEmpty, reason: 'within the hour');
+      expect(designs(), isEmpty, reason: 'within the hour');
 
       await images.prefetch(tickets,
           now: DateTime.now().add(const Duration(hours: 2)));
-      expect(renderer.requests, hasLength(1));
+      expect(designs(), hasLength(1));
     });
 
     test('prefetch carries on past a failure', () async {

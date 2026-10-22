@@ -13,6 +13,13 @@ class _PdfServer implements HttpClientAdapter {
   String content = 'PDF v1';
   String? etag;
   bool offline = false;
+
+  /// The server took the request and said nothing in time.
+  bool slow = false;
+
+  /// What the gateway answers instead of the server (a 502 while it
+  /// restarts), when set.
+  int? gateway;
   final requests = <RequestOptions>[];
 
   @override
@@ -25,6 +32,18 @@ class _PdfServer implements HttpClientAdapter {
         reason: 'offline',
         error: const SocketException('offline'),
       );
+    }
+    if (slow) {
+      throw DioException.receiveTimeout(
+        timeout: const Duration(seconds: 30),
+        requestOptions: options,
+      );
+    }
+    if (gateway != null) {
+      return ResponseBody.fromString('<html>Bad Gateway</html>', gateway!,
+          headers: {
+            'content-type': ['text/html'],
+          });
     }
     if (etag != null && options.headers['If-None-Match'] == etag) {
       return ResponseBody.fromBytes(const [], 304, headers: {
@@ -111,6 +130,55 @@ void main() {
 
     expect(kept.current, isFalse);
     expect(await kept.file.readAsString(), 'PDF v1');
+  });
+
+  test('a timeout, or the gateway answering for a server that is down, '
+      'hands back the kept copy too', () async {
+    // The owner's report: "not cached". A ticket's PDF failed to open on a
+    // slow signal and during every deploy (the API is a 502 for a minute),
+    // though a copy was on the phone: only a refused connection used it.
+    await cache.fetch(ticket, name: 'ticket_MOA-1.pdf');
+
+    server.slow = true;
+    final slow = await cache.fetch(ticket, name: 'ticket_MOA-1.pdf');
+    expect(slow.current, isFalse);
+    expect(await slow.file.readAsString(), 'PDF v1');
+
+    server
+      ..slow = false
+      ..gateway = 502;
+    final down = await cache.fetch(ticket, name: 'ticket_MOA-1.pdf');
+    expect(down.current, isFalse);
+    expect(await down.file.readAsString(), 'PDF v1');
+  });
+
+  test('a refusal is an answer: passed on, not covered by the kept copy',
+      () async {
+    await cache.fetch(ticket, name: 'ticket_MOA-1.pdf');
+    server.gateway = 403;
+    await expectLater(cache.fetch(ticket, name: 'ticket_MOA-1.pdf'),
+        throwsA(isA<DioException>()));
+  });
+
+  test('kept for good: nothing deletes a copy for its age, and the cap '
+      'takes the least recently saved first', () async {
+    final old = await cache.fetch(certificate, name: 'certificate_OLD.pdf');
+    await old.file.setLastModified(
+        DateTime.now().subtract(const Duration(days: 400)));
+    server.content = 'a newer, larger document';
+    await cache.fetch(certificate, name: 'certificate_NEW.pdf');
+
+    // Under the cap, a year-old certificate stays, and opens offline.
+    await cache.trim(budget: 1024);
+    server.offline = true;
+    expect((await cache.fetch(certificate, name: 'certificate_OLD.pdf')).current,
+        isFalse);
+
+    // Over it, the oldest goes -- with its validators -- and no more.
+    await cache.trim(budget: 'a newer, larger document'.length);
+    expect(await cache.kept('certificate_OLD.pdf'), isNull);
+    expect(await File('${old.file.path}.meta.json').exists(), isFalse);
+    expect(await cache.kept('certificate_NEW.pdf'), isNotNull);
   });
 
   test('offline with nothing kept is an error', () async {

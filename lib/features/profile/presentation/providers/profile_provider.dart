@@ -237,6 +237,16 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     );
   }
 
+  /// "Show me in People Like You" as the server kept it, so every screen
+  /// reading the profile agrees without a reload.
+  void networkingVisibleSaved(bool visible) {
+    final profile = state.profile;
+    if (profile == null) return;
+    state = state.copyWith(
+        profile: profile.copyWith(networkingVisible: visible),
+        error: state.error);
+  }
+
   /// Clear profile (on logout).
   void clearProfile() {
     state = const ProfileState();

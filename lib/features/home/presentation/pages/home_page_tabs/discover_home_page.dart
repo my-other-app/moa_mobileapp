@@ -14,6 +14,7 @@ import 'package:finnet/features/discover/presentation/providers/discover_provide
 import 'package:finnet/features/discover/presentation/widgets/discover_format.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_sections.dart';
 import 'package:finnet/features/discover/presentation/widgets/filter_widgets.dart';
+import 'package:finnet/features/home/presentation/widgets/at_event_banner.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
 import 'package:finnet/features/topics/presentation/widgets/browse_by_topic_row.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
@@ -111,6 +112,8 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
     final popularClubs = data.popularClubs;
 
     final sections = <Widget>[
+      // Checked in at an event that is on: its People Like You, first.
+      const AtEventBanner(),
       _DiscoverTop(home: data),
       if (data.isEmpty)
         DiscoverEmpty(

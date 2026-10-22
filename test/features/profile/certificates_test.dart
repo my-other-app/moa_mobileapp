@@ -70,6 +70,35 @@ void main() {
       expect(result, isNull);
     });
 
+    test('one the organiser issued without a check-in becomes one', () {
+      // A speaker issued a certificate from the clubs dashboard: the email
+      // went out, the PDF and the render are served, and the app listed
+      // nothing because it asked only whether they checked in.
+      final result = Certificate.fromEventJson(const {
+        'id': 7,
+        'name': 'Oasis Hackathon',
+        'ticket_id': 'MOA-1',
+        'is_attended': false,
+        'has_certificate': true,
+        'event_datetime': '2024-01-04T10:00:00+00:00',
+      });
+      expect(result, isNotNull);
+    });
+
+    test('a revoked one does not, though they checked in', () {
+      // Listed, its render was refused and the app's own drawing stood in.
+      final result = Certificate.fromEventJson(const {
+        'id': 7,
+        'name': 'Oasis Hackathon',
+        'ticket_id': 'MOA-1',
+        'is_attended': true,
+        'has_certificate': false,
+        'certificate_revoked': true,
+        'event_datetime': '2024-01-04T10:00:00+00:00',
+      });
+      expect(result, isNull);
+    });
+
     test('an event with no ticket does not', () {
       final result = Certificate.fromEventJson(const {
         'id': 7,

@@ -15,6 +15,9 @@ class UserProfileModel {
   /// Null when the response did not carry it.
   final bool? emailVerified;
 
+  /// "Show me in People Like You"; null from a server without the switch.
+  final bool? networkingVisible;
+
   const UserProfileModel({
     required this.id,
     this.fullName,
@@ -25,6 +28,7 @@ class UserProfileModel {
     this.profile,
     this.interests,
     this.emailVerified,
+    this.networkingVisible,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
@@ -42,6 +46,7 @@ class UserProfileModel {
           ? jsonObjects(json['interests']).map(InterestModel.fromJson).toList()
           : null,
       emailVerified: jsonBool(json['email_verified']),
+      networkingVisible: jsonBool(json['networking_visible']),
     );
   }
 
@@ -56,6 +61,7 @@ class UserProfileModel {
       'profile': profile?.toJson(),
       'interests': interests?.map((e) => e.toJson()).toList(),
       if (emailVerified != null) 'email_verified': emailVerified,
+      if (networkingVisible != null) 'networking_visible': networkingVisible,
     };
   }
 
@@ -73,6 +79,7 @@ class UserProfileModel {
       isProfileComplete: _isProfileComplete(),
       createdAt: null,
       emailVerified: emailVerified,
+      networkingVisible: networkingVisible,
     );
   }
 

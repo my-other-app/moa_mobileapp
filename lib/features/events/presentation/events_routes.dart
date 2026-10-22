@@ -6,6 +6,7 @@ import 'package:finnet/features/events/presentation/pages/competition_page.dart'
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
 import 'package:finnet/features/events/presentation/pages/feedback_survey_page.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
+import 'package:finnet/features/events/presentation/pages/networking_page.dart';
 import 'package:finnet/shared/widgets/poster_hero.dart';
 
 // The event routes batch B adds, and the builders for the two event routes
@@ -68,6 +69,7 @@ Widget buildEventRegisterPage(BuildContext context, GoRouterState state) {
 abstract final class EventRouteNames {
   static const competition = 'eventCompetition';
   static const feedback = 'eventFeedback';
+  static const people = 'eventPeople';
 }
 
 /// Batch B's new routes, top level (each opens over the tabs):
@@ -77,6 +79,9 @@ abstract final class EventRouteNames {
 /// - `/feedback/:eventId/:registrationId?k=…` -- the feedback survey, from
 ///   the link in the email (the website's address too); needs no account,
 ///   the link's key is the proof.
+/// - `/events/:eventRef/people` -- People Like You: from the event page's
+///   card, Home's "You're at" banner and the check-in push (`open:
+///   people`); needs an account. extra: `eventName`, shown while it loads.
 final List<RouteBase> eventsRoutes = [
   GoRoute(
     path: '/events/:eventRef/compete',
@@ -86,6 +91,20 @@ final List<RouteBase> eventsRoutes = [
       return CompetitionPage(
         eventRef: eventRefOf(state),
         eventName: extra['eventName'] as String?,
+      );
+    },
+  ),
+  GoRoute(
+    path: '/events/:eventRef/people',
+    name: EventRouteNames.people,
+    builder: (context, state) {
+      final ref = eventRefOf(state);
+      final extra = state.extra is Map ? state.extra as Map : const {};
+      return NetworkingPage(
+        key: ValueKey('people-$ref'),
+        eventId: eventIdOf(ref) ?? 0,
+        eventRef: ref,
+        eventName: extra['eventName'] as String? ?? '',
       );
     },
   ),

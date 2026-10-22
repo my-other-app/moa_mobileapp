@@ -6,6 +6,7 @@ import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/presentation/pages/no_past_events_page.dart';
+import 'package:finnet/features/profile/domain/entities/certificate.dart';
 
 class PastEventsPage extends StatefulWidget {
   const PastEventsPage({super.key});
@@ -103,7 +104,10 @@ class _PastEventsPageState extends State<PastEventsPage>
                 events[index] as Map? ?? const <String, dynamic>{});
             return eventCardFromJson(
               event,
-              status: event['is_attended'] == true
+              // Checked in, or issued a certificate without a check-in (a
+              // speaker): VIEW CERTIFICATE.
+              status: event['is_attended'] == true ||
+                      Certificate.holdsCertificate(event)
                   ? EventCardStatus.attended
                   : EventCardStatus.notAttended,
               certificateUrl: event['certificate_url'] is String

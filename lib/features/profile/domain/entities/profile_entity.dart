@@ -19,6 +19,11 @@ class UserProfile extends Equatable {
   /// a response that is not the full profile): then nobody is asked to verify.
   final bool? emailVerified;
 
+  /// "Show me in People Like You": whether others checked in at the same
+  /// event see this person in its list. Null when the server did not say (an
+  /// older server): then there is no switch to show.
+  final bool? networkingVisible;
+
   const UserProfile({
     required this.id,
     required this.fullName,
@@ -31,6 +36,7 @@ class UserProfile extends Equatable {
     this.isProfileComplete = false,
     this.createdAt,
     this.emailVerified,
+    this.networkingVisible,
   });
 
   /// An email/password account that has not verified its address yet.
@@ -48,6 +54,7 @@ class UserProfile extends Equatable {
     bool? isProfileComplete,
     DateTime? createdAt,
     bool? emailVerified,
+    bool? networkingVisible,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -61,6 +68,7 @@ class UserProfile extends Equatable {
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,
       createdAt: createdAt ?? this.createdAt,
       emailVerified: emailVerified ?? this.emailVerified,
+      networkingVisible: networkingVisible ?? this.networkingVisible,
     );
   }
 
@@ -77,6 +85,7 @@ class UserProfile extends Equatable {
         isProfileComplete,
         createdAt,
         emailVerified,
+        networkingVisible,
       ];
 }
 
