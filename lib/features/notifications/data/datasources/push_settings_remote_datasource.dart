@@ -1,12 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/network/dio_client.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/notifications/domain/entities/push_switches.dart';
 
 final pushSettingsRemoteDataSourceProvider =
     Provider<PushSettingsRemoteDataSource>(
-  (ref) => PushSettingsRemoteDataSourceImpl(ref.watch(dioProvider)),
+  (ref) => PushSettingsRemoteDataSourceImpl(ref.watch(dioProvider),
+      cache: ref.watch(apiCacheProvider)),
 );
 
 /// `/notifications/settings` and `/notifications/mutes/clubs/{id}`. Every
@@ -14,28 +16,54 @@ final pushSettingsRemoteDataSourceProvider =
 /// the push service reconcile the device's FCM topics.
 abstract class PushSettingsRemoteDataSource {
   Future<PushSwitches?> switches();
+
+  /// The switches as last saved on this phone, or null. No network.
+  Future<PushSwitches?> savedSwitches();
+
   Future<PushSwitches> setSwitches(Map<String, bool> changes);
   Future<bool?> isClubMuted(int clubId);
   Future<void> setClubMuted(int clubId, {required bool muted});
 }
 
 class PushSettingsRemoteDataSourceImpl implements PushSettingsRemoteDataSource {
-  PushSettingsRemoteDataSourceImpl(this._dio);
+  PushSettingsRemoteDataSourceImpl(this._dio, {ApiCache? cache})
+      : _cache = cache;
 
   final Dio _dio;
+  final ApiCache? _cache;
+
+  ApiCache get _store => _cache ?? ApiCache.instance;
+
+  static const _settings = '/notifications/settings';
 
   @override
   Future<PushSwitches?> switches() async {
-    final data =
-        await _orNothing(() => _dio.get<dynamic>('/notifications/settings'));
+    final data = await _orNothing(() => _dio.get<dynamic>(
+          _settings,
+          // Saved, encrypted and never pruned for room: Settings draws the
+          // switches from this copy at once -- and offline -- rather than
+          // waiting a round trip to us-east-1 with the section blank.
+          options: Options(extra: CachePolicy.personalKept.extra),
+        ));
     return data == null ? null : _switchesFrom(data);
   }
 
   @override
+  Future<PushSwitches?> savedSwitches() async {
+    final data = await _store.savedAnswer(_dio, _settings,
+        scope: CacheScope.personal);
+    return data is Map ? _switchesFrom(data) : null;
+  }
+
+  @override
   Future<PushSwitches> setSwitches(Map<String, bool> changes) async {
-    final response =
-        await _dio.patch<dynamic>('/notifications/settings', data: changes);
-    return _switchesFrom(response.data);
+    final response = await _dio.patch<dynamic>(_settings, data: changes);
+    final saved = _switchesFrom(response.data);
+    // The answer is the switches as the server now keeps them: the saved
+    // copy becomes that, so the next Settings opens on the change.
+    await _store.saveAnswer(_dio, _settings, _toJson(saved),
+        scope: CacheScope.personal, keep: true);
+    return saved;
   }
 
   @override
@@ -67,6 +95,9 @@ class PushSettingsRemoteDataSourceImpl implements PushSettingsRemoteDataSource {
       rethrow;
     }
   }
+
+  static Map<String, bool> _toJson(PushSwitches s) =>
+      {'clubs': s.clubs, 'topics': s.topics, 'platform': s.platform};
 
   static PushSwitches _switchesFrom(Object? data) {
     final map = data is Map ? data : const {};

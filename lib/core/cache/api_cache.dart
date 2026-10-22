@@ -225,6 +225,32 @@ class ApiCache {
   }) async =>
       (await read(keyForRequest(dio, path, query: query), scope))?.data;
 
+  /// Save [data] as the answer to `GET [path]` (with [query]) through
+  /// [dio], as if the server had just sent it: for a change the server
+  /// confirmed (a PATCH's answer, a new picture), so the next screen to
+  /// read the saved copy shows the change rather than what came before it.
+  /// Never throws; a path [isCacheablePath] refuses is not saved.
+  Future<void> saveAnswer(
+    Dio dio,
+    String path,
+    Object data, {
+    Map<String, dynamic>? query,
+    CacheScope scope = CacheScope.shared,
+    bool keep = false,
+  }) async {
+    if (!isCacheablePath(path)) return;
+    try {
+      await write(
+        keyForRequest(dio, path, query: query),
+        scope,
+        CacheEntry(data: data, savedAt: _now(), keep: keep),
+        epoch: _epoch,
+      );
+    } catch (e) {
+      debugPrint('ApiCache: could not save $path: $e');
+    }
+  }
+
   /// Paths never saved, whatever a caller asks: sign-in and its tokens,
   /// payments and checkout, and anything that hands out a one-time token.
   static final _never = RegExp(

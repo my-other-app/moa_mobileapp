@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/services/analytics_service.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
@@ -75,6 +77,18 @@ class _FakePushSettings implements PushSettingsRepository {
     kept = kept!.copyWith(clubs: clubs, topics: topics, platform: platform);
     return Either.right(kept!);
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName} not needed here');
+}
+
+/// A server that has not answered yet -- the ~0.3-2 s from India to
+/// us-east-1 that the section used to sit out blank.
+class _UnansweredPushSettings implements PushSettingsRepository {
+  @override
+  Future<Result<PushSwitches?>> switches() =>
+      Completer<Result<PushSwitches?>>().future;
 
   @override
   dynamic noSuchMethod(Invocation invocation) =>
@@ -179,6 +193,19 @@ void main() {
     expect(find.byKey(const ValueKey('push-switch-clubs')), findsNothing);
     expect(find.text('Event Notification'), findsNothing);
     expect(find.text('Club Updates'), findsNothing);
+  });
+
+  testWidgets(
+      'Club Updates and Announcements are there before the server answers',
+      (tester) async {
+    // They used to appear only once GET /notifications/settings came back.
+    await _pump(tester, pushSettings: _UnansweredPushSettings());
+
+    expect(find.text('Event Notification'), findsOneWidget);
+    expect(find.text('Club Updates'), findsOneWidget);
+    expect(find.text('Announcements'), findsOneWidget);
+    expect(on(tester, 'push-switch-clubs'), isTrue);
+    expect(on(tester, 'push-switch-platform'), isTrue);
   });
 
   testWidgets('the switches the server keeps, and turning one off',
