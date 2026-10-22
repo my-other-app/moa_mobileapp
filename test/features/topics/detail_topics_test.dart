@@ -172,8 +172,10 @@ void main() {
     });
   });
 
+  // The owner's call: a club's page shows its interests, and no topics --
+  // not the ones the server sends, nor any worked out from its interests.
   group('a club\'s page', () {
-    testWidgets('topics above its interests; a topic opens its page',
+    testWidgets('only its interests, though the server sends its topics',
         (tester) async {
       api
         ..on(
@@ -183,22 +185,15 @@ void main() {
               {'id': 3, 'name': 'Web Development', 'category_id': 2},
             ]))
         ..on('GET', '/interests/list', contractListBody);
-      final went = await _pump(tester, const ClubProfilePage(id: 5));
+      await _pump(tester, const ClubProfilePage(id: 5));
 
-      expect(_topic('development'), findsOneWidget);
       expect(find.text('Web Development'), findsOneWidget);
-      expect(
-        tester.getTopLeft(_topic('development')).dy,
-        lessThan(tester.getTopLeft(find.text('Web Development')).dy),
-      );
-
-      await tester.tap(_topic('development'));
-      await _settle(tester);
-      expect(went.single.$1, '/topics/development');
+      expect(_topic('development'), findsNothing);
+      expect(_topic('arts'), findsNothing);
+      expect(find.byKey(const ValueKey('topic-tag-strip')), findsNothing);
     });
 
-    testWidgets('derived from interests when the server sends no topics',
-        (tester) async {
+    testWidgets('nor a topic worked out from its interests', (tester) async {
       api
         ..on(
             'GET',
@@ -220,7 +215,9 @@ void main() {
         ]);
       await _pump(tester, const ClubProfilePage(id: 5));
 
-      expect(_topic('deep-tech'), findsOneWidget);
+      expect(find.text('Blockchain'), findsOneWidget);
+      expect(_topic('deep-tech'), findsNothing);
+      expect(find.text('Deep Tech'), findsNothing);
     });
   });
 }

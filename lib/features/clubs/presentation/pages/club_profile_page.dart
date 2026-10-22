@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:finnet/shared/widgets/rating_stars.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
@@ -13,16 +14,14 @@ import 'package:finnet/features/clubs/presentation/providers/club_page_provider.
 import 'package:finnet/features/clubs/presentation/widgets/club_people.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/utils/image_url.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
-import 'package:finnet/features/topics/presentation/widgets/topic_tag_strip.dart';
-import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 import 'package:finnet/shared/motion.dart';
+import 'package:finnet/shared/widgets/animated_count.dart';
 import 'package:finnet/shared/widgets/pressable.dart';
 import 'package:finnet/shared/widgets/swap_label.dart';
 import 'package:finnet/shared/widgets/fade_switch.dart';
@@ -32,10 +31,12 @@ export 'package:finnet/features/clubs/data/models/club_info.dart'
 
 /// A club's PROFILE tab: the website's club page, in the app.
 ///
-/// Cover and tagline, who they are and where, follow, the club's website,
-/// what it is about, its events, the people who run it, who backs it, its
-/// links and how to reach it. Works signed out from the club's slug (the
-/// public page); following asks to sign in first.
+/// Its logo, name, tagline and place, how many follow it, its interests,
+/// follow, the club's website, what it is about, its events, the people who
+/// run it, who backs it, its links and how to reach it. No cover banner and
+/// no topics (the website has both): the page opens on the club itself, and
+/// its interests say what it is about. Works signed out from the club's
+/// slug (the public page); following asks to sign in first.
 class ClubProfilePage extends ConsumerStatefulWidget {
   final int id;
 
@@ -189,10 +190,11 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
 
   Widget _page(ClubInfo club) {
     final following = _following ?? club.isFollowing;
-    final followers = club.followersCount + _followerDelta;
+    // Never below nought, whatever an unfollow raced against.
+    final counted = club.followersCount + _followerDelta;
+    final followers = counted < 0 ? 0 : counted;
     final website = club.website;
     final hasCollege = club.org.name.trim().isNotEmpty;
-    final hasPlace = club.locationName.trim().isNotEmpty;
     final name = club.name.isEmpty ? 'Club' : club.name;
 
     return RefreshIndicator(
@@ -206,85 +208,12 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            ClubCoverBanner(
-              key: const ValueKey('club-cover'),
-              url: club.coverUrl,
-              seed: club.id,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClubLogo(url: imageUrlFrom(club.logo), size: 56),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      if (club.tagline.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          club.tagline,
-                          key: const ValueKey('club-tagline'),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[700],
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 4),
-                      Text(
-                        [
-                          '$followers ${followers == 1 ? 'Follower' : 'Followers'}',
-                          if (club.eventsHeld != null)
-                            '${club.eventsHeld} '
-                                '${club.eventsHeld == 1 ? 'event held' : 'events held'}',
-                        ].join(' · '),
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      // Its topics in their colours, above its interests.
-                      // A topic opens its own page, as on the site.
-                      TopicTagStrip(
-                        topGap: 8,
-                        declared: club.topics,
-                        interests: [
-                          for (final i in club.interests) i.toEntity(),
-                        ],
-                        onTopicTap: (topic) =>
-                            context.push(topicLocation(topic.slug)),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final (index, interest)
-                              in club.interests.indexed)
-                            InterestTag(
-                              label: interest.name,
-                              glyph: interest.toEntity().emoji,
-                              color: InterestTag.pastelAt(index),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+            ..._header(club, name: name, followers: followers),
+            const SizedBox(height: 20),
             // FOLLOW, the full width. "JOIN THE TEAM" sat beside it with
             // nothing behind it -- a dead button is a review rejection.
             SizedBox(
@@ -294,8 +223,11 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
                   key: const ValueKey('club-follow'),
                   onPressed: () => _toggleFollow(club),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2C333D),
+                    backgroundColor: AppColors.ink,
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   // FOLLOW turns into UNFOLLOW, and back, rather than
                   // flicking between them.
@@ -314,9 +246,12 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
                   key: const ValueKey('club-website'),
                   onPressed: () => _open(website),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF2C333D),
-                    side: const BorderSide(color: Color(0xFF2C333D)),
+                    foregroundColor: AppColors.ink,
+                    side: const BorderSide(color: AppColors.ink),
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   icon: const Icon(Icons.open_in_new, size: 18),
                   label: Text(
@@ -328,52 +263,36 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
                 ),
               ),
             ],
-            const SizedBox(height: 30),
+            const SizedBox(height: 28),
+            const ClubSectionTitle(title: 'ABOUT'),
             _buildDescriptionSection(club),
-            if (hasCollege || hasPlace) ...[
+            if (hasCollege) ...[
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  if (hasCollege)
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => _showOrganizationPopup(club.org),
-                        child: _infoCard(
-                          icon: AssetResources.college,
-                          title: 'College',
-                          value: club.org.name,
-                        ),
-                      ),
-                    ),
-                  if (hasCollege && hasPlace) const SizedBox(width: 12),
-                  if (hasPlace)
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => _showLocationPopup(club),
-                        child: _infoCard(
-                          icon: AssetResources.location,
-                          title: 'Location',
-                          value: club.locationName,
-                        ),
-                      ),
-                    ),
-                ],
+              GestureDetector(
+                onTap: () => _showOrganizationPopup(club.org),
+                child: _infoCard(
+                  icon: AssetResources.college,
+                  title: 'College',
+                  value: club.org.name,
+                ),
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
-                  child: GestureDetector(
+                  child: _eventRedirectCard(
+                    key: 'club-past-events',
+                    value: 'PAST EVENTS',
                     onTap: () => _navigateToClubEvents(club, isPast: true),
-                    child: _eventRedirectCard(value: 'PAST EVENTS'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: GestureDetector(
+                  child: _eventRedirectCard(
+                    key: 'club-upcoming-events',
+                    value: 'UPCOMING EVENTS',
                     onTap: () => _navigateToClubEvents(club, isPast: false),
-                    child: _eventRedirectCard(value: 'UPCOMING EVENTS'),
                   ),
                 ),
               ],
@@ -407,6 +326,79 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
         ),
       ),
     );
+  }
+
+  /// The top of the page, centred: the logo, the name, the tagline, where
+  /// the club is (a tap opens the map), how many follow it and how many
+  /// events it has held, then its interests.
+  List<Widget> _header(
+    ClubInfo club, {
+    required String name,
+    required int followers,
+  }) {
+    final place = club.locationName.trim();
+    return [
+      Container(
+        key: const ValueKey('club-logo'),
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.border, width: 0.5),
+        ),
+        child: ClubLogo(url: imageUrlFrom(club.logo), size: 88, radius: 19),
+      ),
+      const SizedBox(height: 14),
+      Semantics(
+        header: true,
+        child: Text(
+          name,
+          key: const ValueKey('club-name'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 36,
+            height: 1.0,
+            fontFamily: 'BebasNeue',
+            color: AppColors.border,
+          ),
+        ),
+      ),
+      if (club.tagline.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        Text(
+          club.tagline,
+          key: const ValueKey('club-tagline'),
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.35),
+        ),
+      ],
+      if (place.isNotEmpty) ...[
+        const SizedBox(height: 2),
+        _PlaceLine(place: place, onTap: () => _showLocationPopup(club)),
+      ] else
+        const SizedBox(height: 14),
+      _ClubStats(followers: followers, eventsHeld: club.eventsHeld),
+      // What the club is about: its interests, as the app's tags. Its
+      // topics ("Development", "Deep Tech") are left to Discover.
+      if (club.interests.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        Wrap(
+          key: const ValueKey('club-interests'),
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final (index, interest) in club.interests.indexed)
+              InterestTag(
+                label: interest.name,
+                glyph: interest.toEntity().emoji,
+                color: InterestTag.pastelAt(index),
+                fontSize: 13,
+              ),
+          ],
+        ),
+      ],
+    ];
   }
 
   /// The club's links that lead anywhere; nothing at all when there are
@@ -606,6 +598,7 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
     required String value,
   }) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
@@ -641,21 +634,34 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
     );
   }
 
-  Widget _eventRedirectCard({required String value}) {
-    return Container(
-      padding: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+  Widget _eventRedirectCard({
+    required String key,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return Pressable(
+      child: Material(
         color: Colors.white,
-        border: Border.all(color: AppColors.border, width: 0.5),
-      ),
-      child: Center(
-        child: Text(
-          value,
-          style: const TextStyle(
-            fontSize: 24,
-            fontFamily: 'BebasNeue',
-            overflow: TextOverflow.ellipsis,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: AppColors.border, width: 0.5),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: ValueKey(key),
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.all(8.0),
+            alignment: Alignment.center,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 24,
+                fontFamily: 'BebasNeue',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ),
         ),
       ),
@@ -681,45 +687,158 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
   }
 }
 
-/// The club's banner: its cover photo, or a band in a colour of its own
-/// when it has none (as on the website).
-class ClubCoverBanner extends StatelessWidget {
-  final String? url;
-  final int seed;
+/// Where the club is, under its tagline: a pin and the place. A tap opens
+/// the map; the whole line is the tap target, a full 48 points tall.
+class _PlaceLine extends StatelessWidget {
+  final String place;
+  final VoidCallback onTap;
 
-  const ClubCoverBanner({super.key, required this.url, required this.seed});
-
-  static const _bands = [
-    [Color(0xFFE1C9FF), Color(0xFFB8DFF2)],
-    [Color(0xFFF9FFA1), Color(0xFFFFC84A)],
-    [Color(0xFFB4E5BC), Color(0xFF17A58F)],
-    [Color(0xFFFFDEDD), Color(0xFFE1C9FF)],
-  ];
+  const _PlaceLine({required this.place, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final colors = _bands[seed.abs() % _bands.length];
-    final band = DecoratedBox(
-      key: const ValueKey('club-cover-fallback'),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: colors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return Semantics(
+      button: true,
+      label: place,
+      hint: 'Opens the map',
+      onTap: onTap,
+      excludeSemantics: true,
+      child: InkWell(
+        key: const ValueKey('club-place'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.location_on_outlined,
+                    size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    place,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[700],
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: AspectRatio(
-        // The website's cover is three times as wide as it is tall.
-        aspectRatio: 3,
-        child: AppNetworkImage(
-          url: url,
-          fit: BoxFit.cover,
-          placeholder: (_) => band,
-          errorWidget: (_) => band,
+  }
+}
+
+/// How many follow the club, and how many events it has held when the
+/// server says: big numbers on the app's yellow. Always there -- "0
+/// FOLLOWERS" too -- and ticking over as the person follows or unfollows.
+class _ClubStats extends StatelessWidget {
+  final int followers;
+  final int? eventsHeld;
+
+  const _ClubStats({required this.followers, required this.eventsHeld});
+
+  @override
+  Widget build(BuildContext context) {
+    final held = eventsHeld;
+    return Container(
+      key: const ValueKey('club-stats'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.paleYellow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Expanded(
+              child: _Stat(
+                key: const ValueKey('club-followers'),
+                value: followers,
+                label: followers == 1 ? 'FOLLOWER' : 'FOLLOWERS',
+                spoken: followers == 1 ? 'follower' : 'followers',
+              ),
+            ),
+            if (held != null) ...[
+              const VerticalDivider(
+                width: 1,
+                thickness: 0.5,
+                indent: 6,
+                endIndent: 6,
+                color: AppColors.border,
+              ),
+              Expanded(
+                child: _Stat(
+                  key: const ValueKey('club-events-held'),
+                  value: held,
+                  label: held == 1 ? 'EVENT HELD' : 'EVENTS HELD',
+                  spoken: held == 1 ? 'event held' : 'events held',
+                ),
+              ),
+            ],
+          ],
         ),
+      ),
+    );
+  }
+}
+
+final _grouped = NumberFormat.decimalPattern('en_IN');
+
+class _Stat extends StatelessWidget {
+  final int value;
+  final String label;
+
+  /// What a screen reader says after the number.
+  final String spoken;
+
+  const _Stat({
+    super.key,
+    required this.value,
+    required this.label,
+    required this.spoken,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '${_grouped.format(value)} $spoken',
+      excludeSemantics: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedCount(
+            value: value,
+            format: _grouped.format,
+            style: const TextStyle(
+              fontSize: 30,
+              height: 1.1,
+              fontFamily: 'BebasNeue',
+              color: AppColors.border,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              letterSpacing: 0.8,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
+          ),
+        ],
       ),
     );
   }
