@@ -19,6 +19,11 @@ class PushSwitches extends Equatable {
   /// Announcements from MyOtherApp.
   final bool platform;
 
+  /// What the server keeps for someone who never changed a switch: every
+  /// kind on (`app/core/notifications/topics.py`, `switches`). Shown until
+  /// the server's own answer, the first time Settings opens on a phone.
+  static const defaults = PushSwitches(clubs: true, topics: true, platform: true);
+
   PushSwitches copyWith({bool? clubs, bool? topics, bool? platform}) =>
       PushSwitches(
         clubs: clubs ?? this.clubs,

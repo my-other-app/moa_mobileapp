@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/core/themes/color_resources.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
+import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/threads/domain/entities/moderation.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
 import 'package:finnet/features/threads/domain/entities/thread_comment.dart';
@@ -199,6 +200,10 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
     }
 
     final viewerId = ref.watch(threadViewerIdProvider);
+    // Their picture as it is now: a change of avatar shows on their own
+    // comments at once, not at the next load of the post.
+    final myPicture = ref.watch(
+        profileProvider.select((s) => s.profile?.pictureUrl(small: true)));
     return Column(
       children: [
         for (final comment in comments) ...[
@@ -206,6 +211,7 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
             key: ValueKey('comment-${comment.id}'),
             comment: comment,
             clubLogoUrl: thread.club.logoUrl,
+            ownPictureUrl: comment.isBy(viewerId) ? myPicture : null,
             canDelete: comment.isBy(viewerId),
             isDeleting: state.deleting.contains(comment.id),
             onDelete: () => _confirmDelete(comment),

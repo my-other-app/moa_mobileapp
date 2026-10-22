@@ -21,6 +21,16 @@ class PushSettingsRepositoryImpl implements PushSettingsRepository {
       _guard(_remote.switches, 'switches');
 
   @override
+  Future<PushSwitches?> savedSwitches() async {
+    try {
+      return await _remote.savedSwitches();
+    } catch (e) {
+      debugPrint('PushSettingsRepository.savedSwitches error: $e');
+      return null;
+    }
+  }
+
+  @override
   Future<Result<PushSwitches>> setSwitches(
           {bool? clubs, bool? topics, bool? platform}) =>
       _guard(

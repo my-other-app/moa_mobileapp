@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/services/analytics_service.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
@@ -81,6 +83,18 @@ class _FakePushSettings implements PushSettingsRepository {
       throw UnimplementedError('${invocation.memberName} not needed here');
 }
 
+/// A server that has not answered yet -- the ~0.3-2 s from India to
+/// us-east-1 that the section used to sit out blank.
+class _UnansweredPushSettings implements PushSettingsRepository {
+  @override
+  Future<Result<PushSwitches?>> switches() =>
+      Completer<Result<PushSwitches?>>().future;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName} not needed here');
+}
+
 /// The privacy choices, kept in memory.
 class _MemoryChoices implements PrivacyChoicesStore {
   _MemoryChoices([this.kept = PrivacyChoices.defaults]);
@@ -143,6 +157,11 @@ Future<List<Uri>> _pump(WidgetTester tester,
 
 Future<void> _tap(WidgetTester tester, String key) async {
   final finder = find.byKey(ValueKey(key));
+  // A row far down the list may not be built yet: scroll to it first.
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(finder, 200,
+        scrollable: find.byType(Scrollable).first);
+  }
   await tester.ensureVisible(finder);
   // ensureVisible only asks for the scroll; the frame after it lays it out.
   await tester.pump();
@@ -181,6 +200,19 @@ void main() {
     expect(find.text('Club Updates'), findsNothing);
   });
 
+  testWidgets(
+      'Club Updates and Announcements are there before the server answers',
+      (tester) async {
+    // They used to appear only once GET /notifications/settings came back.
+    await _pump(tester, pushSettings: _UnansweredPushSettings());
+
+    expect(find.text('Event Notification'), findsOneWidget);
+    expect(find.text('Club Updates'), findsOneWidget);
+    expect(find.text('Announcements'), findsOneWidget);
+    expect(on(tester, 'push-switch-clubs'), isTrue);
+    expect(on(tester, 'push-switch-platform'), isTrue);
+  });
+
   testWidgets('the switches the server keeps, and turning one off',
       (tester) async {
     final settings = _FakePushSettings(
@@ -204,6 +236,20 @@ void main() {
       {'clubs': null, 'topics': false, 'platform': null}
     ]);
     expect(on(tester, 'push-switch-topics'), isFalse);
+  });
+
+  testWidgets('Change Avatar is the first row, and opens the picker',
+      (tester) async {
+    await _pump(tester);
+
+    expect(tester.widget<SettingsRow>(find.byType(SettingsRow).first).label,
+        'Change Avatar');
+    await _tap(tester, 'settings-change-avatar');
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('CHANGE AVATAR'), findsOneWidget);
+    expect(find.text('Take a photo'), findsOneWidget);
+    expect(find.text('Choose a photo'), findsOneWidget);
   });
 
   testWidgets('the privacy policy opens on the website', (tester) async {
@@ -290,6 +336,7 @@ void main() {
           for (final e in rows.evaluate()) (e.widget as SettingsRow).label,
         ],
         [
+          'Change Avatar',
           'Event Notification',
           'Club Updates',
           'Announcements',
@@ -309,6 +356,8 @@ void main() {
       );
       for (final element in rows.evaluate()) {
         final row = element.widget as SettingsRow;
+        // Their own picture in the circle, not an emoji.
+        if (row.picture != null) continue;
         final one = find.byWidget(row);
         expect(
             find.descendant(

@@ -105,12 +105,35 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
-  Future<Result<UserProfile>> updateAvatar(int avatarId) async {
+  Future<List<Avatar>?> getSavedAvatars() async {
     try {
-      final response = await remoteDataSource.updateAvatar(avatarId);
-      return Either.right(response.toEntity());
+      return (await remoteDataSource.getSavedAvatars())
+          ?.map((e) => e.toEntity())
+          .toList();
     } catch (e) {
-      debugPrint('ProfileRepository.updateAvatar error: $e');
+      debugPrint('ProfileRepository.getSavedAvatars error: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<Result<Avatar>> selectAvatar(int avatarId) async {
+    try {
+      return Either.right(
+          (await remoteDataSource.selectAvatar(avatarId)).toEntity());
+    } catch (e) {
+      debugPrint('ProfileRepository.selectAvatar error: $e');
+      return Either.left(mapErrorToFailure(e));
+    }
+  }
+
+  @override
+  Future<Result<ImageUrls?>> uploadPicture(String path) async {
+    try {
+      return Either.right(
+          (await remoteDataSource.uploadPicture(path))?.toEntity());
+    } catch (e) {
+      debugPrint('ProfileRepository.uploadPicture error: $e');
       return Either.left(mapErrorToFailure(e));
     }
   }

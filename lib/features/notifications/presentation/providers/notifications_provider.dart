@@ -59,10 +59,25 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 
   static const int _pageSize = 20;
 
+  Future<void>? _loading;
+
   /// Load initial notifications: the first page saved on this phone at
   /// once, when there is one and nothing is on screen yet, then the
   /// server's.
-  Future<void> loadNotifications() async {
+  ///
+  /// One read at a time: the inbox opening while [prefetch] is still out
+  /// waits for that read rather than sending a second.
+  Future<void> loadNotifications() =>
+      _loading ??= _load().whenComplete(() => _loading = null);
+
+  /// Read the first page ahead of the inbox: at start-up, on coming back to
+  /// the app, and when a push arrives while it is open (PersonalDataSync).
+  /// The inbox then opens on the latest lines -- the club update the push
+  /// was about included -- instead of the last saved page with the new
+  /// line popping in a round trip later.
+  Future<void> prefetch() => loadNotifications();
+
+  Future<void> _load() async {
     state = state.copyWith(isLoading: true, error: null);
 
     if (state.notifications.isEmpty) {

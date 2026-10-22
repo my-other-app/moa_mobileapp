@@ -101,12 +101,27 @@ void main() {
     });
 
     test('selecting an avatar is POST /user/avatar/select', () async {
-      adapter.body = _profileBody;
+      adapter.body = {'id': 3, 'name': 'img3', 'image': {}};
 
-      await dataSource.updateAvatar(3);
+      await dataSource.selectAvatar(3);
 
       expect(adapter.only.path, '/user/avatar/select');
       expect(adapter.only.method, 'POST');
+      expect(adapter.only.data, {'avatar_id': 3});
+    });
+
+    test('its answer is the avatar, not a profile', () async {
+      // It was read as a profile: one with the avatar's id and name.
+      adapter.body = {
+        'id': 3,
+        'name': 'img3',
+        'image': {'thumbnail': 'https://cdn.test/a3.thumbnail.png'},
+      };
+
+      final avatar = await dataSource.selectAvatar(3);
+
+      expect(avatar.id, 3);
+      expect(avatar.image.thumbnail, 'https://cdn.test/a3.thumbnail.png');
     });
 
     test('interests are at /interests/list', () async {

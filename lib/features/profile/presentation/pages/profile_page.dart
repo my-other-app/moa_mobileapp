@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/sign_out.dart';
+import 'package:finnet/features/profile/presentation/widgets/change_avatar_sheet.dart';
+import 'package:finnet/features/profile/presentation/widgets/my_picture.dart';
 import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/settings_row.dart';
 
 /// Profile Page - exact same UI as original, using Riverpod for state.
@@ -20,6 +21,9 @@ class ProfilePage extends ConsumerStatefulWidget {
 
   /// Where the profile would be, when it could not be loaded.
   static const failedKey = ValueKey('profile-failed');
+
+  /// The picture in the header, which opens "Change Avatar".
+  static const pictureKey = ValueKey('profile-picture');
 
   @override
   ConsumerState<ProfilePage> createState() => _ProfilePageState();
@@ -47,6 +51,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         asset: AssetResources.editprofile,
         label: 'Edit Profile',
         onTap: () => context.push('/profile/edit'),
+      ),
+      SettingsRow(
+        key: const ValueKey('profile-change-avatar'),
+        // The picture itself is right above, in the header.
+        emoji: '📸',
+        label: 'Change Avatar',
+        onTap: () => changeAvatar(context),
       ),
       SettingsRow(
         asset: AssetResources.mycertificates,
@@ -83,7 +94,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     ]);
 
     final tags = profile?.interests ?? [];
-    final avatarUrl = profile?.avatar?.image.original;
 
     // The shimmer only while there is nothing to show at all: the profile
     // saved on the phone is drawn at once, and stays while it is refreshed.
@@ -128,34 +138,36 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     : Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Avatar with proper clipping
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.purple.shade500,
-                            ),
-                            child: ClipOval(
-                              child: avatarUrl != null && avatarUrl.isNotEmpty
-                                  ? AppNetworkImage(
-                                      url: avatarUrl,
-                                      width: 60,
-                                      height: 60,
-                                      privacy: ImagePrivacy.private,
-                                      errorWidget: (_) => const Icon(
-                                          Icons.person,
-                                          size: 30,
-                                          color: Colors.white),
-                                      placeholder: (_) => const Center(
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
+                          // Their picture, which opens "Change Avatar":
+                          // the photo they uploaded, else their avatar.
+                          Semantics(
+                            button: true,
+                            label: 'Change avatar',
+                            child: GestureDetector(
+                              key: ProfilePage.pictureKey,
+                              onTap: () => changeAvatar(context),
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  const MyPicture(size: 60),
+                                  Positioned(
+                                    right: -2,
+                                    bottom: -2,
+                                    child: Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: const Color(0xFFE0E0E0)),
                                       ),
-                                    )
-                                  : const Icon(Icons.person,
-                                      size: 30, color: Colors.white),
+                                      child: const Icon(Icons.edit,
+                                          size: 12, color: Color(0xFF1E1E1E)),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(width: 16),

@@ -9,6 +9,10 @@ abstract class PushSettingsRepository {
   /// The switches, or null when the server keeps none.
   Future<Result<PushSwitches?>> switches();
 
+  /// The switches as last saved on this phone, or null when none are (or
+  /// they cannot be read). No network, never fails.
+  Future<PushSwitches?> savedSwitches();
+
   /// Turn some switches on or off; the switches as the server now has them.
   Future<Result<PushSwitches>> setSwitches({
     bool? clubs,
