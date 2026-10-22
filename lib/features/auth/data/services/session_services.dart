@@ -8,6 +8,7 @@ import 'package:finnet/core/cache/image_caches.dart';
 import 'package:finnet/core/cache/session_caches.dart';
 import 'package:finnet/core/services/notification_service.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
+import 'package:finnet/features/profile/data/datasources/certificate_pin_store.dart';
 
 /// This device's push registration, as signing in and out need it.
 abstract class PushRegistration {
@@ -109,14 +110,18 @@ final sessionRevokerProvider = Provider<SessionRevoker>(
 
 /// Everything kept on the phone about the person: cleared at sign-out, when
 /// the server ends the session, and at sign-in (so a second account never
-/// sees the first one's tickets, registrations, profile, PDFs or pictures).
-/// Posters and other public pictures stay.
+/// sees the first one's tickets, registrations, profile, certificates,
+/// PDFs or pictures). Posters and other public pictures stay.
 final sessionCachesProvider = Provider<SessionCaches>((ref) {
   final tickets = ref.watch(savedTicketsLocalDataSourceProvider);
+  final pins = ref.watch(certificatePinStoreProvider);
   return SessionCaches({
     'saved answers': () => ApiCache.instance.clear(),
     'saved tickets': tickets.clear,
-    'kept PDFs': () => DocumentCache.instance.clear(),
+    // Tickets' and certificates' renders and PDFs (TicketImages,
+    // CertificateDocuments): one directory.
+    'kept documents': () => DocumentCache.instance.clear(),
     'private pictures': AppImageCaches.clearPrivate,
+    'certificate pins': pins.clear,
   });
 });

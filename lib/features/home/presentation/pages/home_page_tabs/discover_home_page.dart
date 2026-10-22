@@ -9,10 +9,12 @@ import 'package:finnet/features/discover/domain/entities/discover_results.dart';
 import 'package:finnet/features/discover/domain/entities/discover_where.dart';
 import 'package:finnet/features/discover/domain/event_filters.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
+import 'package:finnet/features/discover/presentation/providers/discover_place_provider.dart';
 import 'package:finnet/features/discover/presentation/providers/discover_providers.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_format.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_sections.dart';
 import 'package:finnet/features/discover/presentation/widgets/filter_widgets.dart';
+import 'package:finnet/features/home/presentation/widgets/at_event_banner.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
 import 'package:finnet/features/topics/presentation/widgets/browse_by_topic_row.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
@@ -30,14 +32,15 @@ const _muted = Color(0xFF6B6B6B);
 
 /// The DISCOVER tab: the website's front page, natively.
 ///
-/// At the top, where the lists are about (placed by the person's
-/// connection: the server says the city), what is on in numbers, and quick
-/// ways into Find events. Then what is on near them, from the clubs they
-/// follow when signed in, the topics as tiles, this week, the clubs near
-/// them (or the most followed), online, popular, and the clubs' latest
-/// posts. A rail with nothing in it is left out. Every card opens the app's
-/// own event, club or post page. The saved copy is drawn first, and kept
-/// when the server cannot be reached.
+/// At the top, where the lists are about (the place the app keeps: the
+/// connection's first guess, or a city the person picked), what is on in
+/// numbers, and quick ways into Find events. Then what is on near them,
+/// from the clubs they follow when signed in, the topics as tiles, this
+/// week, the clubs near them, those further away, the most followed,
+/// online, popular, and the clubs' latest posts. Only what is within
+/// [nearKm] is called near. A rail with nothing in it is left out. Every
+/// card opens the app's own event, club or post page. The saved copy is
+/// drawn first, and kept when the server cannot be reached.
 class DiscoverHomePage extends ConsumerStatefulWidget {
   const DiscoverHomePage({super.key, this.onSeeFollowing});
 
@@ -67,10 +70,17 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
   Widget build(BuildContext context) {
     super.build(context);
     final home = ref.watch(discoverHomeProvider);
-    final data = home.valueOrNull;
+    // A page asked about another place -- the one before the person picked
+    // this one -- is not drawn under it: neither its rails nor its name.
+    final place =
+        ref.watch(discoverPlaceProvider.select((s) => s.place?.point));
+    final data = switch (home.valueOrNull) {
+      final DiscoverHome h when place == null || h.where.point == place => h,
+      _ => null,
+    };
 
     // The skeleton gives way to the page with a cross-fade.
-    if (data == null && home.isLoading) {
+    if (data == null && !home.hasError) {
       return const FadeSwitch(
           phase: ScreenPhase.loading, child: _HomeSkeleton());
     }
@@ -96,9 +106,14 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
         ? (ref.watch(followingRailProvider).valueOrNull ??
             const <DiscoverEvent>[])
         : const <DiscoverEvent>[];
-    final where = data.where;
+    final nearEvents = data.nearEvents;
+    final nearClubs = data.nearClubs;
+    final moreClubs = data.moreClubs;
+    final popularClubs = data.popularClubs;
 
     final sections = <Widget>[
+      // Checked in at an event that is on: its People Like You, first.
+      const AtEventBanner(),
       _DiscoverTop(home: data),
       if (data.isEmpty)
         DiscoverEmpty(
@@ -109,14 +124,14 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
           actionLabel: 'Browse all events',
           onAction: () => context.push(findEventsLocation(EventFilters.none)),
         ),
-      if (data.near.isNotEmpty && where.isPlaced)
+      if (nearEvents.isNotEmpty)
         DiscoverSection(
           key: const ValueKey('rail-near'),
           // The pill at the top names the place.
           title: 'Events near you',
           onSeeAll: () => context.push(findEventsLocation(const EventFilters(
               place: DiscoverPlace.near, sort: EventSort.distance))),
-          child: EventRail(events: data.near, heroScope: 'near'),
+          child: EventRail(events: nearEvents, heroScope: 'near'),
         ),
       if (following.isNotEmpty)
         DiscoverSection(
@@ -136,15 +151,30 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
               findEventsLocation(const EventFilters(when: EventWhen.thisWeek))),
           child: EventRail(events: data.thisWeek, heroScope: 'this-week'),
         ),
-      if (data.clubs.isNotEmpty)
+      if (nearClubs.isNotEmpty)
         DiscoverSection(
           key: const ValueKey('rail-clubs'),
-          title: data.clubsAreNear ? 'Clubs near you' : 'Popular clubs',
-          onSeeAll: () => context.push(clubsDirectoryLocation(data.clubsAreNear
-              ? const ClubFilters(
-                  place: DiscoverPlace.near, sort: ClubSort.nearby)
-              : ClubFilters.none)),
-          child: ClubRail(clubs: data.clubs),
+          title: 'Clubs near you',
+          onSeeAll: () => context.push(clubsDirectoryLocation(const ClubFilters(
+              place: DiscoverPlace.near, sort: ClubSort.nearby))),
+          child: ClubRail(clubs: nearClubs),
+        ),
+      // The clubs further off than near, each with its distance.
+      if (moreClubs.isNotEmpty)
+        DiscoverSection(
+          key: const ValueKey('rail-more-clubs'),
+          title: 'More clubs',
+          subtitle: 'Further away, nearest first',
+          onSeeAll: () => context.push(clubsDirectoryLocation()),
+          child: ClubRail(clubs: moreClubs),
+        ),
+      // Clubs with no distance: the most followed. Nothing about where.
+      if (popularClubs.isNotEmpty)
+        DiscoverSection(
+          key: const ValueKey('rail-popular-clubs'),
+          title: 'Popular clubs',
+          onSeeAll: () => context.push(clubsDirectoryLocation()),
+          child: ClubRail(clubs: popularClubs),
         ),
       if (data.online.isNotEmpty)
         DiscoverSection(
@@ -253,15 +283,16 @@ class _DiscoverTop extends StatelessWidget {
   }
 }
 
-/// "📍 Near Thiruvananthapuram ⌄": the place the server put the person in.
-/// Tapped, it says how that was worked out and offers everywhere instead.
-class _WherePill extends StatelessWidget {
+/// "📍 Near Thiruvananthapuram ⌄": the place the page is about. Tapped, it
+/// says how that was come by, and offers Find events near it or
+/// everywhere, a city instead, or the connection's guess again.
+class _WherePill extends ConsumerWidget {
   const _WherePill({required this.where});
 
   final DiscoverWhere where;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final label = where.isPlaced ? nearLabel(where) : 'Everywhere';
     return Semantics(
       button: true,
@@ -283,10 +314,19 @@ class _WherePill extends StatelessWidget {
                       ? DiscoverPlace.near
                       : DiscoverPlace.everywhere);
               if (picked == null || !context.mounted) return;
-              context.push(findEventsLocation(picked == DiscoverPlace.near
-                  ? const EventFilters(
-                      place: DiscoverPlace.near, sort: EventSort.distance)
-                  : EventFilters.none));
+              final places = ref.read(discoverPlaceProvider.notifier);
+              switch (picked) {
+                case PlacePick(:final place):
+                  context.push(findEventsLocation(place == DiscoverPlace.near
+                      ? const EventFilters(
+                          place: DiscoverPlace.near, sort: EventSort.distance)
+                      : EventFilters.none));
+                // The page is read again, about the new place.
+                case CityPick(:final city):
+                  places.pick(city);
+                case GuessAgainPick():
+                  places.guessAgain();
+              }
             },
             child: Padding(
               padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),

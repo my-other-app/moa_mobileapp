@@ -346,6 +346,11 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
               liveEventId, notification.liveWhat));
         }
         break;
+      case 'event_checkin' when eventId != null && notification.opensPeople:
+        // Checked in where People Like You is on: the list, as the push.
+        context.push('/events/$eventId/people',
+            extra: {'eventName': notification.event?.name ?? ''});
+        break;
       case 'event_checkin':
       case 'new_event':
       case 'nearby_event':

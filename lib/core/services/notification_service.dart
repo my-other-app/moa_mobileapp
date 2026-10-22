@@ -393,7 +393,8 @@ class NotificationService {
   /// or a poll (`event_live_join`) opens the event and, on top of it, the
   /// live room in the app ([liveJoinRoute]), so Back lands on the event. A
   /// club's new post (`club_thread`) opens that post; if it has been removed
-  /// since, its page says so.
+  /// since, its page says so. The check-in push (`event_checkin`) opens
+  /// People Like You when it says `open: people`, else the event.
   ///
   /// Any other push that carries a `url` to the website opens the app's
   /// screen for that address (`/events/{slug}`, `/clubs/{slug}`, ...: see
@@ -439,6 +440,9 @@ class NotificationService {
     if (eventId != null) {
       if (type == 'event_live_join') {
         return liveJoinRoute(eventId, data['what']);
+      }
+      if (type == 'event_checkin' && data['open']?.toString() == 'people') {
+        return '/events/$eventId/people';
       }
       if (type == 'event_live_update' || type == 'event_reminder' || type == 'event_started' || type == 'event_checkin') {
         return '/events/$eventId';

@@ -105,6 +105,7 @@ Map<String, dynamic> homeBody({
   List<Map<String, dynamic>>? online,
   List<Map<String, dynamic>>? popular,
   List<Map<String, dynamic>>? clubs,
+  List<Map<String, dynamic>>? clubsMore,
   List<Map<String, dynamic>>? threads,
 }) =>
     {
@@ -117,6 +118,8 @@ Map<String, dynamic> homeBody({
         {'id': 2, 'name': 'Workshop', 'icon': null, 'upcoming': 9},
       ],
       'clubs': clubs ?? [clubCard(5, name: 'Tinkerhub', distanceKm: 2.1)],
+      // Only from a server that sends it.
+      if (clubsMore != null) 'clubs_more': clubsMore,
       'threads': threads ?? [threadOut('t-1')],
       'stats': {'upcoming_events': 40, 'clubs': 12, 'cities': 3},
     };

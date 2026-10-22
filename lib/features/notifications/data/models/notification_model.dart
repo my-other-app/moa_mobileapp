@@ -201,6 +201,10 @@ class NotificationModel {
   /// `quiz` or `poll`, from the push's `what`.
   String? get liveWhat => jsonString(data?['what']);
 
+  /// A check-in note that opens People Like You (`open: people` in its
+  /// data): the event has it, and it was open when they came in.
+  bool get opensPeople => jsonString(data?['open']) == 'people';
+
   /// Get display icon based on notification type
   String get iconEmoji {
     switch (type) {

@@ -142,8 +142,8 @@ class AppImageCaches {
 
 /// Which of [objects] to delete to bring their total [size] to at most
 /// [maxBytes]: the least recently used first (never used counts as oldest),
-/// and no more than needed.
-@visibleForTesting
+/// and no more than needed. The picture caches and the kept documents
+/// (DocumentCache.trim) are both held to their bytes this way.
 List<T> overBudget<T>(
   List<T> objects, {
   required int maxBytes,

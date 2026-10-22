@@ -20,8 +20,8 @@ export 'package:finnet/features/discover/presentation/discover_navigation.dart';
 /// | `/topics` | Topics | `/topics` |
 /// | `/topics/:slug?interest=` | A topic | `/topics/{slug}` |
 ///
-/// The website's `near=lat,lng` is read as "near the person": the app sends
-/// no coordinates.
+/// The website's `near=lat,lng` is read as "near the person": near the
+/// place the app keeps, which every list is asked about.
 List<RouteBase> get discoverRoutes => [
       GoRoute(
         path: findEventsPath,

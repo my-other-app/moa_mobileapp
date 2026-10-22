@@ -69,10 +69,20 @@ String readableError(Object? error, {required String fallback}) {
 /// the club's plan doesn't include it.
 const networkingUnavailableCode = 'NETWORKING_UNAVAILABLE';
 
+/// ... NETWORKING_NOT_CHECKED_IN to someone not checked in yet,
+const networkingNotCheckedInCode = 'NETWORKING_NOT_CHECKED_IN';
+
+/// ... NETWORKING_CLOSED an hour after the event ends,
+const networkingClosedCode = 'NETWORKING_CLOSED';
+
+/// ... and NETWORKING_HIDDEN to someone hidden, when the server makes the
+/// switch two-way (by default it does not).
+const networkingHiddenCode = 'NETWORKING_HIDDEN';
+
 /// The copy for a networking page that can't load.
 String networkingErrorMessage(Object? error) {
   if (errorCodeOf(error) == networkingUnavailableCode) {
-    return "Networking isn't available for this event.";
+    return "This event doesn't have People Like You.";
   }
   return readableError(
     error,

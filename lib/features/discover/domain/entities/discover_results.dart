@@ -67,6 +67,13 @@ class EventResults extends Equatable {
   final List<CategoryCount> categories;
   final List<TopicFacet> topics;
 
+  /// The page as asked about [place]'s point: under its name. Without one,
+  /// as the server placed the caller.
+  EventResults about(DiscoverWhere? place) => place == null
+      ? this
+      : EventResults(
+          page: page, where: place, categories: categories, topics: topics);
+
   @override
   List<Object?> get props => [page, where, categories, topics];
 }
@@ -82,6 +89,11 @@ class ClubResults extends Equatable {
   final DiscoverPage<DiscoverClub> page;
   final DiscoverWhere where;
   final List<InterestCount> interests;
+
+  /// As [EventResults.about].
+  ClubResults about(DiscoverWhere? place) => place == null
+      ? this
+      : ClubResults(page: page, where: place, interests: interests);
 
   @override
   List<Object?> get props => [page, where, interests];
@@ -102,6 +114,10 @@ class DiscoverStats extends Equatable {
 
 /// `/discover/home`: what is on near the caller, this week, online and
 /// popular; the clubs (nearest, or most followed); the clubs' latest posts.
+///
+/// [nearEvents], [nearClubs], [moreClubs] and [popularClubs] are what the
+/// page shows: only what is within [nearKm] is called near, and only clubs
+/// with a distance are put nearest first.
 class DiscoverHome extends Equatable {
   const DiscoverHome({
     this.where = DiscoverWhere.unknown,
@@ -111,6 +127,7 @@ class DiscoverHome extends Equatable {
     this.popular = const [],
     this.categories = const [],
     this.clubs = const [],
+    this.clubsMore,
     this.threads = const [],
     this.stats = const DiscoverStats(),
   });
@@ -122,6 +139,11 @@ class DiscoverHome extends Equatable {
   final List<DiscoverEvent> popular;
   final List<CategoryCount> categories;
   final List<DiscoverClub> clubs;
+
+  /// `clubs_more`: the nearest clubs beyond [nearKm], each with its
+  /// distance. Null from a server that does not send it, whose [clubs] are
+  /// instead the nearest few however far.
+  final List<DiscoverClub>? clubsMore;
   final List<Thread> threads;
   final DiscoverStats stats;
 
@@ -132,12 +154,75 @@ class DiscoverHome extends Equatable {
       online.isEmpty &&
       popular.isEmpty &&
       clubs.isEmpty &&
+      (clubsMore?.isEmpty ?? true) &&
       threads.isEmpty;
 
-  /// The clubs are the ones nearest the caller (some have a distance),
-  /// rather than the most followed.
-  bool get clubsAreNear =>
-      where.isPlaced && clubs.any((c) => c.distanceKm != null);
+  /// The near rail: in-person events within [nearKm]. The server sends
+  /// only those; anything else it might add is near no one, and is left
+  /// out rather than shown as near.
+  List<DiscoverEvent> get nearEvents => [
+        if (where.isPlaced)
+          for (final e in near)
+            if (!e.isOnline && isNearby(e.distanceKm)) e,
+      ];
+
+  /// "Clubs near you": the clubs within [nearKm].
+  List<DiscoverClub> get nearClubs => [
+        if (where.isPlaced)
+          for (final c in clubs)
+            if (isNearby(c.distanceKm)) c,
+      ];
+
+  /// "More clubs": the clubs further than [nearKm], nearest first. From
+  /// [clubsMore]; from a server without it, the far ones among [clubs],
+  /// which were the nearest few however far (near Thiruvananthapuram: two
+  /// within 11 km, then six from 126 to 415 km off).
+  List<DiscoverClub> get moreClubs {
+    if (!where.isPlaced) return const [];
+    final seen = <Object>{};
+    final far = [
+      for (final c in [...clubs, ...?clubsMore])
+        if (c.distanceKm != null &&
+            !isNearby(c.distanceKm) &&
+            seen.add(_clubKey(c)))
+          c,
+    ]..sort((a, b) => a.distanceKm!.compareTo(b.distanceKm!));
+    return far;
+  }
+
+  /// "Popular clubs": the clubs sent without a distance -- the most
+  /// followed, when there is no place or no club near it, or clubs with no
+  /// place of their own -- less any already in another rail.
+  List<DiscoverClub> get popularClubs {
+    final shown = {
+      for (final c in [...nearClubs, ...moreClubs]) _clubKey(c),
+    };
+    return [
+      for (final c in clubs)
+        if ((!where.isPlaced || c.distanceKm == null) &&
+            !shown.contains(_clubKey(c)))
+          c,
+    ];
+  }
+
+  static Object _clubKey(DiscoverClub c) => c.slug ?? c.id;
+
+  /// The page as asked about [place]'s point: under its name. Without one,
+  /// as the server placed the caller.
+  DiscoverHome about(DiscoverWhere? place) => place == null
+      ? this
+      : DiscoverHome(
+          where: place,
+          near: near,
+          thisWeek: thisWeek,
+          online: online,
+          popular: popular,
+          categories: categories,
+          clubs: clubs,
+          clubsMore: clubsMore,
+          threads: threads,
+          stats: stats,
+        );
 
   @override
   List<Object?> get props => [
@@ -148,6 +233,7 @@ class DiscoverHome extends Equatable {
         popular,
         categories,
         clubs,
+        clubsMore,
         threads,
         stats
       ];

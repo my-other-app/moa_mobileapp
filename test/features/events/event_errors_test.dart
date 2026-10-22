@@ -30,7 +30,7 @@ void main() {
       expect(error.toString(), startsWith('ApiException:'));
 
       expect(networkingErrorMessage(error),
-          "Networking isn't available for this event.");
+          "This event doesn't have People Like You.");
       expect(errorCodeOf(error), 'NETWORKING_UNAVAILABLE');
     });
 
@@ -41,7 +41,7 @@ void main() {
         'error_code': 'NETWORKING_UNAVAILABLE',
       });
       expect(networkingErrorMessage(error),
-          "Networking isn't available for this event.");
+          "This event doesn't have People Like You.");
     });
 
     test("a refusal with words is shown in the server's words", () async {

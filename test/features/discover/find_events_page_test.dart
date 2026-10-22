@@ -212,6 +212,60 @@ void main() {
     expect(find.text('Near Thiruvananthapuram'), findsOneWidget);
   });
 
+  testWidgets("near, but the server couldn't place anyone: not called near",
+      (tester) async {
+    // Without a place the server drops the radius: the list is everything.
+    final repo = FakeDiscoverRepository()
+      ..onEvents = (_, __) => Either.right(parseEventResults(eventsPage([
+            eventCard(1, name: 'Hack Night'),
+            eventCard(2, name: 'Design Jam'),
+          ], where: whereNowhere)));
+    await _pump(tester, repo: repo, location: '/discover/events?near=1');
+
+    expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('discover-events-count')))
+            .textSpan!
+            .toPlainText(),
+        '2 events');
+    expect(find.text('Near you'), findsNothing);
+    expect(find.text('Everywhere'), findsOneWidget);
+  });
+
+  testWidgets('nothing near the place: says where, and offers everywhere',
+      (tester) async {
+    final repo = FakeDiscoverRepository()
+      ..onEvents = (f, __) => Either.right(parseEventResults(eventsPage(
+          f.isNear
+              ? const []
+              : [eventCard(3, name: 'Rust Webinar', online: true)],
+          where: {...whereTvm, 'city': 'Mumbai'})));
+    final h =
+        await _pump(tester, repo: repo, location: '/discover/events?near=1');
+
+    expect(find.text('NOTHING NEAR MUMBAI YET'), findsOneWidget);
+    await tester.tap(find.text('Show everywhere'));
+    await settle(tester);
+
+    expect(_last(h.repo).place, DiscoverPlace.everywhere);
+    expect(find.text('Rust Webinar'), findsOneWidget);
+  });
+
+  testWidgets('a city picked in Find events: the list is near it',
+      (tester) async {
+    final h = await _pump(tester);
+    expect(find.text('Everywhere'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('discover-where')));
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('discover-where-city-kochi')));
+    await settle(tester);
+
+    expect(_last(h.repo).place, DiscoverPlace.near);
+    expect(h.repo.eventAts.last, (lat: 9.982, lng: 76.3));
+    expect(find.text('Near Kochi'), findsOneWidget);
+  });
+
   testWidgets('nothing matches: a way to clear the filters', (tester) async {
     final repo = FakeDiscoverRepository()
       ..onEvents = (f, __) => Either.right(parseEventResults(eventsPage(

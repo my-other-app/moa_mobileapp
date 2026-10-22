@@ -40,6 +40,9 @@ void main() {
       '/events',
       '/events/',
       '/events/registration-success',
+      // People Like You: who else is checked in.
+      '/events/12/people',
+      '/events/hack-night-04/people',
       '/clubs',
       '/profile',
       '/profile/edit',

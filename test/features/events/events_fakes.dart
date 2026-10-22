@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -6,11 +7,13 @@ import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/cache/cache_store.dart';
+import 'package:finnet/core/cache/document_cache.dart';
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/network/interceptors/error_interceptor.dart';
 import 'package:finnet/features/events/data/ticket_images.dart';
 import 'package:finnet/features/payments/domain/entities/payment_order.dart';
 import 'package:finnet/features/payments/domain/repositories/payment_repository.dart';
+import 'package:finnet/features/profile/data/certificate_documents.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/profile/domain/repositories/profile_repository.dart';
 
@@ -72,6 +75,7 @@ RouteAdapter useFakeApi({ApiCache? cache}) {
   ApiCache.instance = cache ??
       ApiCache(shared: MemoryCacheStore(), personal: MemoryCacheStore());
   TicketImages.instance = MemoryTicketImages();
+  CertificateDocuments.instance = MemoryCertificateDocuments();
   final adapter = RouteAdapter();
   APIService.instance.dio
     ..httpClientAdapter = adapter
@@ -158,6 +162,60 @@ class MemoryTicketImages extends TicketImages {
     }
   }
 
+  /// The PDFs a screen asked to keep: none is fetched here.
+  final pdfsKept = <String>[];
+
+  @override
+  Future<void> keepPdf(String code, {DateTime? now}) async =>
+      pdfsKept.add(code);
+
   @override
   Future<void> forget(String code) async => kept.remove(code);
+}
+
+/// The certificates' renders kept in memory, fetched through the app's Dio
+/// (the fake API), for the same reason as [MemoryTicketImages].
+class MemoryCertificateDocuments extends CertificateDocuments {
+  final kept = <String, Uint8List>{};
+  final pdfsKept = <String>[];
+
+  @override
+  Future<Uint8List?> savedImage(String ticketId) async => kept[ticketId];
+
+  @override
+  Future<({Uint8List bytes, bool current})> fetchImage(String ticketId) async {
+    try {
+      final response = await APIService.instance.dio.get<List<int>>(
+        CertificateDocuments.imagePathFor(ticketId),
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final bytes = Uint8List.fromList(response.data ?? const []);
+      if (bytes.isEmpty) {
+        throw const FormatException('The document came back empty');
+      }
+      kept[ticketId] = bytes;
+      return (bytes: bytes, current: true);
+    } on DioException catch (e) {
+      final saved = kept[ticketId];
+      if (saved != null && ApiCacheInterceptor.gotNoAnswer(e)) {
+        return (bytes: saved, current: false);
+      }
+      rethrow;
+    }
+  }
+
+  /// The PDFs on the phone, by certificate; none unless a test puts one.
+  final pdfs = <String, SavedDocument>{};
+
+  @override
+  Future<SavedDocument> pdf(String ticketId) async =>
+      pdfs[ticketId] ??
+      (throw FileSystemException('No PDF kept in this test', ticketId));
+
+  @override
+  Future<void> keepPdf(String ticketId, {DateTime? now}) async =>
+      pdfsKept.add(ticketId);
+
+  @override
+  Future<void> forget(String ticketId) async => kept.remove(ticketId);
 }

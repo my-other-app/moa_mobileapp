@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:finnet/app/app.dart';
 import 'package:finnet/app/session_scope.dart';
 import 'package:finnet/core/cache/api_cache.dart';
+import 'package:finnet/core/cache/document_cache.dart';
 import 'package:finnet/core/cache/image_caches.dart';
 import 'package:finnet/core/services/analytics_service.dart';
 import 'package:finnet/core/services/notification_service.dart';
+import 'package:finnet/features/discover/data/datasources/discover_place_store.dart';
 import 'package:finnet/firebase_options.dart';
 
 void main() async {
@@ -35,15 +37,23 @@ void main() async {
       } catch (_) {}
     }
 
+    // The place the discover lists are about, read before the first frame
+    // so the first list is already asked about it. One store for the run:
+    // a new session after sign-out keeps the place.
+    final place = await FileDiscoverPlaceStore.open();
+
     runApp(
-      const SessionScope(
-        child: MyApp(),
+      SessionScope(
+        overrides: [discoverPlaceStoreProvider.overrideWithValue(place)],
+        child: const MyApp(),
       ),
     );
 
     // The picture caches count files; this holds them to their bytes too.
     // Off the start-up path, and harmless if it fails.
     unawaited(AppImageCaches.trim());
+    // The kept tickets and certificates, held to their cap.
+    unawaited(DocumentCache.instance.trim());
     // Saved answers past their week, or over their caps, go the same way.
     unawaited(ApiCache.instance.prune());
 

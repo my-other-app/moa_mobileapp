@@ -20,7 +20,8 @@ class SessionScope extends StatefulWidget {
 
   final Widget child;
 
-  /// Applied to every container this scope creates. For tests.
+  /// Applied to every container this scope creates: what outlives a
+  /// session (the discover place's store, from `main.dart`), and tests'.
   final List<Override> overrides;
 
   @override

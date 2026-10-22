@@ -7,6 +7,7 @@ import 'package:finnet/features/discover/domain/entities/discover_results.dart';
 import 'package:finnet/features/discover/domain/entities/discover_where.dart';
 import 'package:finnet/features/discover/domain/event_filters.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
+import 'package:finnet/features/discover/presentation/providers/discover_place_provider.dart';
 import 'package:finnet/features/discover/presentation/providers/discover_providers.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_calendar.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_event_card.dart';
@@ -100,7 +101,14 @@ class _FindEventsPageState extends ConsumerState<FindEventsPage> {
     final state = ref.watch(eventSearchProvider(_filters));
     final topics = ref.watch(topicDirectoryProvider).valueOrNull ?? const [];
     final meta = state.meta;
-    final where = meta?.where ?? DiscoverWhere.unknown;
+    // The place the answer is about; while it is on its way, the place the
+    // app keeps, which it is being asked about.
+    final where = meta?.where ??
+        ref.watch(discoverPlaceProvider).place ??
+        DiscoverWhere.unknown;
+    // Without a place the server drops the radius: near is everything, and
+    // the pill says so.
+    final unplaced = meta != null && !meta.where.isPlaced;
     final names =
         FilterNames(topics: topics, categories: meta?.categories ?? const []);
 
@@ -140,7 +148,7 @@ class _FindEventsPageState extends ConsumerState<FindEventsPage> {
               children: [
                 WherePill(
                   where: where,
-                  place: _filters.place,
+                  place: unplaced ? DiscoverPlace.everywhere : _filters.place,
                   onChanged: (p) => _apply(_filters.withPlace(p)),
                 ),
                 const SizedBox(width: 8),
@@ -392,35 +400,48 @@ class _Results extends ConsumerWidget {
       return ErrorView(message: state.error, onRetry: notifier.load);
     }
     final narrowed = filters.activeCount > 0 || filters.q.isNotEmpty;
+    final where = state.meta?.where ?? DiscoverWhere.unknown;
+    // Near, and the server knew where: the list is about that place.
+    final near = filters.isNear && where.isPlaced;
     if (state.items.isEmpty) {
       return RefreshIndicator(
         onRefresh: notifier.refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            DiscoverEmpty(
-              key: const ValueKey('discover-events-empty'),
-              title: 'No events match',
-              message: narrowed
-                  ? 'Try another day, a wider distance or fewer filters.'
-                  : 'Nothing is listed here yet. Clubs add new events all the time.',
-              actionLabel:
-                  narrowed ? 'Clear search and filters' : 'Browse clubs',
-              onAction: narrowed
-                  ? onClear
-                  : () => context.push(clubsDirectoryLocation()),
-            ),
+            if (near && !narrowed)
+              DiscoverEmpty(
+                key: const ValueKey('discover-events-empty'),
+                title: 'Nothing ${nearPhrase(where)} yet',
+                message: 'Clubs add new events all the time. See what is on '
+                    'everywhere, online events included.',
+                actionLabel: 'Show everywhere',
+                onAction: () =>
+                    onChanged(filters.withPlace(DiscoverPlace.everywhere)),
+              )
+            else
+              DiscoverEmpty(
+                key: const ValueKey('discover-events-empty'),
+                title: 'No events match',
+                message: narrowed
+                    ? 'Try another day, a wider distance or fewer filters.'
+                    : 'Nothing is listed here yet. Clubs add new events all the time.',
+                actionLabel:
+                    narrowed ? 'Clear search and filters' : 'Browse clubs',
+                onAction: narrowed
+                    ? onClear
+                    : () => context.push(clubsDirectoryLocation()),
+              ),
           ],
         ),
       );
     }
 
-    final where = state.meta?.where;
-    final scope = [
-      if (filters.radiusKm != null) 'within ${filters.radiusKm} km',
-      if (filters.isNear && filters.radiusKm == null && where != null)
-        nearPhrase(where),
-    ].join(' ');
+    final scope = !near
+        ? ''
+        : filters.radiusKm != null
+            ? 'within ${filters.radiusKm} km'
+            : nearPhrase(where);
 
     return RefreshIndicator(
       onRefresh: notifier.refresh,

@@ -2,12 +2,36 @@ import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/core/utils/json_read.dart';
 
-/// A certificate the user has earned by attending an event.
+/// The certificate id (its ticket id) in a certificate's address -- the
+/// website's `https://myotherapp.in/certificates/{id}`, which the server
+/// sends as `certificate_url`, or an older server's
+/// `/api/v1/events/certificates/{id}` -- or null for anything else.
+String? certificateIdFromUrl(String? url) {
+  final text = url?.trim() ?? '';
+  const marker = '/certificates/';
+  final at = text.lastIndexOf(marker);
+  if (at < 0) return null;
+  var id = text.substring(at + marker.length).split(RegExp('[?#/]')).first;
+  try {
+    id = Uri.decodeComponent(id).trim();
+  } catch (_) {
+    return null;
+  }
+  return id.isEmpty ? null : id;
+}
+
+/// The certificate inside the app: `/certificates/{id}`, which opens the
+/// person's own as the club designed it, saved for offline.
+String certificateRoute(String ticketId) =>
+    '/certificates/${Uri.encodeComponent(ticketId)}';
+
+/// A certificate the user holds for an event.
 ///
-/// There is no certificate table: a certificate exists when a registration
-/// has `is_attended`, and the server attaches `certificate_url` to those.
-/// So this is built from the event list filtered to the user's attended
-/// registrations.
+/// There is no certificate table: a certificate is a registration the
+/// organiser issued one to (or that checked in before any were issued),
+/// and the server marks those `has_certificate` and attaches
+/// `certificate_url`. So this is built from the event list filtered to the
+/// user's registrations ([holdsCertificate]).
 class Certificate {
   /// The registration's ticket id, which is also the certificate's id --
   /// it is what the PDF and web views are keyed by.
@@ -24,8 +48,8 @@ class Certificate {
   /// When the event happened, which is when the certificate was earned.
   final DateTime issuedOn;
 
-  /// The event poster, used as the card's thumbnail. The certificate itself
-  /// renders server-side as a PDF, so there is no image of it to show.
+  /// The event poster. The certificate itself is the server's render
+  /// ([imageUrl]), kept on the phone by CertificateDocuments.
   final String? thumbnailUrl;
 
   const Certificate({
@@ -65,6 +89,20 @@ class Certificate {
   String imageUrl(String apiBaseUrl) =>
       '$apiBaseUrl/events/certificates/$ticketId/image';
 
+  /// Whether the registration [json] carries a certificate the server
+  /// will hand over. The server says so itself (`has_certificate`): issued
+  /// by the organiser and not revoked, or checked in before any were
+  /// issued -- so a speaker issued one without checking in has one, and a
+  /// revoked one is gone. An older server sends only `is_attended`.
+  ///
+  /// Listing one the server refuses offered a render that never came, and
+  /// the app's own drawing stood in for the club's design.
+  static bool holdsCertificate(Map<String, dynamic> json) {
+    final held = json['has_certificate'];
+    if (held is bool) return held;
+    return json['is_attended'] == true;
+  }
+
   /// The title shown on the card and the detail screen.
   ///
   /// The event's own name, with "Certificate" appended only when the name
@@ -78,11 +116,8 @@ class Certificate {
 
   static Certificate? fromEventJson(Map<String, dynamic> json) {
     final ticketId = jsonString(json['ticket_id']);
-    // No ticket, or never checked in, means no certificate to show. The
-    // server refuses the PDF for those, so listing them would offer a
-    // download that cannot succeed.
     if (ticketId == null || ticketId.isEmpty) return null;
-    if (json['is_attended'] != true) return null;
+    if (!holdsCertificate(json)) return null;
 
     final club = jsonObject(json['club']);
     final category = jsonObject(json['category']);

@@ -6,6 +6,7 @@ import 'package:finnet/features/discover/data/models/discover_models.dart';
 import 'package:finnet/features/discover/domain/discover_paging.dart';
 import 'package:finnet/features/discover/domain/entities/discover_event.dart';
 import 'package:finnet/features/discover/domain/entities/discover_results.dart';
+import 'package:finnet/features/discover/domain/entities/discover_where.dart';
 import 'package:finnet/features/discover/domain/event_filters.dart';
 import 'package:finnet/features/discover/domain/repositories/discover_repository.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
@@ -51,6 +52,10 @@ class FakeDiscoverRepository implements DiscoverRepository {
   ]);
 
   final homeCalls = <int>[];
+
+  /// The point each front page was asked about.
+  final homeAts = <DiscoverPoint?>[];
+  final eventAts = <DiscoverPoint?>[];
   final eventCalls = <(EventFilters, PageRequest)>[];
   final calendarCalls = <(EventFilters, String)>[];
   final clubCalls = <(ClubFilters, PageRequest)>[];
@@ -64,49 +69,55 @@ class FakeDiscoverRepository implements DiscoverRepository {
   }
 
   @override
-  Future<Result<DiscoverHome>> home() async {
+  Future<Result<DiscoverHome>> home({DiscoverPoint? at}) async {
     homeCalls.add(homeCalls.length);
+    homeAts.add(at);
     await _wait();
     return homeResult;
   }
 
   @override
-  Future<DiscoverHome?> savedHome() async => savedHomeValue;
+  Future<DiscoverHome?> savedHome({DiscoverPoint? at}) async => savedHomeValue;
 
   @override
-  Future<Result<EventResults>> events(
-      EventFilters filters, PageRequest page) async {
+  Future<Result<EventResults>> events(EventFilters filters, PageRequest page,
+      {DiscoverPoint? at}) async {
     eventCalls.add((filters, page));
+    eventAts.add(at);
     await _wait();
     return onEvents(filters, page);
   }
 
   @override
-  Future<EventResults?> savedEvents(EventFilters filters) async => null;
+  Future<EventResults?> savedEvents(EventFilters filters,
+          {DiscoverPoint? at}) async =>
+      null;
 
   @override
-  Future<Result<CalendarMonth>> calendar(
-      EventFilters filters, String month) async {
+  Future<Result<CalendarMonth>> calendar(EventFilters filters, String month,
+      {DiscoverPoint? at}) async {
     calendarCalls.add((filters, month));
     await _wait();
     return onCalendar(filters, month);
   }
 
   @override
-  Future<CalendarMonth?> savedCalendar(
-          EventFilters filters, String month) async =>
+  Future<CalendarMonth?> savedCalendar(EventFilters filters, String month,
+          {DiscoverPoint? at}) async =>
       null;
 
   @override
-  Future<Result<ClubResults>> clubs(
-      ClubFilters filters, PageRequest page) async {
+  Future<Result<ClubResults>> clubs(ClubFilters filters, PageRequest page,
+      {DiscoverPoint? at}) async {
     clubCalls.add((filters, page));
     await _wait();
     return onClubs(filters, page);
   }
 
   @override
-  Future<ClubResults?> savedClubs(ClubFilters filters) async => null;
+  Future<ClubResults?> savedClubs(ClubFilters filters,
+          {DiscoverPoint? at}) async =>
+      null;
 
   @override
   Future<Result<DiscoverPage<Thread>>> threads(PageRequest page) async {

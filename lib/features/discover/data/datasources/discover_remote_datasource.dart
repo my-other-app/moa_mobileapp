@@ -7,6 +7,7 @@ import 'package:finnet/features/discover/data/models/discover_models.dart';
 import 'package:finnet/features/discover/domain/discover_paging.dart';
 import 'package:finnet/features/discover/domain/entities/discover_event.dart';
 import 'package:finnet/features/discover/domain/entities/discover_results.dart';
+import 'package:finnet/features/discover/domain/entities/discover_where.dart';
 import 'package:finnet/features/discover/domain/event_filters.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
@@ -22,25 +23,31 @@ final discoverRemoteDataSourceProvider =
 /// The calls behind the website's discovery, over the app's Dio.
 ///
 /// Every path is public (`app/api/discover/router.py`,
-/// `app/api/interests/router.py`). No coordinates are ever sent: the server
-/// places the caller by their connection's address.
+/// `app/api/interests/router.py`). The lists are asked about [at], the
+/// place the app keeps (`lat`, `lng`); without one, the server places the
+/// caller by their connection's address.
 ///
 /// The front page and each list's first page are sent with the shared
 /// cache policy, so the answer is saved (and revalidated by ETag) and the
 /// `saved*` reads can draw it at once next time, or offline. Later pages
-/// are not saved.
+/// are not saved. The point is part of what is asked, so each copy is kept
+/// for its place: one place's copy is never drawn for another.
 abstract class DiscoverRemoteDataSource {
-  Future<DiscoverHome> home();
-  Future<DiscoverHome?> savedHome();
+  Future<DiscoverHome> home({DiscoverPoint? at});
+  Future<DiscoverHome?> savedHome({DiscoverPoint? at});
 
-  Future<EventResults> events(EventFilters filters, PageRequest page);
-  Future<EventResults?> savedEvents(EventFilters filters);
+  Future<EventResults> events(EventFilters filters, PageRequest page,
+      {DiscoverPoint? at});
+  Future<EventResults?> savedEvents(EventFilters filters, {DiscoverPoint? at});
 
-  Future<CalendarMonth> calendar(EventFilters filters, String month);
-  Future<CalendarMonth?> savedCalendar(EventFilters filters, String month);
+  Future<CalendarMonth> calendar(EventFilters filters, String month,
+      {DiscoverPoint? at});
+  Future<CalendarMonth?> savedCalendar(EventFilters filters, String month,
+      {DiscoverPoint? at});
 
-  Future<ClubResults> clubs(ClubFilters filters, PageRequest page);
-  Future<ClubResults?> savedClubs(ClubFilters filters);
+  Future<ClubResults> clubs(ClubFilters filters, PageRequest page,
+      {DiscoverPoint? at});
+  Future<ClubResults?> savedClubs(ClubFilters filters, {DiscoverPoint? at});
 
   Future<DiscoverPage<Thread>> threads(PageRequest page);
   Future<DiscoverPage<Thread>?> savedThreads();
@@ -77,6 +84,11 @@ class DiscoverRemoteDataSourceImpl implements DiscoverRemoteDataSource {
         'limit': limit,
       };
 
+  /// [query] about [at]: its `lat` and `lng`.
+  static Map<String, dynamic> about(DiscoverPoint? at,
+          [Map<String, dynamic> query = const {}]) =>
+      at == null ? query : {...query, 'lat': at.lat, 'lng': at.lng};
+
   static Options _options({required bool save}) =>
       Options(extra: save ? CachePolicy.shared.extra : const {});
 
@@ -94,53 +106,61 @@ class DiscoverRemoteDataSourceImpl implements DiscoverRemoteDataSource {
       _saved.savedAnswer(_dio, path, query: query);
 
   @override
-  Future<DiscoverHome> home() async => parseHome(await _get(homePath));
+  Future<DiscoverHome> home({DiscoverPoint? at}) async =>
+      parseHome(await _get(homePath, query: about(at)));
 
   @override
-  Future<DiscoverHome?> savedHome() async {
-    final data = await _read(homePath);
+  Future<DiscoverHome?> savedHome({DiscoverPoint? at}) async {
+    final data = await _read(homePath, about(at));
     return data == null ? null : parseHome(data);
   }
 
   @override
-  Future<EventResults> events(EventFilters filters, PageRequest page) async =>
+  Future<EventResults> events(EventFilters filters, PageRequest page,
+          {DiscoverPoint? at}) async =>
       parseEventResults(await _get(
         eventsPath,
-        query: filters.eventsQuery(page),
+        query: about(at, filters.eventsQuery(page)),
         save: page.isFirst,
       ));
 
   @override
-  Future<EventResults?> savedEvents(EventFilters filters) async {
-    final data = await _read(eventsPath, filters.eventsQuery());
+  Future<EventResults?> savedEvents(EventFilters filters,
+      {DiscoverPoint? at}) async {
+    final data = await _read(eventsPath, about(at, filters.eventsQuery()));
     return data == null ? null : parseEventResults(data);
   }
 
   @override
-  Future<CalendarMonth> calendar(EventFilters filters, String month) async =>
+  Future<CalendarMonth> calendar(EventFilters filters, String month,
+          {DiscoverPoint? at}) async =>
       parseCalendar(
-        await _get(calendarPath, query: filters.calendarQuery(month)),
+        await _get(calendarPath,
+            query: about(at, filters.calendarQuery(month))),
         month: month,
       );
 
   @override
-  Future<CalendarMonth?> savedCalendar(
-      EventFilters filters, String month) async {
-    final data = await _read(calendarPath, filters.calendarQuery(month));
+  Future<CalendarMonth?> savedCalendar(EventFilters filters, String month,
+      {DiscoverPoint? at}) async {
+    final data =
+        await _read(calendarPath, about(at, filters.calendarQuery(month)));
     return data == null ? null : parseCalendar(data, month: month);
   }
 
   @override
-  Future<ClubResults> clubs(ClubFilters filters, PageRequest page) async =>
+  Future<ClubResults> clubs(ClubFilters filters, PageRequest page,
+          {DiscoverPoint? at}) async =>
       parseClubResults(await _get(
         clubsPath,
-        query: filters.clubsQuery(page),
+        query: about(at, filters.clubsQuery(page)),
         save: page.isFirst,
       ));
 
   @override
-  Future<ClubResults?> savedClubs(ClubFilters filters) async {
-    final data = await _read(clubsPath, filters.clubsQuery());
+  Future<ClubResults?> savedClubs(ClubFilters filters,
+      {DiscoverPoint? at}) async {
+    final data = await _read(clubsPath, about(at, filters.clubsQuery()));
     return data == null ? null : parseClubResults(data);
   }
 

@@ -27,20 +27,22 @@ class _Discover implements DiscoverRepository {
   String city = 'Kochi';
 
   @override
-  Future<DiscoverHome?> savedHome() async => null;
+  Future<DiscoverHome?> savedHome({DiscoverPoint? at}) async => null;
 
   @override
-  Future<Result<DiscoverHome>> home() async {
+  Future<Result<DiscoverHome>> home({DiscoverPoint? at}) async {
     homes++;
     return Either.right(DiscoverHome(where: DiscoverWhere(city: city)));
   }
 
   @override
-  Future<EventResults?> savedEvents(EventFilters filters) async => null;
+  Future<EventResults?> savedEvents(EventFilters filters,
+          {DiscoverPoint? at}) async =>
+      null;
 
   @override
-  Future<Result<EventResults>> events(
-      EventFilters filters, PageRequest page) async {
+  Future<Result<EventResults>> events(EventFilters filters, PageRequest page,
+      {DiscoverPoint? at}) async {
     eventPages++;
     return Either.right(const EventResults());
   }

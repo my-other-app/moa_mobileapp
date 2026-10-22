@@ -83,6 +83,22 @@ Future<void> _tap(WidgetTester tester, Finder finder) async {
   await _settle(tester);
 }
 
+/// Long enough for a sheet to come up or go down.
+Future<void> _settleSheet(WidgetTester tester) async {
+  for (var i = 0; i < 12; i++) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}
+
+/// [text] inside the widget keyed [key].
+Finder _within(String key, String text) => find.descendant(
+    of: find.byKey(ValueKey(key)), matching: find.text(text), matchRoot: true);
+
+/// [text] on an outlined button inside the widget keyed [key].
+Finder _buttonWithin(String key, String text) => find.descendant(
+    of: find.byKey(ValueKey(key)),
+    matching: find.widgetWithText(OutlinedButton, text));
+
 void main() {
   group('reading a club', () {
     test('/clubs/info: cover, tagline, team in order, partners', () {
@@ -231,14 +247,13 @@ void main() {
       api.on('GET', '/interests/list', const []);
     });
 
-    testWidgets('shows the cover, tagline, team with roles and partners',
+    testWidgets('shows the tagline, team with roles and partners',
         (tester) async {
       api.on('GET', '/clubs/info/12', clubInfoJson(picture: _local));
       final opened = await _pump(
           tester, const ClubProfilePage(id: 12, slug: 'robotics-club'),
           signedIn: true);
 
-      expect(find.byKey(const ValueKey('club-cover')), findsOneWidget);
       expect(find.text('We build robots that play football.'), findsOneWidget);
       expect(find.byKey(const ValueKey('club-team')), findsOneWidget);
       expect(find.text('TEAM'), findsOneWidget);
@@ -256,16 +271,6 @@ void main() {
             tester.getTopLeft(find.byKey(const ValueKey('club-member-1'))).dx),
       );
 
-      // A person's link opens.
-      await _tap(
-        tester,
-        find.descendant(
-          of: find.byKey(const ValueKey('club-member-0')),
-          matching: find.byKey(const ValueKey('member-link-x')),
-        ),
-      );
-      expect(opened.last, Uri.parse('https://x.com/asha'));
-
       // The website, prominently.
       await _tap(tester, find.byKey(const ValueKey('club-website')));
       expect(opened.last, Uri.parse('https://robotics.example.org'));
@@ -279,8 +284,6 @@ void main() {
 
       expect(find.byKey(const ValueKey('club-team')), findsNothing);
       expect(find.byKey(const ValueKey('club-partners')), findsNothing);
-      // The cover still has its band.
-      expect(find.byKey(const ValueKey('club-cover')), findsOneWidget);
     });
 
     testWidgets('signed in, follow goes to the server', (tester) async {
@@ -289,12 +292,12 @@ void main() {
         ..on('POST', '/clubs/follow/12', {'is_following': true});
       await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
 
-      expect(find.text('120 Followers'), findsOneWidget);
+      expect(_within('club-followers', '120'), findsOneWidget);
       await _tap(tester, find.byKey(const ValueKey('club-follow')));
 
       expect(api.sent('POST', '/clubs/follow/12'), hasLength(1));
       expect(find.text('UNFOLLOW'), findsOneWidget);
-      expect(find.text('121 Followers'), findsOneWidget);
+      expect(_within('club-followers', '121'), findsOneWidget);
     });
 
     testWidgets('the header shares the club page on the website',
@@ -316,6 +319,268 @@ void main() {
     });
   });
 
+  group('the top of the page', () {
+    late RouteAdapter api;
+
+    setUp(() {
+      api = useFakeApi();
+      api.on('GET', '/interests/list', const []);
+    });
+
+    testWidgets('no cover banner: it opens on the logo, name and tagline',
+        (tester) async {
+      api.on('GET', '/clubs/info/12', clubInfoJson(picture: _local));
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      expect(find.byKey(const ValueKey('club-cover')), findsNothing);
+      expect(find.byKey(const ValueKey('club-cover-fallback')), findsNothing);
+      // The logo is the first thing on the page, with no gap above it.
+      final logo = find.byKey(const ValueKey('club-logo'));
+      expect(logo, findsOneWidget);
+      expect(tester.getTopLeft(logo).dy, lessThan(40));
+      final top = [
+        logo,
+        find.byKey(const ValueKey('club-name')),
+        find.byKey(const ValueKey('club-tagline')),
+        find.byKey(const ValueKey('club-place')),
+        find.byKey(const ValueKey('club-stats')),
+        find.byKey(const ValueKey('club-interests')),
+        find.byKey(const ValueKey('club-follow')),
+      ].map((f) => tester.getTopLeft(f).dy).toList();
+      expect(top, orderedEquals([...top]..sort()));
+      expect(_within('club-name', 'Robotics Club'), findsOneWidget);
+    });
+
+    testWidgets('the place opens the map popup', (tester) async {
+      api.on('GET', '/clubs/info/12', clubInfoJson(picture: _local));
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      expect(_within('club-place', 'CET, Trivandrum'), findsOneWidget);
+      // Said once: the location card that repeated it is gone.
+      expect(find.text('Location'), findsNothing);
+      expect(tester.getSize(find.byKey(const ValueKey('club-place'))).height,
+          greaterThanOrEqualTo(48));
+      await _tap(tester, find.byKey(const ValueKey('club-place')));
+      expect(find.text('OPEN MAPS'), findsOneWidget);
+    });
+
+    testWidgets('its interests as tags, and no topic chips', (tester) async {
+      api.on('GET', '/clubs/info/12', clubInfoJson(picture: _local));
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      expect(_within('club-interests', 'Robotics'), findsOneWidget);
+      expect(_within('club-interests', 'Electronics'), findsOneWidget);
+      // The server sent the topic "Development"; the page leaves it out.
+      expect(find.byKey(const ValueKey('topic-tag-strip')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('topic-chip-development')), findsNothing);
+      expect(find.text('Development'), findsNothing);
+    });
+
+    testWidgets('the followers count shows at 0, and follows a follow',
+        (tester) async {
+      api
+        ..on('GET', '/clubs/info/12',
+            clubInfoJson(picture: _local, followers: 0))
+        ..on('POST', '/clubs/follow/12', {'is_following': true})
+        ..on('POST', '/clubs/unfollow/12', {'is_following': false});
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      expect(_within('club-followers', '0'), findsOneWidget);
+      expect(_within('club-followers', 'FOLLOWERS'), findsOneWidget);
+
+      await _tap(tester, find.byKey(const ValueKey('club-follow')));
+      expect(_within('club-followers', '1'), findsOneWidget);
+      expect(_within('club-followers', 'FOLLOWER'), findsOneWidget);
+
+      await _tap(tester, find.byKey(const ValueKey('club-follow')));
+      expect(api.sent('POST', '/clubs/unfollow/12'), hasLength(1));
+      expect(_within('club-followers', '0'), findsOneWidget);
+      expect(_within('club-followers', 'FOLLOWERS'), findsOneWidget);
+    });
+
+    testWidgets('a follow that fails puts the count back', (tester) async {
+      api
+        ..on('GET', '/clubs/info/12', clubInfoJson(picture: _local))
+        ..on('POST', '/clubs/follow/12', {'message': 'Nope'}, status: 500);
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-follow')));
+      expect(_within('club-followers', '120'), findsOneWidget);
+      expect(find.text('FOLLOW'), findsOneWidget);
+    });
+
+    testWidgets('a big count is grouped, and read out whole', (tester) async {
+      api.on('GET', '/clubs/info/12',
+          clubInfoJson(picture: _local, followers: 2560));
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      expect(_within('club-followers', '2,560'), findsOneWidget);
+      final handle = tester.ensureSemantics();
+      expect(tester.getSemantics(find.byKey(const ValueKey('club-followers'))),
+          isSemantics(label: '2,560 followers'));
+      handle.dispose();
+    });
+  });
+
+  group('the team and partners open a sheet', () {
+    late RouteAdapter api;
+
+    setUp(() {
+      api = useFakeApi();
+      api
+        ..on('GET', '/interests/list', const [])
+        ..on('GET', '/clubs/info/12', clubInfoJson(picture: _local));
+    });
+
+    testWidgets("a person's card: their name, role, club and links",
+        (tester) async {
+      final opened =
+          await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-member-0')));
+      await _settleSheet(tester);
+
+      const sheet = 'club-member-sheet';
+      expect(find.byKey(const ValueKey(sheet)), findsOneWidget);
+      expect(_within(sheet, 'Asha Menon'), findsOneWidget);
+      expect(_within(sheet, 'President'), findsOneWidget);
+      expect(_within(sheet, 'Robotics Club team'), findsOneWidget);
+      expect(_buttonWithin(sheet, 'Instagram'), findsOneWidget);
+      expect(_buttonWithin(sheet, 'Website'), findsOneWidget);
+
+      await tester.tap(_buttonWithin(sheet, 'X'));
+      await _settle(tester);
+      expect(opened.last, Uri.parse('https://x.com/asha'));
+    });
+
+    testWidgets("the ⓘ opens the person's sheet too", (tester) async {
+      final opened =
+          await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-member-info-1')));
+      await _settleSheet(tester);
+
+      const sheet = 'club-member-sheet';
+      expect(_within(sheet, 'Rahul Nair'), findsOneWidget);
+      expect(_within(sheet, 'Design lead'), findsOneWidget);
+      // Only the links that are safe to follow.
+      expect(_buttonWithin(sheet, 'Instagram'), findsNothing);
+      await tester.tap(_buttonWithin(sheet, 'LinkedIn'));
+      await _settle(tester);
+      expect(opened.last, Uri.parse('https://linkedin.com/in/rahul'));
+    });
+
+    testWidgets("a partner's tile and its ⓘ: the partner's sheet",
+        (tester) async {
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-partner-0')));
+      await _settleSheet(tester);
+      const sheet = 'club-partner-sheet';
+      expect(_within(sheet, 'Acme Robotics'), findsOneWidget);
+      expect(_within(sheet, 'Title sponsor'), findsOneWidget);
+      expect(_within(sheet, 'Partner of Robotics Club since 2022'),
+          findsOneWidget);
+
+      // A tap above the sheet closes it.
+      await tester.tapAt(const Offset(20, 20));
+      await _settleSheet(tester);
+      expect(find.byKey(const ValueKey(sheet)), findsNothing);
+
+      await _tap(tester, find.byKey(const ValueKey('club-partner-info-1')));
+      await _settleSheet(tester);
+      expect(_within(sheet, 'Maker Space'), findsOneWidget);
+      expect(_within(sheet, 'Partner of Robotics Club'), findsOneWidget);
+    });
+
+    testWidgets("a partner's website opens from its sheet", (tester) async {
+      // A server of its own, answering with this club.
+      useFakeApi()
+        ..on('GET', '/interests/list', const [])
+        ..on(
+          'GET',
+          '/clubs/info/12',
+          clubInfoJson(picture: _local, partners: [
+            {
+              'name': 'Acme Robotics',
+              'website': 'acme.example',
+              'description': 'Parts, and a workshop on Saturdays.',
+            },
+          ]),
+        );
+      final opened =
+          await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-partner-0')));
+      await _settleSheet(tester);
+      const sheet = 'club-partner-sheet';
+      expect(_within(sheet, 'Parts, and a workshop on Saturdays.'),
+          findsOneWidget);
+      await tester.tap(_buttonWithin(sheet, 'Website'));
+      await _settle(tester);
+      expect(opened.last, Uri.parse('https://acme.example'));
+    });
+
+    testWidgets('a swipe down closes the sheet', (tester) async {
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-member-0')));
+      await _settleSheet(tester);
+      final sheet = find.byKey(const ValueKey('club-member-sheet'));
+      expect(sheet, findsOneWidget);
+
+      await tester.fling(sheet, const Offset(0, 400), 1500);
+      await _settleSheet(tester);
+      expect(sheet, findsNothing);
+    });
+
+    testWidgets('each card is one button to a screen reader, its ⓘ 48 wide',
+        (tester) async {
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+      final handle = tester.ensureSemantics();
+
+      expect(
+        tester.getSemantics(find.byKey(const ValueKey('club-member-0'))),
+        isSemantics(
+          label: 'Asha Menon, President',
+          hint: 'Shows more about Asha Menon',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      expect(
+        tester.getSemantics(find.byKey(const ValueKey('club-partner-0'))),
+        isSemantics(
+          label: 'Acme Robotics, Title sponsor',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      for (final key in ['club-member-info-0', 'club-partner-info-0']) {
+        final size = tester.getSize(find.byKey(ValueKey(key)));
+        expect(size.width, greaterThanOrEqualTo(48), reason: key);
+        expect(size.height, greaterThanOrEqualTo(48), reason: key);
+      }
+      handle.dispose();
+    });
+
+    testWidgets('signed out, the public page opens the same sheets',
+        (tester) async {
+      api.on('GET', '/discover/clubs/robotics-club',
+          clubPublicJson(picture: _local));
+      final opened = await _pump(
+          tester, const ClubProfilePage(id: 12, slug: 'robotics-club'),
+          signedIn: false);
+
+      await _tap(tester, find.byKey(const ValueKey('club-member-0')));
+      await _settleSheet(tester);
+      await tester.tap(_buttonWithin('club-member-sheet', 'Instagram'));
+      await _settle(tester);
+      expect(opened.last, Uri.parse('https://instagram.com/asha'));
+    });
+  });
+
   group('signed out', () {
     late RouteAdapter api;
 
@@ -334,7 +599,15 @@ void main() {
       expect(api.sent('GET', '/clubs/info/12'), isEmpty);
       expect(find.text('Robotics Club'), findsOneWidget);
       expect(find.text('We build robots that play football.'), findsOneWidget);
-      expect(find.text('120 Followers · 9 events held'), findsOneWidget);
+      expect(_within('club-followers', '120'), findsOneWidget);
+      expect(_within('club-followers', 'FOLLOWERS'), findsOneWidget);
+      expect(_within('club-events-held', '9'), findsOneWidget);
+      expect(_within('club-events-held', 'EVENTS HELD'), findsOneWidget);
+      // Its interests; not its topic.
+      expect(_within('club-interests', 'Robotics'), findsOneWidget);
+      expect(_within('club-interests', 'Electronics'), findsOneWidget);
+      expect(find.text('Development'), findsNothing);
+      expect(find.byKey(const ValueKey('club-cover')), findsNothing);
       expect(find.text('Asha Menon'), findsOneWidget);
       expect(find.text('Acme Robotics'), findsOneWidget);
       expect(

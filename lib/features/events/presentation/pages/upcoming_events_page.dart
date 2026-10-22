@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
@@ -9,15 +10,17 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/presentation/pages/no_registered_event_page.dart';
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart';
+import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 
-class UpcomingEventsPage extends StatefulWidget {
+class UpcomingEventsPage extends ConsumerStatefulWidget {
   const UpcomingEventsPage({super.key});
 
   @override
-  State<UpcomingEventsPage> createState() => _UpcomingEventsPageState();
+  ConsumerState<UpcomingEventsPage> createState() =>
+      _UpcomingEventsPageState();
 }
 
-class _UpcomingEventsPageState extends State<UpcomingEventsPage>
+class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
     with AutomaticKeepAliveClientMixin, SavedFirstPageFeed<UpcomingEventsPage> {
   @override
   bool get wantKeepAlive => true;
@@ -38,6 +41,18 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage>
   void initState() {
     super.initState();
     fetchFirstPage();
+  }
+
+  /// The list came from the server: every ticket on it is saved for the
+  /// door in the background -- its details, its QR, the club's design and
+  /// its PDF -- so a registration made since the app started opens with no
+  /// network too, not only those saved at start-up.
+  @override
+  void onFirstPage(List<dynamic> items, {required bool fresh}) {
+    if (!fresh || items.isEmpty) return;
+    ref
+        .read(savedTicketsProvider.notifier)
+        .refreshIfOlderThan(const Duration(seconds: 30));
   }
 
   /// Opens the event straight into paying; the list is fetched again after,

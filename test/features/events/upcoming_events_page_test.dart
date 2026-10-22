@@ -1,8 +1,48 @@
+import 'package:dio/dio.dart';
+import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
+import 'package:finnet/features/events/data/repositories/saved_tickets_repository.dart';
+import 'package:finnet/features/events/data/ticket_images.dart';
+import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/events/presentation/pages/upcoming_events_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../auth/auth_fakes.dart';
 import 'events_fakes.dart';
+
+/// The saved tickets, counting how often they are brought up to date.
+class _Tickets extends SavedTicketsRepository {
+  _Tickets()
+      : super(
+          dio: Dio(),
+          local: SavedTicketsLocalDataSource(MemoryStorage()),
+        );
+
+  int refreshes = 0;
+
+  @override
+  Future<List<SavedTicket>> saved() async => const [];
+
+  @override
+  Future<List<SavedTicket>> refresh() async {
+    refreshes++;
+    return const [];
+  }
+}
+
+Future<void> _pumpPage(WidgetTester tester, _Tickets tickets) async {
+  await tester.pumpWidget(ProviderScope(
+    overrides: [
+      savedTicketsRepositoryProvider.overrideWithValue(tickets),
+      ticketImagesProvider.overrideWithValue(MemoryTicketImages()),
+    ],
+    child: const MaterialApp(home: Scaffold(body: UpcomingEventsPage())),
+  ));
+  for (var i = 0; i < 4; i++) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}
 
 Map<String, dynamic> _event(int id, {required Object? isPaid, Object? club}) =>
     {
@@ -37,16 +77,32 @@ void main() {
         ],
       },
     );
-    await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: UpcomingEventsPage())));
-    for (var i = 0; i < 4; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
-    }
+    await _pumpPage(tester, _Tickets());
 
     expect(find.text('FINISH PAYMENT'), findsOneWidget);
     expect(find.text('Payment due'), findsOneWidget);
     expect(find.text('VIEW TICKET'), findsOneWidget);
     expect(find.textContaining('null'), findsNothing);
     expect(find.text('Unknown Organizer'), findsOneWidget);
+  });
+
+  testWidgets(
+      'the list from the server saves its tickets for the door, in the '
+      'background', (tester) async {
+    // A registration made since the app started was on this list but not
+    // on the phone: offline at the door it opened as "Your ticket", with
+    // no date, no place and no design.
+    useFakeApi().on(
+      'GET',
+      '/events/list?is_registered=true&is_ended=false&offset=0&limit=10',
+      {
+        'items': [_event(2, isPaid: true, club: {'id': 3, 'name': 'Tinkerhub'})],
+      },
+    );
+    final tickets = _Tickets();
+    await _pumpPage(tester, tickets);
+
+    expect(find.text('VIEW TICKET'), findsOneWidget);
+    expect(tickets.refreshes, 1);
   });
 }

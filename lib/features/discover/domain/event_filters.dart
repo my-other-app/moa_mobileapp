@@ -119,9 +119,9 @@ enum EventFilterKey {
 
 /// What a list is about: everywhere, or near the person.
 ///
-/// Near is by connection only (no location permission, the owner's call):
-/// no point is sent, so the server places the caller by their address and
-/// a distance makes sense. Everywhere sends `radius_km=0`, the API's
+/// Near is the place the app keeps (no location permission, the owner's
+/// call: the connection's first guess, or a city picked), sent with each
+/// list as its point. Everywhere sends `radius_km=0`, the API's
 /// "anywhere".
 enum DiscoverPlace { everywhere, near }
 
@@ -316,10 +316,16 @@ class EventFilters extends Equatable {
         if (f.category != null) 'category': f.category,
         if (f.topic != null) 'topic': f.topic,
         if (f.interest != null) 'interest': f.interest,
-        if (f.format != null) 'type': f.format!.param,
+        // Near asks for in-person events: the server lets every online one
+        // through a radius, so they padded "near you" from anywhere.
+        // Online stays a tap away, and a format picked is kept.
+        if (f.format != null)
+          'type': f.format!.param
+        else if (f.isNear)
+          'type': EventFormat.inPerson.param,
         if (f.price != null) 'price': f.price!.param,
         // Everywhere is radius 0. Near sends none of its own unless one was
-        // picked: the server's 50 km around where it placed the caller.
+        // picked: the server's 50 km around the place.
         if (!f.isNear)
           'radius_km': 0
         else if (f.radiusKm != null)
@@ -349,8 +355,8 @@ class EventFilters extends Equatable {
   /// The filters a screen's address names; anything unknown is dropped.
   ///
   /// `near` is "1" (or the website's `lat,lng`, read as "near the person":
-  /// the app sends no points). An order by distance asks for near too, as
-  /// the website's "Events near you" link does.
+  /// near the place the app keeps). An order by distance asks for near too,
+  /// as the website's "Events near you" link does.
   static EventFilters fromParams(Map<String, String> params) {
     final near = (params['near'] ?? '').trim().isNotEmpty ||
         params['sort'] == EventSort.distance.param;

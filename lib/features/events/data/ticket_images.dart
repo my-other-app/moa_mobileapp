@@ -17,8 +17,9 @@ import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 /// offline; the server is asked again with the kept copy's ETag, so an
 /// unchanged ticket costs a 304.
 ///
-/// [prefetch] keeps every upcoming ticket's picture ready before the event,
-/// and deletes a revoked one's: a revoked ticket shows no QR of any kind.
+/// [prefetch] keeps every upcoming ticket's picture -- and its PDF, for
+/// Download and Share with no network -- ready before the event, and
+/// deletes a revoked one's: a revoked ticket shows no QR of any kind.
 class TicketImages {
   TicketImages({
     DocumentCache? cache,
@@ -58,6 +59,13 @@ class TicketImages {
   /// The API's address for it.
   static String pathFor(String code) => '/events/tickets/$code/image';
 
+  /// Where its PDF is kept: the name the ticket screen's Download and Share
+  /// have always used.
+  static String pdfNameFor(String code) =>
+      'ticket_${DocumentCache.safeName(code)}.pdf';
+
+  static String pdfPathFor(String code) => '/events/tickets/$code/pdf';
+
   /// The kept picture of ticket [code], or null. Reads the disk only.
   Future<Uint8List?> saved(String code) async {
     final kept = await _documents.kept(nameFor(code));
@@ -85,12 +93,37 @@ class TicketImages {
     return (bytes: await document.file.readAsBytes(), current: document.current);
   }
 
-  /// Delete ticket [code]'s kept picture.
-  Future<void> forget(String code) => _documents.remove(nameFor(code));
+  /// Delete ticket [code]'s kept picture and PDF.
+  Future<void> forget(String code) async {
+    await _documents.remove(nameFor(code));
+    await _documents.remove(pdfNameFor(code));
+  }
 
-  /// Bring the kept pictures in line with [tickets]: a revoked ticket's is
-  /// deleted; one missing, or older than [keepFor] ([keepIncompleteFor]
-  /// when incomplete), is fetched.
+  /// Keep ticket [code]'s PDF too, unless a fresh copy is already kept;
+  /// quietly, for a Download or a Share later with no network.
+  Future<void> keepPdf(String code, {DateTime? now}) async {
+    try {
+      if (await _fresh(pdfNameFor(code), now ?? DateTime.now())) return;
+      await _documents.fetch(
+        pdfPathFor(code),
+        name: pdfNameFor(code),
+        extra: {RetryInterceptor.noRetryKey: true},
+      );
+    } catch (e) {
+      debugPrint('TicketImages: could not keep the PDF of $code: $e');
+    }
+  }
+
+  Future<bool> _fresh(String name, DateTime at) async {
+    final kept = await _documents.kept(name);
+    return kept != null &&
+        at.difference(kept.savedAt) <
+            (kept.isFinal ? keepFor : keepIncompleteFor);
+  }
+
+  /// Bring the kept pictures and PDFs in line with [tickets]: a revoked
+  /// ticket's are deleted; one missing, or older than [keepFor]
+  /// ([keepIncompleteFor] when incomplete), is fetched.
   /// One at a time, so the server -- which renders each one -- is not
   /// asked for them all at once. Failures are logged and skipped.
   Future<void> prefetch(List<SavedTicket> tickets, {DateTime? now}) async {
@@ -101,12 +134,8 @@ class TicketImages {
           await forget(ticket.code);
           continue;
         }
-        final kept = await _documents.kept(nameFor(ticket.code));
-        final fresh = kept != null &&
-            at.difference(kept.savedAt) <
-                (kept.isFinal ? keepFor : keepIncompleteFor);
-        if (fresh) continue;
-        await fetch(ticket.code);
+        if (!await _fresh(nameFor(ticket.code), at)) await fetch(ticket.code);
+        await keepPdf(ticket.code, now: at);
       } catch (e) {
         debugPrint('TicketImages: could not keep ${ticket.code}: $e');
       }

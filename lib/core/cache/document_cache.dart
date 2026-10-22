@@ -6,7 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:finnet/core/api/api_helper.dart';
-import 'package:finnet/core/network/interceptors/retry_interceptor.dart';
+import 'package:finnet/core/cache/api_cache_interceptor.dart';
+import 'package:finnet/core/cache/image_caches.dart' show overBudget;
 
 /// A document on the phone, and whether it is known to be current.
 class SavedDocument {
@@ -53,12 +54,18 @@ class KeptDocument {
 ///    certificate PDF sends an ETag naming its design, revocation and
 ///    everything printed. The ticket PDF sends none yet, so it is
 ///    downloaded in full whenever there is a network -- never stale.
-/// 3. When the server cannot be reached at all, the kept copy is handed
-///    back marked not [SavedDocument.current]; with none kept, the error.
+/// 3. When no answer comes -- no connection, a timeout, or the gateway
+///    answering for a server that is down (502, 503, 504) -- the kept copy
+///    is handed back marked not [SavedDocument.current]; with none kept,
+///    the error.
 ///
 /// Files live in the app's support directory (app-private, not shown in
-/// Files), each beside a small `.meta.json` with its validators.
-/// [clear] deletes them all at sign-out.
+/// Files), each beside a small `.meta.json` with its validators, under a
+/// name made from the ticket's or certificate's id -- never from a link,
+/// which the server may sign afresh on every call. They are the person's
+/// own tickets and certificates, so nothing prunes them by age; [trim]
+/// holds them to [maxBytes] at start-up, and [clear] deletes them all at
+/// sign-out.
 class DocumentCache {
   DocumentCache({
     Dio? dio,
@@ -67,6 +74,10 @@ class DocumentCache {
         _root = root ?? _defaultRoot;
 
   static DocumentCache? _instance;
+
+  /// About 200 MB for the person's tickets, certificates and their PDFs:
+  /// hundreds of each. Past it, [trim] deletes the least recently saved.
+  static const maxBytes = 200 * 1024 * 1024;
 
   /// The app's one cache, over the app's Dio (so requests are signed).
   static DocumentCache get instance => _instance ??= DocumentCache();
@@ -167,8 +178,9 @@ class DocumentCache {
         ),
       );
     } on DioException catch (e) {
-      if (kept && RetryInterceptor.isConnectionFailure(e)) {
-        debugPrint('DocumentCache: offline, handing back the kept $name');
+      if (kept && noAnswer(e)) {
+        debugPrint('DocumentCache: no answer (${e.type}, '
+            '${e.response?.statusCode}), handing back the kept $name');
         return SavedDocument(file: file, current: false);
       }
       rethrow;
@@ -199,6 +211,44 @@ class DocumentCache {
       debugPrint('DocumentCache: $name came without an ETag; not final');
     }
     return SavedDocument(file: file, current: true);
+  }
+
+  /// Whether [error] means the server gave no answer worth having: none
+  /// came (offline, a timeout), or the gateway answered for it while it is
+  /// down. A refusal (403, 404, 410) is an answer, and is passed on.
+  static bool noAnswer(DioException error) =>
+      ApiCacheInterceptor.gotNoAnswer(error) ||
+      ApiCacheInterceptor.serverDown(error);
+
+  /// Bring the kept documents under [budget] bytes, the least recently
+  /// saved first. A ticket is saved again before its event (TicketImages),
+  /// so the ones deleted are old certificates and past tickets, which come
+  /// back the next time they are opened online. Run once at start-up, in
+  /// the background; failures are logged and ignored.
+  Future<void> trim({int budget = maxBytes}) async {
+    try {
+      final dir = await _root();
+      if (!await dir.exists()) return;
+      final documents = <(File, int, DateTime)>[];
+      await for (final entity in dir.list()) {
+        if (entity is! File || entity.path.endsWith('.meta.json')) continue;
+        final stat = await entity.stat();
+        documents.add((entity, stat.size, stat.modified));
+      }
+      for (final (file, _, _) in overBudget(
+        documents,
+        maxBytes: budget,
+        size: (d) => d.$2,
+        lastUsed: (d) => d.$3,
+      )) {
+        for (final path in [file.path, '${file.path}.meta.json']) {
+          final gone = File(path);
+          if (await gone.exists()) await gone.delete();
+        }
+      }
+    } catch (e) {
+      debugPrint('DocumentCache: trim failed: $e');
+    }
   }
 
   Future<Map<String, dynamic>> _readMeta(File file) async {
