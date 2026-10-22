@@ -75,6 +75,7 @@ class UserProfileModel {
       whatsapp: profile?.whatsapp,
       organization: profile?.org?.toEntity(),
       avatar: profile?.avatar?.toEntity(),
+      photo: profile?.photo,
       interests: interests?.map((e) => e.toEntity()).toList() ?? [],
       isProfileComplete: _isProfileComplete(),
       createdAt: null,
@@ -87,7 +88,7 @@ class UserProfileModel {
     return fullName != null &&
         fullName!.isNotEmpty &&
         profile?.org != null &&
-        profile?.avatar != null;
+        (profile?.avatar != null || profile?.photo != null);
   }
 }
 
@@ -119,6 +120,15 @@ class ProfileDetailsModel {
           : AvatarModel.fromJson(jsonObject(json['avatar'])!),
       profilePic: jsonObject(json['profile_pic']),
     );
+  }
+
+  /// The uploaded photo as sizes, or null when there is none (or none of
+  /// its sizes is an address).
+  ImageUrls? get photo {
+    final pic = profilePic;
+    if (pic == null) return null;
+    final urls = ImageUrlsModel.fromJson(pic).toEntity();
+    return urls.urlFor() == null ? null : urls;
   }
 
   Map<String, dynamic> toJson() {

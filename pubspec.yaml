@@ -74,6 +74,10 @@ dependencies:
   # Utilities
   equatable: ^2.0.7
   url_launcher: ^6.1.7
+  # "Change avatar" -> "Take a photo" / "Choose from library". On iOS the
+  # system photo picker; on Android the system Photo Picker (no storage
+  # permission) and the camera app.
+  image_picker: ^1.2.3
   
   # Ticket Features
   add_2_calendar: ^3.0.1  # Add events to device calendar

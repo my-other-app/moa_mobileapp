@@ -30,8 +30,16 @@ abstract class ProfileRepository {
   /// Get list of available avatars.
   Future<Result<List<Avatar>>> getAvatars();
 
-  /// Update user's avatar.
-  Future<Result<UserProfile>> updateAvatar(int avatarId);
+  /// The avatars as last saved on this phone, or null. No network, never
+  /// fails.
+  Future<List<Avatar>?> getSavedAvatars();
+
+  /// Make a preset avatar their picture (it replaces an uploaded photo).
+  Future<Result<Avatar>> selectAvatar(int avatarId);
+
+  /// Upload the photo at [path] as their picture; its sizes, or null when
+  /// the server did not say them (read the profile again for them).
+  Future<Result<ImageUrls?>> uploadPicture(String path);
 
   /// Get list of available interests.
   Future<Result<List<Interest>>> getInterests();

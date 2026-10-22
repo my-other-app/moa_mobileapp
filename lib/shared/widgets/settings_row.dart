@@ -17,6 +17,10 @@ class SettingsRow extends StatelessWidget {
   /// An emoji to draw as text, when there is no picture of it.
   final String? emoji;
 
+  /// Something to fill the circle with instead of an emoji: the person's
+  /// own picture, on "Change Avatar".
+  final Widget? picture;
+
   /// What a tap does, for a row that opens something.
   final VoidCallback? onTap;
 
@@ -34,11 +38,13 @@ class SettingsRow extends StatelessWidget {
     required this.label,
     this.asset,
     this.emoji,
+    this.picture,
     this.onTap,
     this.value,
     this.onChanged,
     this.padding = const EdgeInsets.symmetric(horizontal: gutter),
-  }) : assert(asset != null || emoji != null, 'a row has its emoji');
+  }) : assert(asset != null || emoji != null || picture != null,
+            'a row has its emoji');
 
   /// The space at the screen's edge.
   static const gutter = 16.0;
@@ -80,7 +86,8 @@ class SettingsRow extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Row(
                   children: [
-                    _EmojiCircle(asset: asset, emoji: emoji),
+                    _EmojiCircle(
+                        asset: asset, emoji: emoji, picture: picture),
                     const SizedBox(width: gap),
                     Expanded(
                       child: Text(
@@ -110,8 +117,9 @@ class SettingsRow extends StatelessWidget {
 class _EmojiCircle extends StatelessWidget {
   final String? asset;
   final String? emoji;
+  final Widget? picture;
 
-  const _EmojiCircle({required this.asset, required this.emoji});
+  const _EmojiCircle({required this.asset, required this.emoji, this.picture});
 
   static const _size = 24.0;
 
@@ -126,7 +134,10 @@ class _EmojiCircle extends StatelessWidget {
         color: AppColors.softGrey,
         shape: BoxShape.circle,
       ),
-      child: asset != null
+      clipBehavior: picture != null ? Clip.antiAlias : Clip.none,
+      child: picture != null
+          ? SizedBox.expand(child: picture)
+          : asset != null
           ? Image.asset(asset!, width: _size, height: _size)
           // Not scaled with the text, like the picture beside it.
           : Text(

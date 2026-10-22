@@ -9,6 +9,11 @@ class UserProfile extends Equatable {
   final String? whatsapp;
   final Organization? organization;
   final Avatar? avatar;
+
+  /// A photo they uploaded (`profile.profile_pic`), or null. When there is
+  /// one it is their picture -- the server, the website and the threads all
+  /// show it before the avatar ([pictureUrl]).
+  final ImageUrls? photo;
   final List<Interest> interests;
   final bool isProfileComplete;
   final DateTime? createdAt;
@@ -32,6 +37,7 @@ class UserProfile extends Equatable {
     this.whatsapp,
     this.organization,
     this.avatar,
+    this.photo,
     this.interests = const [],
     this.isProfileComplete = false,
     this.createdAt,
@@ -42,6 +48,31 @@ class UserProfile extends Equatable {
   /// An email/password account that has not verified its address yet.
   bool get needsEmailVerification => emailVerified == false;
 
+  /// Their picture as everyone sees it: the uploaded photo, else the
+  /// avatar they picked, else null. [small] for a picture drawn at most
+  /// ~50 points across (the 150 px thumbnail); otherwise the 500 px one.
+  String? pictureUrl({bool small = false}) =>
+      photo?.urlFor(small: small) ?? avatar?.image.urlFor(small: small);
+
+  /// The same profile with this picture: [avatar] and [photo] exactly as
+  /// given, null included -- picking an avatar replaces a photo.
+  UserProfile withPicture({required Avatar? avatar, required ImageUrls? photo}) =>
+      UserProfile(
+        id: id,
+        fullName: fullName,
+        email: email,
+        phone: phone,
+        whatsapp: whatsapp,
+        organization: organization,
+        avatar: avatar,
+        photo: photo,
+        interests: interests,
+        isProfileComplete: isProfileComplete,
+        createdAt: createdAt,
+        emailVerified: emailVerified,
+        networkingVisible: networkingVisible,
+      );
+
   UserProfile copyWith({
     String? id,
     String? fullName,
@@ -50,6 +81,7 @@ class UserProfile extends Equatable {
     String? whatsapp,
     Organization? organization,
     Avatar? avatar,
+    ImageUrls? photo,
     List<Interest>? interests,
     bool? isProfileComplete,
     DateTime? createdAt,
@@ -64,6 +96,7 @@ class UserProfile extends Equatable {
       whatsapp: whatsapp ?? this.whatsapp,
       organization: organization ?? this.organization,
       avatar: avatar ?? this.avatar,
+      photo: photo ?? this.photo,
       interests: interests ?? this.interests,
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,
       createdAt: createdAt ?? this.createdAt,
@@ -81,6 +114,7 @@ class UserProfile extends Equatable {
         whatsapp,
         organization,
         avatar,
+        photo,
         interests,
         isProfileComplete,
         createdAt,
@@ -144,6 +178,24 @@ class ImageUrls extends Equatable {
 
   /// Get medium resolution URL.
   String get mediumUrl => medium ?? original;
+
+  /// The first non-blank of the sizes, smallest first when [small]; null
+  /// when there is none.
+  String? urlFor({bool small = false}) {
+    final order = small
+        ? [thumbnail, medium, original]
+        : [medium, original, thumbnail];
+    for (final url in order) {
+      if (url != null && url.trim().isNotEmpty) return url;
+    }
+    return null;
+  }
+
+  /// Every size there is, for clearing them from the picture cache.
+  List<String> get allUrls => [
+        for (final url in {original, medium, thumbnail})
+          if (url != null && url.trim().isNotEmpty) url,
+      ];
 
   @override
   List<Object?> get props => [original, medium, thumbnail];

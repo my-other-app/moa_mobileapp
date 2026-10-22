@@ -13,6 +13,10 @@ class ThreadCommentTile extends StatelessWidget {
   /// The club's logo, used as the avatar on the club's own replies.
   final String? clubLogoUrl;
 
+  /// The reader's own picture as it is now, for a comment they wrote:
+  /// drawn instead of the one the comment was loaded with.
+  final String? ownPictureUrl;
+
   /// Whether to offer the delete button: only on your own comments.
   final bool canDelete;
 
@@ -31,6 +35,7 @@ class ThreadCommentTile extends StatelessWidget {
     super.key,
     required this.comment,
     this.clubLogoUrl,
+    this.ownPictureUrl,
     this.canDelete = false,
     this.isDeleting = false,
     this.onDelete,
@@ -45,7 +50,9 @@ class ThreadCommentTile extends StatelessWidget {
       children: [
         ThreadClubAvatar(
           name: comment.authorName,
-          logoUrl: comment.isClub ? clubLogoUrl : comment.authorAvatarUrl,
+          logoUrl: comment.isClub
+              ? clubLogoUrl
+              : ownPictureUrl ?? comment.authorAvatarUrl,
           size: 36,
           circle: true,
         ),

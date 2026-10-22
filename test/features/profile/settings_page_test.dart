@@ -157,6 +157,11 @@ Future<List<Uri>> _pump(WidgetTester tester,
 
 Future<void> _tap(WidgetTester tester, String key) async {
   final finder = find.byKey(ValueKey(key));
+  // A row far down the list may not be built yet: scroll to it first.
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(finder, 200,
+        scrollable: find.byType(Scrollable).first);
+  }
   await tester.ensureVisible(finder);
   // ensureVisible only asks for the scroll; the frame after it lays it out.
   await tester.pump();
@@ -231,6 +236,20 @@ void main() {
       {'clubs': null, 'topics': false, 'platform': null}
     ]);
     expect(on(tester, 'push-switch-topics'), isFalse);
+  });
+
+  testWidgets('Change Avatar is the first row, and opens the picker',
+      (tester) async {
+    await _pump(tester);
+
+    expect(tester.widget<SettingsRow>(find.byType(SettingsRow).first).label,
+        'Change Avatar');
+    await _tap(tester, 'settings-change-avatar');
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('CHANGE AVATAR'), findsOneWidget);
+    expect(find.text('Take a photo'), findsOneWidget);
+    expect(find.text('Choose a photo'), findsOneWidget);
   });
 
   testWidgets('the privacy policy opens on the website', (tester) async {
@@ -317,6 +336,7 @@ void main() {
           for (final e in rows.evaluate()) (e.widget as SettingsRow).label,
         ],
         [
+          'Change Avatar',
           'Event Notification',
           'Club Updates',
           'Announcements',
@@ -336,6 +356,8 @@ void main() {
       );
       for (final element in rows.evaluate()) {
         final row = element.widget as SettingsRow;
+        // Their own picture in the circle, not an emoji.
+        if (row.picture != null) continue;
         final one = find.byWidget(row);
         expect(
             find.descendant(
