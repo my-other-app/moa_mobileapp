@@ -15,6 +15,7 @@ import 'package:finnet/features/profile/data/photo_picker.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/profile/domain/repositories/profile_repository.dart';
+import 'package:finnet/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:finnet/features/profile/presentation/pages/profile_page.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/widgets/change_avatar_sheet.dart';
@@ -27,6 +28,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../events/events_fakes.dart' show useFakeApi;
 
 /// A picture cache that never answers: every picture stays loading, and
 /// nothing reaches a platform channel.
@@ -248,8 +251,8 @@ void main() {
       await openSheet(tester);
 
       expect(find.byKey(const ValueKey('avatar-choice-tick')), findsNothing);
-      expect(find.text('Or pick an avatar instead of your photo'),
-          findsOneWidget);
+      expect(
+          find.text('Or pick an avatar instead of your photo'), findsOneWidget);
     });
 
     testWidgets('the saved list shows even when the server cannot be reached',
@@ -328,8 +331,8 @@ void main() {
       await tester.pumpAndSettle();
 
       server.profile = _profile(avatar: _avatar(2));
-      server.selects.single.$2.complete(Either.left(const ServerFailure(
-          message: 'Something went wrong on our side.')));
+      server.selects.single.$2.complete(Either.left(
+          const ServerFailure(message: 'Something went wrong on our side.')));
       await tester.pumpAndSettle();
 
       expect(header(tester), _avatar(2).image.thumbnail);
@@ -490,12 +493,44 @@ void main() {
   });
 
   group('where it is', () {
-    testWidgets('tapping the picture on Profile opens the picker',
-        (tester) async {
-      // A phone's height: the loading shimmer is drawn for a phone.
+    /// A phone's height: the pages are drawn for a phone.
+    void phone(WidgetTester tester) {
       tester.view.physicalSize = const Size(1170, 2532);
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
+    }
+
+    testWidgets(
+        'on Edit Profile: the picture and "Change photo or avatar" open it',
+        (tester) async {
+      phone(tester);
+      useFakeApi().on('GET', '/orgs/list', <Object>[]);
+      server = _Profiles(_profile(avatar: _avatar(1)));
+      await tester.pumpWidget(ProviderScope(
+        overrides: [profileRepositoryProvider.overrideWithValue(server)],
+        child: const MaterialApp(home: EditProfilePage()),
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.byKey(EditProfilePage.changePictureKey));
+      await tester.pumpAndSettle();
+      expect(find.text('CHANGE AVATAR'), findsOneWidget);
+      expect(find.byKey(ChangeAvatarSheet.tileKey(1)), findsOneWidget);
+
+      Navigator.of(tester.element(find.text('CHANGE AVATAR'))).pop();
+      await tester.pumpAndSettle();
+      expect(find.text('CHANGE AVATAR'), findsNothing);
+
+      await tester.tap(find.byKey(EditProfilePage.pictureKey));
+      await tester.pumpAndSettle();
+      expect(find.text('CHANGE AVATAR'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Profile shows the picture, and leaves changing it to Edit '
+        'Profile', (tester) async {
+      phone(tester);
       server = _Profiles(_profile(avatar: _avatar(1)));
       await tester.pumpWidget(ProviderScope(
         overrides: [profileRepositoryProvider.overrideWithValue(server)],
@@ -504,12 +539,13 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(find.text('Change Avatar'), findsOneWidget, reason: 'the menu');
+      expect(find.byKey(ProfilePage.pictureKey), findsOneWidget);
+      expect(find.text('Change Avatar'), findsNothing, reason: 'the menu');
+      expect(find.text('Edit Profile'), findsOneWidget);
       await tester.tap(find.byKey(ProfilePage.pictureKey));
       await tester.pumpAndSettle();
 
-      expect(find.text('CHANGE AVATAR'), findsOneWidget);
-      expect(find.byKey(ChangeAvatarSheet.tileKey(1)), findsOneWidget);
+      expect(find.text('CHANGE AVATAR'), findsNothing);
     });
   });
 
@@ -533,8 +569,11 @@ void main() {
         ),
       ));
 
-      expect(tester.widget<ThreadClubAvatar>(find.byType(ThreadClubAvatar))
-          .logoUrl, _avatar(2).image.thumbnail);
+      expect(
+          tester
+              .widget<ThreadClubAvatar>(find.byType(ThreadClubAvatar))
+              .logoUrl,
+          _avatar(2).image.thumbnail);
     });
   });
 

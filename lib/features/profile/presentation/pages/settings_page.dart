@@ -12,8 +12,6 @@ import 'package:finnet/features/profile/presentation/pages/settings/blocked_user
 import 'package:finnet/features/profile/presentation/pages/settings/privacy_switches_section.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/sign_out.dart';
-import 'package:finnet/features/profile/presentation/widgets/change_avatar_sheet.dart';
-import 'package:finnet/features/profile/presentation/widgets/my_picture.dart';
 import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/confirmation_dialog.dart';
@@ -68,16 +66,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.only(top: 4, bottom: 32),
         children: [
-          // Their picture first, where people look for it: the photo they
-          // uploaded or the avatar they picked, and the sheet to change it.
-          SettingsRow(
-            key: const ValueKey('settings-change-avatar'),
-            label: 'Change Avatar',
-            picture: const MyPicture(size: SettingsRow.circle),
-            onTap: () => changeAvatar(context),
-          ),
-          const SettingsDivider(),
-
           // The notification switches, which the server keeps: off stops
           // that kind of push and takes this device out of its FCM topics.
           // Nothing shows on a server that keeps none (the system settings
