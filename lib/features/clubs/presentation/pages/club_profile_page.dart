@@ -384,7 +384,6 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
                 key: const ValueKey('club-team'),
                 clubName: name,
                 team: club.team,
-                onOpen: _open,
               ),
             ],
             if (club.partners.isNotEmpty) ...[

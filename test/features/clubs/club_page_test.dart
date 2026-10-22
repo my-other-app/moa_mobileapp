@@ -83,6 +83,22 @@ Future<void> _tap(WidgetTester tester, Finder finder) async {
   await _settle(tester);
 }
 
+/// Long enough for a sheet to come up or go down.
+Future<void> _settleSheet(WidgetTester tester) async {
+  for (var i = 0; i < 12; i++) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}
+
+/// [text] inside the widget keyed [key].
+Finder _within(String key, String text) => find.descendant(
+    of: find.byKey(ValueKey(key)), matching: find.text(text), matchRoot: true);
+
+/// [text] on an outlined button inside the widget keyed [key].
+Finder _buttonWithin(String key, String text) => find.descendant(
+    of: find.byKey(ValueKey(key)),
+    matching: find.widgetWithText(OutlinedButton, text));
+
 void main() {
   group('reading a club', () {
     test('/clubs/info: cover, tagline, team in order, partners', () {
@@ -256,16 +272,6 @@ void main() {
             tester.getTopLeft(find.byKey(const ValueKey('club-member-1'))).dx),
       );
 
-      // A person's link opens.
-      await _tap(
-        tester,
-        find.descendant(
-          of: find.byKey(const ValueKey('club-member-0')),
-          matching: find.byKey(const ValueKey('member-link-x')),
-        ),
-      );
-      expect(opened.last, Uri.parse('https://x.com/asha'));
-
       // The website, prominently.
       await _tap(tester, find.byKey(const ValueKey('club-website')));
       expect(opened.last, Uri.parse('https://robotics.example.org'));
@@ -313,6 +319,164 @@ void main() {
       expect(clubShareUrl(slug: header.clubSlug, id: header.clubId),
           'https://myotherapp.in/clubs/robotics-club');
       expect(find.byKey(const ValueKey('club-share')), findsOneWidget);
+    });
+  });
+
+  group('the team and partners open a sheet', () {
+    late RouteAdapter api;
+
+    setUp(() {
+      api = useFakeApi();
+      api
+        ..on('GET', '/interests/list', const [])
+        ..on('GET', '/clubs/info/12', clubInfoJson(picture: _local));
+    });
+
+    testWidgets("a person's card: their name, role, club and links",
+        (tester) async {
+      final opened =
+          await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-member-0')));
+      await _settleSheet(tester);
+
+      const sheet = 'club-member-sheet';
+      expect(find.byKey(const ValueKey(sheet)), findsOneWidget);
+      expect(_within(sheet, 'Asha Menon'), findsOneWidget);
+      expect(_within(sheet, 'President'), findsOneWidget);
+      expect(_within(sheet, 'Robotics Club team'), findsOneWidget);
+      expect(_buttonWithin(sheet, 'Instagram'), findsOneWidget);
+      expect(_buttonWithin(sheet, 'Website'), findsOneWidget);
+
+      await tester.tap(_buttonWithin(sheet, 'X'));
+      await _settle(tester);
+      expect(opened.last, Uri.parse('https://x.com/asha'));
+    });
+
+    testWidgets("the ⓘ opens the person's sheet too", (tester) async {
+      final opened =
+          await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-member-info-1')));
+      await _settleSheet(tester);
+
+      const sheet = 'club-member-sheet';
+      expect(_within(sheet, 'Rahul Nair'), findsOneWidget);
+      expect(_within(sheet, 'Design lead'), findsOneWidget);
+      // Only the links that are safe to follow.
+      expect(_buttonWithin(sheet, 'Instagram'), findsNothing);
+      await tester.tap(_buttonWithin(sheet, 'LinkedIn'));
+      await _settle(tester);
+      expect(opened.last, Uri.parse('https://linkedin.com/in/rahul'));
+    });
+
+    testWidgets("a partner's tile and its ⓘ: the partner's sheet",
+        (tester) async {
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-partner-0')));
+      await _settleSheet(tester);
+      const sheet = 'club-partner-sheet';
+      expect(_within(sheet, 'Acme Robotics'), findsOneWidget);
+      expect(_within(sheet, 'Title sponsor'), findsOneWidget);
+      expect(_within(sheet, 'Partner of Robotics Club since 2022'),
+          findsOneWidget);
+
+      // A tap above the sheet closes it.
+      await tester.tapAt(const Offset(20, 20));
+      await _settleSheet(tester);
+      expect(find.byKey(const ValueKey(sheet)), findsNothing);
+
+      await _tap(tester, find.byKey(const ValueKey('club-partner-info-1')));
+      await _settleSheet(tester);
+      expect(_within(sheet, 'Maker Space'), findsOneWidget);
+      expect(_within(sheet, 'Partner of Robotics Club'), findsOneWidget);
+    });
+
+    testWidgets("a partner's website opens from its sheet", (tester) async {
+      // A server of its own, answering with this club.
+      useFakeApi()
+        ..on('GET', '/interests/list', const [])
+        ..on(
+          'GET',
+          '/clubs/info/12',
+          clubInfoJson(picture: _local, partners: [
+            {
+              'name': 'Acme Robotics',
+              'website': 'acme.example',
+              'description': 'Parts, and a workshop on Saturdays.',
+            },
+          ]),
+        );
+      final opened =
+          await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-partner-0')));
+      await _settleSheet(tester);
+      const sheet = 'club-partner-sheet';
+      expect(_within(sheet, 'Parts, and a workshop on Saturdays.'),
+          findsOneWidget);
+      await tester.tap(_buttonWithin(sheet, 'Website'));
+      await _settle(tester);
+      expect(opened.last, Uri.parse('https://acme.example'));
+    });
+
+    testWidgets('a swipe down closes the sheet', (tester) async {
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-member-0')));
+      await _settleSheet(tester);
+      final sheet = find.byKey(const ValueKey('club-member-sheet'));
+      expect(sheet, findsOneWidget);
+
+      await tester.fling(sheet, const Offset(0, 400), 1500);
+      await _settleSheet(tester);
+      expect(sheet, findsNothing);
+    });
+
+    testWidgets('each card is one button to a screen reader, its ⓘ 48 wide',
+        (tester) async {
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+      final handle = tester.ensureSemantics();
+
+      expect(
+        tester.getSemantics(find.byKey(const ValueKey('club-member-0'))),
+        isSemantics(
+          label: 'Asha Menon, President',
+          hint: 'Shows more about Asha Menon',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      expect(
+        tester.getSemantics(find.byKey(const ValueKey('club-partner-0'))),
+        isSemantics(
+          label: 'Acme Robotics, Title sponsor',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      for (final key in ['club-member-info-0', 'club-partner-info-0']) {
+        final size = tester.getSize(find.byKey(ValueKey(key)));
+        expect(size.width, greaterThanOrEqualTo(48), reason: key);
+        expect(size.height, greaterThanOrEqualTo(48), reason: key);
+      }
+      handle.dispose();
+    });
+
+    testWidgets('signed out, the public page opens the same sheets',
+        (tester) async {
+      api.on('GET', '/discover/clubs/robotics-club',
+          clubPublicJson(picture: _local));
+      final opened = await _pump(
+          tester, const ClubProfilePage(id: 12, slug: 'robotics-club'),
+          signedIn: false);
+
+      await _tap(tester, find.byKey(const ValueKey('club-member-0')));
+      await _settleSheet(tester);
+      await tester.tap(_buttonWithin('club-member-sheet', 'Instagram'));
+      await _settle(tester);
+      expect(opened.last, Uri.parse('https://instagram.com/asha'));
     });
   });
 
