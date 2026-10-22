@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// The signed-in person's picture, in a circle [size] across: wherever the
@@ -54,7 +55,7 @@ class MyPicture extends ConsumerWidget {
       picture = localImage(context);
     } else if (photo != null) {
       picture = AppNetworkImage(
-        key: ValueKey(photo),
+        key: ValueKey(imageCacheKey(photo)),
         url: photo,
         width: size,
         height: size,
@@ -64,7 +65,7 @@ class MyPicture extends ConsumerWidget {
       );
     } else if (avatar != null) {
       picture = AppNetworkImage(
-        key: ValueKey(avatar),
+        key: ValueKey(imageCacheKey(avatar)),
         url: avatar,
         width: size,
         height: size,
