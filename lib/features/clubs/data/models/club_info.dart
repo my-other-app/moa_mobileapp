@@ -21,7 +21,8 @@ class ClubInfo {
   final String slug;
   final Map<String, dynamic> logo;
 
-  /// The banner across the top; null when the club has none.
+  /// The club's cover picture; null when it has none. The website shows it
+  /// across the top; the app's page does not.
   final String? coverUrl;
 
   /// One line under the name; empty when the club wrote none.
@@ -116,7 +117,7 @@ class ClubInfo {
           : <String, dynamic>{},
       interests: jsonObjects(json['interests']).map(Interest.fromJson).toList(),
       topics: TopicModel.declaredIn(json),
-      followersCount: jsonInt(json['followers_count']) ?? 0,
+      followersCount: _followers(json),
       contactPhone: jsonText(json['contact_phone']),
       contactEmail: jsonText(json['contact_email']),
       userData: json['user_data'] is Map
@@ -155,7 +156,7 @@ class ClubInfo {
             Interest(id: 0, name: name.trim(), icon: '', iconType: ''),
       ],
       topics: TopicModel.declaredIn(club),
-      followersCount: jsonInt(club['followers']) ?? 0,
+      followersCount: _followers(club),
       contactPhone: '',
       contactEmail: jsonText(club['contact_email']),
       userData: const <String, dynamic>{},
@@ -180,6 +181,17 @@ Map<String, dynamic> _logoMap(dynamic value) {
 }
 
 List<Object?> _list(Object? value) => value is List ? value : const [];
+
+/// How many follow a club: `followers_count` from the club detail,
+/// `followers` from the public page; `follower_count` (the column's own
+/// name) should either ever send that instead. Nought when none is sent.
+int _followers(Map<String, dynamic> json) {
+  for (final key in const ['followers_count', 'followers', 'follower_count']) {
+    final n = jsonInt(json[key]);
+    if (n != null) return n < 0 ? 0 : n;
+  }
+  return 0;
+}
 
 /// The entries of [value] read with [read], leaving out any without a name
 /// (there is nothing to show for one).
@@ -226,6 +238,30 @@ String? safeWebUrl(String? url) {
   return uri.toString();
 }
 
+/// One of a person's links as the club typed it -- a handle (`asha_m`,
+/// `@asha`) or a link -- as a link to open, the way the club's site and the
+/// public page make it (`sites/service.py` `_social_href`): a handle on
+/// Instagram or X is a profile there, on LinkedIn an `/in/` page. The club
+/// detail (`/clubs/info`) sends them as typed; the public page sends links.
+/// Null for anything that is not http(s) once made a link.
+String? socialHref(String kind, String? raw) {
+  final value = (raw ?? '').trim().replaceFirst(RegExp(r'^@+'), '');
+  if (value.isEmpty) return null;
+  // A link, or something that only looks like a handle because it has a
+  // scheme of its own (`javascript:`): read as a link, and refused if
+  // it is not http(s).
+  final isHandle = !value.contains(RegExp(r'[./:\s]'));
+  if (!isHandle) return safeWebUrl(value);
+  final handle = Uri.encodeComponent(value);
+  return switch (kind) {
+    'instagram' => 'https://instagram.com/$handle',
+    'x' => 'https://x.com/$handle',
+    'linkedin' => 'https://linkedin.com/in/$handle',
+    'youtube' => 'https://youtube.com/@$handle',
+    _ => null,
+  };
+}
+
 /// The host of a website, for a link's label: `tinkerhub.org`.
 String hostLabel(String url) {
   final host = Uri.tryParse(url)?.host ?? '';
@@ -245,6 +281,10 @@ class ClubTeamMember implements _Sorted {
   final String? linkedin;
   final String? x;
   final String? website;
+
+  /// A few words about them. The server has no bio for a club's team yet;
+  /// read so that the sheet shows one the day it does.
+  final String? bio;
   @override
   final int sortOrder;
 
@@ -256,14 +296,17 @@ class ClubTeamMember implements _Sorted {
     this.linkedin,
     this.x,
     this.website,
+    this.bio,
     this.sortOrder = 0,
   });
 
-  /// Either shape: the club detail's (links beside the name, the photo an
-  /// image dict) or the public page's (`links: {...}`, the photo a URL).
+  /// Either shape: the club detail's (links beside the name, as typed --
+  /// a handle or a link -- the photo an image dict) or the public page's
+  /// (`links: {...}` made links already, the photo a URL).
   factory ClubTeamMember.fromJson(Map<String, dynamic> json) {
     final links = jsonObject(json['links']) ?? json;
-    String? link(String key) => safeWebUrl(jsonString(links[key]));
+    String? link(String key) => socialHref(key, jsonString(links[key]));
+    final bio = jsonText(json['bio']).trim();
     return ClubTeamMember(
       name: jsonText(json['name']).trim(),
       role: jsonText(json['role']).trim(),
@@ -273,6 +316,7 @@ class ClubTeamMember implements _Sorted {
       linkedin: link('linkedin'),
       x: link('x'),
       website: link('website'),
+      bio: bio.isEmpty ? null : bio,
       sortOrder: jsonInt(json['sort_order']) ?? 0,
     );
   }
@@ -297,6 +341,11 @@ class ClubPartner implements _Sorted {
   /// The year they started, when the club said.
   final int? since;
   final String? logoUrl;
+
+  /// Their website, and a word about them. The server sends neither for a
+  /// partner yet; read so that the sheet shows them the day it does.
+  final String? website;
+  final String? description;
   @override
   final int sortOrder;
 
@@ -305,17 +354,24 @@ class ClubPartner implements _Sorted {
     this.role = '',
     this.since,
     this.logoUrl,
+    this.website,
+    this.description,
     this.sortOrder = 0,
   });
 
-  factory ClubPartner.fromJson(Map<String, dynamic> json) => ClubPartner(
-        name: jsonText(json['name']).trim(),
-        role: jsonText(json['role']).trim(),
-        since: jsonInt(json['since']),
-        logoUrl: imageUrlFrom(json['logo'],
-            prefer: const ['medium', 'thumbnail', 'original', 'large']),
-        sortOrder: jsonInt(json['sort_order']) ?? 0,
-      );
+  factory ClubPartner.fromJson(Map<String, dynamic> json) {
+    final description = jsonText(json['description']).trim();
+    return ClubPartner(
+      name: jsonText(json['name']).trim(),
+      role: jsonText(json['role']).trim(),
+      since: jsonInt(json['since']),
+      logoUrl: imageUrlFrom(json['logo'],
+          prefer: const ['medium', 'thumbnail', 'original', 'large']),
+      website: safeWebUrl(jsonString(json['website'])),
+      description: description.isEmpty ? null : description,
+      sortOrder: jsonInt(json['sort_order']) ?? 0,
+    );
+  }
 }
 
 class Interest {

@@ -9,6 +9,7 @@ library;
 Map<String, dynamic> clubInfoJson({
   String picture = 'https://media.myotherapp.in',
   bool following = false,
+  int followers = 120,
   List<Map<String, dynamic>>? team,
   List<Map<String, dynamic>>? partners,
 }) =>
@@ -41,8 +42,13 @@ Map<String, dynamic> clubInfoJson({
       },
       'interests': [
         {'id': 3, 'name': 'Robotics', 'category_id': 2},
+        {'id': 9, 'name': 'Electronics', 'category_id': 2},
       ],
-      'followers_count': 120,
+      // As production sends them: the distinct topics of its interests.
+      'topics': [
+        {'id': 2, 'slug': 'development', 'name': 'Development'},
+      ],
+      'followers_count': followers,
       'contact_phone': '+911234567890',
       'contact_email': 'hello@robotics.example.org',
       'user_data': {'is_following': following, 'is_pinned': false},
@@ -104,6 +110,7 @@ Map<String, dynamic> clubInfoJson({
 Map<String, dynamic> clubPublicJson({
   String picture = 'https://media.myotherapp.in',
   String? websiteUrl = 'https://robotics-club.myotherapp.in',
+  int followers = 120,
 }) =>
     {
       'club': {
@@ -114,7 +121,7 @@ Map<String, dynamic> clubPublicJson({
         'cover': '$picture/cover.jpg',
         'tagline': 'We build robots that play football.',
         'location_name': 'CET, Trivandrum',
-        'followers': 120,
+        'followers': followers,
         'upcoming_events': 2,
         'interests': ['Robotics', 'Electronics'],
         'distance_km': null,
