@@ -18,7 +18,6 @@ import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
-import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/shared/motion.dart';
 import 'package:finnet/shared/widgets/animated_count.dart';
@@ -31,9 +30,10 @@ export 'package:finnet/features/clubs/data/models/club_info.dart'
 
 /// A club's PROFILE tab: the website's club page, in the app.
 ///
-/// Its logo, name, tagline and place, how many follow it, its interests,
-/// follow, the club's website, what it is about, its events, the people who
-/// run it, who backs it, its links and how to reach it. No cover banner and
+/// Its logo and name, how many follow it and its events to come and held,
+/// its tagline, interests and place, follow (and join, when it says where),
+/// the club's website, what it is about, its events, the people who run it,
+/// who backs it, its links and how to reach it. No cover banner and
 /// no topics (the website has both): the page opens on the club itself, and
 /// its interests say what it is about. Works signed out from the club's
 /// slug (the public page); following asks to sign in first.
@@ -208,61 +208,13 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            ..._header(club, name: name, followers: followers),
-            const SizedBox(height: 20),
-            // FOLLOW, the full width. "JOIN THE TEAM" sat beside it with
-            // nothing behind it -- a dead button is a review rejection.
-            SizedBox(
-              width: double.infinity,
-              child: Pressable(
-                child: FilledButton(
-                  key: const ValueKey('club-follow'),
-                  onPressed: () => _toggleFollow(club),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.ink,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  // FOLLOW turns into UNFOLLOW, and back, rather than
-                  // flicking between them.
-                  child: SwapLabel(
-                    following ? 'UNFOLLOW' : 'FOLLOW',
-                    style: const TextStyle(fontSize: 24),
-                  ),
-                ),
-              ),
-            ),
-            if (website != null) ...[
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  key: const ValueKey('club-website'),
-                  onPressed: () => _open(website),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.ink,
-                    side: const BorderSide(color: AppColors.ink),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  icon: const Icon(Icons.open_in_new, size: 18),
-                  label: Text(
-                    'VISIT WEBSITE · ${hostLabel(website).toUpperCase()}',
-                    overflow: TextOverflow.ellipsis,
-                    style:
-                        const TextStyle(fontSize: 18, fontFamily: 'BebasNeue'),
-                  ),
-                ),
-              ),
-            ],
+            _header(club, name: name, followers: followers),
+            const SizedBox(height: 16),
+            _actions(club, following: following, website: website),
             const SizedBox(height: 28),
             const ClubSectionTitle(title: 'ABOUT'),
             _buildDescriptionSection(club),
@@ -328,77 +280,192 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
     );
   }
 
-  /// The top of the page, centred: the logo, the name, the tagline, where
-  /// the club is (a tap opens the map), how many follow it and how many
-  /// events it has held, then its interests.
-  List<Widget> _header(
+  /// The top of the page: the logo on the left; beside it, left-aligned,
+  /// the name, the numbers (followers, events to come, events held), the
+  /// tagline, the interests and where the club is (a tap opens the map).
+  Widget _header(
     ClubInfo club, {
     required String name,
     required int followers,
   }) {
     final place = club.locationName.trim();
-    return [
-      Container(
-        key: const ValueKey('club-logo'),
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.border, width: 0.5),
+    return Row(
+      key: const ValueKey('club-header'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClubLogo(
+          key: const ValueKey('club-logo'),
+          url: imageUrlFrom(club.logo),
+          size: 64,
+          radius: 10,
         ),
-        child: ClubLogo(url: imageUrlFrom(club.logo), size: 88, radius: 19),
-      ),
-      const SizedBox(height: 14),
-      Semantics(
-        header: true,
-        child: Text(
-          name,
-          key: const ValueKey('club-name'),
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 36,
-            height: 1.0,
-            fontFamily: 'BebasNeue',
-            color: AppColors.border,
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Semantics(
+                header: true,
+                child: Text(
+                  name,
+                  key: const ValueKey('club-name'),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.border,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              _ClubNumbers(
+                followers: followers,
+                upcoming: club.upcomingEvents,
+                held: club.eventsHeld,
+              ),
+              if (club.tagline.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  club.tagline,
+                  key: const ValueKey('club-tagline'),
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: Colors.grey[700],
+                    height: 1.35,
+                  ),
+                ),
+              ],
+              // What the club is about: its interests, as plain pastel
+              // tags. Its topics ("Development", "Deep Tech") are left to
+              // Discover.
+              if (club.interests.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Wrap(
+                  key: const ValueKey('club-interests'),
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final (index, interest) in club.interests.indexed)
+                      InterestTag(
+                        label: interest.name,
+                        color: _chipColors[index % _chipColors.length],
+                        fontSize: 13,
+                      ),
+                  ],
+                ),
+              ],
+              if (place.isNotEmpty)
+                _PlaceLine(place: place, onTap: () => _showLocationPopup(club))
+              else
+                const SizedBox(height: 4),
+            ],
           ),
         ),
+      ],
+    );
+  }
+
+  /// FOLLOW, and JOIN THE TEAM beside it when the club has somewhere to
+  /// join; then the club's website. JOIN THE TEAM once sat here with
+  /// nothing behind it -- a dead button is a review rejection -- so it shows
+  /// only with a link to follow ([ClubInfo.joinUrl]).
+  Widget _actions(
+    ClubInfo club, {
+    required bool following,
+    required String? website,
+  }) {
+    final join = club.joinUrl;
+    final follow = Pressable(
+      child: FilledButton(
+        key: const ValueKey('club-follow'),
+        onPressed: () => _toggleFollow(club),
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.ink,
+          foregroundColor: Colors.white,
+          minimumSize: const Size.fromHeight(56),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        // FOLLOW turns into UNFOLLOW, and back, rather than flicking
+        // between them.
+        child: SwapLabel(
+          following ? 'UNFOLLOW' : 'FOLLOW',
+          style: const TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
+        ),
       ),
-      if (club.tagline.isNotEmpty) ...[
-        const SizedBox(height: 6),
-        Text(
-          club.tagline,
-          key: const ValueKey('club-tagline'),
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.35),
-        ),
-      ],
-      if (place.isNotEmpty) ...[
-        const SizedBox(height: 2),
-        _PlaceLine(place: place, onTap: () => _showLocationPopup(club)),
-      ] else
-        const SizedBox(height: 14),
-      _ClubStats(followers: followers, eventsHeld: club.eventsHeld),
-      // What the club is about: its interests, as the app's tags. Its
-      // topics ("Development", "Deep Tech") are left to Discover.
-      if (club.interests.isNotEmpty) ...[
-        const SizedBox(height: 16),
-        Wrap(
-          key: const ValueKey('club-interests'),
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final (index, interest) in club.interests.indexed)
-              InterestTag(
-                label: interest.name,
-                glyph: interest.toEntity().emoji,
-                color: InterestTag.pastelAt(index),
-                fontSize: 13,
+    );
+    return Column(
+      children: [
+        if (join != null)
+          Row(
+            children: [
+              Expanded(
+                child: _outlineButton(
+                  key: 'club-join',
+                  label: 'JOIN THE TEAM',
+                  onPressed: () => _open(join),
+                ),
               ),
-          ],
-        ),
+              const SizedBox(width: 12),
+              Expanded(child: follow),
+            ],
+          )
+        else
+          SizedBox(width: double.infinity, child: follow),
+        if (website != null) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: _outlineButton(
+              key: 'club-website',
+              label: 'VISIT WEBSITE · ${hostLabel(website).toUpperCase()}',
+              icon: Icons.open_in_new,
+              // The club's address is long: smaller, so it is read whole.
+              fontSize: 18,
+              onPressed: () => _open(website),
+            ),
+          ),
+        ],
       ],
-    ];
+    );
+  }
+
+  /// White, with an ink edge: JOIN THE TEAM, VISIT WEBSITE.
+  Widget _outlineButton({
+    required String key,
+    required String label,
+    required VoidCallback onPressed,
+    IconData? icon,
+    double fontSize = 24,
+  }) {
+    final text = Text(
+      label,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(fontSize: fontSize, fontFamily: 'BebasNeue'),
+    );
+    final style = OutlinedButton.styleFrom(
+      foregroundColor: AppColors.ink,
+      backgroundColor: Colors.white,
+      side: const BorderSide(color: AppColors.ink),
+      minimumSize: const Size.fromHeight(56),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+    return Pressable(
+      child: icon == null
+          ? OutlinedButton(
+              key: ValueKey(key),
+              onPressed: onPressed,
+              style: style,
+              child: text,
+            )
+          : OutlinedButton.icon(
+              key: ValueKey(key),
+              onPressed: onPressed,
+              style: style,
+              icon: Icon(icon, size: 18),
+              label: text,
+            ),
+    );
   }
 
   /// The club's links that lead anywhere; nothing at all when there are
@@ -687,8 +754,8 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
   }
 }
 
-/// Where the club is, under its tagline: a pin and the place. A tap opens
-/// the map; the whole line is the tap target, a full 48 points tall.
+/// Where the club is, under its interests: a pin and the place. A tap
+/// opens the map; the whole line is the tap target, a full 48 points tall.
 class _PlaceLine extends StatelessWidget {
   final String place;
   final VoidCallback onTap;
@@ -710,7 +777,7 @@ class _PlaceLine extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 48),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: const EdgeInsets.only(right: 8, top: 6, bottom: 6),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -722,7 +789,6 @@ class _PlaceLine extends StatelessWidget {
                     place,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.grey[700],
@@ -739,105 +805,98 @@ class _PlaceLine extends StatelessWidget {
   }
 }
 
-/// How many follow the club, and how many events it has held when the
-/// server says: big numbers on the app's yellow. Always there -- "0
-/// FOLLOWERS" too -- and ticking over as the person follows or unfollows.
-class _ClubStats extends StatelessWidget {
-  final int followers;
-  final int? eventsHeld;
-
-  const _ClubStats({required this.followers, required this.eventsHeld});
-
-  @override
-  Widget build(BuildContext context) {
-    final held = eventsHeld;
-    return Container(
-      key: const ValueKey('club-stats'),
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.paleYellow,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border, width: 0.5),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          children: [
-            Expanded(
-              child: _Stat(
-                key: const ValueKey('club-followers'),
-                value: followers,
-                label: followers == 1 ? 'FOLLOWER' : 'FOLLOWERS',
-                spoken: followers == 1 ? 'follower' : 'followers',
-              ),
-            ),
-            if (held != null) ...[
-              const VerticalDivider(
-                width: 1,
-                thickness: 0.5,
-                indent: 6,
-                endIndent: 6,
-                color: AppColors.border,
-              ),
-              Expanded(
-                child: _Stat(
-                  key: const ValueKey('club-events-held'),
-                  value: held,
-                  label: held == 1 ? 'EVENT HELD' : 'EVENTS HELD',
-                  spoken: held == 1 ? 'event held' : 'events held',
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
+/// The interest tags' fills, in turn: blue, yellow, rose, green, peach,
+/// pink, lilac.
+const _chipColors = [
+  Color(0xFFB8DFF2),
+  Color(0xFFF9FFA1),
+  Color(0xFFFFDEDD),
+  Color(0xFFB4E5BC),
+  Color(0xFFFFE0C2),
+  Color(0xFFFFD1E8),
+  Color(0xFFE1C9FF),
+];
 
 final _grouped = NumberFormat.decimalPattern('en_IN');
 
-class _Stat extends StatelessWidget {
-  final int value;
-  final String label;
+/// One line of numbers under the name: "2,560 followers  3 upcoming
+/// 3 events held", the numbers bold and the words grey. The followers are
+/// always there, 0 too, ticking over as the person follows or unfollows;
+/// the others only when the server says and they are more than none. On a
+/// narrow phone the line wraps between the parts, never inside one.
+class _ClubNumbers extends StatelessWidget {
+  final int followers;
+  final int? upcoming;
+  final int? held;
 
-  /// What a screen reader says after the number.
-  final String spoken;
-
-  const _Stat({
-    super.key,
-    required this.value,
-    required this.label,
-    required this.spoken,
+  const _ClubNumbers({
+    required this.followers,
+    required this.upcoming,
+    required this.held,
   });
+
+  static const _number = TextStyle(
+    fontSize: 13,
+    height: 1.35,
+    fontWeight: FontWeight.w700,
+    color: AppColors.border,
+  );
 
   @override
   Widget build(BuildContext context) {
+    final words =
+        TextStyle(fontSize: 13, height: 1.35, color: Colors.grey[600]);
+    final soon = upcoming ?? 0;
+    final past = held ?? 0;
+    final parts = [
+      (
+        'club-followers',
+        followers,
+        followers == 1 ? 'follower' : 'followers',
+        followers == 1 ? 'follower' : 'followers',
+      ),
+      if (soon > 0)
+        (
+          'club-upcoming',
+          soon,
+          'upcoming',
+          soon == 1 ? 'upcoming event' : 'upcoming events',
+        ),
+      if (past > 0)
+        (
+          'club-events-held',
+          past,
+          past == 1 ? 'event held' : 'events held',
+          past == 1 ? 'event held' : 'events held',
+        ),
+    ];
     return Semantics(
-      label: '${_grouped.format(value)} $spoken',
+      label: [
+        for (final (_, n, _, spoken) in parts) '${_grouped.format(n)} $spoken',
+      ].join(', '),
       excludeSemantics: true,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Wrap(
+        key: const ValueKey('club-stats'),
+        spacing: 12,
+        runSpacing: 2,
         children: [
-          AnimatedCount(
-            value: value,
-            format: _grouped.format,
-            style: const TextStyle(
-              fontSize: 30,
-              height: 1.1,
-              fontFamily: 'BebasNeue',
-              color: AppColors.border,
+          for (final (key, n, word, _) in parts)
+            Row(
+              key: ValueKey(key),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (key == 'club-followers')
+                  AnimatedCount(
+                    value: n,
+                    format: _grouped.format,
+                    style: _number,
+                  )
+                else
+                  Text(_grouped.format(n), style: _number),
+                const SizedBox(width: 4),
+                Text(word, style: words),
+              ],
             ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              letterSpacing: 0.8,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
-            ),
-          ),
         ],
       ),
     );

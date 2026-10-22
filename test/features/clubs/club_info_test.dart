@@ -66,5 +66,29 @@ void main() {
               .followersCount,
           0);
     });
+
+    test('events to come: the count, or the list when that is longer', () {
+      expect(ClubInfo.fromDiscoverJson(clubPublicJson()).upcomingEvents, 2);
+      final listed = clubPublicJson()..['upcoming'] = [{}, {}, {}];
+      expect(ClubInfo.fromDiscoverJson(listed).upcomingEvents, 3);
+      final none = clubPublicJson();
+      (none['club'] as Map<String, dynamic>).remove('upcoming_events');
+      none.remove('upcoming');
+      expect(ClubInfo.fromDiscoverJson(none).upcomingEvents, isNull);
+      // The club detail's own counts include drafts: not read.
+      expect(ClubInfo.fromJson(clubInfoJson()).upcomingEvents, isNull);
+    });
+
+    test('somewhere to join, only when the server sends a safe link', () {
+      expect(ClubInfo.fromJson(clubInfoJson()).joinUrl, isNull);
+      expect(
+          ClubInfo.fromJson({...clubInfoJson(), 'join_url': 'forms.example/j'})
+              .joinUrl,
+          'https://forms.example/j');
+      expect(
+          ClubInfo.fromJson(
+              {...clubInfoJson(), 'join_url': 'javascript:alert(1)'}).joinUrl,
+          isNull);
+    });
   });
 }

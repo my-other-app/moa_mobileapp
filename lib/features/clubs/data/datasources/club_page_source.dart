@@ -33,10 +33,13 @@ final clubPageSourceProvider = Provider<ClubPageSource>((ref) {
 /// A club's page, from the server or as last saved on this phone.
 ///
 /// Signed in, it is `GET /clubs/info/{id}`, which knows whether you follow
-/// the club. Signed out, that answers 401, so it is the public page the
-/// website shows, `GET /discover/clubs/{slug}` -- which needs the slug.
-/// Signed out with no slug, `/clubs/info/{id}` is tried all the same, and
-/// its 401 is what the page turns into "sign in to see this club".
+/// the club, with what only the public page says -- the events it has held
+/// and has coming, its own site -- from `GET /discover/clubs/{slug}` beside
+/// it (when that fails, the page simply goes without). Signed out,
+/// `/clubs/info` answers 401, so it is the public page alone -- which needs
+/// the slug. Signed out with no slug, `/clubs/info/{id}` is tried all the
+/// same, and its 401 is what the page turns into "sign in to see this
+/// club".
 class ClubPageSource {
   ClubPageSource(this._dio, {ApiCache? cache}) : _cache = cache;
 
@@ -53,19 +56,36 @@ class ClubPageSource {
       key.slug.isNotEmpty && (!signedIn || key.id <= 0);
 
   Future<ClubInfo?> saved(ClubKey key, {required bool signedIn}) async {
+    final cache = _cache ?? ApiCache.instance;
     final public = readsPublicPage(key, signedIn: signedIn);
-    final data = await (_cache ?? ApiCache.instance).savedAnswer(
+    final data = await cache.savedAnswer(
       _dio,
       public ? publicPath(key.slug) : infoPath(key.id),
     );
     if (data is! Map) return null;
     final json = Map<String, dynamic>.from(data);
-    return public ? ClubInfo.fromDiscoverJson(json) : ClubInfo.fromJson(json);
+    if (public) return ClubInfo.fromDiscoverJson(json);
+    final info = ClubInfo.fromJson(json);
+    // Its public page too, when this phone has that saved.
+    final slug = key.slug.isNotEmpty ? key.slug : info.slug;
+    if (slug.isEmpty) return info;
+    final page = await cache.savedAnswer(_dio, publicPath(slug));
+    return page is Map
+        ? info.withPublicFacts(
+            ClubInfo.fromDiscoverJson(Map<String, dynamic>.from(page)))
+        : info;
   }
 
   Future<ClubInfo> fresh(ClubKey key, {required bool signedIn}) async {
     if (!readsPublicPage(key, signedIn: signedIn)) {
-      return ClubInfo.fromJson(await _get(infoPath(key.id), signedIn));
+      // Both at once when the slug is known; else the detail says it.
+      final early = key.slug.isEmpty ? null : _publicFacts(key.slug, signedIn);
+      final info = ClubInfo.fromJson(await _get(infoPath(key.id), signedIn));
+      final public = await (early ??
+          (info.slug.isEmpty
+              ? Future<ClubInfo?>.value()
+              : _publicFacts(info.slug, signedIn)));
+      return public == null ? info : info.withPublicFacts(public);
     }
     final public =
         ClubInfo.fromDiscoverJson(await _get(publicPath(key.slug), signedIn));
@@ -76,6 +96,16 @@ class ClubPageSource {
       return info.withPublicFacts(public);
     }
     return public;
+  }
+
+  /// The public page's facts, or null when it cannot be read: they only
+  /// add to the club detail, so their failure is never the page's.
+  Future<ClubInfo?> _publicFacts(String slug, bool signedIn) async {
+    try {
+      return ClubInfo.fromDiscoverJson(await _get(publicPath(slug), signedIn));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>> _get(String path, bool signedIn) async {
@@ -119,5 +149,7 @@ extension on ClubInfo {
         partners: partners.isEmpty ? public.partners : partners,
         websiteUrl: public.websiteUrl,
         eventsHeld: public.eventsHeld,
+        upcomingEvents: public.upcomingEvents,
+        joinUrl: joinUrl ?? public.joinUrl,
       );
 }

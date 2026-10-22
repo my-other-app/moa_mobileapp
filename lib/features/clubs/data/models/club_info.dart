@@ -57,6 +57,15 @@ class ClubInfo {
   /// Events held so far. Only the public page says.
   final int? eventsHeld;
 
+  /// Events still to come, published. Only the public page says: the club
+  /// detail's own counts (`live_events`, `past_events`) include drafts.
+  final int? upcomingEvents;
+
+  /// Where to ask to join the club's team: a recruitment form or page.
+  /// Read from `join_url`, which no server sends yet; until one does there
+  /// is nothing to join, and the page shows no JOIN THE TEAM.
+  final String? joinUrl;
+
   /// Read from the public page: nothing personal in it, so whether this
   /// person follows the club is not known.
   final bool isPublicView;
@@ -85,6 +94,8 @@ class ClubInfo {
     this.partners = const [],
     this.websiteUrl,
     this.eventsHeld,
+    this.upcomingEvents,
+    this.joinUrl,
     this.isPublicView = false,
   });
 
@@ -126,6 +137,7 @@ class ClubInfo {
       org: Org.fromJson(jsonObject(json['org']) ?? const <String, dynamic>{}),
       team: _ordered(_named(json['team'], ClubTeamMember.fromJson)),
       partners: _ordered(_named(json['partners'], ClubPartner.fromJson)),
+      joinUrl: safeWebUrl(jsonString(json['join_url'])),
     );
   }
 
@@ -166,6 +178,8 @@ class ClubInfo {
       partners: _named(json['partners'], ClubPartner.fromJson).toList(),
       websiteUrl: jsonString(club['website_url']),
       eventsHeld: jsonInt(club['events_held']),
+      upcomingEvents: _upcoming(club, json['upcoming']),
+      joinUrl: safeWebUrl(jsonString(club['join_url'])),
       isPublicView: true,
     );
   }
@@ -181,6 +195,16 @@ Map<String, dynamic> _logoMap(dynamic value) {
 }
 
 List<Object?> _list(Object? value) => value is List ? value : const [];
+
+/// The club's upcoming events: its count, or the page's list when that is
+/// longer (the website takes the larger too); null when neither is sent.
+int? _upcoming(Map<String, dynamic> club, Object? list) {
+  final counted = jsonInt(club['upcoming_events']);
+  final listed = list is List ? list.length : null;
+  if (counted == null) return listed;
+  if (listed == null) return counted;
+  return counted > listed ? counted : listed;
+}
 
 /// How many follow a club: `followers_count` from the club detail,
 /// `followers` from the public page; `follower_count` (the column's own
