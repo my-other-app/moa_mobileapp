@@ -11,6 +11,7 @@ import 'package:dio/dio.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/network/interceptors/topic_change_interceptor.dart';
 import 'package:finnet/core/services/pending_notification_route.dart';
+import 'package:finnet/core/services/push_arrivals.dart';
 import 'package:finnet/core/services/push_dedupe.dart';
 import 'package:finnet/core/services/push_topics.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
@@ -356,6 +357,9 @@ class NotificationService {
     debugPrint('Received foreground message: ${message.messageId}');
     // A second copy of a broadcast (the same push_id): shown once.
     if (!dedupe.firstShow(message.data)) return;
+    // Its line is in the inbox already (the server writes it before it
+    // sends): have the inbox read itself now, not when it is next opened.
+    PushArrivals.arrived();
 
     RemoteNotification? notification = message.notification;
     AndroidNotification? android = message.notification?.android;

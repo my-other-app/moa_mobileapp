@@ -379,8 +379,10 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
     final List<NotificationModel> earlierList = [];
 
     for (final n in notifications) {
-      final date =
-          DateTime(n.createdAt.year, n.createdAt.month, n.createdAt.day);
+      // The phone's day, not UTC's: a line from 00:30 in India was filed
+      // under "Yesterday".
+      final at = n.createdAt.toLocal();
+      final date = DateTime(at.year, at.month, at.day);
 
       if (date == today) {
         todayList.add(n);
