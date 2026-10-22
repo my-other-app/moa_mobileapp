@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/sign_out.dart';
-import 'package:finnet/features/profile/presentation/widgets/change_avatar_sheet.dart';
 import 'package:finnet/features/profile/presentation/widgets/my_picture.dart';
 import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
@@ -22,7 +21,7 @@ class ProfilePage extends ConsumerStatefulWidget {
   /// Where the profile would be, when it could not be loaded.
   static const failedKey = ValueKey('profile-failed');
 
-  /// The picture in the header, which opens "Change Avatar".
+  /// The picture in the header. It is changed on Edit Profile.
   static const pictureKey = ValueKey('profile-picture');
 
   @override
@@ -51,13 +50,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         asset: AssetResources.editprofile,
         label: 'Edit Profile',
         onTap: () => context.push('/profile/edit'),
-      ),
-      SettingsRow(
-        key: const ValueKey('profile-change-avatar'),
-        // The picture itself is right above, in the header.
-        emoji: '📸',
-        label: 'Change Avatar',
-        onTap: () => changeAvatar(context),
       ),
       SettingsRow(
         asset: AssetResources.mycertificates,
@@ -138,38 +130,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     : Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Their picture, which opens "Change Avatar":
-                          // the photo they uploaded, else their avatar.
-                          Semantics(
-                            button: true,
-                            label: 'Change avatar',
-                            child: GestureDetector(
-                              key: ProfilePage.pictureKey,
-                              onTap: () => changeAvatar(context),
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  const MyPicture(size: 60),
-                                  Positioned(
-                                    right: -2,
-                                    bottom: -2,
-                                    child: Container(
-                                      width: 22,
-                                      height: 22,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                            color: const Color(0xFFE0E0E0)),
-                                      ),
-                                      child: const Icon(Icons.edit,
-                                          size: 12, color: Color(0xFF1E1E1E)),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                          // Their picture: the photo they uploaded, else
+                          // their avatar. Edit Profile changes it.
+                          const MyPicture(
+                              key: ProfilePage.pictureKey, size: 60),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
