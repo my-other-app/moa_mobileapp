@@ -454,11 +454,11 @@ void main() {
       expect(opened.last, Uri.parse('https://x.com/asha'));
     });
 
-    testWidgets("the ⓘ opens the person's sheet too", (tester) async {
+    testWidgets("another person's card opens theirs", (tester) async {
       final opened =
           await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
 
-      await _tap(tester, find.byKey(const ValueKey('club-member-info-1')));
+      await _tap(tester, find.byKey(const ValueKey('club-member-1')));
       await _settleSheet(tester);
 
       const sheet = 'club-member-sheet';
@@ -471,7 +471,7 @@ void main() {
       expect(opened.last, Uri.parse('https://linkedin.com/in/rahul'));
     });
 
-    testWidgets("a partner's tile and its ⓘ: the partner's sheet",
+    testWidgets("a partner's tile opens the partner's sheet",
         (tester) async {
       await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
 
@@ -488,7 +488,7 @@ void main() {
       await _settleSheet(tester);
       expect(find.byKey(const ValueKey(sheet)), findsNothing);
 
-      await _tap(tester, find.byKey(const ValueKey('club-partner-info-1')));
+      await _tap(tester, find.byKey(const ValueKey('club-partner-1')));
       await _settleSheet(tester);
       expect(_within(sheet, 'Maker Space'), findsOneWidget);
       expect(_within(sheet, 'Partner of Robotics Club'), findsOneWidget);
@@ -535,7 +535,7 @@ void main() {
       expect(sheet, findsNothing);
     });
 
-    testWidgets('each card is one button to a screen reader, its ⓘ 48 wide',
+    testWidgets('each card is one button to a screen reader, and no ⓘ',
         (tester) async {
       await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
       final handle = tester.ensureSemantics();
@@ -557,11 +557,15 @@ void main() {
           hasTapAction: true,
         ),
       );
-      for (final key in ['club-member-info-0', 'club-partner-info-0']) {
+      // The card is the tap target; there is no (i) on it.
+      for (final key in ['club-member-0', 'club-partner-0']) {
         final size = tester.getSize(find.byKey(ValueKey(key)));
         expect(size.width, greaterThanOrEqualTo(48), reason: key);
         expect(size.height, greaterThanOrEqualTo(48), reason: key);
       }
+      expect(find.byIcon(Icons.info_outline), findsNothing);
+      expect(find.byKey(const ValueKey('club-member-info-0')), findsNothing);
+      expect(find.byKey(const ValueKey('club-partner-info-0')), findsNothing);
       handle.dispose();
     });
 
