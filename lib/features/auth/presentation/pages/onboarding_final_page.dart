@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/features/profile/presentation/widgets/my_picture.dart';
 
 /// Onboarding Final Page - migrated to Riverpod.
 class OnboardingFinalPage extends ConsumerWidget {
@@ -12,7 +12,6 @@ class OnboardingFinalPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profileState = ref.watch(profileProvider);
     final profile = profileState.profile;
-    final avatarUrl = profile?.avatar?.image.original;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFA0),
@@ -38,15 +37,15 @@ class OnboardingFinalPage extends ConsumerWidget {
                         const SizedBox(height: 48),
                         _buildProfileCreatedSection(),
                         Spacer(),
-                        _buildProfileImage(avatarUrl),
+                        _buildProfileImage(),
                         const SizedBox(height: 24),
                         _buildMotivationalText(),
                         Spacer(),
                         Spacer(),
                         FilledButton(
                           onPressed: () {
-                            final currentAvatar = profile?.avatar;
-                            if (currentAvatar != null) {
+                            // An avatar or an uploaded photo.
+                            if (profile?.pictureUrl() != null) {
                               // A new account made from "sign in to follow"
                               // (say) goes back to that club, else home.
                               goAfterSignIn(
@@ -121,29 +120,7 @@ class OnboardingFinalPage extends ConsumerWidget {
 
   /// The avatar chosen a step earlier. Not tappable: there is no picker
   /// here, so it no longer looks like one ("+ add pic" did nothing).
-  Widget _buildProfileImage(String? imageUrl) {
-    return Container(
-      width: 120,
-      height: 120,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Color(0xFFA855F7),
-      ),
-      child: ClipOval(
-        child: imageUrl != null && imageUrl.isNotEmpty
-            ? AppNetworkImage(
-                url: imageUrl,
-                width: 120,
-                height: 120,
-                privacy: ImagePrivacy.private,
-                placeholder: (_) => const SizedBox.shrink(),
-                errorWidget: (_) =>
-                    Icon(Icons.person, size: 60, color: Colors.white),
-              )
-            : Icon(Icons.person, size: 60, color: Colors.white),
-      ),
-    );
-  }
+  Widget _buildProfileImage() => const MyPicture(size: 120);
 
   Widget _buildMotivationalText() {
     return Column(
