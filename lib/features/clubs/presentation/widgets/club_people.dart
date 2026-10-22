@@ -162,35 +162,13 @@ class _Logo extends StatelessWidget {
   }
 }
 
-/// The ⓘ in a card's corner: the card's own tap, made plain. A full 48
-/// points to tap, though the icon is small.
-class _MoreInfo extends StatelessWidget {
-  final String name;
-  final VoidCallback onPressed;
-
-  const _MoreInfo({super.key, required this.name, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onPressed,
-      tooltip: 'More about $name',
-      constraints: const BoxConstraints.tightFor(width: 48, height: 48),
-      padding: EdgeInsets.zero,
-      iconSize: 19,
-      color: _muted,
-      icon: const Icon(Icons.info_outline),
-    );
-  }
-}
-
-/// A card that opens a sheet: one button to a screen reader ([label], and
-/// what a tap does), pressed in under a finger, its ⓘ in the corner.
+/// A card that opens a sheet: the whole card is the tap, and one button to
+/// a screen reader ([label], and what a tap does); pressed in under a
+/// finger.
 class _OpeningCard extends StatelessWidget {
   final String label;
   final String name;
   final VoidCallback onOpen;
-  final Key infoKey;
   final Widget child;
 
   const _OpeningCard({
@@ -198,7 +176,6 @@ class _OpeningCard extends StatelessWidget {
     required this.label,
     required this.name,
     required this.onOpen,
-    required this.infoKey,
     required this.child,
   });
 
@@ -218,19 +195,7 @@ class _OpeningCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             side: const BorderSide(color: _edge),
           ),
-          child: InkWell(
-            onTap: onOpen,
-            child: Stack(
-              children: [
-                child,
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: _MoreInfo(key: infoKey, name: name, onPressed: onOpen),
-                ),
-              ],
-            ),
-          ),
+          child: InkWell(onTap: onOpen, child: child),
         ),
       ),
     );
@@ -304,7 +269,7 @@ Future<void> showClubPartnerSheet(
 }
 
 /// "Team": the people behind the club. A card each -- photo, name, role --
-/// that opens their sheet, as the event page's people do.
+/// that opens their sheet on a tap, as the event page's people do.
 class ClubTeamSection extends StatelessWidget {
   final String clubName;
   final List<ClubTeamMember> team;
@@ -337,7 +302,6 @@ class ClubTeamSection extends StatelessWidget {
               final person = team[index];
               return _OpeningCard(
                 key: ValueKey('club-member-$index'),
-                infoKey: ValueKey('club-member-info-$index'),
                 name: person.name,
                 label: [person.name, if (person.role.isNotEmpty) person.role]
                     .join(', '),
@@ -436,7 +400,6 @@ class ClubPartnersSection extends StatelessWidget {
                     height: height,
                     child: _OpeningCard(
                       key: ValueKey('club-partner-$index'),
-                      infoKey: ValueKey('club-partner-info-$index'),
                       name: partner.name,
                       label: [
                         partner.name,
@@ -468,7 +431,6 @@ class _PartnerTile extends StatelessWidget {
       if (partner.since != null) 'Since ${partner.since}',
     ].join(' · ');
     return Padding(
-      // Clear of the ⓘ in the corner.
       padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
       child: Column(
         children: [
