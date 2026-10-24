@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/app/app.dart';
 import 'package:finnet/app/session_scope.dart';
@@ -14,7 +13,11 @@ import 'package:finnet/features/discover/data/datasources/discover_place_store.d
 import 'package:finnet/firebase_options.dart';
 
 void main() async {
-  // Wrap app in zone to catch all async errors
+  // Errors are reported from three places, all through
+  // AnalyticsService.crashReporter (Crashlytics, as the person chose in
+  // Settings, with emails, phone numbers and tokens taken out):
+  // FlutterError.onError and PlatformDispatcher.onError, set up by
+  // AnalyticsService.initialize, and this zone for whatever runs in it.
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
@@ -31,9 +34,11 @@ void main() async {
       debugPrint('Firebase and Analytics initialized successfully');
     } catch (e, stack) {
       debugPrint('Firebase initialization error: $e');
-      // Still record error if Crashlytics is available
+      // Reported if Firebase itself started and the person allows it; the
+      // app carries on without push.
       try {
-        await FirebaseCrashlytics.instance.recordError(e, stack);
+        AnalyticsService.instance.crashReporter
+            .recordNonFatal(e, stack, reason: 'during start-up');
       } catch (_) {}
     }
 
@@ -67,12 +72,12 @@ void main() async {
       }));
     }
   }, (error, stack) {
-    // Catch all uncaught async errors
+    // An error nothing in the zone caught.
     debugPrint('Uncaught async error: $error');
     try {
       AnalyticsService.instance.recordUncaughtError(error, stack);
     } catch (_) {
-      // Crashlytics not initialized
+      // Firebase did not start: AnalyticsService.instance throws.
     }
   });
 }

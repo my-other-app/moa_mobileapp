@@ -115,11 +115,13 @@ lib/
 
 ### Environment Variables
 
-Create a `.env` file in the project root:
+Copy `.env.example` to `.env` in the project root and fill it in, then run
+`dart run build_runner build --delete-conflicting-outputs`:
 
 ```env
-API_BASE_URL=https://api.myotherapp.com
-GOOGLE_CLIENT_ID=your_google_client_id
+API_BASE_URL=https://api.myotherapp.in/api/v1
+ENABLE_ANALYTICS=false
+RAZORPAY_KEY_ID=rzp_test_your-key-id
 ```
 
 ## 📂 Key Files

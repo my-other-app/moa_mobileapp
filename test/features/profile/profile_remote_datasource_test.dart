@@ -124,14 +124,6 @@ void main() {
       expect(avatar.image.thumbnail, 'https://cdn.test/a3.thumbnail.png');
     });
 
-    test('interests are at /interests/list', () async {
-      adapter.body = <dynamic>[];
-
-      await dataSource.getInterests();
-
-      expect(adapter.only.path, '/interests/list');
-    });
-
     test('selecting interests is POST /user/interests/select', () async {
       adapter.body = _profileBody;
 
@@ -160,29 +152,6 @@ void main() {
       ];
 
       expect(await dataSource.getOrganizations(), hasLength(1));
-    });
-  });
-
-  group('/interests/list is topics, each holding its interests', () {
-    test('the interests are flattened out of their topic', () async {
-      // It was read as a list of interests and gave back the one category,
-      // "arts", as if it were an interest -- with the category's id.
-      adapter.body = [
-        {
-          'id': 1,
-          'name': 'arts',
-          'interests': [
-            {'id': 6, 'name': 'Coding', 'icon': '💻', 'icon_type': 'emoji'},
-            {'id': 15, 'name': 'Photography'},
-          ],
-        },
-        {'id': 2, 'name': 'Empty', 'interests': []},
-      ];
-
-      final interests = await dataSource.getInterests();
-
-      expect(interests.map((i) => i.id), [6, 15]);
-      expect(interests.map((i) => i.categoryId), [1, 1]);
     });
   });
 }

@@ -16,10 +16,6 @@ abstract class Env {
   @EnviedField(varName: 'API_BASE_URL')
   static final String apiBaseUrl = _Env.apiBaseUrl;
 
-  /// Google OAuth Client ID
-  @EnviedField(varName: 'GOOGLE_CLIENT_ID')
-  static final String googleClientId = _Env.googleClientId;
-
   /// Enable analytics tracking
   @EnviedField(varName: 'ENABLE_ANALYTICS', defaultValue: 'false')
   static final String enableAnalytics = _Env.enableAnalytics;

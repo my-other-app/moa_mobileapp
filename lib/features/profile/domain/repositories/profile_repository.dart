@@ -41,9 +41,6 @@ abstract class ProfileRepository {
   /// the server did not say them (read the profile again for them).
   Future<Result<ImageUrls?>> uploadPicture(String path);
 
-  /// Get list of available interests.
-  Future<Result<List<Interest>>> getInterests();
-
   /// Update user's selected interests.
   Future<Result<UserProfile>> updateInterests(List<int> interestIds);
 }

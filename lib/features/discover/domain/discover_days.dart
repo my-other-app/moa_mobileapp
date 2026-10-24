@@ -45,9 +45,6 @@ bool isMonth(Object? value) {
 String istDay([DateTime? at]) =>
     _fromUtc((at ?? DateTime.now()).toUtc().add(istOffset));
 
-/// The day in India an instant falls on.
-String istDayOf(DateTime instant) => _fromUtc(instant.toUtc().add(istOffset));
-
 String addDays(String day, int n) => _fromUtc(_utc(day).add(Duration(days: n)));
 
 int daysBetween(String from, String to) =>

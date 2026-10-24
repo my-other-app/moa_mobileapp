@@ -49,7 +49,6 @@ class ProfileState {
   }
 
   bool get isProfileComplete => profile?.isProfileComplete ?? false;
-  bool get hasProfile => profile != null;
 }
 
 /// Provider for profile state management.
@@ -469,16 +468,3 @@ Future<void> evictPictures(List<String> urls) async {
 
 final pictureEvictorProvider =
     Provider<PictureEvictor>((ref) => evictPictures);
-
-/// Provider for available interests.
-final interestsProvider = FutureProvider<List<Interest>>((ref) async {
-  final repository = ref.watch(profileRepositoryProvider);
-  final result = await repository.getInterests();
-  return result.fold(
-    (failure) {
-      debugPrint('Failed to load interests: ${failure.message}');
-      return [];
-    },
-    (interests) => interests,
-  );
-});

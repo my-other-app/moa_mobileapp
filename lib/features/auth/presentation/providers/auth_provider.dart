@@ -143,11 +143,6 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: isLoading, clearError: true);
   }
 
-  /// Set error state.
-  void setError(String error) {
-    state = state.copyWith(error: error, isLoading: false);
-  }
-
   /// Set authenticated state after successful login.
   Future<void> setAuthenticated(
       {required String accessToken,
@@ -174,12 +169,6 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     // sign in, rather than being met by a prompt before the app has shown
     // anything.
     unawaited(_ref.read(pushRegistrationProvider).onSignedIn());
-  }
-
-  /// Update user profile.
-  void updateUser(UserProfile user) {
-    state = state.copyWith(user: user);
-    debugPrint('AuthStateNotifier: User profile updated');
   }
 
   /// Sign out: tell the server to forget this device's push token, end the
@@ -281,11 +270,3 @@ String? sessionEndNotice(SessionEndReason? reason) {
 /// Provider for checking if user is authenticated.
 final isAuthenticatedProvider =
     Provider<bool>((ref) => ref.watch(authStateProvider).isAuthenticated);
-
-/// Provider for checking if auth is initialized.
-final isAuthInitializedProvider =
-    Provider<bool>((ref) => ref.watch(authStateProvider).isInitialized);
-
-/// Provider for getting the current user.
-final currentUserProvider =
-    Provider<UserProfile?>((ref) => ref.watch(authStateProvider).user);

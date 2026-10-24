@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/network/dio_client.dart';
@@ -35,14 +34,7 @@ class APIService {
   /// The one real Dio instance used app-wide.
   Dio get dio => _dio;
 
-  /// Get APIService instance from Riverpod ref.
-  /// Preferred way to access the service.
-  static APIService fromRef(Ref ref) {
-    return APIService._(ref.read(dioProvider));
-  }
-
-  /// Singleton access — same underlying Dio as [fromRef]/[dioProvider],
-  /// for call sites without access to a Riverpod [Ref].
+  /// Singleton access, for call sites without access to a Riverpod ref.
   static final APIService instance = APIService._(_buildDio());
 
   static Dio _buildDio() {
@@ -235,8 +227,3 @@ void logApiErrorQuietly(
     debugPrint('APIService: could not log the API error: $e');
   }
 }
-
-/// Riverpod provider for APIService with proper Dio client.
-final apiServiceProvider = Provider<APIService>((ref) {
-  return APIService.fromRef(ref);
-});

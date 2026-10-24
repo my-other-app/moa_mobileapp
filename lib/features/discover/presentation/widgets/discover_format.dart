@@ -7,14 +7,10 @@ import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 // (`src/utils/format.js`).
 
 final _when = DateFormat('EEE, d MMM · h:mm a');
-final _time = DateFormat('h:mm a');
 final _whole = NumberFormat.decimalPattern('en_IN');
 
 /// "Sat, 17 Oct · 6:00 PM", in the phone's time; empty when unknown.
 String formatWhen(DateTime? at) => at == null ? '' : _when.format(at.toLocal());
-
-/// "6:00 PM".
-String formatTime(DateTime? at) => at == null ? '' : _time.format(at.toLocal());
 
 /// "Free", "₹250", or "Paid" when the fee is not given.
 String formatPrice(bool hasFee, double? fee) {

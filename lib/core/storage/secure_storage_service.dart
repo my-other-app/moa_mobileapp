@@ -12,7 +12,6 @@ final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {
 class SecureStorageService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
-  static const String _userIdKey = 'user_id';
 
   final FlutterSecureStorage _storage;
 
@@ -63,18 +62,6 @@ class SecureStorageService {
       _storage.delete(key: _accessTokenKey),
       _storage.delete(key: _refreshTokenKey),
     ]);
-  }
-
-  // User ID Management
-
-  /// Save user ID.
-  Future<void> saveUserId(String id) async {
-    await _storage.write(key: _userIdKey, value: id);
-  }
-
-  /// Get user ID.
-  Future<String?> getUserId() async {
-    return await _storage.read(key: _userIdKey);
   }
 
   // General Key-Value Operations

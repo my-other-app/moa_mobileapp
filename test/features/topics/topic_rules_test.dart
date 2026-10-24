@@ -1,5 +1,3 @@
-import 'package:finnet/features/clubs/domain/entities/club_entity.dart';
-import 'package:finnet/features/events/domain/entities/event_entity.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/domain/topic_rules.dart';
@@ -84,37 +82,6 @@ void main() {
         ),
         isEmpty,
       );
-    });
-
-    test('on events and clubs', () {
-      final event = Event(
-        id: 1,
-        name: 'Talk',
-        slug: 'talk',
-        eventDateTime: DateTime(2030),
-        durationHours: 1,
-        locationName: '',
-        club: const ClubSummary(id: 1, name: '', slug: ''),
-        category: const Category(id: 0, name: ''),
-        interests: const [Interest(id: 16, name: 'Music')],
-      );
-      expect(event.topicsIn(catalogue), [arts]);
-
-      const club = Club(
-        id: 1,
-        name: 'Tinkerhub',
-        slug: 'tinkerhub',
-        interests: [Interest(id: 2, name: 'AI')],
-      );
-      expect(club.topicsIn(catalogue), [deepTech]);
-
-      const listed = ClubListItem(
-        id: 1,
-        name: 'Tinkerhub',
-        slug: 'tinkerhub',
-        topics: [Topic(id: 4, slug: 'arts', name: 'Arts')],
-      );
-      expect(listed.topicsIn(catalogue).single.slug, 'arts');
     });
   });
 

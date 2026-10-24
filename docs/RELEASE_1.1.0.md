@@ -255,7 +255,6 @@ The build bakes `.env` into the binary (envied, obfuscated). Fill in the real va
 cp .env.example .env
 # edit .env:
 #   API_BASE_URL=https://api.myotherapp.in/api/v1
-#   GOOGLE_CLIENT_ID=<the web client id>
 #   ENABLE_ANALYTICS=true
 #   RAZORPAY_KEY_ID=<live key id, rzp_live_...>   # without it, Finish payment cannot open the checkout
 flutter pub get

@@ -139,17 +139,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
-  Future<Result<List<Interest>>> getInterests() async {
-    try {
-      final response = await remoteDataSource.getInterests();
-      return Either.right(response.map((e) => e.toEntity()).toList());
-    } catch (e) {
-      debugPrint('ProfileRepository.getInterests error: $e');
-      return Either.left(mapErrorToFailure(e));
-    }
-  }
-
-  @override
   Future<Result<UserProfile>> updateInterests(List<int> interestIds) async {
     try {
       final response = await remoteDataSource.updateInterests(interestIds);

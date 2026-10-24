@@ -77,9 +77,6 @@ class NotificationService {
   static final PendingNotificationRoute pendingLaunch =
       PendingNotificationRoute(routeFor);
 
-  /// Get the current FCM token
-  String? get fcmToken => _fcmToken;
-
   /// The Android channel every push is shown on: created at start-up, and
   /// named in the manifest as FCM's default
   /// (`com.google.firebase.messaging.default_notification_channel_id`), so

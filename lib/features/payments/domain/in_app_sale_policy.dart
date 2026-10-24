@@ -5,10 +5,6 @@ import 'package:flutter/foundation.dart';
 const iosOnlineSaleBlockedMessage =
     "This online event can't be bought in the iOS app";
 
-/// The longer line under it.
-const iosOnlineSaleBlockedDetail =
-    'Paid online events aren’t sold in the iPhone app.';
-
 /// Whether this app may sell a place at an event, on [platform] (the
 /// running one by default).
 ///

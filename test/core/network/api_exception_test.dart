@@ -215,6 +215,13 @@ void main() {
       expect(e.userMessage, ApiException.timeoutMessage);
     });
 
+    test('a transform timeout (Dio 5.10+) is a timeout too', () {
+      final e =
+          ApiException.fromDioException(dio(DioExceptionType.transformTimeout));
+      expect(e.type, ApiExceptionType.timeout);
+      expect(e.userMessage, ApiException.timeoutMessage);
+    });
+
     test('no connection', () {
       final e =
           ApiException.fromDioException(dio(DioExceptionType.connectionError));

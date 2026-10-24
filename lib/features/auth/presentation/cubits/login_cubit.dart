@@ -35,8 +35,6 @@ class LoginSuccess extends LoginState {
   });
 }
 
-class Logout extends LoginState {}
-
 /// The password was right and the account has two-step verification on:
 /// the code from the authenticator app (or a recovery code) is needed. The
 /// screen asks for it and calls [LoginCubit.loginWithEmail] again with it.
