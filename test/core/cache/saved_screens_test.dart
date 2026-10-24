@@ -75,6 +75,17 @@ Dio _dio(_Server server, ApiCache cache) {
   return dio;
 }
 
+/// Waits in real time until [done], for at most [limit]. A fixed wait (it
+/// was 20 or 50 ms) lost the race when the whole suite ran at once; the
+/// expectations after this still decide whether the test passes.
+Future<void> _until(bool Function() done,
+    {Duration limit = const Duration(seconds: 3)}) async {
+  final stopwatch = Stopwatch()..start();
+  while (!done() && stopwatch.elapsed < limit) {
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+}
+
 Future<void> _save(ApiCache cache, Dio dio, String path, Object data,
     {Map<String, dynamic>? query, CacheScope scope = CacheScope.shared}) {
   return cache.write(
@@ -190,7 +201,7 @@ void main() {
       container.listen(certificatesProvider, (_, next) {
         if (next.hasValue) seen.add(next.value!.map((c) => c.ticketId).toList());
       }, fireImmediately: true);
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await _until(() => seen.length >= 2);
 
       expect(seen, [
         ['MOA-OLD'],
@@ -228,7 +239,7 @@ void main() {
       container.listen(topicCatalogueProvider, (_, next) {
         if (next.hasValue) seen.add(next.value!.map((t) => t.slug).toList());
       }, fireImmediately: true);
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await _until(() => seen.length >= 2 && server.seen.isNotEmpty);
 
       expect(server.seen.single.headers['If-None-Match'], '"t1"');
       expect(seen, [
@@ -257,11 +268,12 @@ void main() {
       addTearDown(container.dispose);
 
       container.read(profileProvider);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await _until(() => container.read(profileProvider).profile != null);
       expect(container.read(profileProvider).profile?.fullName, 'Saved Name');
 
       server.gate!.complete();
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await _until(() =>
+          container.read(profileProvider).profile?.fullName == 'Fresh Name');
       expect(container.read(profileProvider).profile?.fullName, 'Fresh Name');
       expect(container.read(profileProvider).error, isNull);
     });
