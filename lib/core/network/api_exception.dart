@@ -116,6 +116,8 @@ class ApiException implements Exception {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
+      // Dio 5.10+: reading the body took longer than a transform timeout.
+      case DioExceptionType.transformTimeout:
         return ApiException(
           message: timeoutMessage,
           type: ApiExceptionType.timeout,
