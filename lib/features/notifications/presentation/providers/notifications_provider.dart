@@ -217,8 +217,3 @@ final notificationsProvider =
   });
   return notifier;
 });
-
-/// Provider for just unread count (useful for badges in nav)
-final unreadNotificationCountProvider = Provider<int>((ref) {
-  return ref.watch(notificationsProvider).unreadCount;
-});

@@ -61,12 +61,6 @@ class NotificationClubBrief {
       };
 }
 
-/// Notification status enum
-enum NotificationStatus {
-  read,
-  unread,
-}
-
 /// Notification type enum matching backend types
 enum NotificationType {
   certificateGenerated('certificate_generated'),

@@ -237,13 +237,6 @@ class EventInfo {
   /// Check if the event has ended
   bool get isEventEnded =>
       eventDateTime.add(hoursToDuration(duration)).isBefore(DateTime.now());
-
-  /// Check if certificate is available
-  bool get hasCertificate =>
-      certificateUrl != null && certificateUrl!.isNotEmpty;
-
-  /// Check if ticket is available
-  bool get hasTicket => ticketUrl != null && ticketUrl!.isNotEmpty;
 }
 
 class EventDownload {
