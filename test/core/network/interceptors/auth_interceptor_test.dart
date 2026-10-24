@@ -421,7 +421,8 @@ void main() {
 
       final outcomes = await Future.wait([
         t.dio.get('/quick').then((_) => 'ok', onError: (_) => 'failed'),
-        t.dio.get('/slow').then((_) => 'ok', onError: (Object e) {
+        // String?: the outcome is the server's message, which may be absent.
+        t.dio.get('/slow').then<String?>((_) => 'ok', onError: (Object e) {
           final api = (e as DioException).error as ApiException;
           return api.serverMessage;
         }),
