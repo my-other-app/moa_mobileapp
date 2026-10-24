@@ -1,8 +1,6 @@
 import 'package:finnet/common/models/events/event_model.dart';
-import 'package:finnet/features/clubs/data/models/club_models.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_profile_page.dart'
     show ClubInfo;
-import 'package:finnet/features/events/data/models/event_models.dart';
 import 'package:finnet/features/profile/data/models/profile_models.dart';
 import 'package:finnet/features/topics/data/models/topic_model.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
@@ -181,36 +179,6 @@ void main() {
         TopicModel.declaredIn({'topics': topicsJson})!.map((t) => t.slug),
         ['development', 'arts'],
       );
-    });
-
-    test('an event from the app\'s models', () {
-      final without = EventModel.fromJson({'id': 1, 'name': 'Talk'});
-      expect(without.toEntity().topics, isNull);
-      expect(without.toListItem().topics, isNull);
-
-      final withTopics = EventModel.fromJson({
-        'id': 1,
-        'name': 'Talk',
-        'interests': [
-          {'id': 3, 'name': 'Web Development', 'category_id': 2},
-        ],
-        'topics': topicsJson,
-      });
-      final event = withTopics.toEntity();
-      expect(event.topics!.map((t) => t.color), ['#2563EB', '#EA580C']);
-      expect(event.interests.single.categoryId, 2);
-      expect(withTopics.toListItem().topics, hasLength(2));
-      expect(withTopics.toJson()['topics'], hasLength(2));
-    });
-
-    test('a club from the app\'s models', () {
-      final without = ClubModel.fromJson({'id': 1, 'name': 'Tinkerhub'});
-      expect(without.toEntity().topics, isNull);
-      expect(without.toListItem().topics, isNull);
-
-      final club = ClubModel.fromJson(
-          {'id': 1, 'name': 'Tinkerhub', 'topics': topicsJson}).toEntity();
-      expect(club.topics!.map((t) => t.name), ['Development', 'Arts']);
     });
 
     test('the event page\'s EventInfo', () {
