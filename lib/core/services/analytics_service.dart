@@ -1,11 +1,9 @@
-import 'dart:io';
-
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/config/app_config.dart';
+import 'package:finnet/core/services/crash_reporting.dart';
 import 'package:finnet/core/services/privacy_choices.dart';
 
 export 'package:finnet/core/services/privacy_choices.dart';
@@ -48,13 +46,9 @@ bool analyticsCollected(PrivacyChoices choices, {required bool buildAllows}) =>
 bool crashReportsCollected(PrivacyChoices choices, {required bool debug}) =>
     !debug && choices.crashReports;
 
-/// Comprehensive analytics and crash reporting service.
-///
-/// This service provides:
-/// - Screen view tracking
-/// - User action events
-/// - Error/crash logging
-/// - User properties
+/// Firebase Analytics and Crashlytics, collecting only what the person
+/// allows: screen views (through [observer]), failed API calls, and crash
+/// reports ([crashReporter]).
 class AnalyticsService implements CollectionControl {
   static final AnalyticsService _instance = AnalyticsService._internal();
   factory AnalyticsService() => _instance;
@@ -64,6 +58,13 @@ class AnalyticsService implements CollectionControl {
 
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
   final FirebaseCrashlytics _crashlytics = FirebaseCrashlytics.instance;
+
+  /// Where crashes and errors are reported: Crashlytics, while
+  /// [_crashReportsOn], with emails, phone numbers and tokens taken out.
+  late final CrashReporter crashReporter = CrashReporter(
+    sink: CrashlyticsSink(_crashlytics),
+    enabled: () => _crashReportsOn,
+  );
 
   /// Get the analytics observer for navigation tracking
   FirebaseAnalyticsObserver get observer =>
@@ -78,11 +79,16 @@ class AnalyticsService implements CollectionControl {
   PrivacyChoices _choices = PrivacyChoices.defaults;
   PrivacyChoices get choices => _choices;
 
+  /// Whether the saved choices have been applied. Until then nothing is
+  /// reported: an error in the first moments of a start must not go out
+  /// for someone who turned crash reports off.
+  bool _choicesApplied = false;
+
   bool get _analyticsOn =>
       analyticsCollected(_choices, buildAllows: AppConfig().isAnalyticsEnabled);
 
   bool get _crashReportsOn =>
-      crashReportsCollected(_choices, debug: kDebugMode);
+      _choicesApplied && crashReportsCollected(_choices, debug: kDebugMode);
 
   /// Initialize Crashlytics with Flutter error handling, and collect only
   /// what the person agreed to.
@@ -93,37 +99,17 @@ class AnalyticsService implements CollectionControl {
   Future<void> initialize({PrivacyChoicesStore? store}) async {
     await applySavedChoices(store ?? FilePrivacyChoicesStore(), this);
 
-    // Pass all uncaught Flutter errors to Crashlytics. An image that failed
-    // to load is reported through FlutterError too, and every one of them
-    // used to be filed as a fatal crash: a bad poster URL on a slow network
-    // filled the crash-free-users figure with sessions that never crashed.
-    FlutterError.onError = (errorDetails) {
-      // Collection is off in debug builds, so without this a developer saw
-      // nothing at all in the console for a build or layout error.
-      if (kDebugMode) FlutterError.presentError(errorDetails);
-      if (!_crashReportsOn) return;
-      if (isNonFatalFlutterError(errorDetails)) {
-        _crashlytics.recordFlutterError(errorDetails);
-      } else {
-        _crashlytics.recordFlutterFatalError(errorDetails);
-      }
-    };
-
-    // Pass all uncaught asynchronous errors to Crashlytics
-    PlatformDispatcher.instance.onError = (error, stack) {
-      recordUncaughtError(error, stack);
-      return true;
-    };
+    // Framework errors (FlutterError.onError) and errors nothing caught
+    // (PlatformDispatcher.onError) from here on; main's zone sends its own
+    // to recordUncaughtError.
+    crashReporter.install();
 
     debugPrint('AnalyticsService: Initialized');
   }
 
-  /// Record an error nothing caught. Fatal, unless it is a failed image or
-  /// network fetch that nothing awaited -- those leave the app running.
-  void recordUncaughtError(Object error, StackTrace stack) {
-    if (!_crashReportsOn) return;
-    _crashlytics.recordError(error, stack, fatal: !isNonFatalError(error));
-  }
+  /// Record an error nothing caught: the `runZonedGuarded` zone in main.
+  void recordUncaughtError(Object error, StackTrace stack) =>
+      crashReporter.recordUncaught(error, stack);
 
   // ============================================================
   // WHAT IS COLLECTED
@@ -138,6 +124,7 @@ class AnalyticsService implements CollectionControl {
   @override
   Future<void> applyChoices(PrivacyChoices choices) async {
     _choices = choices;
+    _choicesApplied = true;
     try {
       await _analytics.setAnalyticsCollectionEnabled(_analyticsOn);
     } catch (e) {
@@ -155,19 +142,20 @@ class AnalyticsService implements CollectionControl {
   // ERROR LOGGING
   // ============================================================
 
-  /// Log API error
+  /// A failed API call: a line in the next crash report's log, and an
+  /// `api_error` event. The path only (no query string, which can carry a
+  /// search or an address), and nothing that identifies the person.
   Future<void> logApiError(
     String endpoint,
     int? statusCode,
     String? errorMessage,
   ) async {
-    if (_crashReportsOn) {
-      await _crashlytics.log('API Error: $endpoint - $statusCode');
-    }
+    final path = redactForCrashReport(apiPathOf(endpoint));
+    crashReporter.log('API Error: $path - $statusCode');
     await _logEvent('api_error', {
-      'endpoint': _truncate(endpoint, 50),
+      'endpoint': _truncate(path, 50),
       'status_code': statusCode ?? 0,
-      'error': _truncate(errorMessage ?? 'Unknown', 100),
+      'error': _truncate(redactForCrashReport(errorMessage ?? 'Unknown'), 100),
     });
   }
 
@@ -198,23 +186,12 @@ class AnalyticsService implements CollectionControl {
   }
 }
 
-/// Whether a [FlutterError] should be recorded as non-fatal.
-///
-/// Images report their load failures through [FlutterError] with the library
-/// `image resource service` -- [NetworkImage] and `cached_network_image`
-/// alike -- and a poster that fails to load leaves a placeholder, not a
-/// crashed app.
+/// [endpoint] without its query string or fragment: `/events/list` for
+/// `/events/list?search=x`, and the path of a full URL.
 @visibleForTesting
-bool isNonFatalFlutterError(FlutterErrorDetails details) {
-  return details.library == 'image resource service' ||
-      isNonFatalError(details.exception);
-}
-
-/// Whether an uncaught error is a failed image or network fetch rather than
-/// a crash.
-@visibleForTesting
-bool isNonFatalError(Object error) {
-  return error is NetworkImageLoadException ||
-      error is HttpException ||
-      error is SocketException;
+String apiPathOf(String endpoint) {
+  final cut = endpoint.indexOf(RegExp('[?#]'));
+  final bare = cut < 0 ? endpoint : endpoint.substring(0, cut);
+  final uri = Uri.tryParse(bare);
+  return uri != null && uri.hasScheme ? uri.path : bare;
 }

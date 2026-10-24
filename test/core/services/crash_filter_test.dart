@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:finnet/core/services/analytics_service.dart';
+import 'package:finnet/core/services/crash_reporting.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
