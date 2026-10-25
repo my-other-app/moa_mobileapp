@@ -544,6 +544,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         'additionalDetails': additionalDetails,
         'hasFee': hasFee ?? false,
         'isOnline': isOnline ?? false,
+        // "Get updates from <club> on WhatsApp", for a club that offers it.
+        'clubName': club?.name ?? '',
+        'clubUpdates': club?.whatsappUpdates == true,
       },
     );
     if (!mounted) return;

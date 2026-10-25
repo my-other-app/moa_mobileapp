@@ -802,4 +802,155 @@ void main() {
     await _tap(tester, find.byKey(const ValueKey('explore-clubs-browse')));
     expect(find.text('directory /discover/clubs'), findsOneWidget);
   });
+
+  group('Get updates from the club on WhatsApp', () {
+    late RouteAdapter api;
+    const label = 'Get updates from Robotics Club on WhatsApp';
+    const beforeHint =
+        'Comes with the follow, on the mobile number in your profile.';
+    const followerHint =
+        'On the mobile number in your profile. Untick to stop them.';
+    final box = find.byKey(const ValueKey('club-updates-whatsapp'));
+    bool? ticked(WidgetTester tester) =>
+        tester.widget<CheckboxListTile>(box).value;
+
+    setUp(() {
+      api = useFakeApi();
+      api.on('GET', '/interests/list', const []);
+    });
+
+    testWidgets('unticked under FOLLOW; ticked, it goes with the follow',
+        (tester) async {
+      api
+        ..on('GET', '/clubs/info/12',
+            clubInfoJson(picture: _local, whatsappUpdates: true))
+        ..on('POST', '/clubs/follow/12', {'is_following': true});
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      expect(find.text(label), findsOneWidget);
+      expect(find.text(beforeHint), findsOneWidget);
+      expect(ticked(tester), isFalse);
+      // Right under FOLLOW.
+      expect(tester.getTopLeft(box).dy,
+          greaterThan(tester.getTopLeft(find.text('FOLLOW')).dy));
+
+      await _tap(tester, box);
+      expect(ticked(tester), isTrue);
+      // The tick waits for the follow.
+      expect(api.sent('POST', '/clubs/follow/12'), isEmpty);
+
+      await _tap(tester, find.byKey(const ValueKey('club-follow')));
+      final sent = api.sent('POST', '/clubs/follow/12').single;
+      expect(sent.data, {'club_updates_whatsapp': true});
+      expect(find.text('UNFOLLOW'), findsOneWidget);
+      expect(_within('club-followers', '121'), findsOneWidget);
+      // Now the follower's own switch, on.
+      expect(ticked(tester), isTrue);
+      expect(find.text(followerHint), findsOneWidget);
+    });
+
+    testWidgets('left unticked, the follow is sent as it always was',
+        (tester) async {
+      api
+        ..on('GET', '/clubs/info/12',
+            clubInfoJson(picture: _local, whatsappUpdates: true))
+        ..on('POST', '/clubs/follow/12', {'is_following': true});
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-follow')));
+
+      expect(api.sent('POST', '/clubs/follow/12').single.data, isNull);
+      expect(ticked(tester), isFalse);
+    });
+
+    testWidgets('a follower turns it off, and on again; the follow stays',
+        (tester) async {
+      api
+        ..on(
+            'GET',
+            '/clubs/info/12',
+            clubInfoJson(
+                picture: _local,
+                following: true,
+                whatsappUpdates: true,
+                clubUpdates: true))
+        ..on('POST', '/clubs/follow/12', {'is_following': true});
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+      expect(ticked(tester), isTrue);
+
+      await _tap(tester, box);
+      expect(ticked(tester), isFalse);
+      await _tap(tester, box);
+      expect(ticked(tester), isTrue);
+
+      expect(api.sent('POST', '/clubs/follow/12').map((r) => r.data), [
+        {'club_updates_whatsapp': false},
+        {'club_updates_whatsapp': true},
+      ]);
+      expect(api.sent('POST', '/clubs/unfollow/12'), isEmpty);
+      expect(find.text('UNFOLLOW'), findsOneWidget);
+      expect(_within('club-followers', '120'), findsOneWidget);
+    });
+
+    testWidgets('a change the server refuses is put back, and said',
+        (tester) async {
+      api
+        ..on(
+            'GET',
+            '/clubs/info/12',
+            clubInfoJson(
+                picture: _local, following: true, whatsappUpdates: true))
+        ..on('POST', '/clubs/follow/12', {'message': 'Nope'}, status: 500);
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, box);
+
+      expect(ticked(tester), isFalse);
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.text('UNFOLLOW'), findsOneWidget);
+    });
+
+    testWidgets('unfollowing unticks it', (tester) async {
+      api
+        ..on(
+            'GET',
+            '/clubs/info/12',
+            clubInfoJson(
+                picture: _local,
+                following: true,
+                whatsappUpdates: true,
+                clubUpdates: true))
+        ..on('POST', '/clubs/unfollow/12', {'is_following': false});
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      await _tap(tester, find.byKey(const ValueKey('club-follow')));
+
+      expect(api.sent('POST', '/clubs/unfollow/12'), hasLength(1));
+      expect(find.text('FOLLOW'), findsOneWidget);
+      expect(ticked(tester), isFalse);
+      expect(find.text(beforeHint), findsOneWidget);
+    });
+
+    testWidgets('a club without the flag shows no box, whatever was said',
+        (tester) async {
+      api.on('GET', '/clubs/info/12',
+          clubInfoJson(picture: _local, following: true, clubUpdates: true));
+      await _pump(tester, const ClubProfilePage(id: 12), signedIn: true);
+
+      expect(find.text('UNFOLLOW'), findsOneWidget);
+      expect(box, findsNothing);
+      expect(find.textContaining('Get updates from'), findsNothing);
+    });
+
+    testWidgets('signed out there is no box: following asks for an account',
+        (tester) async {
+      api.on('GET', '/discover/clubs/robotics-club',
+          clubPublicJson(picture: _local, whatsappUpdates: true));
+      await _pump(tester, const ClubProfilePage(id: 12, slug: 'robotics-club'),
+          signedIn: false);
+
+      expect(find.text('FOLLOW'), findsOneWidget);
+      expect(box, findsNothing);
+    });
+  });
 }

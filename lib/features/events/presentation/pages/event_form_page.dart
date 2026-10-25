@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
+import 'package:finnet/core/utils/whatsapp_number.dart';
+import 'package:finnet/features/clubs/domain/club_updates.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:finnet/features/events/presentation/utils/question_answers.dart';
 import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
@@ -41,6 +43,13 @@ class EventFormPage extends ConsumerStatefulWidget {
   final bool? hasFee;
   final bool? isOnline;
 
+  /// The hosting club's name, and whether it offers "Get updates from
+  /// `<club>` on WhatsApp" (its `whatsapp_updates`), from the event page.
+  /// When the form reads `/events/info` itself, what that says wins. Null or
+  /// false: no box, and nothing extra is sent.
+  final String? clubName;
+  final bool? offersClubUpdates;
+
   const EventFormPage({
     super.key,
     this.eventId,
@@ -48,6 +57,8 @@ class EventFormPage extends ConsumerStatefulWidget {
     this.additionalDetails,
     this.hasFee,
     this.isOnline,
+    this.clubName,
+    this.offersClubUpdates,
   }) : assert(eventId != null || eventRef != null,
             'A registration form needs an event');
 
@@ -101,6 +112,23 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   bool _loadingEvent = false;
   String? _loadError;
 
+  /// "Get updates from `<club>` on WhatsApp": offered only for a club that
+  /// can send them, unticked until the person ticks it.
+  bool _offersClubUpdates = false;
+  String _clubName = '';
+  bool _clubUpdates = false;
+
+  /// What the server said of the phone number (WHATSAPP_NUMBER), shown
+  /// under it until it, or the box, changes.
+  String? _phoneProblem;
+  final _phoneKey = GlobalKey();
+
+  /// Whether `club_updates_whatsapp: true` goes with the registration.
+  bool get _wantsClubUpdates =>
+      _offersClubUpdates &&
+      _clubUpdates &&
+      _phoneController.text.trim().isNotEmpty;
+
   bool get _onIos => defaultTargetPlatform == TargetPlatform.iOS;
 
   /// Whether this phone sells a place at the event (canSellInApp).
@@ -117,6 +145,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         : eventIdOf(widget.eventRef ?? '');
     _hasFee = widget.hasFee;
     _isOnline = widget.isOnline;
+    _offersClubUpdates = widget.offersClubUpdates == true;
+    _clubName = widget.clubName ?? '';
     final questions = widget.additionalDetails;
     if (questions != null) _setQuestions(questions);
     final mustRead = questions == null ||
@@ -168,6 +198,11 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         if (info.id > 0) _eventId = info.id;
         _hasFee ??= info.hasFee;
         _isOnline ??= info.isOnline;
+        // The form's own read of the event is the fresher word on the club.
+        if (info.club.id > 0) {
+          _offersClubUpdates = info.club.whatsappUpdates;
+          if (info.club.name.trim().isNotEmpty) _clubName = info.club.name;
+        }
         if (widget.additionalDetails == null) {
           _setQuestions(info.additionalDetails);
         }
@@ -252,12 +287,14 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   }
 
   Widget _buildInputField({
+    Key? key,
     required String label,
     required Widget child,
     String? errorText,
     bool isRequired = false,
   }) {
     return SizedBox(
+      key: key,
       width: double.infinity,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -846,6 +883,18 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   /// the payment, the form closes with that choice for the event page to
   /// act on.
   Future<void> _showRefusal(Object error) async {
+    // The club's updates were asked for with a number WhatsApp can't reach:
+    // said under the phone number, as the form's own check says it.
+    if (errorCodeOf(error) == whatsappNumberErrorCode) {
+      setState(() => _phoneProblem = whatsappNumberProblem);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final place = _phoneKey.currentContext;
+        if (place == null || !place.mounted) return;
+        Scrollable.ensureVisible(place,
+            alignment: 0.1, duration: const Duration(milliseconds: 250));
+      });
+      return;
+    }
     final refused = invalidAnswersOf(
         error, _questions.map((detail) => detail.key));
     if (refused != null) {
@@ -931,6 +980,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           // nothing: a registration coming back to pay with its picks
           // cleared must drop the earlier order, not keep charging for it.
           if (_catalog.hasAnything) 'store': picksToPayload(_catalog, _picks),
+          // Only when ticked: unticked is the server's default.
+          if (_wantsClubUpdates) 'club_updates_whatsapp': true,
         };
 
         final response = await APIService.instance.request(
@@ -1236,11 +1287,18 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
 
                       // Phone field
                       _buildInputField(
+                        key: _phoneKey,
                         label: 'Phone Number',
                         isRequired: true,
                         child: TextFormField(
+                          key: const ValueKey('register-phone'),
                           controller: _phoneController,
                           keyboardType: TextInputType.phone,
+                          onChanged: (_) {
+                            if (_phoneProblem != null) {
+                              setState(() => _phoneProblem = null);
+                            }
+                          },
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
                             LengthLimitingTextInputFormatter(10),
@@ -1252,6 +1310,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                             fontWeight: FontWeight.w500,
                           ),
                           decoration: InputDecoration(
+                            errorText: _phoneProblem,
                             hintText: 'Enter your phone number',
                             hintStyle: TextStyle(
                               color: Color(0xFFB4B4B4),
@@ -1284,10 +1343,44 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                             if (value.length != 10) {
                               return 'Phone number must be 10 digits';
                             }
+                            if (_wantsClubUpdates &&
+                                whatsappNumber(value) == null) {
+                              return 'WhatsApp needs a mobile number. Or '
+                                  'untick the WhatsApp box.';
+                            }
                             return null;
                           },
                         ),
                       ),
+                      if (_offersClubUpdates) ...[
+                        const SizedBox(height: 8),
+                        CheckboxListTile(
+                          key: const ValueKey('register-club-updates'),
+                          value: _clubUpdates,
+                          onChanged: (on) => setState(() {
+                            _clubUpdates = on ?? false;
+                            _phoneProblem = null;
+                          }),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          activeColor: const Color(0xFF2C333D),
+                          title: Text(
+                            clubUpdatesText(_clubName),
+                            style: const TextStyle(
+                              color: Color(0xFF1E1E1E),
+                              fontSize: 15,
+                              fontFamily: 'DMSans',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          subtitle: const Text(
+                            'On the phone number above.',
+                            style:
+                                TextStyle(fontSize: 13, fontFamily: 'DMSans'),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 24),
 
                       // Organization field

@@ -61,6 +61,11 @@ class ClubInfo {
   /// person follows the club is not known.
   final bool isPublicView;
 
+  /// Whether to offer "Get updates from `<club>` on WhatsApp": the club can
+  /// broadcast from its own number (`whatsapp_updates`). False from a
+  /// server that does not say, and then nothing is offered.
+  final bool whatsappUpdates;
+
   ClubInfo({
     required this.id,
     required this.name,
@@ -86,9 +91,14 @@ class ClubInfo {
     this.websiteUrl,
     this.eventsHeld,
     this.isPublicView = false,
+    this.whatsappUpdates = false,
   });
 
   bool get isFollowing => userData['is_following'] == true;
+
+  /// This person's yes to the club's updates on WhatsApp, as
+  /// `/clubs/info` says it (`user_data.club_updates_whatsapp`).
+  bool get clubUpdatesWhatsapp => userData['club_updates_whatsapp'] == true;
 
   /// The link behind "Visit website": the club's site on MyOtherApp when it
   /// has one, else the website it gave. Only http(s), as on the website.
@@ -126,6 +136,7 @@ class ClubInfo {
       org: Org.fromJson(jsonObject(json['org']) ?? const <String, dynamic>{}),
       team: _ordered(_named(json['team'], ClubTeamMember.fromJson)),
       partners: _ordered(_named(json['partners'], ClubPartner.fromJson)),
+      whatsappUpdates: json['whatsapp_updates'] == true,
     );
   }
 
@@ -167,6 +178,7 @@ class ClubInfo {
       websiteUrl: jsonString(club['website_url']),
       eventsHeld: jsonInt(club['events_held']),
       isPublicView: true,
+      whatsappUpdates: club['whatsapp_updates'] == true,
     );
   }
 }

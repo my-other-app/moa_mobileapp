@@ -1,4 +1,5 @@
 import 'package:finnet/app/router/app_router.dart';
+import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/presentation/events_routes.dart';
 import 'package:finnet/features/events/presentation/pages/competition_page.dart';
@@ -121,6 +122,34 @@ void main() {
     expect(api.sent('GET', '/events/info/0'), isEmpty);
     expect(
         find.byType(IndividualEventPage, skipOffstage: false), findsOneWidget);
+  });
+
+  testWidgets(
+      "the event page hands the form its club, and whether it offers "
+      'updates on WhatsApp', (tester) async {
+    final router = _router('/events/7');
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+        paymentRepositoryProvider.overrideWithValue(FakePaymentRepository()),
+        isAuthenticatedProvider.overrideWithValue(true),
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    ));
+    router.push('/events/7/register', extra: {
+      'additionalDetails': <AdditionalDetail>[],
+      'hasFee': false,
+      'isOnline': false,
+      'clubName': 'Robotics Club',
+      'clubUpdates': true,
+    });
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    final form = tester.widget<EventFormPage>(find.byType(EventFormPage));
+    expect(form.clubName, 'Robotics Club');
+    expect(form.offersClubUpdates, isTrue);
   });
 
   testWidgets('/events/{slug}/compete is "Your team"', (tester) async {
