@@ -8,6 +8,7 @@ import 'package:finnet/features/events/domain/registration_status.dart'
 import 'package:finnet/shared/widgets/event_card.dart' show PaymentDueBadge;
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/utils/latest_search.dart';
 
 /// `/events/list` for a search, narrowed to the tab it was started from.
 ///
@@ -34,20 +35,110 @@ String eventSearchEndpoint(String query, {String filterType = 'for_you'}) {
 String clubSearchEndpoint(String query) =>
     '/clubs/list?search=${Uri.encodeQueryComponent(query)}&offset=0&limit=20';
 
+/// The `items` of a search's answer, from the server.
+Future<List<dynamic>> _searchItems(String endpoint) async {
+  final response = await APIService.instance.request(endpoint, DioMethod.get);
+  final data = response.data;
+  final items = data is Map ? data['items'] : null;
+  return items is List ? items : const [];
+}
+
+String _searchFailed(Object error) {
+  debugPrint('Search error: $error');
+  return extractErrorMessage(
+    error,
+    defaultMessage: 'Search failed. Please try again.',
+  );
+}
+
+/// The answer under a query: a spinner (or the last answer under a thin
+/// bar) while typing pauses and the search is on its way, then the results,
+/// the empty line or the failure with Retry.
+Widget _searchAnswerView({
+  required LatestSearch search,
+  required String Function() query,
+  required String emptyLine,
+  required Widget Function(BuildContext context, dynamic item) tile,
+}) {
+  return ValueListenableBuilder<SearchAnswer>(
+    valueListenable: search.answer,
+    builder: (context, answer, _) {
+      final q = query();
+      if (q.isEmpty) return const SizedBox.shrink();
+      Widget list(List<dynamic> items) => ListView.builder(
+            itemCount: items.length,
+            itemBuilder: (context, index) => tile(context, items[index]),
+          );
+      if (!answer.answers(q)) {
+        if (answer.items.isEmpty || answer.error != null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return Column(
+          children: [
+            const LinearProgressIndicator(minHeight: 2),
+            Expanded(child: list(answer.items)),
+          ],
+        );
+      }
+      final error = answer.error;
+      if (error != null) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(error, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: search.retry,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+      }
+      if (answer.items.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.search_off, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                emptyLine,
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            ],
+          ),
+        );
+      }
+      return list(answer.items);
+    },
+  );
+}
+
 /// Search delegate for EVENTS ONLY - used on home and events pages.
 /// Supports tab-based filtering (for_you, following, registered, past).
 class EventSearchDelegate extends SearchDelegate<String> {
-  List<dynamic> _events = [];
-  String? _error;
-  String _lastSearchedQuery = '';
-
   /// Filter type based on current tab context
   /// Values: 'for_you', 'following', 'registered', 'past'
   final String filterType;
 
+  /// Searched once typing pauses; only the latest query's answer shows.
+  final LatestSearch _search;
+
+  /// [fetch] (the items for an endpoint) and [debounce] are for tests.
   EventSearchDelegate({
     this.filterType = 'for_you',
-  });
+    Future<List<dynamic>> Function(String endpoint)? fetch,
+    Duration debounce = searchDebounce,
+  }) : _search = LatestSearch(
+          fetch: (q) => (fetch ??
+              _searchItems)(eventSearchEndpoint(q, filterType: filterType)),
+          errorMessage: _searchFailed,
+          debounce: debounce,
+        );
 
   @override
   String get searchFieldLabel => 'Search for events...';
@@ -76,8 +167,6 @@ class EventSearchDelegate extends SearchDelegate<String> {
           icon: const Icon(Icons.clear),
           onPressed: () {
             query = '';
-            _events = [];
-            _lastSearchedQuery = '';
             showSuggestions(context);
           },
         ),
@@ -93,12 +182,20 @@ class EventSearchDelegate extends SearchDelegate<String> {
   }
 
   @override
+  void close(BuildContext context, String result) {
+    _search.cancel();
+    super.close(context, result);
+  }
+
+  @override
   Widget buildResults(BuildContext context) {
+    _search.submit(query);
     return _buildSearchResults(context);
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
+    _search.update(query);
     if (query.isEmpty) {
       return Center(
         child: Column(
@@ -130,66 +227,12 @@ class EventSearchDelegate extends SearchDelegate<String> {
     }
   }
 
-  Widget _buildSearchResults(BuildContext context) {
-    if (query != _lastSearchedQuery && query.isNotEmpty) {
-      _lastSearchedQuery = query;
-      return FutureBuilder(
-        future: _search(query),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return _buildResultsList(context);
-        },
+  Widget _buildSearchResults(BuildContext context) => _searchAnswerView(
+        search: _search,
+        query: () => query,
+        emptyLine: 'No events found for "$query"',
+        tile: _buildEventTile,
       );
-    }
-    return _buildResultsList(context);
-  }
-
-  Widget _buildResultsList(BuildContext context) {
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                _error = null;
-                _lastSearchedQuery = '';
-                showResults(context);
-              },
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_events.isEmpty && _lastSearchedQuery.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.search_off, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-              'No events found for "$query"',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: _events.length,
-      itemBuilder: (context, index) => _buildEventTile(context, _events[index]),
-    );
-  }
 
   Widget _buildEventTile(BuildContext context, dynamic event) {
     return ListTile(
@@ -241,33 +284,22 @@ class EventSearchDelegate extends SearchDelegate<String> {
     if (filterType == 'past') return false;
     return filterType == 'registered' || event['is_registered'] == true;
   }
-
-  Future<void> _search(String q) async {
-    if (q.isEmpty) return;
-
-    _error = null;
-
-    try {
-      final response = await APIService.instance.request(
-        eventSearchEndpoint(q, filterType: filterType),
-        DioMethod.get,
-      );
-      _events = response.data['items'] ?? [];
-    } catch (e) {
-      _error = extractErrorMessage(
-        e,
-        defaultMessage: 'Search failed. Please try again.',
-      );
-      debugPrint('Event search error: $e');
-    }
-  }
 }
 
 /// Search delegate for CLUBS ONLY - used on clubs page.
 class ClubSearchDelegate extends SearchDelegate<String> {
-  List<dynamic> _clubs = [];
-  String? _error;
-  String _lastSearchedQuery = '';
+  /// Searched once typing pauses; only the latest query's answer shows.
+  final LatestSearch _search;
+
+  /// [fetch] (the items for an endpoint) and [debounce] are for tests.
+  ClubSearchDelegate({
+    Future<List<dynamic>> Function(String endpoint)? fetch,
+    Duration debounce = searchDebounce,
+  }) : _search = LatestSearch(
+          fetch: (q) => (fetch ?? _searchItems)(clubSearchEndpoint(q)),
+          errorMessage: _searchFailed,
+          debounce: debounce,
+        );
 
   @override
   String get searchFieldLabel => 'Search for clubs...';
@@ -296,8 +328,6 @@ class ClubSearchDelegate extends SearchDelegate<String> {
           icon: const Icon(Icons.clear),
           onPressed: () {
             query = '';
-            _clubs = [];
-            _lastSearchedQuery = '';
             showSuggestions(context);
           },
         ),
@@ -313,12 +343,20 @@ class ClubSearchDelegate extends SearchDelegate<String> {
   }
 
   @override
+  void close(BuildContext context, String result) {
+    _search.cancel();
+    super.close(context, result);
+  }
+
+  @override
   Widget buildResults(BuildContext context) {
+    _search.submit(query);
     return _buildSearchResults(context);
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
+    _search.update(query);
     if (query.isEmpty) {
       return const Center(
         child: Column(
@@ -337,66 +375,12 @@ class ClubSearchDelegate extends SearchDelegate<String> {
     return _buildSearchResults(context);
   }
 
-  Widget _buildSearchResults(BuildContext context) {
-    if (query != _lastSearchedQuery && query.isNotEmpty) {
-      _lastSearchedQuery = query;
-      return FutureBuilder(
-        future: _search(query),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return _buildResultsList(context);
-        },
+  Widget _buildSearchResults(BuildContext context) => _searchAnswerView(
+        search: _search,
+        query: () => query,
+        emptyLine: 'No clubs found for "$query"',
+        tile: _buildClubTile,
       );
-    }
-    return _buildResultsList(context);
-  }
-
-  Widget _buildResultsList(BuildContext context) {
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                _error = null;
-                _lastSearchedQuery = '';
-                showResults(context);
-              },
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_clubs.isEmpty && _lastSearchedQuery.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.search_off, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-              'No clubs found for "$query"',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: _clubs.length,
-      itemBuilder: (context, index) => _buildClubTile(context, _clubs[index]),
-    );
-  }
 
   /// The club's logo, or a grey disc with a group icon when it has none or
   /// it fails -- not a placeholder service's image.
@@ -430,25 +414,5 @@ class ClubSearchDelegate extends SearchDelegate<String> {
         );
       },
     );
-  }
-
-  Future<void> _search(String q) async {
-    if (q.isEmpty) return;
-
-    _error = null;
-
-    try {
-      final response = await APIService.instance.request(
-        clubSearchEndpoint(q),
-        DioMethod.get,
-      );
-      _clubs = response.data['items'] ?? [];
-    } catch (e) {
-      _error = extractErrorMessage(
-        e,
-        defaultMessage: 'Search failed. Please try again.',
-      );
-      debugPrint('Club search error: $e');
-    }
   }
 }
