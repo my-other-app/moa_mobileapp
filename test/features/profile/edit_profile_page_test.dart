@@ -72,7 +72,8 @@ void main() {
         builder: (_, __) => Consumer(
           builder: (context, ref, _) => Scaffold(
             body: Column(children: [
-              Text('profile of ${ref.watch(profileProvider).profile?.fullName}'),
+              Text(
+                  'profile of ${ref.watch(profileProvider).profile?.fullName}'),
               TextButton(
                 onPressed: () => context.push('/profile/edit'),
                 child: const Text('Edit'),
@@ -167,19 +168,49 @@ void main() {
     expect(find.text('EDIT PROFILE'), findsOneWidget);
   });
 
-  testWidgets('a WhatsApp number must be ten digits', (tester) async {
+  testWidgets(
+      'a WhatsApp number, when given, must be ten digits: a short one is '
+      'refused and nothing is sent, a full one is sent', (tester) async {
+    api.on('POST', '/user/profile/update', {'message': 'Profile updated'});
     await pumpEdit(tester);
     await tester.enterText(field('Enter your WhatsApp number'), '98765');
     await save(tester);
 
     expect(find.text('Please enter a valid 10-digit number'), findsOneWidget);
     expect(api.sent('POST', '/user/profile/update'), isEmpty);
+    expect(find.text('EDIT PROFILE'), findsOneWidget);
+
+    await tester.enterText(field('Enter your WhatsApp number'), '9123456780');
+    await save(tester);
+
+    expect(api.sent('POST', '/user/profile/update').single.data,
+        {'full_name': 'Asha Menon', 'whatsapp': '9123456780', 'org_id': 2});
+    expect(find.text('Please enter a valid 10-digit number'), findsNothing);
+    expect(find.text('EDIT PROFILE'), findsNothing);
+  });
+
+  testWidgets(
+      'the WhatsApp number is optional: SAVE without one sends none, and saves',
+      (tester) async {
+    api.on('POST', '/user/profile/update', {'message': 'Profile updated'});
+    await pumpEdit(tester);
+    expect(find.text('WhatsApp Number (Optional)'), findsOneWidget);
+
+    await tester.enterText(field('Enter your WhatsApp number'), '');
+    await save(tester);
+
+    final sent = api.sent('POST', '/user/profile/update').single;
+    // Left out: the server clears what it is not sent.
+    expect(sent.data, {'full_name': 'Asha Menon', 'org_id': 2});
+    expect(find.text('Please enter a valid 10-digit number'), findsNothing);
+    expect(find.text('Profile updated successfully'), findsOneWidget);
+    expect(find.text('EDIT PROFILE'), findsNothing);
   });
 
   testWidgets('a refusal says why, in its words, and the form stays',
       (tester) async {
-    api.on('POST', '/user/profile/update',
-        {'message': 'Invalid WhatsApp number'},
+    api.on(
+        'POST', '/user/profile/update', {'message': 'Invalid WhatsApp number'},
         status: 400);
     await pumpEdit(tester);
     final readsBefore = profiles.reads;
@@ -202,24 +233,92 @@ void main() {
     expect(find.text('the interests picker'), findsOneWidget);
   });
 
+  const noCollege = UserProfile(
+    id: '7',
+    fullName: 'Asha Menon',
+    email: 'asha@example.com',
+    whatsapp: '9876543210',
+  );
+
   testWidgets(
       'someone without a college is not given the first one on the list',
       (tester) async {
+    await pumpEdit(tester, profile: noCollege);
+
+    expect(find.text('CET Trivandrum'), findsNothing);
+    expect(find.text('GEC Thrissur'), findsNothing);
+    expect(find.text('Select your college'), findsWidgets);
+    expect(find.byKey(EditProfilePage.clearCollegeKey), findsNothing);
+  });
+
+  testWidgets(
+      'the college is optional: someone without one saves, and no college is '
+      'sent', (tester) async {
+    api.on('POST', '/user/profile/update', {'message': 'Profile updated'});
+    await pumpEdit(tester, profile: noCollege);
+    await save(tester);
+
+    expect(find.text('Please select your college'), findsNothing);
+    final sent = api.sent('POST', '/user/profile/update').single;
+    expect(sent.data, {'full_name': 'Asha Menon', 'whatsapp': '9876543210'});
+    expect(find.text('Profile updated successfully'), findsOneWidget);
+    expect(find.text('EDIT PROFILE'), findsNothing);
+  });
+
+  testWidgets(
+      'a college can be taken off: the cross clears it and SAVE sends none',
+      (tester) async {
+    api.on('POST', '/user/profile/update', {'message': 'Profile updated'});
+    await pumpEdit(tester);
+    expect(find.text('GEC Thrissur'), findsOneWidget);
+
+    await tester.tap(find.byKey(EditProfilePage.clearCollegeKey));
+    await tester.pumpAndSettle();
+
+    expect(find.text('GEC Thrissur'), findsNothing);
+    expect(find.text('CET Trivandrum'), findsNothing); // the menu stays shut
+    expect(find.text('Select your college'), findsWidgets);
+    expect(find.byKey(EditProfilePage.clearCollegeKey), findsNothing);
+
+    await save(tester);
+
+    expect(api.sent('POST', '/user/profile/update').single.data,
+        {'full_name': 'Asha Menon', 'whatsapp': '9876543210'});
+    expect(find.text('EDIT PROFILE'), findsNothing);
+  });
+
+  testWidgets(
+      'a college the list leaves out stays theirs, not the first on the list',
+      (tester) async {
+    api.on('POST', '/user/profile/update', {'message': 'Profile updated'});
     await pumpEdit(tester,
         profile: const UserProfile(
           id: '7',
           fullName: 'Asha Menon',
           email: 'asha@example.com',
           whatsapp: '9876543210',
+          organization: Organization(id: 9, name: 'NIT Calicut'),
         ));
 
+    expect(find.text('NIT Calicut'), findsOneWidget);
     expect(find.text('CET Trivandrum'), findsNothing);
-    expect(find.text('Select your college'), findsWidgets);
-  },
-      skip: true, // BUG: edit_profile_page.dart picks colleges.first (orElse)
-      // for a profile with no college, or one not on the list, and SAVE
-      // then sends that college's org_id; the college is also required
-      // although the label says "(if you are a student)". Not fixed here:
-      // fix/club-page-catchup is rewriting this page.
-      );
+    await save(tester);
+
+    expect(api.sent('POST', '/user/profile/update').single.data,
+        {'full_name': 'Asha Menon', 'whatsapp': '9876543210', 'org_id': 9});
+  });
+
+  testWidgets('when the college list cannot be read, SAVE keeps their college',
+      (tester) async {
+    api = useFakeApi()
+      ..on('GET', '/orgs/list', {'message': 'Server error'}, status: 500)
+      ..on('POST', '/user/profile/update', {'message': 'Profile updated'});
+    await pumpEdit(tester);
+
+    expect(find.text('GEC Thrissur'), findsOneWidget);
+    await save(tester);
+
+    expect(api.sent('POST', '/user/profile/update').single.data,
+        {'full_name': 'Asha Menon', 'whatsapp': '9876543210', 'org_id': 2});
+  });
 }
