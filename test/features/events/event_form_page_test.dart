@@ -1,6 +1,7 @@
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/core/network/api_exception.dart';
+import 'package:finnet/features/clubs/domain/club_updates.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
 import 'package:finnet/features/events/presentation/utils/question_answers.dart';
@@ -594,6 +595,172 @@ void main() {
 
       final sent = api.sent('POST', '/events/registration/7/register').single;
       expect((sent.data as Map).containsKey('store'), isFalse);
+    });
+  });
+
+  group('Get updates from the club on WhatsApp', () {
+    const label = 'Get updates from Robotics Club on WhatsApp';
+    final box = find.byKey(const ValueKey('register-club-updates'));
+    final phone = find.byKey(const ValueKey('register-phone'));
+    const offering = EventFormPage(
+      eventId: 7,
+      additionalDetails: [],
+      clubName: 'Robotics Club',
+      offersClubUpdates: true,
+    );
+    void registered() => api.on('POST', '/events/registration/7/register', {
+          'event_id': 7,
+          'event_name': 'Hack Night',
+          'event_registration_id': 'reg-1',
+          'pay_amount': 0,
+          'ticket_id': 'T-1',
+          'club_updates_whatsapp': true,
+        });
+    Map<dynamic, dynamic> sentBody() =>
+        api.sent('POST', '/events/registration/7/register').single.data as Map;
+    Future<void> send(WidgetTester tester) async {
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a club without the flag: no box, and nothing extra is sent',
+        (tester) async {
+      registered();
+      await _pump(tester,
+          form: const EventFormPage(eventId: 7, additionalDetails: []));
+
+      expect(box, findsNothing);
+      expect(find.textContaining('Get updates from'), findsNothing);
+      await send(tester);
+      expect(sentBody().containsKey('club_updates_whatsapp'), isFalse);
+      expect(find.text('Registered!'), findsOneWidget);
+    });
+
+    testWidgets(
+        'names the club under the phone number, unticked; ticked, '
+        'it goes with the registration', (tester) async {
+      registered();
+      await _pump(tester, form: offering);
+
+      expect(find.text(label), findsOneWidget);
+      expect(tester.widget<CheckboxListTile>(box).value, isFalse);
+      expect(
+          tester.getTopLeft(box).dy, greaterThan(tester.getTopLeft(phone).dy));
+
+      await tester.tap(box);
+      await tester.pump();
+      expect(tester.widget<CheckboxListTile>(box).value, isTrue);
+      await send(tester);
+
+      expect(sentBody()['club_updates_whatsapp'], isTrue);
+      expect(sentBody()['phone'], '9876543210');
+      expect(find.text('Registered!'), findsOneWidget);
+    });
+
+    testWidgets('left unticked, the registration is sent as it always was',
+        (tester) async {
+      registered();
+      await _pump(tester, form: offering);
+
+      await send(tester);
+
+      expect(sentBody().containsKey('club_updates_whatsapp'), isFalse);
+    });
+
+    testWidgets('ticked, it wants a mobile number WhatsApp can reach',
+        (tester) async {
+      registered();
+      await _pump(tester, form: offering);
+      await tester.enterText(phone, '5876543210');
+      await tester.tap(box);
+      await tester.pump();
+
+      await send(tester);
+      expect(
+          find.text(
+              'WhatsApp needs a mobile number. Or untick the WhatsApp box.'),
+          findsOneWidget);
+      expect(api.sent('POST', '/events/registration/7/register'), isEmpty);
+
+      // Unticked, any ten digits will do, as before.
+      await tester.tap(box);
+      await tester.pump();
+      await send(tester);
+      expect(sentBody().containsKey('club_updates_whatsapp'), isFalse);
+    });
+
+    testWidgets("the server's WHATSAPP_NUMBER is said under the phone number",
+        (tester) async {
+      api.on(
+          'POST',
+          '/events/registration/7/register',
+          {
+            'message': "To get the club's updates on WhatsApp, enter a mobile "
+                'number WhatsApp can reach, or untick the box.',
+            'error_code': 'WHATSAPP_NUMBER',
+            'errors': {'phone': "WhatsApp can't reach this number: no."},
+          },
+          status: 422);
+      await _pump(tester, form: offering);
+      await tester.tap(box);
+      await tester.pump();
+
+      await send(tester);
+
+      expect(find.text(whatsappNumberProblem), findsOneWidget);
+      // Said in place, not as a dialog.
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.text('Registered!'), findsNothing);
+
+      // Changing the number clears it.
+      await tester.enterText(phone, '9876543211');
+      await tester.pump();
+      expect(find.text(whatsappNumberProblem), findsNothing);
+    });
+
+    group('opened from a link', () {
+      Map<String, dynamic> info({bool? whatsappUpdates}) => {
+            'id': 7,
+            'name': 'Hack Night',
+            'has_fee': false,
+            'is_online': false,
+            'additional_details': const [],
+            'club': {
+              'id': 3,
+              'name': 'Robotics Club',
+              'slug': 'robotics-club',
+              'logo': null,
+              if (whatsappUpdates != null) 'whatsapp_updates': whatsappUpdates,
+            },
+          };
+
+      testWidgets("the event's own club says it is offered", (tester) async {
+        api.on('GET', '/events/info/hack-night', info(whatsappUpdates: true));
+        await _pump(tester, form: const EventFormPage(eventRef: 'hack-night'));
+
+        expect(find.text(label), findsOneWidget);
+      });
+
+      testWidgets('what the form reads wins over what it was handed',
+          (tester) async {
+        api.on('GET', '/events/info/hack-night', info(whatsappUpdates: false));
+        await _pump(tester,
+            form: const EventFormPage(
+                eventRef: 'hack-night',
+                clubName: 'Robotics Club',
+                offersClubUpdates: true));
+
+        expect(find.text('Continue'), findsOneWidget);
+        expect(box, findsNothing);
+      });
+
+      testWidgets('a server without the flag shows no box', (tester) async {
+        api.on('GET', '/events/info/hack-night', info());
+        await _pump(tester, form: const EventFormPage(eventRef: 'hack-night'));
+
+        expect(find.text('Continue'), findsOneWidget);
+        expect(box, findsNothing);
+      });
     });
   });
 }

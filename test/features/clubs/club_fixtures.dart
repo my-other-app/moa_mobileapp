@@ -6,14 +6,21 @@
 /// tests, or paths the image widget never fetches for the widget tests.
 library;
 
+///
+/// [whatsappUpdates] and [clubUpdates] (`whatsapp_updates`, and
+/// `user_data.club_updates_whatsapp`) are sent only when given, as a server
+/// without them sends neither.
 Map<String, dynamic> clubInfoJson({
   String picture = 'https://media.myotherapp.in',
   bool following = false,
   int followers = 120,
   List<Map<String, dynamic>>? team,
   List<Map<String, dynamic>>? partners,
+  bool? whatsappUpdates,
+  bool? clubUpdates,
 }) =>
     {
+      if (whatsappUpdates != null) 'whatsapp_updates': whatsappUpdates,
       'id': 12,
       'name': 'Robotics Club',
       'slug': 'robotics-club',
@@ -51,7 +58,11 @@ Map<String, dynamic> clubInfoJson({
       'followers_count': followers,
       'contact_phone': '+911234567890',
       'contact_email': 'hello@robotics.example.org',
-      'user_data': {'is_following': following, 'is_pinned': false},
+      'user_data': {
+        'is_following': following,
+        'is_pinned': false,
+        if (clubUpdates != null) 'club_updates_whatsapp': clubUpdates,
+      },
       'org': {
         'id': 1,
         'name': 'CET',
@@ -111,9 +122,11 @@ Map<String, dynamic> clubPublicJson({
   String picture = 'https://media.myotherapp.in',
   String? websiteUrl = 'https://robotics-club.myotherapp.in',
   int followers = 120,
+  bool? whatsappUpdates,
 }) =>
     {
       'club': {
+        if (whatsappUpdates != null) 'whatsapp_updates': whatsappUpdates,
         'id': 12,
         'name': 'Robotics Club',
         'slug': 'robotics-club',

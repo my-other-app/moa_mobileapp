@@ -3,15 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/shared/widgets/rating_stars.dart';
-import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
+import 'package:finnet/features/clubs/data/club_follow_service.dart';
 import 'package:finnet/features/clubs/data/models/club_info.dart';
+import 'package:finnet/features/clubs/presentation/cubits/club_follow_cubit.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_events_page.dart';
 import 'package:finnet/features/clubs/presentation/providers/club_page_provider.dart';
 import 'package:finnet/features/clubs/presentation/widgets/club_people.dart';
+import 'package:finnet/features/clubs/presentation/widgets/club_updates_tile.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
@@ -36,7 +38,9 @@ export 'package:finnet/features/clubs/data/models/club_info.dart'
 /// run it, who backs it, its links and how to reach it. No cover banner and
 /// no topics (the website has both): the page opens on the club itself, and
 /// its interests say what it is about. Works signed out from the club's
-/// slug (the public page); following asks to sign in first.
+/// slug (the public page); following asks to sign in first. For a club that
+/// can broadcast on WhatsApp, "Get updates from `<club>` on WhatsApp" sits
+/// under FOLLOW for a signed-in person (ClubFollowCubit).
 class ClubProfilePage extends ConsumerStatefulWidget {
   final int id;
 
@@ -51,45 +55,70 @@ class ClubProfilePage extends ConsumerStatefulWidget {
 }
 
 class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
-  /// Follow, as tapped, until the server's copy of the club says otherwise.
-  bool? _following;
-  int _followerDelta = 0;
+  /// Follow (as tapped, until the server's copy of the club says
+  /// otherwise) and the follower's yes to the club's updates on WhatsApp.
+  /// Made with the first copy of the club.
+  ClubFollowCubit? _follow;
   bool _expanded = false;
 
   ClubKey get _key => ClubKey(widget.id, widget.slug);
+
+  ClubFollowCubit _followFor(ClubInfo club) {
+    return _follow ??= ClubFollowCubit(
+      service: ref.read(clubFollowServiceProvider),
+      clubId: club.id,
+      following: club.isFollowing,
+      updates: club.clubUpdatesWhatsapp,
+    )..onStateChanged = (_) {
+        if (mounted) setState(() {});
+      };
+  }
+
+  @override
+  void dispose() {
+    _follow?.dispose();
+    super.dispose();
+  }
 
   Future<void> _toggleFollow(ClubInfo club) async {
     final name = club.name.trim().isEmpty ? 'clubs' : club.name.trim();
     if (!ensureSignedIn(context, ref, 'Sign in to follow $name.')) return;
 
-    final was = _following ?? club.isFollowing;
-    final endpoint =
-        was ? '/clubs/unfollow/${club.id}' : '/clubs/follow/${club.id}';
-
-    setState(() {
-      _following = !was;
-      _followerDelta += was ? -1 : 1;
-    });
+    final follow = _followFor(club);
+    final was = follow.state.following;
     Haptics.light();
+    final error = await follow.toggleFollow();
+    if (error == null || !mounted) return;
+    debugPrint('Follow/Unfollow failed: $error');
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(extractErrorMessage(
+        error,
+        defaultMessage: was
+            ? "Couldn't unfollow $name. Please try again."
+            : "Couldn't follow $name. Please try again.",
+      )),
+    ));
+  }
 
-    try {
-      await APIService.instance.request(endpoint, DioMethod.post);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _following = was;
-        _followerDelta += was ? 1 : -1;
-      });
-      debugPrint('Follow/Unfollow failed: $e');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(extractErrorMessage(
-          e,
-          defaultMessage: was
-              ? "Couldn't unfollow $name. Please try again."
-              : "Couldn't follow $name. Please try again.",
-        )),
-      ));
+  /// The box under FOLLOW: before following, a tick for the follow to take
+  /// along; once following, the follower's switch.
+  Future<void> _setClubUpdates(ClubInfo club, bool on) async {
+    final follow = _followFor(club);
+    if (!follow.state.following) {
+      follow.tickBeforeFollow(on);
+      return;
     }
+    final error = await follow.setUpdates(on);
+    if (error == null || !mounted) return;
+    debugPrint('Club updates on WhatsApp failed: $error');
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(extractErrorMessage(
+        error,
+        defaultMessage: on
+            ? "Couldn't turn on WhatsApp updates. Please try again."
+            : "Couldn't turn off WhatsApp updates. Please try again.",
+      )),
+    ));
   }
 
   Future<void> _open(String url) async {
@@ -121,13 +150,13 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
   Widget build(BuildContext context) {
     // A fresh copy of the club is the truth about following again.
     ref.listen(clubInfoProvider(_key), (previous, next) {
-      if (next.hasValue && previous?.valueOrNull != next.valueOrNull) {
-        if (_following != null || _followerDelta != 0) {
-          setState(() {
-            _following = null;
-            _followerDelta = 0;
-          });
-        }
+      final club = next.valueOrNull;
+      if (club != null && previous?.valueOrNull != club) {
+        _follow?.sync(
+          clubId: club.id,
+          following: club.isFollowing,
+          updates: club.clubUpdatesWhatsapp,
+        );
       }
     });
     final club = ref.watch(clubInfoProvider(_key));
@@ -189,9 +218,10 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
   }
 
   Widget _page(ClubInfo club) {
-    final following = _following ?? club.isFollowing;
+    final follow = _followFor(club).state;
+    final following = follow.following;
     // Never below nought, whatever an unfollow raced against.
-    final counted = club.followersCount + _followerDelta;
+    final counted = club.followersCount + follow.delta;
     final followers = counted < 0 ? 0 : counted;
     final website = club.website;
     final hasCollege = club.org.name.trim().isNotEmpty;
@@ -238,6 +268,19 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
                 ),
               ),
             ),
+            // Only for a club that can send its updates on WhatsApp, and
+            // only signed in: following asks for an account first.
+            if (club.whatsappUpdates &&
+                ref.watch(isAuthenticatedProvider)) ...[
+              const SizedBox(height: 4),
+              ClubUpdatesTile(
+                clubName: name,
+                value: follow.boxTicked,
+                following: following,
+                enabled: !follow.busy && !follow.updatesBusy,
+                onChanged: (on) => _setClubUpdates(club, on),
+              ),
+            ],
             if (website != null) ...[
               const SizedBox(height: 10),
               SizedBox(

@@ -119,5 +119,6 @@ extension on ClubInfo {
         partners: partners.isEmpty ? public.partners : partners,
         websiteUrl: public.websiteUrl,
         eventsHeld: public.eventsHeld,
+        whatsappUpdates: whatsappUpdates,
       );
 }

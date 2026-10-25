@@ -259,11 +259,17 @@ class Club {
   final String slug;
   final Map<String, dynamic> logo;
 
+  /// Whether the registration form offers "Get updates from `<club>` on
+  /// WhatsApp" (`whatsapp_updates`): the club can broadcast from its own
+  /// number. False from a server that does not say.
+  final bool whatsappUpdates;
+
   Club({
     required this.id,
     required this.name,
     required this.slug,
     required this.logo,
+    this.whatsappUpdates = false,
   });
 
   factory Club.fromJson(Map<String, dynamic> json) {
@@ -280,6 +286,7 @@ class Club {
           : logo is String && logo.trim().isNotEmpty
               ? <String, dynamic>{'thumbnail': logo.trim()}
               : <String, dynamic>{},
+      whatsappUpdates: json['whatsapp_updates'] == true,
     );
   }
 }

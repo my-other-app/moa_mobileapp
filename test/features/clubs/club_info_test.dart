@@ -67,4 +67,36 @@ void main() {
           0);
     });
   });
+
+  group("a club's updates on WhatsApp", () {
+    test('offered only when the server says true, from either page', () {
+      expect(
+          ClubInfo.fromJson(clubInfoJson(whatsappUpdates: true))
+              .whatsappUpdates,
+          isTrue);
+      expect(
+          ClubInfo.fromJson(clubInfoJson(whatsappUpdates: false))
+              .whatsappUpdates,
+          isFalse);
+      expect(ClubInfo.fromJson(clubInfoJson()).whatsappUpdates, isFalse);
+      expect(
+          ClubInfo.fromDiscoverJson(clubPublicJson(whatsappUpdates: true))
+              .whatsappUpdates,
+          isTrue);
+      expect(
+          ClubInfo.fromDiscoverJson(clubPublicJson()).whatsappUpdates, isFalse);
+    });
+
+    test("the person's own yes, from /clubs/info", () {
+      expect(
+          ClubInfo.fromJson(clubInfoJson(following: true, clubUpdates: true))
+              .clubUpdatesWhatsapp,
+          isTrue);
+      expect(
+          ClubInfo.fromJson(clubInfoJson(following: true)).clubUpdatesWhatsapp,
+          isFalse);
+      expect(ClubInfo.fromDiscoverJson(clubPublicJson()).clubUpdatesWhatsapp,
+          isFalse);
+    });
+  });
 }

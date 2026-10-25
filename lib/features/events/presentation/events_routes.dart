@@ -50,8 +50,9 @@ Widget buildEventPage(BuildContext context, GoRouterState state) {
 /// `/events/:eventId/register`: the registration form.
 ///
 /// extra (from the event page): `additionalDetails` (the questions),
-/// `hasFee`, `isOnline`. Without them -- a link straight to the form -- the
-/// form reads the event itself.
+/// `hasFee`, `isOnline`, and the club's `clubName` and `clubUpdates` (it
+/// offers "Get updates from `<club>` on WhatsApp"). Without them -- a link
+/// straight to the form -- the form reads the event itself.
 Widget buildEventRegisterPage(BuildContext context, GoRouterState state) {
   final ref = eventRefOf(state);
   final extra = state.extra is Map ? state.extra as Map : const {};
@@ -62,6 +63,9 @@ Widget buildEventRegisterPage(BuildContext context, GoRouterState state) {
     additionalDetails: questions is List<AdditionalDetail> ? questions : null,
     hasFee: extra['hasFee'] as bool?,
     isOnline: extra['isOnline'] as bool?,
+    clubName: extra['clubName'] is String ? extra['clubName'] as String : null,
+    offersClubUpdates:
+        extra['clubUpdates'] is bool ? extra['clubUpdates'] as bool : null,
   );
 }
 
