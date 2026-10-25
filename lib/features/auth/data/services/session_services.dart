@@ -9,6 +9,7 @@ import 'package:finnet/core/cache/session_caches.dart';
 import 'package:finnet/core/services/notification_service.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_pin_store.dart';
+import 'package:finnet/features/volunteer/data/scan_queue.dart';
 
 /// This device's push registration, as signing in and out need it.
 abstract class PushRegistration {
@@ -123,5 +124,7 @@ final sessionCachesProvider = Provider<SessionCaches>((ref) {
     'kept documents': () => DocumentCache.instance.clear(),
     'private pictures': AppImageCaches.clearPrivate,
     'certificate pins': pins.clear,
+    // Door scans saved with no signal: this volunteer's to send.
+    'door scan queue': ref.watch(scanQueueStoreProvider).clear,
   });
 });

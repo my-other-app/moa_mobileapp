@@ -6,7 +6,6 @@ import 'package:finnet/core/services/notification_service.dart';
 import 'package:finnet/core/services/pending_notification_route.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/notifications/data/models/notification_model.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -216,7 +215,7 @@ void main() {
         final route = NotificationService.routeFor(data)!;
         final match = router.configuration.findMatch(Uri.parse(route));
         expect(match.isError, isFalse, reason: route);
-        expect((match.last.route as GoRoute).name, name);
+        expect(match.last.route.name, name);
       });
     }
   });
