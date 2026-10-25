@@ -52,6 +52,9 @@ void main() {
         '/events/12',
         '/events/hack-night-04',
         '/events/hack-night-04?live=room',
+        // The live room and its quiz, as on the website.
+        '/events/hack-night-04/live',
+        '/events/12/live/quiz',
         '/events/explore?topic=design',
         '/clubs/circuit-society',
         '/clubs/explore',

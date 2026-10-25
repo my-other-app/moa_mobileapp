@@ -42,9 +42,11 @@ void main() {
           '/topics/development');
     });
 
-    test('the live room is the event with its room open', () {
+    test('the live room opens the app\'s own room', () {
       expect(at('https://myotherapp.in/events/hack-night-04/live'),
-          '/events/hack-night-04?live=room');
+          '/events/hack-night-04/live');
+      // The website's quiz page: the app's quiz.
+      expect(at('https://myotherapp.in/play/123'), '/events/123/live/quiz');
     });
 
     test('registration, the competition and the survey open as they are', () {
@@ -92,7 +94,7 @@ void main() {
       expect(at('https://myotherapp.in/clubs/circuit-society?ref=abc'),
           '/clubs/circuit-society?ref=abc');
       expect(at('https://myotherapp.in/events/x/live?utm=push'),
-          '/events/x?utm=push&live=room');
+          '/events/x/live?utm=push');
     });
 
     test('www., events. and a bare path are the same site', () {
@@ -105,7 +107,7 @@ void main() {
 
     test('the old event addresses and /me', () {
       expect(at('https://myotherapp.in/123'), '/events/123');
-      expect(at('https://myotherapp.in/123/live'), '/events/123?live=room');
+      expect(at('https://myotherapp.in/123/live'), '/events/123/live');
       expect(at('https://myotherapp.in/me/tickets'), '/events');
       expect(at('https://myotherapp.in/me/following'), '/clubs');
       expect(at('https://myotherapp.in/'), '/');
@@ -115,7 +117,8 @@ void main() {
     test('anything else is the browser\'s', () {
       for (final url in [
         'https://myotherapp.in/feedback/1',
-        'https://myotherapp.in/play/123',
+        'https://myotherapp.in/play/abc',
+        'https://myotherapp.in/play',
         'https://myotherapp.in/for-clubs',
         'https://myotherapp.in/pricing',
         'https://myotherapp.in/privacy',
@@ -147,8 +150,7 @@ void main() {
       String? link(String url) => appLocationForLink(Uri.parse(url));
       expect(link('https://myotherapp.in/events?when=today'),
           '/discover/events?when=today');
-      expect(
-          link('https://myotherapp.in/events/x/live'), '/events/x?live=room');
+      expect(link('https://myotherapp.in/events/x/live'), '/events/x/live');
       // A page of the site the app doesn't have: its path, which the
       // friendly page offers in the browser.
       expect(link('https://myotherapp.in/for-clubs'), '/for-clubs');
@@ -226,6 +228,7 @@ void main() {
         // Push links the site doesn't claim, too.
         for (final url in [
           'https://myotherapp.in/123/live',
+          'https://myotherapp.in/play/123',
           'https://myotherapp.in/me/tickets',
         ]) {
           await resolve(tester, router, url);
@@ -243,7 +246,12 @@ void main() {
       expect(
           await resolve(tester, router,
               'https://myotherapp.in/events/hack-night-04/live'),
-          '/events/hack-night-04?live=room');
+          '/events/hack-night-04/live');
+      // The event's page asked for its room, as older links did: the room.
+      expect(await resolve(tester, router, '/events/hack-night-04?live=room'),
+          '/events/hack-night-04/live');
+      expect(await resolve(tester, router, '/events/12?live=quiz'),
+          '/events/12/live/quiz');
       expect(
           await resolve(tester, router,
               'https://www.myotherapp.in/clubs/circuit-society?ref=qr'),
@@ -293,6 +301,11 @@ void main() {
       expect(namesAt(router, '/following/posts').first, 'home');
       expect(namesAt(router, '/verify/certificates/CERT-1').first, 'home');
       expect(namesAt(router, '/events/hack-night-04'), ['home', 'eventDetail']);
+      // The live room and its quiz, in the app, under the event.
+      expect(namesAt(router, '/events/hack-night-04/live'),
+          ['home', 'eventDetail', 'eventLive']);
+      expect(namesAt(router, '/events/12/live/quiz'),
+          ['home', 'eventDetail', 'eventLive', 'eventLiveQuiz']);
       expect(namesAt(router, '/clubs/circuit-society'), ['home', 'clubDetail']);
     });
 

@@ -80,6 +80,15 @@ enum LiveMode {
 /// - In the background: closed after [hiddenGrace], reopened (with the last
 ///   id) when the app is back.
 ///
+/// With [pollEvery], the view is also polled at that interval while the app
+/// is in front and the stream is not the source -- the live room's screens,
+/// whose server has streams switched off, and the event page's strip. The
+/// poll stops at once when the app goes to the background (the stream keeps
+/// its grace), and comes back with a poll when it returns. [shouldPoll]
+/// says, of the last value (null before one came), whether polling is
+/// still worth it (a room that has closed); [onPollError] hears every
+/// failed poll.
+///
 /// There is never more than one stream open or one poll in flight, and
 /// [close] leaves no timer running.
 class LiveStreamClient<T> {
@@ -89,12 +98,18 @@ class LiveStreamClient<T> {
     required T? Function(Object? json) parse,
     required void Function(T value) onData,
     required bool Function(T value) shouldStream,
+    Duration? pollEvery,
+    bool Function(T? value)? shouldPoll,
+    void Function(Object error)? onPollError,
     Random? random,
   })  : _open = open,
         _poll = poll,
         _parse = parse,
         _onData = onData,
         _shouldStream = shouldStream,
+        _pollEvery = pollEvery,
+        _shouldPoll = shouldPoll,
+        _onPollError = onPollError,
         _random = random ?? Random();
 
   /// The reconnect delay until the stream's own `retry:` arrives.
@@ -129,7 +144,16 @@ class LiveStreamClient<T> {
   final T? Function(Object? json) _parse;
   final void Function(T value) _onData;
   final bool Function(T value) _shouldStream;
+  final Duration? _pollEvery;
+  final bool Function(T? value)? _shouldPoll;
+  final void Function(Object error)? _onPollError;
   final Random _random;
+
+  /// The last value delivered, from the poll or the stream.
+  T? _last;
+
+  /// The poll on [_pollEvery], while the app is in front.
+  Timer? _pollTimer;
 
   LiveMode _mode = LiveMode.idle;
   LiveMode _modeBeforePause = LiveMode.idle;
@@ -179,6 +203,7 @@ class LiveStreamClient<T> {
     _started = true;
     _mode = LiveMode.notLive;
     _pollOnce();
+    _startPolling();
   }
 
   /// The page loaded itself again (after a payment, a retry), which has
@@ -200,6 +225,7 @@ class LiveStreamClient<T> {
   void hidden() {
     if (_closed || !_visible) return;
     _visible = false;
+    _stopPolling();
     _graceTimer?.cancel();
     _graceTimer = Timer(hiddenGrace, _pause);
   }
@@ -211,6 +237,14 @@ class LiveStreamClient<T> {
     _graceTimer?.cancel();
     _graceTimer = null;
     if (_paused) _resume();
+    if (_started && _pollEvery != null) {
+      // What happened while away, now rather than at the next tick -- unless
+      // the stream is reopening, which brings it (from the last id).
+      final reopening =
+          _mode == LiveMode.connecting || _mode == LiveMode.streaming;
+      if (!reopening && _worthPolling) _pollOnce();
+      _startPolling();
+    }
   }
 
   /// Closes the stream and stops every timer, for good.
@@ -218,6 +252,7 @@ class LiveStreamClient<T> {
     if (_closed) return;
     _closed = true;
     _teardown();
+    _stopPolling();
     _cancel(_reconnectTimer);
     _cancel(_streamRetryTimer);
     _cancel(_graceTimer);
@@ -493,10 +528,34 @@ class LiveStreamClient<T> {
       (value) {
         if (value != null) _deliver(value, fromPoll: true);
       },
-      onError: (Object _) {
+      onError: (Object error) {
         // As the page's poll always has: a failed poll leaves what is shown.
+        if (!_closed) _onPollError?.call(error);
       },
     ).whenComplete(() => _pollInFlight = false);
+  }
+
+  bool get _worthPolling {
+    final shouldPoll = _shouldPoll;
+    return shouldPoll == null || shouldPoll(_last);
+  }
+
+  void _startPolling() {
+    final every = _pollEvery;
+    if (every == null || _closed || !_visible) return;
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(every, (_) {
+      if (_closed || !_visible || _paused) return;
+      // The stream is the source: nothing to ask.
+      if (_mode == LiveMode.streaming) return;
+      if (!_worthPolling) return;
+      _pollOnce();
+    });
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
   }
 
   void _deliver(T value, {required bool fromPoll}) {
@@ -504,6 +563,7 @@ class LiveStreamClient<T> {
     // A poll answered after the stream took over is older than the stream.
     if (fromPoll && _mode == LiveMode.streaming) return;
     _wantStream = _shouldStream(value);
+    _last = value;
     _onData(value);
     _reconsider();
   }

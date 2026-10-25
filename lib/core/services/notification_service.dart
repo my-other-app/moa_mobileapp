@@ -18,6 +18,7 @@ import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/app/router/app_router.dart';
 import 'package:finnet/app/router/web_links.dart';
+import 'package:finnet/features/live/live_locations.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:go_router/go_router.dart';
 
@@ -389,13 +390,15 @@ class NotificationService {
     }
   }
 
-  /// Where a notification's data points. A live update from an event opens
-  /// that event, whose page shows the room's strip. A host starting a quiz
-  /// or a poll (`event_live_join`) opens the event and, on top of it, the
-  /// live room in the app ([liveJoinRoute]), so Back lands on the event. A
-  /// club's new post (`club_thread`) opens that post; if it has been removed
-  /// since, its page says so. The check-in push (`event_checkin`) opens
-  /// People Like You when it says `open: people`, else the event.
+  /// Where a notification's data points. Every live-room push opens the
+  /// room in the app ([liveJoinRoute]): the event going live
+  /// (`event_live_started`), questions opening (`event_live_qa`), a poll
+  /// starting (`event_live_join`, `what: poll`) and the organiser's updates
+  /// (`event_live_update`); the quiz starting (`what: quiz`) opens the quiz,
+  /// to join with the code on the screen. A club's new post (`club_thread`)
+  /// opens that post; if it has been removed since, its page says so. The
+  /// check-in push (`event_checkin`) opens People Like You when it says
+  /// `open: people`, else the event.
   ///
   /// Any other push that carries a `url` to the website opens the app's
   /// screen for that address (`/events/{slug}`, `/clubs/{slug}`, ...: see
@@ -439,26 +442,32 @@ class NotificationService {
     }
     final eventId = int.tryParse(data['event_id']?.toString().trim() ?? '');
     if (eventId != null) {
-      if (type == 'event_live_join') {
+      if (liveRoomTypes.contains(type)) {
         return liveJoinRoute(eventId, data['what']);
       }
       if (type == 'event_checkin' && data['open']?.toString() == 'people') {
         return '/events/$eventId/people';
       }
-      if (type == 'event_live_update' || type == 'event_reminder' || type == 'event_started' || type == 'event_checkin') {
+      if (type == 'event_reminder' || type == 'event_started' || type == 'event_checkin') {
         return '/events/$eventId';
       }
     }
     return null;
   }
 
-  /// The event's page, told to open its live room at once: what a "join
-  /// now" push and its inbox row open. [what] is the push's `what` (`quiz`
-  /// or `poll`); anything else is just the room.
-  static String liveJoinRoute(int eventId, Object? what) {
-    final kind = what == 'quiz' || what == 'poll' ? what as String : 'room';
-    return '/events/$eventId?live=$kind';
-  }
+  /// The pushes (and inbox rows) that open an event's live room.
+  static const liveRoomTypes = {
+    'event_live_join',
+    'event_live_started',
+    'event_live_qa',
+    'event_live_update',
+  };
+
+  /// The live room in the app for a live push or its inbox row: the quiz
+  /// for [what] `quiz`, to join with the code on the screen; the room for
+  /// anything else (`room`, `qa`, `poll`, or none).
+  static String liveJoinRoute(int eventId, Object? what) =>
+      what == 'quiz' ? liveQuizLocation(eventId) : liveRoomLocation(eventId);
 
   /// A local notification's payload that launched the app: held to open
   /// once the app is up, and counted as that push's one opening.

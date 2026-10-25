@@ -3,6 +3,8 @@ import 'package:finnet/core/services/push_dedupe.dart';
 import 'package:finnet/features/auth/presentation/pages/splash_screen.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
+import 'package:finnet/features/live/data/live_identity.dart';
+import 'package:finnet/features/live/presentation/pages/live_room_page.dart';
 import 'package:finnet/features/notifications/data/models/notification_model.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
@@ -96,102 +98,139 @@ void main() {
         'club': {'id': 3, 'name': 'Tinkerhub'},
         'category': {'id': 1, 'name': 'Tech'},
       });
+      api.on('GET', '/events/68/live', {
+        'event': {'id': 68, 'name': 'Hack Night', 'status': 'live'},
+        'banner': {'kind': 'room', 'text': 'Demos move to Lab 3B'},
+        'updates': [
+          {
+            'id': 'u1',
+            'kind': 'room',
+            'text': 'Demos move to Lab 3B',
+            'sent_at': '2030-12-01T10:30:00Z',
+          },
+        ],
+        'poll': null,
+        'questions': <dynamic>[],
+        'qa': {'open': true, 'approve_first': false},
+        'quiz': {'live': false, 'title': null},
+      });
     });
 
-    Future<List<Uri>> pumpEvent(WidgetTester tester,
-        {required bool openLiveRoom, bool launches = true}) async {
-      final opened = <Uri>[];
+    Future<void> pumpEvent(WidgetTester tester,
+        {required bool openLiveRoom}) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [
           profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
           paymentRepositoryProvider.overrideWithValue(FakePaymentRepository()),
-          linkLauncherProvider.overrideWithValue((uri) async {
-            opened.add(uri);
-            return launches;
-          }),
+          liveIdentityProvider
+              .overrideWithValue(LiveIdentity(MemoryLiveStore())),
         ],
         child: MaterialApp(
           home: IndividualEventPage(eventId: 68, openLiveRoom: openLiveRoom),
         ),
       ));
-      for (var i = 0; i < 5; i++) {
+      for (var i = 0; i < 8; i++) {
         await tester.pump(const Duration(milliseconds: 50));
       }
-      return opened;
     }
 
-    testWidgets('at once, from a "join now" push, through the in-app launcher',
+    testWidgets('at once, when asked, as the app\'s own screen on top',
         (tester) async {
-      final opened = await pumpEvent(tester, openLiveRoom: true);
+      await pumpEvent(tester, openLiveRoom: true);
 
-      // The room under the event's own address; the website sends an id
-      // on to the slug.
-      expect(opened, [Uri.parse('https://myotherapp.in/events/68/live')]);
-      // The event is underneath: closing the room lands on it.
+      expect(find.byType(LiveRoomPage), findsOneWidget);
+      Finder inRoom(Finder f) =>
+          find.descendant(of: find.byType(LiveRoomPage), matching: f);
+      expect(inRoom(find.text('Demos move to Lab 3B')), findsOneWidget);
+      expect(inRoom(find.text('Ask the room')), findsOneWidget);
+
+      // The event is underneath: Back lands on it.
+      await tester.tap(find.descendant(
+          of: find.byType(LiveRoomPage), matching: find.byType(BackButton)));
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(find.byType(LiveRoomPage), findsNothing);
       expect(find.byType(IndividualEventPage), findsOneWidget);
     });
 
     testWidgets('not when opened any other way', (tester) async {
-      final opened = await pumpEvent(tester, openLiveRoom: false);
-      expect(opened, isEmpty);
-    });
-
-    testWidgets('and says so when nothing could open it', (tester) async {
-      await pumpEvent(tester, openLiveRoom: true, launches: false);
-      expect(find.text("Couldn't open the live room"), findsOneWidget);
+      await pumpEvent(tester, openLiveRoom: false);
+      expect(find.byType(LiveRoomPage), findsNothing);
     });
   });
 
-  group('event_live_join', () {
-    test('routes to the event, told to open its room', () {
-      expect(NotificationService.routeFor(_quizPush), '/events/68?live=quiz');
+  group('every live push opens the room in the app', () {
+    test('the quiz starting opens the quiz, to join with the code', () {
+      expect(NotificationService.routeFor(_quizPush), '/events/68/live/quiz');
+    });
+
+    test('a poll, the event going live, questions opening and updates open '
+        'the room', () {
+      for (final data in [
+        const {'type': 'event_live_join', 'event_id': 68, 'what': 'poll'},
+        const {'type': 'event_live_join', 'event_id': '68', 'what': 'new'},
+        const {'type': 'event_live_started', 'event_id': '68', 'what': 'room'},
+        const {'type': 'event_live_qa', 'event_id': '68', 'what': 'qa'},
+        const {'type': 'event_live_update', 'event_id': '68'},
+      ]) {
+        expect(NotificationService.routeFor(data), '/events/68/live',
+            reason: '$data');
+      }
+      // Whatever the type, `what: quiz` is the quiz.
       expect(
-        NotificationService.routeFor(const {
-          'type': 'event_live_join',
-          'event_id': 68,
-          'what': 'poll',
-        }),
-        '/events/68?live=poll',
-      );
-      expect(
-        NotificationService.routeFor(const {
-          'type': 'event_live_join',
-          'event_id': '68',
-          'what': 'something new',
-        }),
-        '/events/68?live=room',
-      );
+          NotificationService.routeFor(const {
+            'type': 'event_live_started',
+            'event_id': '68',
+            'what': 'quiz',
+          }),
+          '/events/68/live/quiz');
     });
 
     test('without a usable event id goes nowhere', () {
-      expect(
-          NotificationService.routeFor(const {'type': 'event_live_join'}),
-          isNull);
-      expect(
-          NotificationService.routeFor(
-              const {'type': 'event_live_join', 'event_id': 'abc'}),
-          isNull);
+      for (final type in NotificationService.liveRoomTypes) {
+        expect(NotificationService.routeFor({'type': type}), isNull);
+        expect(
+            NotificationService.routeFor({'type': type, 'event_id': 'abc'}),
+            isNull);
+      }
     });
 
-    test('its inbox row opens the same way', () {
-      final row = NotificationModel.fromJson({
-        'id': 'n1',
-        'user_id': 1,
-        'title': 'Hack Night',
-        'description': 'The quiz is starting — join now',
-        'type': 'event_live_join',
-        'status': 'unread',
-        'data': {..._quizPush},
-        'created_at': '2026-10-19T08:00:00Z',
-        'updated_at': '2026-10-19T08:00:00Z',
-      });
+    NotificationModel row(String type, Map<String, dynamic> data) =>
+        NotificationModel.fromJson({
+          'id': 'n1',
+          'user_id': 1,
+          'title': 'Hack Night',
+          'description': 'Something in the room',
+          'type': type,
+          'status': 'unread',
+          'data': data,
+          'created_at': '2026-10-19T08:00:00Z',
+          'updated_at': '2026-10-19T08:00:00Z',
+        });
 
-      expect(row.notificationType, NotificationType.eventLiveJoin);
-      expect(row.liveEventId, 68);
-      expect(row.liveWhat, 'quiz');
-      expect(NotificationService.liveJoinRoute(row.liveEventId!, row.liveWhat),
+    test('their inbox rows open the same way', () {
+      final quiz = row('event_live_join', {..._quizPush});
+      expect(quiz.notificationType, NotificationType.eventLiveJoin);
+      expect(quiz.liveEventId, 68);
+      expect(quiz.liveWhat, 'quiz');
+      expect(quiz.opensLiveRoom, isTrue);
+      expect(NotificationService.liveJoinRoute(quiz.liveEventId!, quiz.liveWhat),
           NotificationService.routeFor(_quizPush));
-      expect(row.iconEmoji, '🧠');
+      expect(quiz.iconEmoji, '🧠');
+
+      for (final (type, kind) in [
+        ('event_live_started', NotificationType.eventLiveStarted),
+        ('event_live_qa', NotificationType.eventLiveQa),
+        ('event_live_update', NotificationType.eventLiveUpdate),
+      ]) {
+        final r = row(type, {'type': type, 'event_id': '68'});
+        expect(r.notificationType, kind);
+        expect(r.opensLiveRoom, isTrue);
+        expect(NotificationService.liveJoinRoute(r.liveEventId!, r.liveWhat),
+            '/events/68/live');
+      }
+      expect(row('event_reminder', {'event_id': '68'}).opensLiveRoom, isFalse);
     });
 
     test('is opened once per push_id', () {
@@ -213,10 +252,16 @@ void main() {
             GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
             GoRoute(path: '/', builder: (_, __) => const Text('HOME')),
             GoRoute(
-              path: '/events/:eventId',
-              builder: (_, state) => Text(
-                  'EVENT ${state.pathParameters['eventId']} '
-                  'live=${state.uri.queryParameters['live']}'),
+              path: '/events/:eventId/live',
+              builder: (_, state) =>
+                  Text('ROOM ${state.pathParameters['eventId']}'),
+              routes: [
+                GoRoute(
+                  path: 'quiz',
+                  builder: (_, state) =>
+                      Text('QUIZ ${state.pathParameters['eventId']}'),
+                ),
+              ],
             ),
             GoRoute(
               path: '/auth/onboarding',
@@ -225,8 +270,8 @@ void main() {
           ],
         );
 
-    testWidgets('opens the event over home, with the room to follow; Back '
-        'lands on home through the event', (tester) async {
+    testWidgets('opens the quiz over home; Back lands on home',
+        (tester) async {
       final payload = '{"type":"event_live_join","event_id":"68",'
           '"what":"quiz","push_id":"cold-start-1"}';
       NotificationService.holdLaunchPayload(payload);
@@ -247,9 +292,7 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      // The event page, asked to open its live room: the room opens on top
-      // of it (in-app browser), so closing the room shows the event.
-      expect(find.text('EVENT 68 live=quiz'), findsOneWidget);
+      expect(find.text('QUIZ 68'), findsOneWidget);
       r.pop();
       await tester.pumpAndSettle();
       expect(find.text('HOME'), findsOneWidget);
@@ -260,7 +303,7 @@ void main() {
       const payload = '{"type":"event_live_join","event_id":"68",'
           '"what":"poll","push_id":"cold-start-2"}';
       NotificationService.holdLaunchPayload(payload);
-      expect(NotificationService.pendingLaunch.take(), '/events/68?live=poll');
+      expect(NotificationService.pendingLaunch.take(), '/events/68/live');
 
       expect(
         NotificationService.dedupe.firstOpen(const {

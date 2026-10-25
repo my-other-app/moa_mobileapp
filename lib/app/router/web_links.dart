@@ -13,7 +13,7 @@ import 'package:finnet/core/config/app_config.dart';
 /// | `/events?…`                      | `/discover/events?…` (Find events)    |
 /// | `/events/in`, `/events/in/{city}`| `/discover/events?…` (Find events)    |
 /// | `/events/{slug or id}`           | the event's page                      |
-/// | `/events/{ref}/live`             | the event, with its live room open    |
+/// | `/events/{ref}/live`             | the live room, in the app             |
 /// | `/events/{ref}/register`         | registration                          |
 /// | `/events/{ref}/compete`          | the competition                       |
 /// | `/clubs?…`                       | `/discover/clubs?…` (the directory)   |
@@ -30,11 +30,12 @@ import 'package:finnet/core/config/app_config.dart';
 /// (the tabs); the website's are the directories, which is why a link is
 /// read here first rather than matched as it is.
 ///
-/// iPhone leaves the live room in the browser (the site's file excludes
-/// it); Android's intent filters cannot leave a path out, so the app
-/// handles that too. [webLocation] also reads the addresses the site has
-/// that are not claimed (the old `/{id}` event links, `/me/...`), for a
-/// link that reaches the app some other way: a push's `url`.
+/// iPhone leaves the live room in the browser until the site's file claims
+/// it (it excludes `/events/*/live` today); Android's intent filters cannot
+/// leave a path out, so there the app opens it. [webLocation] also reads
+/// the addresses the site has that are not claimed (the old `/{id}` event
+/// links, `/play/{id}`, `/me/...`), for a link that reaches the app some
+/// other way: a push's `url`.
 
 /// The hosts that are this site: the apex, and the two that redirect to it.
 bool isSiteHost(String host) {
@@ -85,7 +86,7 @@ String? webLocation(Uri uri) {
       if (rest.length == 2) {
         switch (rest[1].toLowerCase()) {
           case 'live':
-            return at('/events/$ref', const {'live': 'room'});
+            return at('/events/$ref/live');
           case 'register':
             return at('/events/$ref/register');
           case 'compete':
@@ -105,6 +106,11 @@ String? webLocation(Uri uri) {
     case 'tickets':
     case 'certificates':
       return rest.length == 1 ? at('/$head/${one(rest.first)}') : null;
+    case 'play':
+      // The website's quiz, joined from its live room.
+      return rest.length == 1 && int.tryParse(rest.first) != null
+          ? at('/events/${rest.first}/live/quiz')
+          : null;
     case 'feedback':
       return rest.length == 2
           ? at('/feedback/${one(rest[0])}/${one(rest[1])}')
@@ -125,7 +131,7 @@ String? webLocation(Uri uri) {
   if (int.tryParse(head) != null) {
     if (rest.isEmpty) return at('/events/$head');
     if (rest.length == 1 && rest.first.toLowerCase() == 'live') {
-      return at('/events/$head', const {'live': 'room'});
+      return at('/events/$head/live');
     }
   }
   return null;

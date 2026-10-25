@@ -1,10 +1,16 @@
 /// What the event's live room is doing right now, as the event page needs it:
 /// enough to draw a strip and open the room, nothing more. The room itself
-/// (voting, polls, the quiz) is the web page, so it is the same on every phone.
+/// (voting, polls, the quiz) is its own screen (lib/features/live/).
+///
+/// Read from the room's body or from the strip's smaller `banner` view,
+/// which has the event and its banner and nothing of the poll, the quiz or
+/// the questions.
 class LiveFeed {
   const LiveFeed({
     required this.eventId,
     this.eventStatus,
+    this.startsAt,
+    this.endsAt,
     this.bannerText,
     this.bannerKind,
     this.pollPrompt,
@@ -21,6 +27,10 @@ class LiveFeed {
   /// `live`, `closed`, ...), as the website reads it. Null from a server that
   /// does not send it.
   final String? eventStatus;
+
+  /// The event's start and end, from the `banner` view.
+  final DateTime? startsAt;
+  final DateTime? endsAt;
   final String? bannerText;
   final String? bannerKind;
   final String? pollPrompt;
@@ -38,6 +48,12 @@ class LiveFeed {
       eventId: event is Map ? (event['id'] as num?)?.toInt() ?? 0 : 0,
       eventStatus: event is Map && event['status'] is String
           ? event['status'] as String
+          : null,
+      startsAt: event is Map && event['starts_at'] is String
+          ? DateTime.tryParse(event['starts_at'] as String)
+          : null,
+      endsAt: event is Map && event['ends_at'] is String
+          ? DateTime.tryParse(event['ends_at'] as String)
           : null,
       bannerText: banner is Map ? banner['text'] as String? : null,
       bannerKind: banner is Map ? banner['kind'] as String? : null,
@@ -57,15 +73,24 @@ class LiveFeed {
   /// test): the only time the page keeps a stream open.
   bool get isEventLive => eventStatus == 'live';
 
-  /// Whether there is anything worth a strip on the event page.
+  /// The event is over: its room is closed.
+  bool get isClosed => eventStatus == 'closed' || eventStatus == 'archived';
+
+  /// Whether there is anything worth a strip on the event page: the event
+  /// is happening, or the room has something up.
   bool get isActive =>
-      bannerText != null || pollPrompt != null || quizLive || questions > 0;
+      isEventLive ||
+      bannerText != null ||
+      pollPrompt != null ||
+      quizLive ||
+      questions > 0;
 
   /// The one line the strip shows.
   String get headline {
     if (bannerText != null) return bannerText!;
     if (quizLive) return 'The quiz is on — join with the code on the screen';
     if (pollPrompt != null) return pollPrompt!;
-    return 'Questions are being taken from the floor';
+    if (questions > 0) return 'Questions are being taken from the floor';
+    return 'The live room is open — updates, polls and questions';
   }
 }
