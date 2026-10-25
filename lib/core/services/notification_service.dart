@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/network/interceptors/topic_change_interceptor.dart';
+import 'package:finnet/core/services/notification_routes.dart' as routes;
 import 'package:finnet/core/services/pending_notification_route.dart';
 import 'package:finnet/core/services/push_arrivals.dart';
 import 'package:finnet/core/services/push_dedupe.dart';
@@ -18,7 +19,6 @@ import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/app/router/app_router.dart';
 import 'package:finnet/app/router/web_links.dart';
-import 'package:finnet/features/live/live_locations.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:go_router/go_router.dart';
 
@@ -449,14 +449,15 @@ class NotificationService {
     }
   }
 
-  /// Where a notification's data points. Every live-room push opens the
-  /// room in the app ([liveJoinRoute]): the event going live
-  /// (`event_live_started`), questions opening (`event_live_qa`), a poll
-  /// starting (`event_live_join`, `what: poll`) and the organiser's updates
-  /// (`event_live_update`); the quiz starting (`what: quiz`) opens the quiz,
-  /// to join with the code on the screen. A club's new post (`club_thread`)
-  /// opens that post; if it has been removed since, its page says so. The
-  /// check-in push (`event_checkin`) opens People Like You when it says
+  /// Where a notification's data points: by its `type`, from the one table
+  /// pushes and inbox lines share (`notificationRoute`,
+  /// notification_routes.dart). Every live-room push opens the room in the
+  /// app ([liveJoinRoute]); the quiz starting (`what: quiz`) opens the quiz.
+  /// A club's new post (`club_thread`) opens that post. A followed club's
+  /// new event, a new event in the person's topics, the organiser's message
+  /// and the event's reminders open the event; "you're a volunteer" opens
+  /// the event's door scanner, and "your certificate is ready" My
+  /// Certificates. The check-in push opens People Like You when it says
   /// `open: people`, else the event.
   ///
   /// Any other push that carries a `url` to the website opens the app's
@@ -492,41 +493,21 @@ class NotificationService {
     return webLocation(url);
   }
 
-  static String? _typedRoute(Map<String, dynamic> data) {
-    final type = data['type']?.toString();
-    if (type == 'club_thread') {
-      final threadId = data['thread_id']?.toString().trim();
-      if (threadId == null || threadId.isEmpty) return null;
-      return '/threads/${Uri.encodeComponent(threadId)}';
-    }
-    final eventId = int.tryParse(data['event_id']?.toString().trim() ?? '');
-    if (eventId != null) {
-      if (liveRoomTypes.contains(type)) {
-        return liveJoinRoute(eventId, data['what']);
-      }
-      if (type == 'event_checkin' && data['open']?.toString() == 'people') {
-        return '/events/$eventId/people';
-      }
-      if (type == 'event_reminder' || type == 'event_started' || type == 'event_checkin') {
-        return '/events/$eventId';
-      }
-    }
-    return null;
-  }
+  static String? _typedRoute(Map<String, dynamic> data) =>
+      routes.notificationRoute(
+        data['type']?.toString(),
+        eventId: routes.eventIdIn(data),
+        data: data,
+      );
 
   /// The pushes (and inbox rows) that open an event's live room.
-  static const liveRoomTypes = {
-    'event_live_join',
-    'event_live_started',
-    'event_live_qa',
-    'event_live_update',
-  };
+  static const liveRoomTypes = routes.liveRoomTypes;
 
   /// The live room in the app for a live push or its inbox row: the quiz
   /// for [what] `quiz`, to join with the code on the screen; the room for
   /// anything else (`room`, `qa`, `poll`, or none).
   static String liveJoinRoute(int eventId, Object? what) =>
-      what == 'quiz' ? liveQuizLocation(eventId) : liveRoomLocation(eventId);
+      routes.liveJoinRoute(eventId, what);
 
   /// A local notification's payload that launched the app: held to open
   /// once the app is up, and counted as that push's one opening.
