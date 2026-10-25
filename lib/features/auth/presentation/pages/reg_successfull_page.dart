@@ -29,6 +29,9 @@ class _RegSuccessfullPageState extends State<RegSuccessfullPage>
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
 
+  /// Moves on into the ticket. Cancelled when the screen goes.
+  Timer? _toTicket;
+
   @override
   void initState() {
     super.initState();
@@ -48,11 +51,13 @@ class _RegSuccessfullPageState extends State<RegSuccessfullPage>
 
     _animationController.forward();
 
-    // Navigate to ticket view after 3 seconds
-    Timer(const Duration(seconds: 3), () {
-      if (mounted && widget.ticketId != null) {
-        _navigateToTicket();
-      }
+    // Navigate to ticket view after 3 seconds -- unless the person has left:
+    // a screen that Back is still sliding away is mounted, but no longer
+    // the current one, and the ticket opened over wherever they went.
+    _toTicket = Timer(const Duration(seconds: 3), () {
+      if (!mounted || widget.ticketId == null) return;
+      if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+      _navigateToTicket();
     });
   }
 
@@ -94,6 +99,7 @@ class _RegSuccessfullPageState extends State<RegSuccessfullPage>
 
   @override
   void dispose() {
+    _toTicket?.cancel();
     _animationController.dispose();
     super.dispose();
   }
