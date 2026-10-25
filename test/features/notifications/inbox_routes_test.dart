@@ -188,8 +188,7 @@ void main() {
       expect(matches.isError, isFalse, reason: location);
       final last = matches.last;
       final state = last.buildState(router.configuration, matches);
-      return (last.route as GoRoute)
-          .builder!(tester.element(find.byType(SizedBox)), state);
+      return last.route.builder!(tester.element(find.byType(SizedBox)), state);
     }
 
     testWidgets('the scanner, for the event and with its names',
