@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
+import 'package:finnet/features/events/domain/ticketing.dart';
+import 'package:finnet/features/events/presentation/widgets/ticketing/cancelled_notice.dart';
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart'
     show ticketRoute;
 import 'package:finnet/features/events/presentation/utils/event_feed.dart';
@@ -111,6 +113,15 @@ class EventCard extends StatelessWidget {
   /// Without it the button opens the event page straight into paying.
   final VoidCallback? onFinishPayment;
 
+  /// The club called the event off: the card says so, with the reason,
+  /// whatever [status] it had, and its button opens the event.
+  final EventCancellation? cancellation;
+
+  /// The ticket was paid for: a cancelled event's refund applies.
+  final bool paidTicket;
+
+  static const cancelledBadgeKey = ValueKey('event-cancelled-badge');
+
   const EventCard({
     super.key,
     required this.title,
@@ -133,6 +144,8 @@ class EventCard extends StatelessWidget {
     this.certificateUrl,
     this.showShareIcon = true,
     this.onFinishPayment,
+    this.cancellation,
+    this.paidTicket = false,
   });
 
   /// The event's public page, or null with neither a slug nor an id to
@@ -148,7 +161,9 @@ class EventCard extends StatelessWidget {
   bool get _saleBlocked => !canSellInApp(hasFee: hasFee, isOnline: isOnline);
 
   bool get _paymentCue =>
-      status == EventCardStatus.awaitingPayment && !_saleBlocked;
+      status == EventCardStatus.awaitingPayment &&
+      !_saleBlocked &&
+      cancellation == null;
 
   @override
   Widget build(BuildContext context) {
@@ -263,7 +278,36 @@ class EventCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10.0),
                   ),
                 )),
-            if (_paymentCue)
+            if (cancellation != null)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  key: cancelledBadgeKey,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDC2626),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.event_busy, size: 16, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text(
+                        'Cancelled',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (_paymentCue)
               const Positioned(top: 12, right: 12, child: PaymentDueBadge())
             // Status badge overlay
             else if (status != EventCardStatus.none &&
@@ -333,6 +377,35 @@ class EventCard extends StatelessWidget {
   }
 
   Widget _buildActionButton(BuildContext context) {
+    final cancelled = cancellation;
+    if (cancelled != null) {
+      final registered = status != EventCardStatus.none;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          CancelledNotice(
+            cancellation: cancelled,
+            registered: registered,
+            paid: registered && paidTicket,
+            compact: true,
+          ),
+          const SizedBox(height: 10),
+          Pressable(
+            child: FilledButton(
+              key: const ValueKey('event-cancelled-view'),
+              onPressed: () {
+                context.push('/events/$eventId',
+                    extra: _getNavigationExtras());
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.grey.shade700,
+              ),
+              child: const Text('VIEW EVENT'),
+            ),
+          ),
+        ],
+      );
+    }
     switch (status) {
       case EventCardStatus.registered:
         return FilledButton(

@@ -59,6 +59,11 @@ import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 import 'package:finnet/shared/widgets/poster_hero.dart';
 import 'package:finnet/shared/widgets/pressable.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/features/events/data/ticketing_api.dart';
+import 'package:finnet/features/events/domain/ticketing.dart';
+import 'package:finnet/features/events/presentation/widgets/ticketing/cancelled_notice.dart';
+import 'package:finnet/features/events/presentation/widgets/ticketing/ticket_type_picker.dart';
+import 'package:finnet/features/events/presentation/widgets/ticketing/waitlist_widgets.dart';
 
 class IndividualEventPage extends ConsumerStatefulWidget {
   /// The event's id, when it was opened by id.
@@ -84,6 +89,10 @@ class IndividualEventPage extends ConsumerStatefulWidget {
   /// flight lands on the very poster the page then shows.
   final PosterHint? posterHint;
 
+  /// A hidden ticket type a link named (`?ticket_type=`): shown with the
+  /// others, and chosen on the form.
+  final int? linkedTicketTypeId;
+
   const IndividualEventPage({
     super.key,
     this.eventId,
@@ -94,6 +103,7 @@ class IndividualEventPage extends ConsumerStatefulWidget {
     this.openLiveRoom = false,
     this.posterHero,
     this.posterHint,
+    this.linkedTicketTypeId,
   }) : assert(eventId != null || eventRef != null,
             'An event page needs an id or a slug');
 
@@ -229,6 +239,25 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// The deadline passed: at load, or while the countdown was showing.
   bool registrationClosed = false;
 
+  /// The event's ticket types, what is left and the person's place in line
+  /// (`ticketing`); null from a server without them.
+  EventTicketing? _ticketing;
+
+  /// The club called the event off (`status: "cancelled"`), by
+  /// `/events/info`'s word.
+  EventCancellation? _infoCancellation;
+
+  /// Leaving the waiting list is under way.
+  bool _leavingWaitlist = false;
+
+  /// Cancelled, by `/events/info`'s word or the website page's.
+  EventCancellation? get _cancellation =>
+      _infoCancellation ?? _page?.cancellation;
+
+  /// A ticket held on it was paid for: a cancelled event's refund applies.
+  bool get _paidTicket =>
+      isRegistered && !awaitingPayment && (hasFee ?? false);
+
   @override
   void initState() {
     super.initState();
@@ -333,6 +362,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       return;
     }
     if (!mounted || isLoading) return;
+    // A link that named a hidden ticket type: the types again, with it.
+    if (widget.linkedTicketTypeId != null) await _loadTicketing();
+    if (!mounted) return;
 
     if (_finishPaymentOnLoad && gotFresh) {
       _finishPaymentOnLoad = false;
@@ -418,6 +450,14 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       infoLat = eventInfo.lat;
       infoLng = eventInfo.lng;
       feedbackUrl = eventInfo.feedbackUrl;
+      _infoCancellation = EventCancellation.of(raw);
+      // An older server sends no `ticketing`: the page is as it was. The
+      // hidden type a link named stays until the types are read again.
+      final ticketing = EventTicketing.fromJson(raw['ticketing']);
+      if (ticketing != null &&
+          (widget.linkedTicketTypeId == null || _ticketing == null)) {
+        _ticketing = ticketing;
+      }
 
       isLoading = false;
 
@@ -546,6 +586,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         // "Get updates from <club> on WhatsApp", for a club that offers it.
         'clubName': club?.name ?? '',
         'clubUpdates': club?.whatsappUpdates == true,
+        if (widget.linkedTicketTypeId != null)
+          'linkedTicketType': widget.linkedTicketTypeId,
       },
     );
     if (!mounted) return;
@@ -556,6 +598,85 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       _openTicket();
     } else if (result == RegistrationAction.finishPayment && awaitingPayment) {
       await _finishPayment();
+    } else if (result == RegistrationAction.joinWaitlist && !isRegistered) {
+      await _joinWaitlist();
+    }
+  }
+
+  /// The ticket types again: with the hidden type a link named, and the
+  /// person's place in line. A failure keeps what the page has.
+  Future<void> _loadTicketing() async {
+    final id = _eventId;
+    if (id == null) return;
+    try {
+      final ticketing = await ref
+          .read(ticketingApiProvider)
+          .ticketTypes(id, linked: widget.linkedTicketTypeId);
+      if (ticketing != null && mounted) {
+        setState(() => _ticketing = ticketing);
+      }
+    } catch (e) {
+      debugPrint('Ticket types for $id: $e');
+    }
+  }
+
+  /// "Join the waiting list": signed in (the offer comes by push to the
+  /// account too, and leaving needs it), then who to tell and for which
+  /// ticket. [type] is the one asked for, from the list of tickets.
+  Future<void> _joinWaitlist({TicketType? type}) async {
+    final signedIn = await ensureSignedInFor(
+      context,
+      ref,
+      reason: 'Sign in to join the waiting list for ${name ?? 'this event'}.',
+    );
+    if (!signedIn || !mounted) return;
+    var profile = ref.read(profileProvider).profile;
+    if (profile == null) {
+      await ref.read(profileProvider.notifier).loadProfile();
+      if (!mounted) return;
+      profile = ref.read(profileProvider).profile;
+    }
+    final phone = (profile?.phone?.isNotEmpty ?? false)
+        ? profile!.phone
+        : profile?.whatsapp;
+    final entry = await showJoinWaitlistSheet(
+      context,
+      event: _idOrZero,
+      ticketing: _ticketing,
+      api: ref.read(ticketingApiProvider),
+      name: profile?.fullName,
+      email: profile?.email,
+      phone: phone,
+      ticketTypeId: type?.id,
+    );
+    if (entry == null || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(joinedWaitlistMessage(entry))),
+    );
+    await _fetchData();
+  }
+
+  /// Leaves every place in line, once the person says so.
+  Future<void> _leaveWaitlist() async {
+    if (_leavingWaitlist || !await confirmLeaveWaitlist(context) || !mounted) {
+      return;
+    }
+    setState(() => _leavingWaitlist = true);
+    try {
+      await ref.read(ticketingApiProvider).leaveWaitlist(_idOrZero);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("You've left the waiting list.")),
+      );
+      await _fetchData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(readableError(e,
+            fallback: "We couldn't take you off the waiting list. Try again.")),
+      ));
+    } finally {
+      if (mounted) setState(() => _leavingWaitlist = false);
     }
   }
 
@@ -1831,6 +1952,16 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               showInterests: true,
               onTopicTap: (topic) => context.push(topicLocation(topic.slug)),
             ),
+            // Called off: said first, with the club's reason and, for a
+            // paid ticket, the refund.
+            if (_cancellation case final cancelled?) ...[
+              const SizedBox(height: 16),
+              CancelledNotice(
+                cancellation: cancelled,
+                registered: isRegistered,
+                paid: _paidTicket,
+              ),
+            ],
             // People Like You: the way in while checked in, a word on the
             // day before that; nothing otherwise.
             PeopleLikeYouCard(
@@ -1876,7 +2007,12 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                         context,
                         icon: AssetResources.regfee,
                         title: 'Registration Fee',
-                        value: hasFee == true ? '₹ $regFee' : 'Free',
+                        // Several ticket types: their prices, low to high.
+                        value: (_ticketing?.types.length ?? 0) > 1
+                            ? _ticketing!.priceRange!
+                            : hasFee == true
+                                ? '₹ $regFee'
+                                : 'Free',
                       ),
                     ),
                   ),
@@ -2089,6 +2225,19 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                     false))
               CompetitionEntryCard(onTap: _openCompetition),
 
+            // ========== TICKETS (an event selling several types) ==========
+            if (_cancellation == null &&
+                _sellable &&
+                (_ticketing?.types.length ?? 0) > 1) ...[
+              TicketTypesList(
+                types: _ticketing!.types,
+                onJoinWaitlist: isRegistered
+                    ? null
+                    : (type) => _joinWaitlist(type: type),
+              ),
+              const SizedBox(height: 8),
+            ],
+
             // ========== MAIN DESCRIPTION ==========
             Text(
               about ?? 'Event description not available.',
@@ -2183,6 +2332,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
 
   /// Builds the bottom sheet based on event status
   Widget _buildBottomSheet(BuildContext context) {
+    // Called off: nothing to register, pay or show at the door.
+    if (_cancellation != null) return _buildCancelledBottomSheet(context);
+
     // Priority 1: Check if user has attended (past event they attended)
     if (isAttended) {
       return _buildCertificateBottomSheet(context);
@@ -2200,6 +2352,36 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
 
     // Default: Show registration UI
     return _buildRegistrationBottomSheet(context);
+  }
+
+  /// A cancelled event: one line, no button that does anything. The notice
+  /// on the page says why and what happens to a payment.
+  Widget _buildCancelledBottomSheet(BuildContext context) {
+    return Container(
+      key: const ValueKey('event-cancelled-sheet'),
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 26),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isRegistered && _paidTicket)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 10),
+              child: Text(
+                EventCancellation.refundNote,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+          const SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: null,
+              child: Text('EVENT CANCELLED'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Whether the event is over: an unpaid registration can be paid for after
@@ -2322,9 +2504,25 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     final showMeter = page != null &&
         page.capacity != null &&
         (state.kind == RegisterKind.open || state.kind == RegisterKind.full);
+    // The waiting list: the person's places in line, and whether one can
+    // be joined (a sold-out type with its list open).
+    final ticketing = _ticketing;
+    final places = ticketing?.openPlaces ?? const <WaitlistEntry>[];
+    final canWait = (ticketing?.canJoinWaitlist ?? false) &&
+        state.kind != RegisterKind.ended;
+    // Nothing left to buy, and the list is open: the button joins it.
+    final joinInstead =
+        canWait && ((ticketing?.soldOut ?? false) || !state.canRegister);
     final VoidCallback? onPressed;
+    var label = isLoading ? 'LOADING...' : state.label;
     if (isLoading) {
       onPressed = null;
+    } else if (places.isNotEmpty && (joinInstead || !state.canRegister)) {
+      onPressed = null;
+      label = "YOU'RE ON THE WAITING LIST";
+    } else if (joinInstead) {
+      onPressed = _joinWaitlist;
+      label = 'JOIN THE WAITING LIST';
     } else if (state.canRegister) {
       onPressed = _openRegistrationForm;
     } else if (state.kind == RegisterKind.live) {
@@ -2332,6 +2530,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     } else {
       onPressed = null;
     }
+    // Some types on sale, another sold out with its list open: both.
+    final alsoJoin = canWait && !joinInstead && places.isEmpty;
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -2369,7 +2569,15 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                 ),
               ),
             const SizedBox(height: 12),
-            if (showMeter)
+            if (places.isNotEmpty) ...[
+              WaitlistPlacesCard(
+                places: places,
+                leaving: _leavingWaitlist,
+                onLeave: _leaveWaitlist,
+              ),
+              const SizedBox(height: 10),
+            ],
+            if (showMeter && !joinInstead)
               SeatsMeter(
                 going: page.going,
                 capacity: page.capacity,
@@ -2380,11 +2588,18 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               child: Pressable(
                 enabled: onPressed != null,
                 child: FilledButton(
+                  key: const ValueKey('event-register-button'),
                   onPressed: onPressed,
-                  child: Text(isLoading ? 'LOADING...' : state.label),
+                  child: Text(label),
                 ),
               ),
             ),
+            if (alsoJoin && !isLoading)
+              TextButton(
+                key: const ValueKey('event-also-waitlist'),
+                onPressed: _joinWaitlist,
+                child: const Text('Or join the waiting list for a sold-out ticket'),
+              ),
           ],
           const SizedBox(height: 10),
         ],

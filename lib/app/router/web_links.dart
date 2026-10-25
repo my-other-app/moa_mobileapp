@@ -22,6 +22,7 @@ import 'package:finnet/core/config/app_config.dart';
 /// | `/threads`                       | `/discover/threads` (every club's)    |
 /// | `/threads/{id}`                  | the post                              |
 /// | `/tickets/{id}`                  | the ticket (its QR works offline)     |
+/// | `/claim/{token}`                 | a place offered from a waiting list   |
 /// | `/certificates/{id}`             | the certificate                       |
 /// | `/topics`, `/topics/{slug}`      | the topics, a topic                   |
 /// | `/feedback/{event}/{reg}?k=`     | the feedback survey                   |
@@ -107,6 +108,9 @@ String? webLocation(Uri uri) {
     case 'tickets':
     case 'certificates':
       return rest.length == 1 ? at('/$head/${one(rest.first)}') : null;
+    case 'claim':
+      // A waiting list's offer: its link in the email, WhatsApp and push.
+      return rest.length == 1 ? at('/claim/${one(rest.first)}') : null;
     case 'play':
       // The website's quiz, joined from its live room.
       return rest.length == 1 && int.tryParse(rest.first) != null

@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/features/events/domain/event_page_rules.dart';
+import 'package:finnet/features/events/presentation/pages/claim_offer_page.dart';
 import 'package:finnet/features/events/presentation/pages/competition_page.dart';
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
 import 'package:finnet/features/events/presentation/pages/feedback_survey_page.dart';
@@ -30,6 +31,7 @@ String eventRefOf(GoRouterState state) {
 /// 'awaitingPayment', 'finishPayment'), `ticketUrl`, `certificateUrl`;
 /// `posterHero` and `posterHint`, for the card's poster to fly in.
 /// `?live=room|quiz|poll` (a "join now" push) opens the live room at once.
+/// `?ticket_type={id}` (a link to a hidden ticket type) shows that type too.
 Widget buildEventPage(BuildContext context, GoRouterState state) {
   final ref = eventRefOf(state);
   final extra = state.extra is Map ? state.extra as Map : const {};
@@ -44,7 +46,17 @@ Widget buildEventPage(BuildContext context, GoRouterState state) {
     openLiveRoom: state.uri.queryParameters.containsKey('live'),
     posterHero: extra['posterHero'] as String?,
     posterHint: extra['posterHint'] as PosterHint?,
+    linkedTicketTypeId: linkedTicketTypeOf(state),
   );
+}
+
+/// The hidden ticket type a link names (`?ticket_type=`), or the one the
+/// event page hands the form (extra `linkedTicketType`); null for none.
+int? linkedTicketTypeOf(GoRouterState state) {
+  final extra = state.extra is Map ? state.extra as Map : const {};
+  final given = extra['linkedTicketType'];
+  if (given is int) return given;
+  return int.tryParse(state.uri.queryParameters['ticket_type'] ?? '');
 }
 
 /// `/events/:eventId/register`: the registration form.
@@ -66,6 +78,7 @@ Widget buildEventRegisterPage(BuildContext context, GoRouterState state) {
     clubName: extra['clubName'] is String ? extra['clubName'] as String : null,
     offersClubUpdates:
         extra['clubUpdates'] is bool ? extra['clubUpdates'] as bool : null,
+    linkedTicketTypeId: linkedTicketTypeOf(state),
   );
 }
 
@@ -74,6 +87,7 @@ abstract final class EventRouteNames {
   static const competition = 'eventCompetition';
   static const feedback = 'eventFeedback';
   static const people = 'eventPeople';
+  static const claim = 'waitlistClaim';
 }
 
 /// Batch B's new routes, top level (each opens over the tabs):
@@ -86,7 +100,18 @@ abstract final class EventRouteNames {
 /// - `/events/:eventRef/people` -- People Like You: from the event page's
 ///   card, Home's "You're at" banner and the check-in push (`open:
 ///   people`); needs an account. extra: `eventName`, shown while it loads.
+/// - `/claim/:token` -- a place offered from a waiting list (the website's
+///   address too: the offer's email, WhatsApp and push link to it); needs
+///   no account, the token is the proof.
 final List<RouteBase> eventsRoutes = [
+  GoRoute(
+    path: '/claim/:token',
+    name: EventRouteNames.claim,
+    builder: (context, state) {
+      final token = state.pathParameters['token'] ?? '';
+      return ClaimOfferPage(key: ValueKey('claim-$token'), token: token);
+    },
+  ),
   GoRoute(
     path: '/events/:eventRef/compete',
     name: EventRouteNames.competition,

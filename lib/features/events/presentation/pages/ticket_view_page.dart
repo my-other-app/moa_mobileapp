@@ -15,6 +15,8 @@ import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/cache/document_cache.dart';
 import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/events/data/ticket_images.dart';
+import 'package:finnet/features/events/domain/ticketing.dart';
+import 'package:finnet/features/events/presentation/widgets/ticketing/cancelled_notice.dart';
 import 'package:finnet/features/events/domain/event_page_rules.dart';
 import 'package:finnet/features/events/presentation/providers/event_page_provider.dart';
 import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
@@ -56,6 +58,17 @@ class TicketViewPage extends StatefulWidget {
   /// "Your team" here, as the website's ticket has.
   final int? eventId;
 
+  /// The club called the event off: the screen says so, with its reason,
+  /// instead of a ticket that won't get anyone in.
+  final EventCancellation? cancellation;
+
+  /// It was paid for: a cancelled event's refund is under way.
+  final bool paid;
+
+  /// "Early bird": [ticketType] under the club's design, which may not
+  /// print it.
+  static const ticketTypeKey = ValueKey('ticket-type');
+
   static const revokedKey = ValueKey('ticket-revoked');
   static const revokedMessage = 'This ticket was revoked by the organiser';
 
@@ -90,7 +103,12 @@ class TicketViewPage extends StatefulWidget {
     this.images,
     this.revoked = false,
     this.eventId,
+    this.cancellation,
+    this.paid = false,
   });
+
+  /// No QR of any kind: revoked, or the event called off.
+  bool get _void => revoked || cancellation != null;
 
   @override
   State<TicketViewPage> createState() => _TicketViewPageState();
@@ -170,6 +188,9 @@ class _TicketViewPageState extends State<TicketViewPage>
       // kept from before it was revoked goes too.
       _ticketImageFailed = true;
       unawaited(_images.forget(widget.ticketId));
+    } else if (widget.cancellation != null) {
+      // Cancelled: nothing to show at a door that won't open.
+      _ticketImageFailed = true;
     } else {
       _loadTicketImage();
     }
@@ -622,9 +643,13 @@ class _TicketViewPageState extends State<TicketViewPage>
                     const SizedBox(height: 8),
                     if (widget.revoked)
                       _buildRevokedCard()
+                    else if (widget.cancellation case final cancelled?)
+                      _buildCancelledCard(cancelled)
                     else ...[
                       if (_offline) _buildOfflineNotice(),
                       _buildTicketCard(),
+                      if (_ticketImage != null && widget.ticketType != null)
+                        _buildTicketTypeLine(widget.ticketType!),
                       const SizedBox(height: 28),
                       _buildActionButtons(),
                     ],
@@ -690,6 +715,56 @@ class _TicketViewPageState extends State<TicketViewPage>
     );
   }
 
+  /// In place of the ticket for a cancelled event: the club's reason, that
+  /// the ticket won't be needed, and the refund for a paid one.
+  Widget _buildCancelledCard(EventCancellation cancelled) {
+    return Column(
+      children: [
+        Text(
+          '${widget.eventName} · ${widget.ticketId}',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'DMSans',
+            fontSize: 13,
+            color: Colors.white.withAlpha(170),
+          ),
+        ),
+        const SizedBox(height: 12),
+        CancelledNotice(
+          cancellation: cancelled,
+          registered: true,
+          paid: widget.paid,
+          dark: true,
+        ),
+      ],
+    );
+  }
+
+  /// The ticket type, under the club's design.
+  Widget _buildTicketTypeLine(String type) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Container(
+        key: TicketViewPage.ticketTypeKey,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [_accentYellow, _accentGreen]),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          'TICKET · ${type.toUpperCase()}',
+          style: const TextStyle(
+            fontFamily: 'DMSans',
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildOfflineNotice() {
     return Container(
       key: TicketViewPage.offlineNoticeKey,
@@ -741,7 +816,7 @@ class _TicketViewPageState extends State<TicketViewPage>
         ],
       ),
       actions: [
-        if (!widget.revoked)
+        if (!widget._void)
           _buildAppBarButton(Icons.share_outlined, _shareTicket),
         const SizedBox(width: 8),
       ],

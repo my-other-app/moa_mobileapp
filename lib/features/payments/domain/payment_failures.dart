@@ -47,6 +47,10 @@ class NothingToPayFailure extends Failure {
 /// The server's `error_code` when an order's event has ended.
 const eventEndedCode = 'EVENT_ENDED';
 
+/// The server's `error_code` when the club cancelled the event (409): its
+/// tickets can no longer be paid for.
+const eventCancelledCode = 'EVENT_CANCELLED';
+
 /// The server's `error_code` when the event's paid places are all taken.
 const eventFullCode = 'EVENT_FULL';
 
@@ -82,6 +86,9 @@ String paymentFailureMessage(Failure failure) {
       return 'This event is full: every paid place has been taken.';
     case eventEndedCode:
       return 'This event is over, so it can no longer be paid for.';
+    case eventCancelledCode:
+      return 'This event was cancelled, so it can no longer be paid for. '
+          'Nothing was charged.';
     case soldOutCode:
       // The server names what went: "Hack Night tee M is sold out".
       final said = failure.message.trim();

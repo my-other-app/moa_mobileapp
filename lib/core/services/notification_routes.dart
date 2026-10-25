@@ -21,11 +21,13 @@
 /// | `volunteer_assigned` (push) /        | the event's door scanner     |
 /// | `volunteer_added` (its inbox line)   |                              |
 /// | `certificate_generated`              | My Certificates              |
+/// | `waitlist_offer` (`token`, `url`)    | the claim screen             |
 ///
 /// A push carries its event as the string `event_id`; an inbox line as its
 /// `event` (and the push's data beside it).
 library;
 
+import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/live/live_locations.dart';
 
 /// The pushes (and inbox lines) that open an event's live room.
@@ -61,6 +63,10 @@ const volunteerTypes = {'volunteer_assigned', 'volunteer_added'};
 /// `certificate_ready` is the name its WhatsApp message goes by).
 const certificateTypes = {'certificate_generated', 'certificate_ready'};
 
+/// "A place opened up for you": a waiting list's offer
+/// (`app/api/ticketing/waitlist.py`), with `token` and `url`.
+const waitlistOfferType = 'waitlist_offer';
+
 /// The live room in the app for a live push or its inbox line: the quiz for
 /// [what] `quiz`, to join with the code on the screen; the room for anything
 /// else (`room`, `qa`, `poll`, or none).
@@ -87,6 +93,14 @@ String? notificationRoute(
     return '/threads/${Uri.encodeComponent(threadId)}';
   }
   if (certificateTypes.contains(type)) return '/profile/certificates';
+  if (type == waitlistOfferType) {
+    // A place held from the waiting list: its claim screen, by the push's
+    // `token`, or the one in its `url` (`https://myotherapp.in/claim/...`).
+    final token = claimTokenFrom(data['token']?.toString()) ??
+        claimTokenFrom(data['url']?.toString());
+    if (token != null) return claimRoute(token);
+    return eventId == null ? null : '/events/$eventId';
+  }
   if (eventId == null) {
     final clubId = int.tryParse(data['club_id']?.toString().trim() ?? '');
     return type == 'new_event' && clubId != null ? '/clubs/$clubId' : null;

@@ -340,6 +340,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                         eventId: extra?['eventId'],
                         eventDateTime: extra?['eventDateTime'],
                         fullName: extra?['fullName'],
+                        ticketType: extra?['ticketType'] as String?,
                       );
                     }),
               ]),

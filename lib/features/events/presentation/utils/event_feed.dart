@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/core/utils/hours.dart';
+import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
@@ -74,6 +75,7 @@ EventCard eventCardFromJson(
   String? certificateUrl,
   bool showShareIcon = true,
   VoidCallback? onFinishPayment,
+  EventCancellation? cancellation,
 }) {
   final club = _map(event['club']);
   final category = _map(event['category']);
@@ -102,5 +104,8 @@ EventCard eventCardFromJson(
     certificateUrl: certificateUrl,
     showShareIcon: showShareIcon,
     onFinishPayment: onFinishPayment,
+    // The row's own word, when the server puts it there; else the caller's.
+    cancellation: cancellation ?? EventCancellation.of(event),
+    paidTicket: event['has_fee'] == true && event['is_paid'] == true,
   );
 }

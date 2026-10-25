@@ -77,6 +77,7 @@ The platforms hand the router the whole URL. The router's redirect reads it as t
 | `/certificates/{id}` | the person's own certificate, or the public page in the in-app browser |
 | `/topics`, `/topics/{slug}` | the same paths (batch A) |
 | `/feedback/{event}/{reg}?k=` | the same path: batch B's survey |
+| `/claim/{token}` | the same path: a waiting list's offer (claim, pay, or pass it on). Opens signed out: the token is the proof. The `waitlist_offer` push opens it too |
 
 - **Before batches A and B merge:** their addresses fall back to the Explore screens, Home, the event page, or (for the survey) a page that opens the website. Their own routes are spread just before the tab shell, so they are matched first and replace the fallbacks.
 - **iPhone** opens all of these from the AASA. Only the live room, the feeds, `/play`, `/api`, `/og`, `/media`, `/for-clubs` and `/pricing` stay in the browser; the reasons are in the site's `src/seo/appLinks.js`. In short, the live room is the website's page in the app too, so claiming it only adds a hop for people scanning the room's QR.
@@ -85,7 +86,7 @@ The platforms hand the router the whole URL. The router's redirect reads it as t
 - **Only the apex domain** is claimed. `www.` and `events.` redirect to it, and Apple and Google don't follow redirects for these files.
 
 **Signed out:**
-- Home, Discover, events (including registration, the competition and the survey, which ask at their own actions), clubs, topics, posts, a ticket from its link, and certificates all open without an account.
+- Home, Discover, events (including registration, the competition and the survey, which ask at their own actions), clubs, topics, posts, a ticket from its link, a waiting list's claim link, and certificates all open without an account.
 - My events, My clubs, Profile, Settings, the inbox, badges, the certificates list and the scanner send the person to sign in (`/auth/onboarding?from=…`), then return to the page afterwards.
 - `from` is only ever a path inside the app.
 - Signed in on that screen, the person goes on to `/auth/profile-check?from=…`.

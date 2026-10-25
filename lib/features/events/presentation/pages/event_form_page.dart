@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +16,11 @@ import 'package:finnet/features/events/presentation/utils/question_answers.dart'
 import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
 import 'package:finnet/features/events/presentation/widgets/merch_picker.dart';
 import 'package:finnet/features/events/presentation/widgets/registration_feedback.dart';
+import 'package:finnet/features/events/data/ticketing_api.dart';
+import 'package:finnet/features/events/domain/ticketing.dart';
+import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
+import 'package:finnet/features/events/presentation/widgets/ticketing/discount_code_field.dart';
+import 'package:finnet/features/events/presentation/widgets/ticketing/ticket_type_picker.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/domain/event_page_rules.dart';
 import 'package:finnet/features/events/presentation/utils/event_sign_in.dart';
@@ -51,6 +58,10 @@ class EventFormPage extends ConsumerStatefulWidget {
   final String? clubName;
   final bool? offersClubUpdates;
 
+  /// A hidden ticket type a link named (`?ticket_type=`): listed, and
+  /// chosen, as the website does.
+  final int? linkedTicketTypeId;
+
   const EventFormPage({
     super.key,
     this.eventId,
@@ -60,6 +71,7 @@ class EventFormPage extends ConsumerStatefulWidget {
     this.isOnline,
     this.clubName,
     this.offersClubUpdates,
+    this.linkedTicketTypeId,
   }) : assert(eventId != null || eventRef != null,
             'A registration form needs an event');
 
@@ -128,6 +140,43 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   /// person ticks it, as on the website.
   bool _whatsapp = false;
 
+  /// The event's ticket types (docs/TICKETING.md); null from a server
+  /// without them, when the form is exactly what it was.
+  EventTicketing? _ticketing;
+
+  /// The type chosen; null for the server's own choice (the event's only
+  /// one).
+  int? _ticketTypeId;
+  String? _ticketTypeError;
+  final _ticketKey = GlobalKey();
+
+  /// The discount code typed, its price preview, and what the
+  /// registration said about it.
+  final _codeController = TextEditingController();
+  DiscountQuote? _quote;
+  String? _codeServerError;
+
+  /// The code [_codeServerError] is about.
+  String _codeRefused = '';
+  final _codeKey = GlobalKey();
+
+  /// The picker shows when the event sells more than one type, or a link
+  /// named a hidden one beside the others.
+  bool get _showPicker {
+    final ticketing = _ticketing;
+    if (ticketing == null) return false;
+    return ticketing.requiresChoice ||
+        (widget.linkedTicketTypeId != null && ticketing.types.length > 1);
+  }
+
+  /// The type the order is for, when known.
+  TicketType? get _chosenType {
+    final ticketing = _ticketing;
+    if (ticketing == null) return null;
+    return ticketing.typeById(_ticketTypeId) ??
+        (ticketing.types.length == 1 ? ticketing.types.single : null);
+  }
+
   /// Whether `whatsapp_opt_in: true` goes with the registration.
   bool get _wantsWhatsapp =>
       _whatsapp && _phoneController.text.trim().isNotEmpty;
@@ -161,11 +210,46 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     final mustRead = questions == null ||
         _eventId == null ||
         (_onIos && (_hasFee == null || _isOnline == null));
+    _codeController.addListener(_codeChanged);
     if (mustRead) {
       _loadEvent();
     } else {
       _fetchCatalog();
+      _loadTicketing();
     }
+  }
+
+  /// What the registration said about the code goes once the code changes.
+  void _codeChanged() {
+    if (_codeServerError != null && _codeController.text != _codeRefused) {
+      setState(() => _codeServerError = null);
+    }
+  }
+
+  /// The event's ticket types, fresh: what is left matters most now. A
+  /// server without them (404), or no answer, leaves the form as it was.
+  Future<void> _loadTicketing({EventTicketing? fallback}) async {
+    final id = _eventId;
+    if (id == null) return;
+    EventTicketing? found;
+    try {
+      found = await ref
+          .read(ticketingApiProvider)
+          .ticketTypes(id, linked: widget.linkedTicketTypeId);
+    } catch (_) {
+      found = null;
+    }
+    found ??= fallback;
+    if (!mounted || found == null) return;
+    final ticketing = found;
+    setState(() {
+      _ticketing = ticketing;
+      final still = ticketing.typeById(_ticketTypeId);
+      if (still == null || !still.onSale) {
+        _ticketTypeId =
+            ticketing.initialChoice(linked: widget.linkedTicketTypeId);
+      }
+    });
   }
 
   /// A controller for every field that is typed into. Previously only
@@ -218,6 +302,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         _loadingEvent = false;
       });
       _fetchCatalog();
+      _loadTicketing(
+          fallback: EventTicketing.fromJson(
+              data is Map<String, dynamic> ? data['ticketing'] : null));
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -250,6 +337,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     _emailController.dispose();
     _phoneController.dispose();
     _otherOrgController.dispose();
+    _codeController.dispose();
     for (final controller in _additionalTextControllers.values) {
       controller.dispose();
     }
@@ -910,10 +998,47 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       _showAnswerErrors(refused, serverMessageOf(error));
       return;
     }
-    final action =
-        await showRegistrationRefusal(context, describeRegistrationError(error));
-    if (action == null || !mounted) return;
+    // A discount code refused: said under the code, the rest kept.
+    final code = errorCodeOf(error);
+    final codeProblem = discountCodeProblem(error);
+    if (codeProblem != null && (code?.startsWith('DISCOUNT_CODE_') ?? false)) {
+      setState(() {
+        _quote = null;
+        _codeServerError = codeProblem;
+        _codeRefused = _codeController.text;
+      });
+      _bringIntoView(_codeKey);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(codeProblem)),
+      );
+      return;
+    }
+    final refusal = describeRegistrationError(error);
+    // The ticket type: what is on sale may have changed since the form
+    // opened. The types are read again, and the choice is said under them.
+    if (code != null && code.startsWith('TICKET_TYPE_')) {
+      setState(() => _ticketTypeError = refusal.title);
+      unawaited(_loadTicketing());
+    }
+    final action = await showRegistrationRefusal(context, refusal);
+    if (!mounted) return;
+    // Cancelled meanwhile: back to the event, which says so.
+    if (isCancelledRefusal(error)) {
+      if (context.canPop()) context.pop();
+      return;
+    }
+    if (action == null) return;
     if (context.canPop()) context.pop(action);
+  }
+
+  /// Scrolls the field with [key] into view, after this frame.
+  void _bringIntoView(GlobalKey key) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final place = key.currentContext;
+      if (place == null || !place.mounted) return;
+      Scrollable.ensureVisible(place,
+          alignment: 0.1, duration: const Duration(milliseconds: 250));
+    });
   }
 
   /// Each refused answer's reason under its question, and the first of
@@ -942,7 +1067,16 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   }
 
   Future<void> _submitForm() async {
-    if (_formKey.currentState!.validate()) {
+    // Several ticket types: one must be chosen, as the server insists.
+    final typeMissing = _showPicker &&
+        (_ticketing?.requiresChoice ?? false) &&
+        _ticketTypeId == null;
+    if (typeMissing) {
+      setState(() => _ticketTypeError = 'Choose a ticket.');
+      _bringIntoView(_ticketKey);
+    }
+    final valid = _formKey.currentState!.validate();
+    if (valid && !typeMissing) {
       setState(() {
         _isSubmitting = true;
         _answerErrors.clear();
@@ -996,6 +1130,11 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           // The club's tracking link that opened the app, if one did: the
           // server credits the sign-up to it (tracking_ref.dart).
           if (TrackingRef.instance.current case final ref?) 'ref': ref,
+          // The ticket type chosen (left out: the event's only one), and a
+          // discount code typed. Neither goes to a server without them.
+          if (_ticketTypeId != null) 'ticket_type_id': _ticketTypeId,
+          if (_codeController.text.trim().isNotEmpty)
+            'discount_code': _codeController.text.trim(),
         };
 
         final response = await APIService.instance.request(
@@ -1007,8 +1146,18 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         if (response.statusCode == 200 && mounted) {
           // Extract ticket data from response
           final data = response.data as Map<String, dynamic>;
-          // The ticket, and whatever was picked from the shelf, are paid in one checkout.
-          final due = (data['pay_amount'] as num?)?.toDouble() ?? 0;
+          final result = RegistrationResult.fromJson(data);
+          // The ticket type, kept with the ticket on this phone: the list
+          // of registrations doesn't say it.
+          if (result.ticketId != null && result.ticketTypeName != null) {
+            ref
+                .read(savedTicketsProvider.notifier)
+                .rememberTicketType(result.ticketId!, result.ticketTypeName!);
+          }
+          // The ticket, and whatever was picked from the shelf, are paid in
+          // one checkout. Nothing due -- a free type, or a code that covered
+          // it -- is no payment step, even on a paid event.
+          final due = result.payAmount;
           final registrationId = data['event_registration_id'];
           if (due > 0 && registrationId is! String) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1048,6 +1197,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             'eventId': data['event_id'],
             'eventDateTime': data['event_datetime'],
             'fullName': data['full_name'],
+            if (result.ticketTypeName != null)
+              'ticketType': result.ticketTypeName,
           });
         } else {
           if (mounted) {
@@ -1181,6 +1332,30 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
+                      // The ticket: which of the event's types, when it
+                      // sells more than one.
+                      if (_showPicker) ...[
+                        KeyedSubtree(
+                          key: _ticketKey,
+                          child: TicketTypePicker(
+                            types: _ticketing!.types,
+                            selected: _ticketTypeId,
+                            errorText: _ticketTypeError,
+                            onChanged: (id) => setState(() {
+                              _ticketTypeId = id;
+                              _ticketTypeError = null;
+                            }),
+                            // Sold out with its list open: back to the
+                            // event, which offers the waiting list.
+                            onJoinWaitlist: () {
+                              if (context.canPop()) {
+                                context.pop(RegistrationAction.joinWaitlist);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       // Name field
                       _buildInputField(
                         label: 'Name',
@@ -1500,6 +1675,42 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
 
                       // The shelf: what the event sells with its ticket.
                       MerchPicker(catalog: _catalog, picks: _picks, onChanged: (next) => setState(() => _picks = next)),
+
+                      // A discount code, and what the order comes to, for
+                      // an event with a paid ticket type.
+                      if (_ticketing?.anyPaid ?? false) ...[
+                        const SizedBox(height: 24),
+                        KeyedSubtree(
+                          key: _codeKey,
+                          child: DiscountCodeField(
+                            controller: _codeController,
+                            ticketTypeId: _ticketTypeId,
+                            needsType: _ticketing!.requiresChoice,
+                            serverError: _codeServerError,
+                            onQuote: (quote) => setState(() => _quote = quote),
+                            check: (code, typeId) => ref
+                                .read(ticketingApiProvider)
+                                .checkCode(
+                                  _eventId!,
+                                  code: code,
+                                  ticketTypeId: typeId,
+                                  email: _emailController.text,
+                                  phone: _phoneController.text,
+                                ),
+                          ),
+                        ),
+                        if (_chosenType case final type?) ...[
+                          const SizedBox(height: 16),
+                          _OrderSummary(
+                            type: type,
+                            quote: _quote?.ticketTypeId == null ||
+                                    _quote?.ticketTypeId == type.id
+                                ? _quote
+                                : null,
+                            addOns: picksTotal(_catalog, _picks),
+                          ),
+                        ],
+                      ],
                     ],
                   ),
                 ),
@@ -1535,6 +1746,63 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// What the order comes to before it is sent: the ticket, a code's
+/// discount, the add-ons. The registration's answer is the final word.
+class _OrderSummary extends StatelessWidget {
+  const _OrderSummary({required this.type, this.quote, this.addOns = 0});
+
+  final TicketType type;
+  final DiscountQuote? quote;
+  final double addOns;
+
+  static const totalKey = ValueKey('order-total');
+
+  @override
+  Widget build(BuildContext context) {
+    final ticket = quote?.amount ?? type.price;
+    final total = ticket + addOns;
+    Widget line(String label, String value, {bool strong = false, Key? key}) =>
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(label,
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: strong ? FontWeight.w700 : FontWeight.w400)),
+              ),
+              Text(value,
+                  key: key,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: strong ? FontWeight.w700 : FontWeight.w500)),
+            ],
+          ),
+        );
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        children: [
+          line('Ticket · ${type.name}', priceLabel(quote?.price ?? type.price)),
+          if (quote != null && quote!.discount > 0)
+            line('Code ${quote!.code}', '−${formatRupees(quote!.discount)}'),
+          if (addOns > 0) line('Add-ons', formatRupees(addOns)),
+          const Divider(height: 12),
+          line('Total', total > 0 ? formatRupees(total) : 'Free',
+              strong: true, key: totalKey),
+        ],
       ),
     );
   }

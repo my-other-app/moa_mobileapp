@@ -43,6 +43,47 @@ class SavedTicketsNotifier extends StateNotifier<List<SavedTicket>> {
   Future<void>? _refreshing;
   DateTime? _lastRefresh;
 
+  /// Ticket types this phone was told (a registration's answer), by ticket
+  /// code: the list of registrations doesn't carry them.
+  final Map<String, String> _knownTypes = {};
+
+  /// [name] is the type of the ticket [code]: kept with it now if it is
+  /// saved, and when it arrives with the next refresh.
+  void rememberTicketType(String code, String name) {
+    if (code.isEmpty || name.trim().isEmpty) return;
+    _knownTypes[code] = name.trim();
+    final merged = _withKnownTypes(state, const []);
+    if (merged != null && mounted) {
+      state = merged;
+      unawaited(_keep(merged));
+    }
+  }
+
+  /// [tickets] with the types known for them (from [_knownTypes], or the
+  /// copy [before] they replace); null when that changes nothing.
+  List<SavedTicket>? _withKnownTypes(
+      List<SavedTicket> tickets, List<SavedTicket> before) {
+    final earlier = {for (final t in before) t.code: t.ticketType};
+    var changed = false;
+    final out = <SavedTicket>[];
+    for (final ticket in tickets) {
+      final known = ticket.ticketType == null
+          ? _knownTypes[ticket.code] ?? earlier[ticket.code]
+          : null;
+      if (known != null) changed = true;
+      out.add(ticket.withTicketType(known));
+    }
+    return changed ? out : null;
+  }
+
+  Future<void> _keep(List<SavedTicket> tickets) async {
+    try {
+      await _repository.keep(tickets);
+    } catch (e) {
+      debugPrint('SavedTickets: could not keep the ticket types: $e');
+    }
+  }
+
   /// Done once the saved tickets have been read.
   Future<void> get loaded => _loaded;
 
@@ -68,8 +109,15 @@ class SavedTicketsNotifier extends StateNotifier<List<SavedTicket>> {
 
   Future<void> _refresh() async {
     try {
-      final fresh = await _repository.refresh();
+      final before = state;
+      var fresh = await _repository.refresh();
       _lastRefresh = _now();
+      // The list doesn't say the ticket types: those known are kept.
+      final merged = _withKnownTypes(fresh, before);
+      if (merged != null) {
+        fresh = merged;
+        await _keep(merged);
+      }
       if (mounted) state = fresh;
       // In the background: the list is what the door needs first.
       final images = _images;

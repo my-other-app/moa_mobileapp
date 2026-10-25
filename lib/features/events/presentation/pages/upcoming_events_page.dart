@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
+import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/events/presentation/utils/event_feed.dart';
 import 'package:finnet/features/events/presentation/utils/saved_feed.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
@@ -10,6 +11,7 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/presentation/pages/no_registered_event_page.dart';
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart';
+import 'package:finnet/features/events/presentation/providers/event_cancellation_provider.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 
 class UpcomingEventsPage extends ConsumerStatefulWidget {
@@ -136,18 +138,76 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
                 events[index] as Map? ?? const <String, dynamic>{});
             // A registration still waiting for its payment has no ticket to
             // view: its card says "Payment due" and offers FINISH PAYMENT,
-            // after which the list is fetched again.
-            return eventCardFromJson(
-              event,
-              status: registeredCardStatus(event),
-              ticketUrl: event['ticket_url'] is String
-                  ? event['ticket_url'] as String
-                  : null,
+            // after which the list is fetched again. A cancelled event's
+            // says so instead.
+            return _RegistrationCard(
+              event: event,
               onFinishPayment: () => _finishPayment(event),
             );
           },
         ),
       ),
+    );
+  }
+}
+
+/// One registration's card, told whether its event was called off: by the
+/// row itself when the server says, else by the event's public page (the
+/// list doesn't say today). Only the cards drawn ask, each once in a while
+/// ([EventCancellationLookups]).
+class _RegistrationCard extends StatefulWidget {
+  const _RegistrationCard({required this.event, required this.onFinishPayment});
+
+  final Map<String, dynamic> event;
+  final VoidCallback onFinishPayment;
+
+  @override
+  State<_RegistrationCard> createState() => _RegistrationCardState();
+}
+
+class _RegistrationCardState extends State<_RegistrationCard> {
+  EventCancellation? _looked;
+
+  @override
+  void initState() {
+    super.initState();
+    _lookUp();
+  }
+
+  @override
+  void didUpdateWidget(_RegistrationCard old) {
+    super.didUpdateWidget(old);
+    if (_refOf(old.event) != _refOf(widget.event)) {
+      _looked = null;
+      _lookUp();
+    }
+  }
+
+  static String _refOf(Map<String, dynamic> event) {
+    final slug = event['slug'];
+    final id = event['id'];
+    if (slug is String && slug.trim().isNotEmpty) return slug.trim();
+    return id is num ? '${id.toInt()}' : '';
+  }
+
+  Future<void> _lookUp() async {
+    if (EventCancellation.of(widget.event) != null) return;
+    final asked = _refOf(widget.event);
+    final found = await EventCancellationLookups.instance.of(asked);
+    if (!mounted || found == null || asked != _refOf(widget.event)) return;
+    setState(() => _looked = found);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final event = widget.event;
+    return eventCardFromJson(
+      event,
+      status: registeredCardStatus(event),
+      ticketUrl:
+          event['ticket_url'] is String ? event['ticket_url'] as String : null,
+      onFinishPayment: widget.onFinishPayment,
+      cancellation: EventCancellation.of(event) ?? _looked,
     );
   }
 }

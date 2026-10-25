@@ -73,6 +73,10 @@ class SavedTicketsRepository {
     return tickets;
   }
 
+  /// Keep [tickets] as they are: the list with something the server's
+  /// answer didn't have (a ticket type from a registration's answer).
+  Future<void> keep(List<SavedTicket> tickets) => _local.write(tickets);
+
   Future<void> clear() => _local.clear();
 
   static int _soonestFirst(SavedTicket a, SavedTicket b) {
