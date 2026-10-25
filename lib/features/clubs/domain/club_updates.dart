@@ -20,3 +20,9 @@ const whatsappNumberErrorCode = 'WHATSAPP_NUMBER';
 const whatsappNumberProblem =
     "WhatsApp can't reach this number. Enter a mobile number, or untick the "
     'WhatsApp box.';
+
+/// "Send my ticket and event reminders on WhatsApp" at registration
+/// (`whatsapp_opt_in`): the consent WhatsApp's policy asks for, in the
+/// website's words. Unticked until ticked; it needs a number WhatsApp can
+/// reach, or the server refuses the registration with [whatsappNumberErrorCode].
+const whatsappTicketsText = 'Send my ticket and event reminders on WhatsApp';

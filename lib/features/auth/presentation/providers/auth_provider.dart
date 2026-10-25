@@ -171,6 +171,25 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     unawaited(_ref.read(pushRegistrationProvider).onSignedIn());
   }
 
+  /// The same person's session, on new tokens: after a password change,
+  /// which ends every session the account had, this one included. Unlike
+  /// [setAuthenticated] it keeps what is saved on the phone (tickets,
+  /// answers, the scanner's queue) -- it is still their phone and their
+  /// account -- and asks for nothing.
+  Future<void> renewSession({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    await _ref.read(secureStorageServiceProvider).saveTokens(
+        accessToken: accessToken, refreshToken: refreshToken);
+    if (!mounted) return;
+    state = state.copyWith(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      isInitialized: true,
+    );
+  }
+
   /// Sign out: tell the server to forget this device's push token, end the
   /// session on the server, delete the FCM token, delete the tokens.
   ///

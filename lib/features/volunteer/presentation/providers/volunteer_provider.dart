@@ -30,12 +30,8 @@ class VolunteerState {
   }
 }
 
-/// Holds the volunteer events list and forwards scans to the repository.
-///
-/// All three endpoints moved to [VolunteerRepository]; what is left here is
-/// state. The error classification that used to live in this file -- three
-/// partial copies of the same substring matching, spread across two methods
-/// -- is now in one tested place, `data/ticket_refusal.dart`.
+/// Holds the events this person volunteers at. Checking guests in is the
+/// door console's (`gate_controller.dart`).
 class VolunteerNotifier extends StateNotifier<VolunteerState> {
   VolunteerNotifier(this._repository) : super(const VolunteerState());
 
@@ -54,16 +50,6 @@ class VolunteerNotifier extends StateNotifier<VolunteerState> {
       (failure) => state.copyWith(isLoading: false, error: failure.message),
       (events) => state.copyWith(isLoading: false, events: events),
     );
-  }
-
-  /// Check a ticket without admitting anyone.
-  Future<CheckinResult> validateTicket(int eventId, String ticketId) {
-    return _repository.validate(eventId, ticketId);
-  }
-
-  /// Admit the holder of a ticket.
-  Future<CheckinResult> checkinParticipant(int eventId, String ticketId) {
-    return _repository.checkin(eventId, ticketId);
   }
 
   bool get hasVolunteerEvents => state.events.isNotEmpty;

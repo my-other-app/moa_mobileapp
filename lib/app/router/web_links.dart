@@ -25,16 +25,17 @@ import 'package:finnet/core/config/app_config.dart';
 /// | `/certificates/{id}`             | the certificate                       |
 /// | `/topics`, `/topics/{slug}`      | the topics, a topic                   |
 /// | `/feedback/{event}/{reg}?k=`     | the feedback survey                   |
+/// | `/play/{event}`                  | the quiz, to join (its QR)            |
 ///
 /// The app's own `/events` and `/clubs` are the person's events and clubs
 /// (the tabs); the website's are the directories, which is why a link is
 /// read here first rather than matched as it is.
 ///
-/// iPhone leaves the live room in the browser until the site's file claims
-/// it (it excludes `/events/*/live` today); Android's intent filters cannot
-/// leave a path out, so there the app opens it. [webLocation] also reads
-/// the addresses the site has that are not claimed (the old `/{id}` event
-/// links, `/play/{id}`, `/me/...`), for a link that reaches the app some
+/// Both phones open the live room (`/events/*/live`) and the quiz's QR
+/// (`/play/*`) in the app: the site's files claim them for iOS, and the
+/// Android intent filters (`/events/`, `/play/`) for Android. [webLocation]
+/// also reads the addresses the site has that are not claimed (the old
+/// `/{id}` event links, `/me/...`), for a link that reaches the app some
 /// other way: a push's `url`.
 
 /// The hosts that are this site: the apex, and the two that redirect to it.

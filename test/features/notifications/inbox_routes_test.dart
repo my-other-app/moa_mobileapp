@@ -116,6 +116,10 @@ void main() {
           path: '/profile/certificates',
           builder: (_, state) => record(state, 'my certificates'),
         ),
+        GoRoute(
+          path: '/events/:eventId',
+          builder: (_, state) => record(state, 'the event'),
+        ),
       ]);
       await tester.pumpWidget(ProviderScope(
         overrides: [notificationRepositoryProvider.overrideWithValue(inbox)],
@@ -153,6 +157,26 @@ void main() {
       // Read already: nothing to mark.
       expect(inbox.read, isEmpty);
     });
+
+    for (final (type, title) in [
+      ('new_event', 'New from Makers: Hack Night 04'),
+      ('nearby_event', 'Event in Robotics: Hack Night 04'),
+      ('club_announcement', 'Makers: doors open at 6'),
+    ]) {
+      testWidgets('a $type line opens its event', (tester) async {
+        final line = _line('n-$type', type, title,
+            event: {'id': 12, 'name': 'Hack Night 04'},
+            club: {'id': 3, 'name': 'Makers'});
+        final inbox = await pump(tester, [line]);
+
+        await tester.tap(find.text(title));
+        await tester.pumpAndSettle();
+
+        expect(find.text('the event'), findsOneWidget);
+        expect(opened.single.$1, '/events/12');
+        expect(inbox.read, ['n-$type']);
+      });
+    }
 
     testWidgets('a volunteer line without its event opens nothing',
         (tester) async {

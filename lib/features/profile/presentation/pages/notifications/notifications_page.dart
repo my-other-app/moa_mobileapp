@@ -6,7 +6,6 @@ import 'package:finnet/features/notifications/presentation/providers/notificatio
 import 'package:finnet/features/profile/presentation/pages/notifications/no_notification_page.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
-import 'package:finnet/core/services/notification_service.dart';
 
 /// Notifications page showing in-app notification history.
 class NotificationsNewPage extends ConsumerStatefulWidget {
@@ -314,63 +313,25 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
       ref.read(notificationsProvider.notifier).markAsRead(notification.id);
     }
 
-    // Navigate based on notification type
-    final eventId = notification.event?.id;
-
-    switch (notification.type) {
-      case 'certificate_generated':
-        context.push('/profile/certificates');
-        break;
-      case 'volunteer_added':
-        if (eventId != null) {
-          context.push(
-            '/volunteer/scanner/$eventId',
-            extra: {
-              'eventName': notification.event?.name ?? 'Event',
-              'clubName': notification.fromClub?.name ?? '',
-            },
-          );
-        }
-        break;
-      case 'club_thread':
-        // A club posted. Opens the post itself; if the club has removed it
-        // since, the post's page says so.
-        final threadId = notification.threadId;
-        if (threadId != null) {
-          context.push('/threads/${Uri.encodeComponent(threadId)}');
-        }
-        break;
-      case 'event_live_join':
-      case 'event_live_started':
-      case 'event_live_qa':
-      case 'event_live_update':
-        // The live room (the quiz, for a quiz starting), as the push opens
-        // it: the event went live, questions opened, a poll started, or the
-        // organiser sent an update.
-        final liveEventId = notification.liveEventId;
-        if (liveEventId != null) {
-          context.push(NotificationService.liveJoinRoute(
-              liveEventId, notification.liveWhat));
-        }
-        break;
-      case 'event_checkin' when eventId != null && notification.opensPeople:
-        // Checked in where People Like You is on: the list, as the push.
-        context.push('/events/$eventId/people',
-            extra: {'eventName': notification.event?.name ?? ''});
-        break;
-      case 'event_checkin':
-      case 'new_event':
-      case 'nearby_event':
-      case 'club_announcement':
-      case 'event_reminder':
-        if (eventId != null) {
-          context.push('/events/$eventId');
-        }
-        break;
-      default:
-        // No navigation for unknown types
-        break;
+    // Where it opens: the table a tapped push of its type uses too
+    // (notification_routes.dart), with the row's event, else the push's
+    // `event_id` in its data.
+    final route = notification.route;
+    if (route == null) return;
+    // What the page can show before it has read anything itself.
+    final eventName = notification.event?.name;
+    final Map<String, dynamic>? extra;
+    if (route.startsWith('/volunteer/scanner/')) {
+      extra = {
+        'eventName': eventName ?? 'Event',
+        'clubName': notification.fromClub?.name ?? '',
+      };
+    } else if (route.endsWith('/people')) {
+      extra = {'eventName': eventName ?? ''};
+    } else {
+      extra = null;
     }
+    context.push(route, extra: extra);
   }
 
   List<_NotificationGroup> _groupNotifications(

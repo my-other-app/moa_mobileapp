@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:finnet/features/volunteer/data/ticket_code.dart';
-import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
+import 'package:finnet/features/volunteer/domain/gate_copy.dart';
+import 'package:finnet/features/volunteer/presentation/providers/gate_controller.dart';
+import 'package:finnet/features/volunteer/presentation/widgets/gate_outcome_card.dart';
 
 /// Check someone in by typing their ticket code, when the QR won't scan.
 ///
-/// Only the ticket code (MOA-7K3QF-X9PWM) checks anyone in; the admission
-/// number printed beside the QR does not (see `data/ticket_code.dart`), and
-/// the page says so.
+/// The same door as the camera's (the gate console, [GateController]): the
+/// code is checked in at once, saved on the phone when there is no signal,
+/// and the answer shows under the field. Only the ticket code
+/// (MOA-7K3QF-X9PWM) checks anyone in; an admission number printed beside
+/// the QR finds whose it is, to check them in by hand.
 class ManualTicketEntryPage extends ConsumerStatefulWidget {
   final int eventId;
   final String eventName;
@@ -29,11 +33,6 @@ class ManualTicketEntryPage extends ConsumerStatefulWidget {
 class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
   final _ticketController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
-
-  /// Why the last code was refused, shown under the field until it is
-  /// edited. A snackbar was gone before the longer reasons could be read.
-  String? _refusal;
 
   @override
   void dispose() {
@@ -41,47 +40,26 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
     super.dispose();
   }
 
+  GateController get _gate =>
+      ref.read(gateControllerProvider(widget.eventId).notifier);
+
   Future<void> _submitTicket() async {
     if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isLoading = true;
-      _refusal = null;
-    });
-
-    final result = await ref
-        .read(volunteerProvider.notifier)
-        .checkinParticipant(widget.eventId, _ticketController.text.trim());
-
+    await _gate.scan(_ticketController.text.trim());
     if (!mounted) return;
-
-    setState(() {
-      _isLoading = false;
-      if (!result.success) _refusal = result.message;
-    });
-
-    if (result.success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 8),
-              Expanded(child: Text(result.message)),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      // Clear the field for next entry
+    final card = ref.read(gateControllerProvider(widget.eventId)).card;
+    // Let in (or saved to send): the field is ready for the next one.
+    final tone = card?.card.tone;
+    if (tone == GateTone.admit || tone == GateTone.queued) {
       _ticketController.clear();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final refusal = _refusal;
+    final gate = ref.watch(gateControllerProvider(widget.eventId));
+    final card = gate.card;
+    final result = card?.result;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -155,36 +133,26 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
                           return null;
                         },
                         onChanged: (_) {
-                          if (_refusal != null) {
-                            setState(() => _refusal = null);
-                          }
+                          if (card != null) _gate.dismissCard();
                         },
                         onFieldSubmitted: (_) => _submitTicket(),
                       ),
                       const SizedBox(height: 8),
-                      if (refusal != null)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.error_outline,
-                                color: Color(0xFFCC0000), size: 18),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                refusal,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFFCC0000),
-                                ),
-                              ),
-                            ),
-                          ],
+                      if (card != null)
+                        GateOutcomeCard(
+                          key: ValueKey('typed-card-${card.seq}'),
+                          card: card.card,
+                          onClose: _gate.dismissCard,
+                          onCheckInByHand:
+                              result != null && result.needsHandCheckIn
+                                  ? () => _gate.checkInByHand(result.attendee!)
+                                  : null,
                         )
                       else
                         const Text(
-                          'Shown as Ticket ID on their ticket in the app. '
-                          "Admission numbers like MOA-0042-E12 can't check "
-                          'anyone in.',
+                          'Shown as Ticket ID on their ticket in the app. An '
+                          'admission number like MOA-0042-E12 only finds '
+                          'whose it is, to check them in by hand.',
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.black54,
@@ -199,7 +167,7 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submitTicket,
+                  onPressed: gate.busy ? null : _submitTicket,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2C333D),
                     foregroundColor: Colors.white,
@@ -209,7 +177,7 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: _isLoading
+                  child: gate.busy
                       ? const SizedBox(
                           width: 24,
                           height: 24,

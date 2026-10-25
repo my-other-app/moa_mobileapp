@@ -1,7 +1,7 @@
 // A club's tracking link -- myotherapp.in/clubs/{slug}?ref=... on a poster,
 // a QR, a WhatsApp message -- opens that club in the app, signed in or not,
-// with the ref still on the location. (Nothing in the app reads or reports
-// the ref yet: app opens are not counted the way the website counts them.)
+// with the ref still on the location. The router keeps a well-formed code
+// to credit the follow or registration it leads to (tracking_ref_test.dart).
 
 import 'package:finnet/app/router/app_router.dart';
 import 'package:finnet/app/router/web_links.dart';

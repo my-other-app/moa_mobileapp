@@ -29,6 +29,11 @@ class UserProfile extends Equatable {
   /// older server): then there is no switch to show.
   final bool? networkingVisible;
 
+  /// How the account signs in, as the server says (`provider`): `email`
+  /// for an email and password, `google`, `apple`; null when it did not
+  /// say.
+  final String? provider;
+
   const UserProfile({
     required this.id,
     required this.fullName,
@@ -43,7 +48,12 @@ class UserProfile extends Equatable {
     this.createdAt,
     this.emailVerified,
     this.networkingVisible,
+    this.provider,
   });
+
+  /// An account that signs in with an email and a password, so has a
+  /// password to change. Google and Apple accounts have none.
+  bool get hasPassword => provider == 'email';
 
   /// An email/password account that has not verified its address yet.
   bool get needsEmailVerification => emailVerified == false;
@@ -71,6 +81,7 @@ class UserProfile extends Equatable {
         createdAt: createdAt,
         emailVerified: emailVerified,
         networkingVisible: networkingVisible,
+        provider: provider,
       );
 
   UserProfile copyWith({
@@ -87,6 +98,7 @@ class UserProfile extends Equatable {
     DateTime? createdAt,
     bool? emailVerified,
     bool? networkingVisible,
+    String? provider,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -102,6 +114,7 @@ class UserProfile extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       emailVerified: emailVerified ?? this.emailVerified,
       networkingVisible: networkingVisible ?? this.networkingVisible,
+      provider: provider ?? this.provider,
     );
   }
 
@@ -120,6 +133,7 @@ class UserProfile extends Equatable {
         createdAt,
         emailVerified,
         networkingVisible,
+        provider,
       ];
 }
 

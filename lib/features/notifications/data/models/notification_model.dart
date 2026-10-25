@@ -1,3 +1,4 @@
+import 'package:finnet/core/services/notification_routes.dart';
 import 'package:finnet/core/utils/json_read.dart';
 
 /// Brief event info included in notifications
@@ -200,12 +201,16 @@ class NotificationModel {
   String? get liveWhat => jsonString(data?['what']);
 
   /// A row that opens an event's live room.
-  bool get opensLiveRoom => const {
-        'event_live_join',
-        'event_live_started',
-        'event_live_qa',
-        'event_live_update',
-      }.contains(type);
+  bool get opensLiveRoom => liveRoomTypes.contains(type);
+
+  /// The event this row is about: the row's own, else the push's
+  /// `event_id` in its data.
+  int? get eventId => event?.id ?? jsonInt(data?['event_id']);
+
+  /// Where tapping this row opens, or null for nothing: the table a tapped
+  /// push of its type uses too ([notificationRoute]), so the two agree.
+  String? get route =>
+      notificationRoute(type, eventId: eventId, data: data ?? const {});
 
   /// A check-in note that opens People Like You (`open: people` in its
   /// data): the event has it, and it was open when they came in.

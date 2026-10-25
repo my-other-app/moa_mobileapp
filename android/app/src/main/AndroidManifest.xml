@@ -95,9 +95,13 @@
 
           <!-- App Links: the website's pages the app has (web_links.dart),
                verified against https://myotherapp.in/.well-known/assetlinks.json.
-               Only the apex: www. and events. redirect to it. An intent
-               filter cannot leave a path out, so /events/{slug}/live comes
-               here too; the router opens the event with its room. -->
+               Only the apex: www. and events. redirect to it. The same
+               paths the site's files claim (moa_events src/seo/appLinks.js
+               APP_PATHS). /events/{slug}/live, the live room, is under
+               /events/; /play/{event} is the quiz's QR on the big screen,
+               which opens the quiz in the app. An intent filter cannot
+               leave a path out: the router sends what it can't show to
+               the browser. -->
           <intent-filter android:autoVerify="true">
               <action android:name="android.intent.action.VIEW"/>
               <category android:name="android.intent.category.DEFAULT"/>
@@ -115,6 +119,7 @@
               <data android:pathPrefix="/tickets/"/>
               <data android:pathPrefix="/certificates/"/>
               <data android:pathPrefix="/feedback/"/>
+              <data android:pathPrefix="/play/"/>
           </intent-filter>
       </activity>
 

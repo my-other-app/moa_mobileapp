@@ -1,4 +1,5 @@
 import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:finnet/app/router/tracking_ref.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/features/clubs/domain/club_updates.dart';
@@ -103,8 +104,9 @@ void main() {
 
     expect(find.text('Pick a date'), findsOneWidget);
     expect(find.text('Pick a time'), findsOneWidget);
-    // One "I agree" box, and a box for each meal.
-    expect(find.byType(CheckboxListTile), findsNWidgets(3));
+    // One "I agree" box, a box for each meal, and "Send my ticket on
+    // WhatsApp" under the phone number.
+    expect(find.byType(CheckboxListTile), findsNWidgets(4));
     expect(find.byType(RadioListTile<String>), findsNWidgets(2));
     // Only the select question and the organisation are dropdowns.
     expect(find.byType(DropdownButtonFormField2<String>), findsOneWidget);
@@ -761,6 +763,163 @@ void main() {
         expect(find.text('Continue'), findsOneWidget);
         expect(box, findsNothing);
       });
+    });
+  });
+
+  group('Send my ticket and event reminders on WhatsApp', () {
+    final box = find.byKey(const ValueKey('register-whatsapp'));
+    final phone = find.byKey(const ValueKey('register-phone'));
+    const form = EventFormPage(eventId: 7, additionalDetails: []);
+    void registered() => api.on('POST', '/events/registration/7/register', {
+          'event_id': 7,
+          'event_name': 'Hack Night',
+          'event_registration_id': 'reg-1',
+          'pay_amount': 0,
+          'ticket_id': 'T-1',
+          'whatsapp_opt_in': true,
+        });
+    Map<dynamic, dynamic> sentBody() =>
+        api.sent('POST', '/events/registration/7/register').single.data as Map;
+    Future<void> send(WidgetTester tester) async {
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is under the phone number, in the website\'s words, unticked',
+        (tester) async {
+      registered();
+      await _pump(tester, form: form);
+
+      expect(find.text(whatsappTicketsText), findsOneWidget);
+      expect(whatsappTicketsText,
+          'Send my ticket and event reminders on WhatsApp');
+      expect(tester.widget<CheckboxListTile>(box).value, isFalse);
+      expect(
+          tester.getTopLeft(box).dy, greaterThan(tester.getTopLeft(phone).dy));
+    });
+
+    testWidgets('left unticked, nothing about WhatsApp is sent',
+        (tester) async {
+      registered();
+      await _pump(tester, form: form);
+
+      await send(tester);
+
+      expect(sentBody().containsKey('whatsapp_opt_in'), isFalse);
+      expect(find.text('Registered!'), findsOneWidget);
+    });
+
+    testWidgets('ticked, whatsapp_opt_in goes with the registration',
+        (tester) async {
+      registered();
+      await _pump(tester, form: form);
+
+      await tester.tap(box);
+      await tester.pump();
+      expect(tester.widget<CheckboxListTile>(box).value, isTrue);
+      await send(tester);
+
+      expect(sentBody()['whatsapp_opt_in'], isTrue);
+      expect(sentBody()['phone'], '9876543210');
+      expect(find.text('Registered!'), findsOneWidget);
+    });
+
+    testWidgets('ticked, it wants a mobile number WhatsApp can reach',
+        (tester) async {
+      registered();
+      await _pump(tester, form: form);
+      await tester.enterText(phone, '5876543210');
+      await tester.tap(box);
+      await tester.pump();
+
+      await send(tester);
+
+      expect(
+          find.text(
+              'WhatsApp needs a mobile number. Or untick the WhatsApp box.'),
+          findsOneWidget);
+      expect(api.sent('POST', '/events/registration/7/register'), isEmpty);
+
+      // Unticked, the same number registers.
+      await tester.tap(box);
+      await tester.pump();
+      await send(tester);
+      expect(sentBody().containsKey('whatsapp_opt_in'), isFalse);
+    });
+
+    testWidgets("the server's 422 WHATSAPP_NUMBER is said under the phone",
+        (tester) async {
+      // As registration/service.py refuses it (backend #100).
+      api.on(
+          'POST',
+          '/events/registration/7/register',
+          {
+            'message': 'To get your ticket on WhatsApp, enter a mobile number '
+                'WhatsApp can reach, or untick the box.',
+            'error_code': 'WHATSAPP_NUMBER',
+            'errors': {'phone': "WhatsApp can't reach this number: no."},
+          },
+          status: 422);
+      await _pump(tester, form: form);
+      await tester.tap(box);
+      await tester.pump();
+
+      await send(tester);
+
+      expect(find.text(whatsappNumberProblem), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.text('Registered!'), findsNothing);
+
+      // Unticking the box clears it.
+      await tester.tap(box);
+      await tester.pump();
+      expect(find.text(whatsappNumberProblem), findsNothing);
+    });
+  });
+
+  group("a club's tracking link", () {
+    tearDown(() => TrackingRef.instance = TrackingRef());
+
+    void registered() => api.on('POST', '/events/registration/7/register', {
+          'event_id': 7,
+          'event_name': 'Hack Night',
+          'event_registration_id': 'reg-1',
+          'pay_amount': 0,
+          'ticket_id': 'T-1',
+        });
+
+    testWidgets('that opened the app is credited with the registration',
+        (tester) async {
+      TrackingRef.instance.remember(
+          Uri.parse('/events/hack-night?ref=QR7poster&via=l'));
+      registered();
+      await _pump(tester,
+          form: const EventFormPage(eventId: 7, additionalDetails: []));
+
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      final body = api
+          .sent('POST', '/events/registration/7/register')
+          .single
+          .data as Map;
+      expect(body['ref'], 'qr7poster');
+    });
+
+    testWidgets('none held: no ref is sent', (tester) async {
+      TrackingRef.instance = TrackingRef();
+      registered();
+      await _pump(tester,
+          form: const EventFormPage(eventId: 7, additionalDetails: []));
+
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      final body = api
+          .sent('POST', '/events/registration/7/register')
+          .single
+          .data as Map;
+      expect(body.containsKey('ref'), isFalse);
     });
   });
 }

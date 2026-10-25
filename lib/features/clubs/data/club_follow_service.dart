@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/app/router/tracking_ref.dart';
 import 'package:finnet/core/api/api_helper.dart';
 
 /// Following a club, and a follower's yes to "Get updates from `<club>` on
@@ -20,12 +21,16 @@ abstract class ClubFollowService {
 class ApiClubFollowService implements ClubFollowService {
   const ApiClubFollowService();
 
+  /// With the code of the club's tracking link that opened the app, when
+  /// one is held ([TrackingRef]): the server credits the follow to it if
+  /// it is this club's link.
   @override
   Future<void> follow(int clubId, {bool clubUpdates = false}) async {
     await APIService.instance.request(
       '/clubs/follow/$clubId',
       DioMethod.post,
       param: clubUpdates ? const {'club_updates_whatsapp': true} : null,
+      query: trackingQuery(),
     );
   }
 
@@ -47,3 +52,10 @@ class ApiClubFollowService implements ClubFollowService {
 
 final clubFollowServiceProvider =
     Provider<ClubFollowService>((ref) => const ApiClubFollowService());
+
+/// `{ref: code}` for a follow, while a tracking link's code is held
+/// ([TrackingRef]); null otherwise, and the follow is sent as it always was.
+Map<String, dynamic>? trackingQuery() {
+  final ref = TrackingRef.instance.current;
+  return ref == null ? null : {'ref': ref};
+}

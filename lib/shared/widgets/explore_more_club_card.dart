@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/features/clubs/data/club_follow_service.dart';
 import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/shared/motion.dart';
@@ -155,8 +156,11 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
     }
 
     try {
-      Response<dynamic> res =
-          await APIService.instance.request(endpoint, DioMethod.post);
+      Response<dynamic> res = await APIService.instance.request(
+          endpoint, DioMethod.post,
+          // A follow is credited to the club's tracking link, if one
+          // opened the app.
+          query: _isFollowing ? null : trackingQuery());
       // Assuming the API returns a JSON with an "is_following" boolean field:
       setState(() {
         _isFollowing = res.data['is_following'] as bool;

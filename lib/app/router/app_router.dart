@@ -54,6 +54,7 @@ import 'package:finnet/features/volunteer/presentation/pages/manual_ticket_entry
 import 'package:finnet/app/router/link_pages.dart';
 import 'package:finnet/app/router/pending_location.dart';
 import 'package:finnet/app/router/route_access.dart';
+import 'package:finnet/app/router/tracking_ref.dart';
 import 'package:finnet/app/router/web_links.dart';
 
 GlobalKey<NavigatorState> _rootNavigatorKey =
@@ -188,6 +189,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     // Add analytics observer for automatic screen tracking
     observers: ref.read(routerObserversProvider),
     redirect: (context, state) {
+      // A club's tracking link (`?ref=`), kept to credit the registration
+      // or the follow it leads to (tracking_ref.dart).
+      TrackingRef.instance.remember(state.uri);
       // A universal link or an App Link arrives as the whole URL: the
       // website's address, read as the app's (web_links.dart).
       final fromWebsite = appLocationForLink(state.uri);

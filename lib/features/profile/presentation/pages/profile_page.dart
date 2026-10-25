@@ -62,12 +62,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         label: 'Verify a Certificate',
         onTap: () => context.push('/verify/certificates'),
       ),
-      // TODO: Temporarily hidden - re-enable when badges feature is complete
-      // SettingsRow(
-      //   asset: AssetResources.mybadges,
-      //   label: 'My Badges',
-      //   onTap: () => context.push('/profile/badges'),
-      // ),
+      // The badges the server has awarded, and the ones still to earn.
+      SettingsRow(
+        asset: AssetResources.mybadges,
+        label: 'My Badges',
+        onTap: () => context.push('/profile/badges'),
+      ),
       SettingsRow(
         asset: AssetResources.notifications,
         label: 'Notifications',
