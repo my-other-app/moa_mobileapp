@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:finnet/core/resources/asset_resources.dart';
 
 class MyBadgesPage extends StatelessWidget {
   const MyBadgesPage({super.key});
@@ -23,14 +24,15 @@ class MyBadgesPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Bordered box containing the GIF
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 40),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0), // Some internal padding
-                child: Image.asset(
-                  'assets/images/mybadges.gif',
-                ),
+            // The badge from the old Profile menu row. The GIF this showed
+            // (assets/images/mybadges.gif) was deleted in January, so every
+            // visit failed to load it.
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Image.asset(
+                AssetResources.mybadges,
+                width: 160,
+                height: 160,
               ),
             ),
 
