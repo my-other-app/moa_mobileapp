@@ -358,19 +358,78 @@ class NotificationService {
     // sends): have the inbox read itself now, not when it is next opened.
     PushArrivals.arrived();
 
-    RemoteNotification? notification = message.notification;
-    AndroidNotification? android = message.notification?.android;
-
     // Show local notification for foreground messages
-    if (notification != null) {
+    final showing = foregroundShowing(message);
+    if (showing != null) {
       _showLocalNotification(
         id: message.hashCode,
-        title: notification.title ?? 'Notification',
-        body: notification.body ?? '',
-        payload: jsonEncode(message.data),
-        imageUrl: android?.imageUrl ?? message.data['image_url'],
+        title: showing.title,
+        body: showing.body,
+        payload: showing.payload,
+        imageUrl: showing.imageUrl,
       );
     }
+  }
+
+  /// What a push that arrives while the app is open shows, as a local
+  /// notification: its title (or "Notification") and body, its data as the
+  /// tap's payload, and its picture -- the Android notification's image,
+  /// else the data's `image_url`. Null for a data-only push, which shows
+  /// nothing.
+  @visibleForTesting
+  static ({String title, String body, String payload, String? imageUrl})?
+      foregroundShowing(RemoteMessage message) {
+    final notification = message.notification;
+    if (notification == null) return null;
+    final image = notification.android?.imageUrl ?? message.data['image_url'];
+    return (
+      title: notification.title ?? 'Notification',
+      body: notification.body ?? '',
+      payload: jsonEncode(message.data),
+      imageUrl: image is String && image.trim().isNotEmpty ? image : null,
+    );
+  }
+
+  /// How a push shown while the app is open looks: on the app's own channel
+  /// (high importance, so it drops down) with its status-bar icon and
+  /// accent. With [picturePath] -- its picture, downloaded -- the picture
+  /// expanded under the text on Android, and attached on an iPhone; without
+  /// one, the text alone.
+  @visibleForTesting
+  static NotificationDetails foregroundDetails({
+    required String title,
+    required String body,
+    String? picturePath,
+  }) {
+    return NotificationDetails(
+      android: AndroidNotificationDetails(
+        androidChannelId,
+        androidChannelName,
+        channelDescription: androidChannelDescription,
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: androidSmallIcon,
+        color: androidAccent,
+        styleInformation: picturePath == null
+            ? null
+            : BigPictureStyleInformation(
+                FilePathAndroidBitmap(picturePath),
+                hideExpandedLargeIcon: true,
+                contentTitle: title,
+                htmlFormatContentTitle: true,
+                summaryText: body,
+                htmlFormatSummaryText: true,
+              ),
+      ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        attachments: picturePath == null
+            ? null
+            : [DarwinNotificationAttachment(picturePath)],
+      ),
+    );
   }
 
   void _handleNotificationTap(RemoteMessage message) {
@@ -500,93 +559,27 @@ class NotificationService {
     String? payload,
     String? imageUrl,
   }) async {
-    // Android Style
-    AndroidNotificationDetails androidDetails;
+    // The picture, downloaded once -- it was fetched twice, once for each
+    // platform's details, on every phone. A .jpg name: an iPhone's
+    // attachment is typed by it; Android reads the file whatever its name.
+    String? picturePath;
     if (imageUrl != null && imageUrl.isNotEmpty) {
       try {
-        final String bigPicturePath = await _downloadAndSaveFile(
-            imageUrl, 'bigPicture-${DateTime.now().millisecondsSinceEpoch}');
-
-        final BigPictureStyleInformation bigPictureStyleInformation =
-            BigPictureStyleInformation(
-          FilePathAndroidBitmap(bigPicturePath),
-          hideExpandedLargeIcon: true,
-          contentTitle: title,
-          htmlFormatContentTitle: true,
-          summaryText: body,
-          htmlFormatSummaryText: true,
-        );
-
-        androidDetails = AndroidNotificationDetails(
-          androidChannelId,
-          androidChannelName,
-          channelDescription: androidChannelDescription,
-          importance: Importance.high,
-          priority: Priority.high,
-          icon: androidSmallIcon,
-          color: androidAccent,
-          styleInformation: bigPictureStyleInformation,
-        );
-      } catch (e) {
-        debugPrint('Error downloading image for notification: $e');
-        // Fallback to text only
-        androidDetails = const AndroidNotificationDetails(
-          androidChannelId,
-          androidChannelName,
-          channelDescription: androidChannelDescription,
-          importance: Importance.high,
-          priority: Priority.high,
-          icon: androidSmallIcon,
-          color: androidAccent,
-        );
-      }
-    } else {
-      androidDetails = const AndroidNotificationDetails(
-        androidChannelId,
-        androidChannelName,
-        channelDescription: androidChannelDescription,
-        importance: Importance.high,
-        priority: Priority.high,
-        icon: androidSmallIcon,
-        color: androidAccent,
-      );
-    }
-
-    // iOS Style
-    DarwinNotificationDetails iosDetails;
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      try {
-        final String bigPicturePath = await _downloadAndSaveFile(imageUrl,
+        picturePath = await _downloadAndSaveFile(imageUrl,
             'bigPicture-${DateTime.now().millisecondsSinceEpoch}.jpg');
-
-        iosDetails = DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          attachments: [DarwinNotificationAttachment(bigPicturePath)],
-        );
       } catch (e) {
-        debugPrint('Error downloading image for iOS notification: $e');
-        iosDetails = const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        );
+        // The text alone, then.
+        debugPrint('Error downloading image for notification: $e');
       }
-    } else {
-      iosDetails = const DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      );
     }
 
-    NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
+    await _localNotifications.show(
+      id,
+      title,
+      body,
+      foregroundDetails(title: title, body: body, picturePath: picturePath),
+      payload: payload,
     );
-
-    await _localNotifications.show(id, title, body, details, payload: payload);
   }
 
   /// Subscribe to a topic for targeted notifications
