@@ -2,6 +2,26 @@ import 'dart:io';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:finnet/core/api/api_helper.dart';
 
+/// Apple's side of "Sign in with Apple", as the sign-in screen uses it:
+/// whether this device offers it, and the credential Apple's sheet hands
+/// back. [platform] is the real one; a test hands in its own.
+class AppleSignIn {
+  const AppleSignIn({required this.isAvailable, required this.credential});
+
+  final Future<bool> Function() isAvailable;
+  final Future<AuthorizationCredentialAppleID> Function() credential;
+
+  static final platform = AppleSignIn(
+    isAvailable: AppleAuthService.isAvailable,
+    credential: () => SignInWithApple.getAppleIDCredential(
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+    ),
+  );
+}
+
 /// Service for handling Apple Sign In authentication.
 class AppleAuthService {
   /// Check if Apple Sign In is available on this device.
