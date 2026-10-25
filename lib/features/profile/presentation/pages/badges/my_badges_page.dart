@@ -232,6 +232,5 @@ class _BadgeTile extends StatelessWidget {
     );
   }
 
-  static String _day(DateTime at) =>
-      DateFormat('d MMM y').format(at.toLocal());
+  static String _day(DateTime at) => DateFormat('d MMM y').format(at.toLocal());
 }

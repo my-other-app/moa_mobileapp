@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/api/api_helper.dart';
-import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/features/auth/data/services/password_reset_service.dart';
 
 /// Why a password change did not go through.
@@ -45,8 +44,8 @@ class ChangePasswordException implements Exception {
         dio?.type == DioExceptionType.connectionTimeout ||
         dio?.type == DioExceptionType.sendTimeout ||
         dio?.type == DioExceptionType.receiveTimeout) {
-      return const ChangePasswordException(
-          ChangePasswordErrorKind.network, PasswordResetException.networkMessage);
+      return const ChangePasswordException(ChangePasswordErrorKind.network,
+          PasswordResetException.networkMessage);
     }
     final status = api?.statusCode ?? dio?.response?.statusCode;
     final said = api?.serverMessage;
@@ -69,8 +68,8 @@ class ChangePasswordException implements Exception {
       );
     }
     if (status != null && status >= 500) {
-      return const ChangePasswordException(
-          ChangePasswordErrorKind.unknown, PasswordResetException.serverMessage);
+      return const ChangePasswordException(ChangePasswordErrorKind.unknown,
+          PasswordResetException.serverMessage);
     }
     return const ChangePasswordException(
       ChangePasswordErrorKind.unknown,

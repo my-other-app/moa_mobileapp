@@ -26,7 +26,8 @@
 library;
 
 class TrackingRef {
-  TrackingRef({DateTime Function()? now, this.keepFor = const Duration(hours: 24)})
+  TrackingRef(
+      {DateTime Function()? now, this.keepFor = const Duration(hours: 24)})
       : _now = now ?? DateTime.now;
 
   /// The app's one: the router writes it, registration and following read it.

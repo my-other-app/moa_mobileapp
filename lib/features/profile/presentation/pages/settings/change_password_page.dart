@@ -21,8 +21,7 @@ class ChangePasswordPage extends ConsumerStatefulWidget {
   static const confirmKey = ValueKey('change-password-confirm');
   static const saveKey = ValueKey('change-password-save');
 
-  static const sameAsCurrent =
-      'Pick a new password, not the one you have now.';
+  static const sameAsCurrent = 'Pick a new password, not the one you have now.';
   static const changed = 'Password changed.';
   static const signInAgain =
       'Password changed. Sign in again with your new password.';
@@ -105,8 +104,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
     await auth.logout();
   }
 
-  InputDecoration _decoration(String label, {String? error}) =>
-      InputDecoration(
+  InputDecoration _decoration(String label, {String? error}) => InputDecoration(
         labelText: label,
         errorText: error,
         errorMaxLines: 3,
@@ -152,8 +150,8 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                 obscureText: !_show,
                 autofillHints: const [AutofillHints.password],
                 textInputAction: TextInputAction.next,
-                decoration: _decoration('Current password',
-                    error: _currentProblem),
+                decoration:
+                    _decoration('Current password', error: _currentProblem),
                 onChanged: (_) {
                   if (_currentProblem != null) {
                     setState(() => _currentProblem = null);
