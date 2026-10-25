@@ -17,6 +17,14 @@ import 'package:finnet/features/profile/presentation/providers/profile_provider.
 import 'package:finnet/features/profile/presentation/utils/certificate_share.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 
+/// Opens the PDF at a path in the phone's own viewer: true when one opened
+/// it. A provider so a test can see what would have been opened.
+typedef CertificatePdfOpener = Future<bool> Function(String path);
+
+final certificatePdfOpenerProvider = Provider<CertificatePdfOpener>(
+  (ref) => (path) async => (await OpenFilex.open(path)).type == ResultType.done,
+);
+
 /// One certificate, to the design: preview, title, id, club, two facts,
 /// a pin action, the status banner and the download button.
 class CertificateDetailPage extends ConsumerWidget {
@@ -36,6 +44,7 @@ class CertificateDetailPage extends ConsumerWidget {
   /// rather than a browser that cannot load it either.
   Future<void> _open(BuildContext context, WidgetRef ref, String url) async {
     final messenger = ScaffoldMessenger.of(context);
+    final openPdf = ref.read(certificatePdfOpenerProvider);
     try {
       final pdf = await ref
           .read(certificateDocumentsProvider)
@@ -44,8 +53,7 @@ class CertificateDetailPage extends ConsumerWidget {
         messenger.showSnackBar(const SnackBar(
             content: Text('Offline — this is your saved copy')));
       }
-      final opened = await OpenFilex.open(pdf.file.path);
-      if (opened.type == ResultType.done) return;
+      if (await openPdf(pdf.file.path)) return;
     } catch (e) {
       debugPrint('Certificate PDF unavailable, opening the link: $e');
       if (e is DioException && DocumentCache.noAnswer(e)) {

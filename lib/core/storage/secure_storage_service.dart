@@ -13,15 +13,19 @@ class SecureStorageService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
 
+  /// The phone's own store, encrypted: the Android Keystore behind
+  /// EncryptedSharedPreferences, the iOS Keychain readable once the phone
+  /// has been unlocked after a restart (so a push arriving in the
+  /// background can still be handled).
+  static const FlutterSecureStorage platformStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
+
   final FlutterSecureStorage _storage;
 
   SecureStorageService({FlutterSecureStorage? storage})
-      : _storage = storage ??
-            const FlutterSecureStorage(
-              aOptions: AndroidOptions(encryptedSharedPreferences: true),
-              iOptions:
-                  IOSOptions(accessibility: KeychainAccessibility.first_unlock),
-            );
+      : _storage = storage ?? platformStorage;
 
   // Token Management
 

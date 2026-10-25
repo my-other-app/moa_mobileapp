@@ -20,7 +20,13 @@ import 'package:finnet/features/auth/presentation/widgets/two_step_sheet.dart';
 /// Also where an ended session lands: when the server ended it (expired,
 /// revoked, suspended) this screen says so once, on arrival.
 class OnboardingInitialPage extends ConsumerStatefulWidget {
-  const OnboardingInitialPage({super.key});
+  const OnboardingInitialPage({super.key, this.googleSignIn, this.appleSignIn});
+
+  /// Google's account picker; null for the app's own. For tests.
+  final GoogleSignIn? googleSignIn;
+
+  /// Apple's sign-in; null for the platform's. For tests.
+  final AppleSignIn? appleSignIn;
 
   @override
   ConsumerState<OnboardingInitialPage> createState() =>
@@ -28,11 +34,14 @@ class OnboardingInitialPage extends ConsumerStatefulWidget {
 }
 
 class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'openid'],
-    serverClientId:
-        '497245325238-ceiht9g22u4eh9a3mdkmfbssa0fkevt1.apps.googleusercontent.com',
-  );
+  late final GoogleSignIn _googleSignIn = widget.googleSignIn ??
+      GoogleSignIn(
+        scopes: ['email', 'openid'],
+        serverClientId:
+            '497245325238-ceiht9g22u4eh9a3mdkmfbssa0fkevt1.apps.googleusercontent.com',
+      );
+
+  late final AppleSignIn _apple = widget.appleSignIn ?? AppleSignIn.platform;
 
   late LoginCubit _loginCubit;
   bool _isAppleSignInAvailable = false;
@@ -71,7 +80,7 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
   }
 
   Future<void> _checkAppleSignInAvailability() async {
-    final isAvailable = await AppleAuthService.isAvailable();
+    final isAvailable = await _apple.isAvailable();
     if (mounted) {
       setState(() {
         _isAppleSignInAvailable = isAvailable;
@@ -176,12 +185,7 @@ class _OnboardingInitialPageState extends ConsumerState<OnboardingInitialPage> {
 
   Future<void> _handleAppleSignIn() async {
     try {
-      final credential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-      );
+      final credential = await _apple.credential();
 
       String? userName;
       if (credential.givenName != null || credential.familyName != null) {

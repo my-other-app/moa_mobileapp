@@ -24,6 +24,7 @@ import 'package:finnet/features/events/presentation/widgets/event_page/event_rai
 import 'package:finnet/features/events/presentation/widgets/event_page/event_section.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_venue.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/register_bar_parts.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/registration_countdown.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_entries.dart';
 import 'package:finnet/features/events/presentation/finish_payment.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
@@ -224,9 +225,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   bool isLoading = true;
   String? errorMessage;
 
-  // Timer variables for countdown.
-  Timer? _timer;
-  String countdownText = '';
+  /// The deadline passed: at load, or while the countdown was showing.
   bool registrationClosed = false;
 
   @override
@@ -330,10 +329,6 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     }
     if (!mounted || isLoading) return;
 
-    // Start the countdown timer if regEndDate is available and not already closed.
-    if (regEndDate != null && !registrationClosed) {
-      _startTimer();
-    }
     if (_finishPaymentOnLoad && gotFresh) {
       _finishPaymentOnLoad = false;
       if (awaitingPayment && !_eventEnded && _sellable) {
@@ -424,7 +419,6 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       // CRITICAL: Check if registration is already closed IMMEDIATELY
       if (regEndDate != null && regEndDate!.isBefore(DateTime.now())) {
         registrationClosed = true;
-        countdownText = 'Registration Closed';
       }
     });
   }
@@ -1070,41 +1064,15 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     ];
   }
 
-  void _startTimer() {
-    // Cancel any existing timer.
-    _timer?.cancel();
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (regEndDate == null) return;
-      final now = DateTime.now();
-      final diff = regEndDate!.difference(now);
-      if (diff.isNegative) {
-        setState(() {
-          registrationClosed = true;
-          countdownText = 'Registration Closed';
-        });
-        _timer?.cancel();
-      } else {
-        final days = diff.inDays;
-        final hours = (diff.inHours % 24).toString().padLeft(2, '0');
-        final minutes = (diff.inMinutes % 60).toString().padLeft(2, '0');
-        final seconds = (diff.inSeconds % 60).toString().padLeft(2, '0');
-        setState(() {
-          if (days > 0) {
-            countdownText =
-                'Registration closes in $days day${days > 1 ? 's' : ''} $hours hrs $minutes mins $seconds secs';
-          } else {
-            countdownText =
-                'Registration closes in $hours hrs $minutes mins $seconds secs';
-          }
-        });
-      }
-    });
+  /// The countdown reached the deadline while the page was open.
+  void _onRegistrationClosed() {
+    if (mounted && !registrationClosed) {
+      setState(() => registrationClosed = true);
+    }
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _live.close();
     super.dispose();
@@ -2342,25 +2310,11 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             const SizedBox(height: 10),
           ] else ...[
             // The countdown, when there is a deadline and it hasn't passed.
+            // It ticks on its own: the page isn't rebuilt every second.
             if (showCountdown)
-              Container(
-                width: double.infinity,
-                height: 25,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFDEDD),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  countdownText,
-                  textAlign: TextAlign.left,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.normal,
-                    fontSize: 12,
-                    color: Color(0xFFCD0000),
-                  ),
-                ),
+              RegistrationCountdown(
+                closesAt: regEndDate!,
+                onClosed: _onRegistrationClosed,
               ),
             if (state.note != null)
               Padding(
