@@ -65,6 +65,9 @@ class APIService {
     bool skipAuth = false,
     Map<String, dynamic>? headers,
     CachePolicy? cache,
+    // The query string, for a method whose [param] is its body. A GET's
+    // [param] is its query already; this joins it.
+    Map<String, dynamic>? query,
   }) async {
     try {
       // Configure request options
@@ -83,30 +86,35 @@ class APIService {
           return await _dio.post(
             endpoint,
             data: param ?? formData,
+            queryParameters: query,
             options: options,
           );
         case DioMethod.get:
           return await _dio.get(
             endpoint,
-            queryParameters: param,
+            queryParameters:
+                query == null ? param : {...?param, ...query},
             options: options,
           );
         case DioMethod.put:
           return await _dio.put(
             endpoint,
             data: param ?? formData,
+            queryParameters: query,
             options: options,
           );
         case DioMethod.delete:
           return await _dio.delete(
             endpoint,
             data: param ?? formData,
+            queryParameters: query,
             options: options,
           );
         case DioMethod.patch:
           return await _dio.patch(
             endpoint,
             data: param ?? formData,
+            queryParameters: query,
             options: options,
           );
       }

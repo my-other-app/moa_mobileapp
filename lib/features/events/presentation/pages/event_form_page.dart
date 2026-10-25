@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/app/router/tracking_ref.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
 import 'package:finnet/core/utils/whatsapp_number.dart';
@@ -122,6 +123,14 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   /// under it until it, or the box, changes.
   String? _phoneProblem;
   final _phoneKey = GlobalKey();
+
+  /// "Send my ticket and event reminders on WhatsApp": unticked until the
+  /// person ticks it, as on the website.
+  bool _whatsapp = false;
+
+  /// Whether `whatsapp_opt_in: true` goes with the registration.
+  bool get _wantsWhatsapp =>
+      _whatsapp && _phoneController.text.trim().isNotEmpty;
 
   /// Whether `club_updates_whatsapp: true` goes with the registration.
   bool get _wantsClubUpdates =>
@@ -982,6 +991,11 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           if (_catalog.hasAnything) 'store': picksToPayload(_catalog, _picks),
           // Only when ticked: unticked is the server's default.
           if (_wantsClubUpdates) 'club_updates_whatsapp': true,
+          // The ticket and the day-before reminder on WhatsApp too.
+          if (_wantsWhatsapp) 'whatsapp_opt_in': true,
+          // The club's tracking link that opened the app, if one did: the
+          // server credits the sign-up to it (tracking_ref.dart).
+          if (TrackingRef.instance.current case final ref?) 'ref': ref,
         };
 
         final response = await APIService.instance.request(
@@ -1343,7 +1357,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                             if (value.length != 10) {
                               return 'Phone number must be 10 digits';
                             }
-                            if (_wantsClubUpdates &&
+                            if ((_wantsClubUpdates || _wantsWhatsapp) &&
                                 whatsappNumber(value) == null) {
                               return 'WhatsApp needs a mobile number. Or '
                                   'untick the WhatsApp box.';
@@ -1352,8 +1366,33 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                           },
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      CheckboxListTile(
+                        key: const ValueKey('register-whatsapp'),
+                        value: _whatsapp,
+                        onChanged: (on) => setState(() {
+                          _whatsapp = on ?? false;
+                          _phoneProblem = null;
+                        }),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        activeColor: const Color(0xFF2C333D),
+                        title: const Text(
+                          whatsappTicketsText,
+                          style: TextStyle(
+                            color: Color(0xFF1E1E1E),
+                            fontSize: 15,
+                            fontFamily: 'DMSans',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'On the phone number above. It needs WhatsApp.',
+                          style: TextStyle(fontSize: 13, fontFamily: 'DMSans'),
+                        ),
+                      ),
                       if (_offersClubUpdates) ...[
-                        const SizedBox(height: 8),
                         CheckboxListTile(
                           key: const ValueKey('register-club-updates'),
                           value: _clubUpdates,
