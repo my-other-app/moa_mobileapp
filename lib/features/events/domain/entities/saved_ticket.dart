@@ -1,5 +1,6 @@
 import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
+import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 
 /// The ticket code in a ticket's address -- `/api/v1/events/tickets/{code}`
@@ -37,6 +38,9 @@ class SavedTicket {
     this.clubName,
     this.status = RegistrationStatus.registered,
     this.revoked = false,
+    this.ticketType,
+    this.paid = false,
+    this.cancellation,
   });
 
   /// The ticket code, which the QR encodes.
@@ -60,6 +64,39 @@ class SavedTicket {
   /// From the list's `ticket_revoked`; a server without the field (or a
   /// null) means not revoked.
   final bool revoked;
+
+  /// The ticket type it was bought as ("Early bird"); null for an event
+  /// that sells one kind, or when the server didn't say. The list of
+  /// registrations doesn't say it today: it is kept from the registration's
+  /// answer ([withTicketType]).
+  final String? ticketType;
+
+  /// Paid for, on a paid event: a cancelled event's refund applies.
+  final bool paid;
+
+  /// The club called the event off, when the list says so.
+  final EventCancellation? cancellation;
+
+  /// This ticket, of type [name] (kept when [name] is null).
+  SavedTicket withTicketType(String? name) => name == null || name == ticketType
+      ? this
+      : SavedTicket(
+          code: code,
+          eventId: eventId,
+          eventName: eventName,
+          startsAt: startsAt,
+          durationHours: durationHours,
+          venue: venue,
+          isOnline: isOnline,
+          ticketUrl: ticketUrl,
+          posterUrl: posterUrl,
+          clubName: clubName,
+          status: status,
+          revoked: revoked,
+          ticketType: name,
+          paid: paid,
+          cancellation: cancellation,
+        );
 
   /// When the event is over, as far as the phone can tell: its start plus
   /// its length (a day when the length is unknown).
@@ -105,6 +142,9 @@ class SavedTicket {
           ? RegistrationStatus.attended
           : RegistrationStatus.registered,
       revoked: isTicketRevoked(item),
+      ticketType: ticketTypeNameOf(item),
+      paid: item['has_fee'] == true && item['is_paid'] == true,
+      cancellation: EventCancellation.of(item),
     );
   }
 
@@ -121,6 +161,13 @@ class SavedTicket {
         if (clubName != null) 'club_name': clubName,
         'status': status.name,
         if (revoked) 'revoked': true,
+        if (ticketType != null) 'ticket_type': ticketType,
+        if (paid) 'paid': true,
+        if (cancellation != null) ...{
+          'cancelled': true,
+          if (cancellation!.reason != null)
+            'cancellation_reason': cancellation!.reason,
+        },
       };
 
   /// Null for anything that cannot be a saved ticket.
@@ -145,6 +192,11 @@ class SavedTicket {
           ? RegistrationStatus.attended
           : RegistrationStatus.registered,
       revoked: jsonBool(json['revoked']) == true,
+      ticketType: jsonString(json['ticket_type']),
+      paid: jsonBool(json['paid']) == true,
+      cancellation: jsonBool(json['cancelled']) == true
+          ? EventCancellation(reason: jsonString(json['cancellation_reason']))
+          : null,
     );
   }
 }

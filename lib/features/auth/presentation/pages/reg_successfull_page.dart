@@ -10,6 +10,10 @@ class RegSuccessfullPage extends StatefulWidget {
   final String? eventDateTime;
   final String? fullName;
 
+  /// The ticket type it was bought as ("Early bird"), when the event sells
+  /// more than one.
+  final String? ticketType;
+
   const RegSuccessfullPage({
     super.key,
     this.ticketId,
@@ -17,6 +21,7 @@ class RegSuccessfullPage extends StatefulWidget {
     this.eventId,
     this.eventDateTime,
     this.fullName,
+    this.ticketType,
   });
 
   @override
@@ -77,6 +82,7 @@ class _RegSuccessfullPageState extends State<RegSuccessfullPage>
           eventName: widget.eventName ?? 'Event',
           eventDateTime: eventDateTime,
           ticketHolderName: widget.fullName,
+          ticketType: widget.ticketType,
         ),
         // The ticket rises a little as it fades in, on the app's timing.
         transitionsBuilder: (context, animation, secondaryAnimation, child) {

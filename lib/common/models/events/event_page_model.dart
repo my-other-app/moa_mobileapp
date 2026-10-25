@@ -1,4 +1,5 @@
 import 'package:finnet/core/utils/json_read.dart';
+import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 
 // The event page as the website shows it: `GET /discover/events/{ref}`
@@ -337,6 +338,10 @@ class EventPageDetails {
   final String? url;
   final EventPhase? phase;
 
+  /// The club called it off (`status: "cancelled"`, with `cancellation`);
+  /// null otherwise. [phase] is then null: no list shows it.
+  final EventCancellation? cancellation;
+
   /// Whether a new registration would be taken right now.
   final bool registrationOpen;
   final DateTime? regOpensAt;
@@ -374,6 +379,7 @@ class EventPageDetails {
     this.name = '',
     this.url,
     this.phase,
+    this.cancellation,
     this.registrationOpen = false,
     this.regOpensAt,
     this.regClosesAt,
@@ -445,6 +451,7 @@ class EventPageDetails {
       name: _text(event['name']) ?? '',
       url: _text(event['url']),
       phase: eventPhaseFrom(event['status']),
+      cancellation: EventCancellation.of(event),
       registrationOpen: jsonBool(event['registration_open']) ?? false,
       regOpensAt: jsonDate(event['reg_opens_at'])?.toLocal(),
       regClosesAt: jsonDate(event['reg_closes_at'])?.toLocal(),

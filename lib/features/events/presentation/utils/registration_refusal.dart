@@ -1,4 +1,6 @@
 import 'package:intl/intl.dart';
+import 'package:finnet/core/utils/json_read.dart';
+import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 
 /// What a refused registration offers next.
@@ -8,6 +10,9 @@ enum RegistrationAction {
 
   /// Registered for a paid event and not paid yet: pay for it.
   finishPayment,
+
+  /// Sold out, with its waiting list open: join it instead.
+  joinWaitlist,
 }
 
 /// The `error_code`s `POST /events/registration/{id}/register` refuses with.
@@ -79,6 +84,7 @@ class RegistrationRefusal {
   String? get actionLabel => switch (action) {
         RegistrationAction.viewTicket => 'View ticket',
         RegistrationAction.finishPayment => 'Finish payment',
+        RegistrationAction.joinWaitlist => 'Join the waiting list',
         null => null,
       };
 }
@@ -99,6 +105,10 @@ final _deadlinePassed = RegExp(
 RegistrationRefusal describeRegistrationError(Object? error) {
   final code = errorCodeOf(error);
   final said = serverMessageOf(error);
+
+  if (isCancelledRefusal(error)) return cancelledRefusal;
+  final ticketing = _ticketingRefusal(error, code);
+  if (ticketing != null) return ticketing;
 
   switch (code) {
     case RegistrationErrorCodes.alreadyRegistered:
@@ -131,7 +141,7 @@ RegistrationRefusal describeRegistrationError(Object? error) {
         closed: true,
       );
     case RegistrationErrorCodes.eventFull:
-      return _full;
+      return offersWaitlist(error) ? _fullWithWaitlist : _full;
     case RegistrationErrorCodes.soldOut:
       return RegistrationRefusal(
         title: 'Sold out',
@@ -206,6 +216,81 @@ const _full = RegistrationRefusal(
   title: 'This event is full',
   message: 'Every place at this event has been taken.',
 );
+
+const _fullWithWaitlist = RegistrationRefusal(
+  title: 'This event is full',
+  message: "Every place has been taken. Join the waiting list and we'll tell "
+      'you if one opens up.',
+  action: RegistrationAction.joinWaitlist,
+);
+
+/// The club called the event off: registering (REGISTRATIONS_CLOSED with
+/// `closed_reason: "cancelled"`) and paying (EVENT_CANCELLED) are refused.
+const cancelledRefusal = RegistrationRefusal(
+  title: 'This event was cancelled',
+  message: "The organisers called it off, so it isn't taking registrations "
+      'or payments. Nothing was charged.',
+  closed: true,
+);
+
+/// A refusal about the ticket type (docs/TICKETING.md §6); null for any
+/// other. A discount code's refusal is said under its field instead
+/// ([discountCodeProblem]); here it is the dialog's words for a screen
+/// without one.
+RegistrationRefusal? _ticketingRefusal(
+    Object? error, String? code) {
+  switch (code) {
+    case TicketingErrorCodes.ticketTypeRequired:
+      return const RegistrationRefusal(
+        title: 'Choose a ticket',
+        message: 'This event sells more than one kind of ticket. Choose one, '
+            'then register.',
+      );
+    case TicketingErrorCodes.ticketTypeNotFound:
+      return const RegistrationRefusal(
+        title: "That ticket isn't on sale",
+        message: 'It may have been taken off sale. Choose another ticket.',
+      );
+    case TicketingErrorCodes.ticketTypeNotOnSale:
+      final errors = apiExceptionOf(error)?.errors;
+      final opens = jsonDate(errors?['opens_at']);
+      if (errors?['closed_reason'] == 'not_started') {
+        return RegistrationRefusal(
+          title: "This ticket isn't on sale yet",
+          message: opens == null
+              ? 'Come back once it goes on sale.'
+              : 'It goes on sale '
+                  '${DateFormat("EEE d MMM 'at' h:mm a").format(opens.toLocal())}.',
+        );
+      }
+      return const RegistrationRefusal(
+        title: 'Sales for this ticket have ended',
+        message: 'Choose another ticket, if there is one.',
+      );
+    case TicketingErrorCodes.ticketTypeSoldOut:
+      return offersWaitlist(error)
+          ? const RegistrationRefusal(
+              title: 'This ticket is sold out',
+              message: "Join its waiting list and we'll tell you if a place "
+                  'opens up.',
+              action: RegistrationAction.joinWaitlist,
+            )
+          : const RegistrationRefusal(
+              title: 'This ticket is sold out',
+              message: 'Choose another ticket, if there is one.',
+            );
+    case TicketingErrorCodes.ticketTypeLimit:
+      return const RegistrationRefusal(
+        title: "You've reached this ticket's limit",
+        message: 'You already hold as many of these tickets as one person can.',
+      );
+  }
+  final problem = discountCodeProblem(error);
+  if (problem != null && code != null) {
+    return RegistrationRefusal(title: 'Check your discount code', message: problem);
+  }
+  return null;
+}
 
 /// "Hack Night tee M is sold out" -> "Hack Night tee M is sold out."
 String _sentence(String text) {

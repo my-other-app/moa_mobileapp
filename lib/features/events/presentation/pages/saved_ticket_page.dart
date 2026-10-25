@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
+import 'package:finnet/features/events/presentation/providers/event_cancellation_provider.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 
 /// The address of a ticket inside the app: `/tickets/{code}`.
@@ -31,6 +32,14 @@ class SavedTicketPage extends ConsumerWidget {
     for (final saved in tickets) {
       if (saved.code == code) ticket = saved;
     }
+    // Called off: by the saved ticket's word, else the event's page's (the
+    // list of registrations doesn't say it today).
+    final cancellation = ticket?.cancellation ??
+        (ticket == null
+            ? null
+            : ref
+                .watch(eventCancellationProvider('${ticket.eventId}'))
+                .valueOrNull);
     return TicketViewPage(
       ticketId: code,
       eventName: ticket?.eventName ?? 'Your ticket',
@@ -41,6 +50,9 @@ class SavedTicketPage extends ConsumerWidget {
       posterUrl: ticket?.posterUrl,
       revoked: revoked || (ticket?.revoked ?? false),
       eventId: ticket?.eventId,
+      ticketType: ticket?.ticketType,
+      cancellation: cancellation,
+      paid: ticket?.paid ?? false,
     );
   }
 }
@@ -105,8 +117,10 @@ class _SavedTicketTile extends StatelessWidget {
           when,
           if (where.isNotEmpty) where,
           if (ticket.revoked) 'Revoked by the organiser',
+          if (ticket.cancellation != null) 'Cancelled by the organiser',
         ].join('\n')),
-        isThreeLine: where.isNotEmpty || ticket.revoked,
+        isThreeLine:
+            where.isNotEmpty || ticket.revoked || ticket.cancellation != null,
         trailing: FilledButton(
           onPressed: () => context.push(ticketRoute(ticket.code)),
           style: FilledButton.styleFrom(
