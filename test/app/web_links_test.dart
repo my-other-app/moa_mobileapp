@@ -378,12 +378,34 @@ void main() {
           reason: path);
     }
     for (final prefix in prefixes) {
-      final sample = prefix == '/feedback/' ? '${prefix}12/34' : '${prefix}x';
+      final sample = switch (prefix) {
+        '/feedback/' => '${prefix}12/34',
+        // The quiz's QR names the event by its id.
+        '/play/' => '${prefix}12',
+        _ => '${prefix}x',
+      };
       expect(webLocation(Uri.parse('https://myotherapp.in$sample')), isNotNull,
           reason: sample);
     }
     expect(manifest, contains('android:autoVerify="true"'));
     expect(manifest, contains('android:host="myotherapp.in"'));
+  });
+
+  test('Android opens the quiz QR and the live room in the app', () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    final prefixes = RegExp(r'android:pathPrefix="([^"]+)"')
+        .allMatches(manifest)
+        .map((m) => m.group(1)!)
+        .toList();
+    // The big screen's quiz QR: myotherapp.in/play/{event}.
+    expect(prefixes, contains('/play/'));
+    expect(webLocation(Uri.parse('https://myotherapp.in/play/12')),
+        '/events/12/live/quiz');
+    // The live room is under /events/, which Android hands the app whole.
+    const live = '/events/hack-night-04/live';
+    expect(prefixes.any(live.startsWith), isTrue);
+    expect(webLocation(Uri.parse('https://myotherapp.in$live')), live);
   });
 
   test('isTabRoot names the bottom bar\'s pages', () {
