@@ -303,7 +303,7 @@ Delete `build/` afterwards (disk is tight).
    | Content rating (IARC) | users can interact with each other (Threads comments); no gambling, violence and so on |
    | Target audience | **decide this**. If the audience is college students, choose 18+. Choosing under-18 groups brings in Play's Families and teen policies, and India's DPDP rules for children's data. |
    | Data safety | section 10 |
-   | Advertising ID | **Yes, for analytics.** Firebase Analytics adds `com.google.android.gms.permission.AD_ID` to the manifest. To answer No instead, remove that permission with `tools:node="remove"` and add `<meta-data android:name="google_analytics_adid_collection_enabled" android:value="false"/>` |
+   | Advertising ID | **No.** The manifest removes `com.google.android.gms.permission.AD_ID` (which Firebase Analytics merges in) and the Privacy Sandbox ad permissions, and sets `google_analytics_adid_collection_enabled` to false (`android/app/src/main/AndroidManifest.xml`). The app shows no ads. |
    | Financial features | none (tickets for real-world events are not a financial service) |
    | Government, health, news | no |
    | Account deletion | in the app (Settings → Delete Account), plus the web page from blocker 3 |
@@ -320,10 +320,9 @@ Delete `build/` afterwards (disk is tight).
 Expect these permissions on Play's listing:
 - camera (volunteer QR scan);
 - notifications;
-- NFC and READ_BASIC_PHONE_STATE, merged in from dependencies and never asked for at runtime;
-- AD_ID.
+- NFC and READ_BASIC_PHONE_STATE, merged in from dependencies and never asked for at runtime.
 
-Photo and media permissions are removed on purpose.
+Photo and media permissions are removed on purpose: a profile photo is chosen with the system Photo Picker, which needs none, or taken with the camera. AD_ID is removed too.
 
 ---
 
@@ -413,9 +412,10 @@ For Play's *App access* form, give the same credentials, with "Sign in with LOGI
 
 ## 9. App Store privacy answers
 
-These answers match `ios/Runner/PrivacyInfo.xcprivacy`:
-- **Do you or your partners use data for tracking?** No.
-- The app never calls `setUserId` on Analytics or Crashlytics, so usage and diagnostics are not linked to the person.
+These answers match `ios/Runner/PrivacyInfo.xcprivacy` (checked against the code 2026-10-25):
+- **Do you or your partners use data for tracking?** No. The app never asks for App Tracking Transparency, so it never reads the IDFA, and it shows no ads.
+- The app never calls `setUserId` on Analytics or Crashlytics, so Firebase's usage and diagnostics are not linked to the person.
+- Product interaction **is** linked: the server keeps which events a signed-in person opened (`event_page_views.user_id`, one a day per event), for the club's view counts and "popular".
 
 | Data type | Collected | Linked to the person | Tracking | Purposes | What it is |
 | --- | --- | --- | --- | --- | --- |
@@ -426,19 +426,22 @@ These answers match `ios/Runner/PrivacyInfo.xcprivacy`:
 | Identifiers → Device ID | Yes | Yes | No | App Functionality, Analytics | push token, Firebase installation id |
 | Purchases → Purchase History | Yes | Yes | No | App Functionality | tickets and merchandise bought |
 | Financial Info → Payment Info | Yes | Yes | No | App Functionality | entered in Razorpay's in-app checkout; the app never sees card numbers |
-| User Content → Other User Content | Yes | Yes | No | App Functionality | Threads comments, reports, registration answers |
+| User Content → Photos or Videos | Yes | Yes | No | App Functionality | a profile photo the person takes with the camera or chooses from their library (`photo_picker.dart`), uploaded as their picture; sent without location or other metadata |
+| User Content → Other User Content | Yes | Yes | No | App Functionality | Threads comments, reports, registration answers, ratings |
 | Other Data | Yes | Yes | No | App Functionality | college, interests, chosen avatar, blocks |
-| Usage Data → Product Interaction | Yes | No | No | Analytics | Firebase Analytics |
+| Usage Data → Product Interaction | Yes | Yes | No | Analytics | Firebase Analytics (not linked), and the events a signed-in person opened (linked, on the server) |
 | Diagnostics → Crash Data | Yes | No | No | App Functionality | Crashlytics |
 | Diagnostics → Other Diagnostic Data | Yes | No | No | App Functionality, Analytics | Crashlytics and Analytics |
 
 Not collected:
-- location;
-- contacts;
-- photos or videos (avatars are picked from presets);
+- location: "near you" uses a city looked up from the connection's IP address for that request, which is not stored with the account; the app asks for no location permission;
+- contacts (the contacts purpose string is for Apple's own event editor, which the app opens; the app reads none);
+- advertising data: no IDFA, no ads;
 - health;
 - browsing or search history;
 - sensitive info.
+
+The camera is also used to scan ticket and certificate QR codes; those images stay on the phone and are not collected.
 
 ---
 
@@ -459,15 +462,16 @@ Not collected:
 | Personal info → Other info (college, interests, registration answers) | Yes | Optional | App functionality |
 | Financial info → User payment info | Yes (Razorpay checkout in the app) | Optional | App functionality |
 | Financial info → Purchase history | Yes | Optional | App functionality |
+| Photos and videos → Photos | Yes (a profile photo, from the camera or the system Photo Picker) | Optional | App functionality, Account management |
 | Messages / user content → Other in-app messages or content (Threads comments, reports) | Yes | Optional | App functionality |
-| App activity → App interactions | Yes | Required | Analytics |
+| App activity → App interactions | Yes (Firebase Analytics; and the events a signed-in person opened, kept on the server) | Required | Analytics |
 | App info and performance → Crash logs | Yes | Required | App functionality (crash fixing) |
 | App info and performance → Diagnostics | Yes | Required | App functionality, Analytics |
-| Device or other IDs | Yes (FCM token, Firebase installation id, advertising ID through Firebase Analytics) | Required | App functionality, Analytics |
+| Device or other IDs | Yes (FCM token, Firebase installation id; no advertising ID) | Required | App functionality, Analytics |
 
 Not collected:
-- location;
-- photos and videos;
+- location ("near you" uses a city looked up from the connection's IP address for that request; the app asks for no location permission);
+- videos;
 - audio;
 - files and docs (the ticket PDF stays on the phone);
 - calendar (Add to calendar writes through the system sheet, and the app reads nothing);
@@ -475,7 +479,7 @@ Not collected:
 - web browsing;
 - health and fitness.
 
-If you remove AD_ID (section 5), drop "advertising ID" from the last row.
+The advertising ID is not collected: the manifest removes AD_ID and turns off Analytics' ad-ID collection (section 5), so Play's Advertising ID form is "No".
 
 ---
 

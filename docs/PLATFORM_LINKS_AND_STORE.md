@@ -51,7 +51,7 @@ curl -s  https://myotherapp.in/.well-known/assetlinks.json | jq .
 ### 1.4 Play Console declarations
 
 - **App content → Advertising ID:** answer **No**. The app no longer has `com.google.android.gms.permission.AD_ID`, which Firebase used to merge in. It is removed in the manifest, along with the Privacy Sandbox ad permissions, and Analytics' ad-ID collection is turned off.
-- **Data safety:** nothing else changes. Analytics' app-instance ID is still collected, as declared before.
+- **Data safety:** as `docs/RELEASE_1.1.0.md` §10. Analytics' app-instance ID is still collected; the advertising ID is not. Profile photos (camera or the system Photo Picker) are declared under Photos and videos.
 
 ### 1.5 Release signing
 
