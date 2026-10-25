@@ -9,6 +9,7 @@ import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/auth/presentation/widgets/email_verification_banner.dart';
 import 'package:finnet/features/notifications/presentation/widgets/push_switches_section.dart';
 import 'package:finnet/features/profile/presentation/pages/settings/blocked_users_page.dart';
+import 'package:finnet/features/profile/presentation/pages/settings/change_password_page.dart';
 import 'package:finnet/features/profile/presentation/pages/settings/privacy_switches_section.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/sign_out.dart';
@@ -85,6 +86,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 emoji: '📧',
                 label: 'Verify Email',
                 onTap: () => openEmailVerification(context, profile.email),
+              ),
+
+            // Only for an account that signs in with a password: Google and
+            // Apple accounts have none.
+            if (profile != null && profile.hasPassword)
+              SettingsRow(
+                key: const ValueKey('settings-change-password'),
+                emoji: '🔑',
+                label: 'Change Password',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ChangePasswordPage(),
+                  ),
+                ),
               ),
 
             // Only for a volunteer: scan tickets at their assigned events.

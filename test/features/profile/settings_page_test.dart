@@ -374,6 +374,27 @@ void main() {
       expect(find.byKey(const ValueKey('settings-verify-email')), findsNothing);
     });
 
+    testWidgets('Change Password for an account with a password',
+        (tester) async {
+      _tall(tester);
+      await _pump(tester, profile: _profile.copyWith(provider: 'email'));
+      expect(find.byKey(const ValueKey('settings-change-password')),
+          findsOneWidget);
+
+      await _tap(tester, 'settings-change-password');
+      await tester.pumpAndSettle();
+      expect(find.text('CHANGE PASSWORD'), findsOneWidget);
+    });
+
+    for (final provider in ['google', 'apple', null]) {
+      testWidgets('no Change Password for a $provider account',
+          (tester) async {
+        await _pump(tester, profile: _profile.copyWith(provider: provider));
+        expect(find.byKey(const ValueKey('settings-change-password')),
+            findsNothing);
+      });
+    }
+
     testWidgets('no Volunteer Check-in for someone who is not one',
         (tester) async {
       await _pump(tester);

@@ -18,6 +18,9 @@ class UserProfileModel {
   /// "Show me in People Like You"; null from a server without the switch.
   final bool? networkingVisible;
 
+  /// How the account signs in: `email` (a password), `google` or `apple`.
+  final String? provider;
+
   const UserProfileModel({
     required this.id,
     this.fullName,
@@ -29,6 +32,7 @@ class UserProfileModel {
     this.interests,
     this.emailVerified,
     this.networkingVisible,
+    this.provider,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
@@ -47,6 +51,7 @@ class UserProfileModel {
           : null,
       emailVerified: jsonBool(json['email_verified']),
       networkingVisible: jsonBool(json['networking_visible']),
+      provider: jsonString(json['provider']),
     );
   }
 
@@ -62,6 +67,7 @@ class UserProfileModel {
       'interests': interests?.map((e) => e.toJson()).toList(),
       if (emailVerified != null) 'email_verified': emailVerified,
       if (networkingVisible != null) 'networking_visible': networkingVisible,
+      if (provider != null) 'provider': provider,
     };
   }
 
@@ -81,6 +87,7 @@ class UserProfileModel {
       createdAt: null,
       emailVerified: emailVerified,
       networkingVisible: networkingVisible,
+      provider: provider,
     );
   }
 
