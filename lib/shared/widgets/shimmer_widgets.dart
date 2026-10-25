@@ -370,8 +370,9 @@ class ShimmerEventDetail extends StatelessWidget {
   }
 }
 
-/// The club page while it loads, in its shape: the logo, name, tagline
-/// and place centred, the numbers, FOLLOW, then what it is about.
+/// The club page while it loads, in its shape: the logo on the left, the
+/// name, numbers, tagline and interests beside it, FOLLOW, then what it is
+/// about.
 class ShimmerClubDetail extends StatelessWidget {
   const ShimmerClubDetail({super.key});
 
@@ -381,35 +382,47 @@ class ShimmerClubDetail extends StatelessWidget {
       baseColor: Colors.grey.shade200,
       highlightColor: Colors.grey.shade100,
       child: const SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(16, 24, 16, 16),
+        padding: EdgeInsets.fromLTRB(16, 20, 16, 16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Logo, name, tagline, place
-            ShimmerBox(height: 94, width: 94, borderRadius: 22),
-            SizedBox(height: 14),
-            ShimmerBox(height: 30, width: 200),
-            SizedBox(height: 10),
-            ShimmerBox(height: 14, width: 260),
-            SizedBox(height: 6),
-            ShimmerBox(height: 14, width: 180),
-            SizedBox(height: 18),
-            // Followers and events held
-            ShimmerBox(height: 64, borderRadius: 12),
-            SizedBox(height: 16),
-            // Interests
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ShimmerBox(height: 26, width: 80),
-                SizedBox(width: 8),
-                ShimmerBox(height: 26, width: 70),
-                SizedBox(width: 8),
-                ShimmerBox(height: 26, width: 90),
+                // Logo
+                ShimmerBox(height: 68, width: 68, borderRadius: 10),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name, numbers, tagline
+                      ShimmerBox(height: 24, width: 170),
+                      SizedBox(height: 8),
+                      ShimmerBox(height: 14, width: 210),
+                      SizedBox(height: 10),
+                      ShimmerBox(height: 14),
+                      SizedBox(height: 6),
+                      ShimmerBox(height: 14, width: 150),
+                      SizedBox(height: 12),
+                      // Interests
+                      Row(
+                        children: [
+                          ShimmerBox(height: 26, width: 70),
+                          SizedBox(width: 6),
+                          ShimmerBox(height: 26, width: 64),
+                          SizedBox(width: 6),
+                          ShimmerBox(height: 26, width: 80),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 24),
             // Follow
-            ShimmerBox(height: 52, borderRadius: 10),
+            ShimmerBox(height: 56),
             SizedBox(height: 28),
             // About
             ShimmerBox(height: 16),

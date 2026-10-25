@@ -24,7 +24,7 @@ class PhotoAvatarChoice extends AvatarChoice {
   final PhotoSource source;
 }
 
-/// "Change Avatar", from Profile and from Settings: the sheet, then the
+/// "Change Avatar", from Edit Profile and from sign-up: the sheet, then the
 /// change. The picture changes everywhere the moment something is picked
 /// (or, for a photo, the moment it is taken), and goes back with a message
 /// if the server refuses.

@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/features/profile/presentation/widgets/change_avatar_sheet.dart';
+import 'package:finnet/features/profile/presentation/widgets/my_picture.dart';
 import 'package:finnet/features/auth/presentation/pages/onboarding_details_page.dart'
     show Organization;
 import 'package:finnet/core/utils/error_utils.dart';
@@ -15,6 +17,12 @@ import 'package:finnet/shared/widgets/toast.dart';
 /// Edit Profile Page - fully migrated to Riverpod.
 class EditProfilePage extends ConsumerStatefulWidget {
   const EditProfilePage({super.key});
+
+  /// Their picture at the top, which opens "Change Avatar".
+  static const pictureKey = ValueKey('edit-profile-picture');
+
+  /// "Change photo or avatar", under the picture.
+  static const changePictureKey = ValueKey('edit-profile-change-picture');
 
   @override
   ConsumerState<EditProfilePage> createState() => _EditProfilePageState();
@@ -131,6 +139,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
+                        _buildPicture(),
+                        const SizedBox(height: 24),
                         _buildNameField(),
                         const SizedBox(height: 24),
                         _buildCollegeDropdown(),
@@ -148,6 +158,62 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Their picture, centred above the fields, and the way to change it. A
+  /// pick takes effect at once, like on sign-up; Save is for the fields.
+  Widget _buildPicture() {
+    return Column(
+      children: [
+        Semantics(
+          button: true,
+          label: 'Change your photo or avatar',
+          excludeSemantics: true,
+          child: GestureDetector(
+            key: EditProfilePage.pictureKey,
+            onTap: () => changeAvatar(context),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const MyPicture(size: 96),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2C333D),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(Icons.photo_camera_outlined,
+                        size: 16, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        TextButton(
+          key: EditProfilePage.changePictureKey,
+          onPressed: () => changeAvatar(context),
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFF2C333D),
+            minimumSize: const Size(48, 48),
+          ),
+          child: const Text(
+            'Change photo or avatar',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -7,9 +7,9 @@ import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// The signed-in person's picture, in a circle [size] across: wherever the
-/// app shows them their own face -- the Profile header, "Change Avatar" in
-/// Settings, the picker. All of them read [profileProvider], so a change
-/// shows everywhere in the same frame.
+/// app shows them their own face -- the Profile header, Edit Profile (where
+/// it is changed), the picker. All of them read [profileProvider], so a
+/// change shows everywhere in the same frame.
 ///
 /// - A photo just taken or chosen is drawn from the phone while it uploads
 ///   (dimmed, with a spinner), and under the uploaded copy while that

@@ -238,18 +238,11 @@ void main() {
     expect(on(tester, 'push-switch-topics'), isFalse);
   });
 
-  testWidgets('Change Avatar is the first row, and opens the picker',
-      (tester) async {
+  testWidgets('no Change Avatar here: that is on Edit Profile', (tester) async {
     await _pump(tester);
 
-    expect(tester.widget<SettingsRow>(find.byType(SettingsRow).first).label,
-        'Change Avatar');
-    await _tap(tester, 'settings-change-avatar');
-    await tester.pump(const Duration(milliseconds: 400));
-
-    expect(find.text('CHANGE AVATAR'), findsOneWidget);
-    expect(find.text('Take a photo'), findsOneWidget);
-    expect(find.text('Choose a photo'), findsOneWidget);
+    expect(find.text('Change Avatar'), findsNothing);
+    expect(find.byKey(const ValueKey('settings-change-avatar')), findsNothing);
   });
 
   testWidgets('the privacy policy opens on the website', (tester) async {
@@ -336,7 +329,6 @@ void main() {
           for (final e in rows.evaluate()) (e.widget as SettingsRow).label,
         ],
         [
-          'Change Avatar',
           'Event Notification',
           'Club Updates',
           'Announcements',
@@ -356,8 +348,6 @@ void main() {
       );
       for (final element in rows.evaluate()) {
         final row = element.widget as SettingsRow;
-        // Their own picture in the circle, not an emoji.
-        if (row.picture != null) continue;
         final one = find.byWidget(row);
         expect(
             find.descendant(
@@ -497,7 +487,8 @@ void main() {
 
       expect(find.text('Show me in People Like You'), findsOneWidget);
       expect(on(tester, key), isTrue);
-      expect(find.textContaining('people who share your interests can find you'),
+      expect(
+          find.textContaining('people who share your interests can find you'),
           findsOneWidget);
       // In the privacy group, after the two the phone keeps.
       expect(tester.getTopLeft(find.text('Show me in People Like You')).dy,
@@ -541,7 +532,8 @@ void main() {
           .widgetList<SettingsCaption>(find.byType(SettingsCaption))
           .where((c) => c.color == Colors.red);
       expect(reds, hasLength(1));
-      expect(find.textContaining('people who share your interests can find you'),
+      expect(
+          find.textContaining('people who share your interests can find you'),
           findsNothing);
     });
 
