@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/app/app.dart';
+import 'package:finnet/app/start_up.dart';
 import 'package:finnet/app/session_scope.dart';
 import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/cache/document_cache.dart';
@@ -47,11 +48,14 @@ void main() async {
     // a new session after sign-out keeps the place.
     final place = await FileDiscoverPlaceStore.open();
 
-    runApp(
+    // The app is drawn, and push set-up runs alongside the first frames,
+    // not ahead of them (see runAppThenStartPush).
+    runAppThenStartPush(
       SessionScope(
         overrides: [discoverPlaceStoreProvider.overrideWithValue(place)],
         child: const MyApp(),
       ),
+      pushSetUp: firebaseReady ? NotificationService().initialize : null,
     );
 
     // The picture caches count files; this holds them to their bytes too.
@@ -61,16 +65,6 @@ void main() async {
     unawaited(DocumentCache.instance.trim());
     // Saved answers past their week, or over their caps, go the same way.
     unawaited(ApiCache.instance.prune());
-
-    // Push set-up runs alongside the first frames, not ahead of them. It
-    // used to be awaited here, and on iOS it asked for push permission and
-    // then waited up to ten seconds for an APNs token before the app drew
-    // anything. Permission is now asked for after sign-in.
-    if (firebaseReady) {
-      unawaited(NotificationService().initialize().catchError((Object e) {
-        debugPrint('NotificationService initialization error: $e');
-      }));
-    }
   }, (error, stack) {
     // An error nothing in the zone caught.
     debugPrint('Uncaught async error: $error');
