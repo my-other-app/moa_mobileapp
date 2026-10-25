@@ -24,6 +24,9 @@ class EditProfilePage extends ConsumerStatefulWidget {
   /// "Change photo or avatar", under the picture.
   static const changePictureKey = ValueKey('edit-profile-change-picture');
 
+  /// The cross that takes their college off, shown while they have one.
+  static const clearCollegeKey = ValueKey('edit-profile-clear-college');
+
   @override
   ConsumerState<EditProfilePage> createState() => _EditProfilePageState();
 }
@@ -32,6 +35,9 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _whatsappController;
+
+  /// Their college, or null for none: it is optional. SAVE sends it as
+  /// `org_id`, and the server clears the college when `org_id` is left out.
   final ValueNotifier<Organization?> _collegeNameNotifier = ValueNotifier(null);
   List<Organization> colleges = [];
   bool _isLoading = false;
@@ -39,27 +45,24 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   @override
   void initState() {
     super.initState();
-    // Controllers will be initialized in didChangeDependencies
     _nameController = TextEditingController();
     _whatsappController = TextEditingController();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Get initial profile from Riverpod provider
-      final profileState = ref.read(profileProvider);
-      final initialProfile = profileState.profile;
+      final initialProfile = ref.read(profileProvider).profile;
 
       if (initialProfile != null) {
         _nameController.text = initialProfile.fullName;
         _whatsappController.text = initialProfile.whatsapp ?? '';
+        // Their own college from the start, not one picked off the list: a
+        // SAVE before the list arrives, or when it never does, keeps it.
+        final org = initialProfile.organization;
+        if (org != null) {
+          _collegeNameNotifier.value = Organization(id: org.id, name: org.name);
+        }
       }
 
       await fetchOrgDetails();
-      if (mounted && colleges.isNotEmpty && initialProfile != null) {
-        _collegeNameNotifier.value = colleges.firstWhere(
-          (college) => college.name == initialProfile.organization?.name,
-          orElse: () => colleges.first,
-        );
-      }
     });
   }
 
@@ -79,6 +82,17 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       if (mounted) {
         setState(() {
           colleges = data.map((json) => Organization.fromJson(json)).toList();
+          // The dropdown matches its value by identity, so point it at the
+          // list's own entry for their college.
+          final chosen = _collegeNameNotifier.value;
+          if (chosen != null) {
+            for (final college in colleges) {
+              if (college.id == chosen.id) {
+                _collegeNameNotifier.value = college;
+                break;
+              }
+            }
+          }
         });
       }
     } catch (e) {
@@ -230,6 +244,13 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     );
   }
 
+  /// The list to pick from, with their own college first when the list
+  /// lacks it (it has not arrived, could not be read, or leaves it out).
+  List<Organization> _collegeChoices(Organization? college) =>
+      college == null || colleges.contains(college)
+          ? colleges
+          : [college, ...colleges];
+
   Widget _buildCollegeDropdown() {
     return ValueListenableBuilder<Organization?>(
       valueListenable: _collegeNameNotifier,
@@ -286,6 +307,16 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             ),
             prefixIconConstraints:
                 const BoxConstraints(minWidth: 40, minHeight: 40),
+            // Optional, so it can be taken off again.
+            suffixIcon: college == null
+                ? null
+                : IconButton(
+                    key: EditProfilePage.clearCollegeKey,
+                    tooltip: 'Remove college',
+                    icon: const Icon(Icons.close,
+                        size: 18, color: Color(0xFF2C333D)),
+                    onPressed: () => _collegeNameNotifier.value = null,
+                  ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             border: OutlineInputBorder(
@@ -303,7 +334,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               borderSide: const BorderSide(color: Color(0xFF2C333D), width: 1),
             ),
           ),
-          items: colleges.map((Organization college) {
+          items: _collegeChoices(college).map((Organization college) {
             return DropdownMenuItem<Organization>(
               value: college,
               child: Text(college.name, style: _inputTextStyle),
@@ -312,8 +343,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           onChanged: (Organization? newValue) {
             _collegeNameNotifier.value = newValue;
           },
-          validator: (value) =>
-              value == null ? 'Please select your college' : null,
         ),
       ),
     );
@@ -321,7 +350,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   Widget _buildWhatsappField() {
     return _buildInputField(
-      label: 'Whatsapp Number',
+      label: 'WhatsApp Number (Optional)',
       child: TextFormField(
         controller: _whatsappController,
         style: _inputTextStyle,
@@ -331,11 +360,10 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           LengthLimitingTextInputFormatter(10),
         ],
         decoration: _inputDecoration('Enter your WhatsApp number'),
+        // Optional, as on sign-up, and checked the same way when given.
         validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Please enter your WhatsApp number';
-          }
-          if (value.length != 10) {
+          final number = value?.trim() ?? '';
+          if (number.isNotEmpty && number.length != 10) {
             return 'Please enter a valid 10-digit number';
           }
           return null;
@@ -412,6 +440,10 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       _formKey.currentState!.save();
       setState(() => _isLoading = true);
 
+      // /user/profile/update sets every field it is given and clears the
+      // ones left out, so a blank WhatsApp number or no college is left out.
+      final whatsapp = _whatsappController.text.trim();
+      final college = _collegeNameNotifier.value;
       try {
         final response = await APIService.instance.request(
           contentType: Headers.formUrlEncodedContentType,
@@ -419,9 +451,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           DioMethod.post,
           param: {
             'full_name': _nameController.text,
-            'whatsapp': _whatsappController.text,
-            if (_collegeNameNotifier.value != null)
-              'org_id': _collegeNameNotifier.value?.id,
+            if (whatsapp.isNotEmpty) 'whatsapp': whatsapp,
+            if (college != null) 'org_id': college.id,
           },
         );
 
