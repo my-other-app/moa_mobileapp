@@ -24,6 +24,7 @@ import 'package:finnet/features/events/presentation/pages/events_page.dart';
 import 'package:finnet/features/events/presentation/pages/explore_events_page.dart';
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart';
 import 'package:finnet/features/events/presentation/events_routes.dart';
+import 'package:finnet/features/live/live_routes.dart';
 import 'package:finnet/features/clubs/presentation/pages/clubs_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_individual_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/explore_more_clubs_page.dart';
@@ -143,15 +144,6 @@ List<RouteBase> overHome(
 
   return [for (final route in routes) onRoot(route)];
 }
-
-/// The event's id or slug from an `/events/{eventId}...` address. The
-/// parameter keeps its old name; it is a string ref now, so the website's
-/// `/events/hack-night-04` and the app's `/events/123` are the same route.
-String _eventRef(GoRouterState state) => state.pathParameters['eventId'] ?? '';
-
-/// The event's own page, for a sub-address of it.
-String _eventLocation(GoRouterState state) =>
-    '/events/${Uri.encodeComponent(_eventRef(state))}';
 
 /// `/clubs/{clubId}`: the club, by id or by the website's slug. The
 /// parameter keeps its old name; it is a string ref. A slug alone is
@@ -472,18 +464,28 @@ final routerProvider = Provider<GoRouter>((ref) {
                     name: 'eventDetail',
                     parentNavigatorKey: rootKey,
                     builder: buildEventPage,
+                    // `?live=` (older pushes and links): the room itself.
+                    redirect: legacyLiveRedirect,
                     routes: [
                       GoRoute(
                           path: 'register',
                           name: 'eventRegister',
                           parentNavigatorKey: rootKey,
                           builder: buildEventRegisterPage),
-                      // The website's live room: the event, with the room
-                      // open on top (as a "join now" push opens it).
+                      // The live room, in the app (the website's address
+                      // too), and its quiz.
                       GoRoute(
                           path: 'live',
-                          redirect: (context, state) =>
-                              '${_eventLocation(state)}?live=room'),
+                          name: 'eventLive',
+                          parentNavigatorKey: rootKey,
+                          builder: buildLiveRoomPage,
+                          routes: [
+                            GoRoute(
+                                path: 'quiz',
+                                name: 'eventLiveQuiz',
+                                parentNavigatorKey: rootKey,
+                                builder: buildQuizPage),
+                          ]),
                     ]),
                 // A club, by id or by the website's slug.
                 GoRoute(
@@ -557,6 +559,8 @@ class AppRoutes {
   static const String events = 'events';
   static const String eventDetail = 'eventDetail';
   static const String eventRegister = 'eventRegister';
+  static const String eventLive = 'eventLive';
+  static const String eventLiveQuiz = 'eventLiveQuiz';
   static const String eventRegistrationSuccess = 'eventRegistrationSuccess';
   static const String clubs = 'clubs';
   static const String exploreClubs = 'exploreClubs';

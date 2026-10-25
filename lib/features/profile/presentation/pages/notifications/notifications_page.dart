@@ -299,6 +299,9 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
       case 'club_thread':
         return const Color(0xFFB8DFF2); // Blue, from the club page's palette
       case 'event_live_join':
+      case 'event_live_started':
+      case 'event_live_qa':
+      case 'event_live_update':
         return const Color(0xFFA7F3D0); // Green, as the event page's live strip
       default:
         return Colors.grey[200]!;
@@ -338,8 +341,12 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
         }
         break;
       case 'event_live_join':
-        // A quiz or a poll started: the event, with its live room on top,
-        // as the push opens it.
+      case 'event_live_started':
+      case 'event_live_qa':
+      case 'event_live_update':
+        // The live room (the quiz, for a quiz starting), as the push opens
+        // it: the event went live, questions opened, a poll started, or the
+        // organiser sent an update.
         final liveEventId = notification.liveEventId;
         if (liveEventId != null) {
           context.push(NotificationService.liveJoinRoute(

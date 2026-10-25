@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
+import 'package:finnet/features/live/data/live_identity.dart';
+import 'package:finnet/features/live/presentation/pages/live_room_page.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:finnet/features/payments/domain/payment_failures.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
@@ -330,69 +332,100 @@ void main() {
           'quiz': {'live': false, 'title': null},
         };
 
+    /// The strip's own view: the event and its banner.
+    Map<String, dynamic> strip(String? banner, {String status = 'live'}) => {
+          'event': {
+            'id': 7,
+            'name': 'Hack Night',
+            'status': status,
+            'starts_at': '2030-12-01T10:00:00Z',
+            'ends_at': '2030-12-01T12:30:00Z',
+          },
+          'banner': banner == null ? null : {'kind': 'room', 'text': banner},
+        };
+
     Uint8List snapshot(String banner,
             {required int id, String status = 'live'}) =>
         Uint8List.fromList(utf8.encode('id: $id\nevent: snapshot\n'
-            'data: ${jsonEncode(room(banner, status: status))}\n\n'));
+            'data: ${jsonEncode(strip(banner, status: status))}\n\n'));
+
+    const banner = '/events/7/live/banner';
 
     testWidgets(
-        'an event that is not live: the one fetch the page always made, and '
-        'no stream', (tester) async {
+        'an event weeks away: one read of the strip on load, no stream, and '
+        'nothing on a timer', (tester) async {
       final body = StreamController<Uint8List>();
       api
         ..on('GET', '/events/info/7', _info())
-        ..on('GET', '/events/7/live',
-            room('Doors open at 6', status: 'published'))
+        ..on('GET', banner, strip('Doors open at 6', status: 'published'))
         ..stream('/events/7/live/stream', () => body.stream);
       await _pump(tester);
 
       expect(find.text('Doors open at 6'), findsOneWidget);
-      expect(api.sent('GET', '/events/7/live'), hasLength(1));
+      expect(api.sent('GET', banner), hasLength(1));
       await tester.pump(const Duration(hours: 1));
       expect(api.sent('GET', '/events/7/live/stream'), isEmpty);
-      expect(api.sent('GET', '/events/7/live'), hasLength(1));
+      expect(api.sent('GET', banner), hasLength(1));
+      expect(api.sent('GET', '/events/7/live'), isEmpty,
+          reason: 'the small view, not the whole room');
     });
 
     testWidgets(
-        'a live event on today\'s server, whose stream is a 404: the one fetch '
-        'the page always made, and nothing on a timer', (tester) async {
+        'a live event on today\'s server (no banner view, no stream): the '
+        'room is read instead, every 30 s while the page is in front',
+        (tester) async {
       api
         ..on('GET', '/events/info/7', _info())
-        ..on('GET', '/events/7/live', room('Demos move to Lab 3B'));
+        ..on('GET', banner, {'detail': 'Not Found'}, status: 404)
+        ..on('GET', '/events/7/live', room('Demos move to Lab 3B'))
+        ..on('GET', '/events/7/live', room('Doors close at 9'));
       await _pump(tester);
 
       expect(find.text('LIVE NOW'), findsOneWidget);
       expect(find.text('Demos move to Lab 3B'), findsOneWidget);
-      expect(api.sent('GET', '/events/7/live/stream'), hasLength(1));
-      expect(api.sent('GET', '/events/7/live'), hasLength(1));
-
-      await tester.pump(const Duration(minutes: 9));
+      expect(api.sent('GET', banner), hasLength(1));
       expect(api.sent('GET', '/events/7/live'), hasLength(1));
       expect(api.sent('GET', '/events/7/live/stream'), hasLength(1));
 
-      // The stream is asked once more at ten minutes, and that is all.
-      await tester.pump(const Duration(minutes: 1));
-      await tester.pump(const Duration(hours: 2));
-      expect(api.sent('GET', '/events/7/live/stream'), hasLength(2));
-      expect(api.sent('GET', '/events/7/live'), hasLength(1));
-      expect(find.text('Demos move to Lab 3B'), findsOneWidget);
+      // Thirty seconds on, the strip changes without reopening the page.
+      await tester.pump(const Duration(seconds: 30));
+      await _settle(tester);
+      expect(api.sent('GET', '/events/7/live'), hasLength(2));
+      expect(find.text('Doors close at 9'), findsOneWidget);
+      expect(api.sent('GET', banner), hasLength(1),
+          reason: 'a server without the view is not asked for it again');
+
+      // In the background: nothing.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump(const Duration(minutes: 5));
+      expect(api.sent('GET', '/events/7/live'), hasLength(2));
+
+      // Back: a read at once, then every 30 s again.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await _settle(tester);
+      expect(api.sent('GET', '/events/7/live'), hasLength(3));
+      await tester.pump(const Duration(seconds: 30));
+      expect(api.sent('GET', '/events/7/live'), hasLength(4));
     });
 
-    testWidgets('a room with nothing up shows no strip, as before',
+    testWidgets('a room with nothing up and an event not live shows no strip',
         (tester) async {
-      api.on('GET', '/events/info/7', _info());
+      api
+        ..on('GET', '/events/info/7', _info())
+        ..on('GET', banner, strip(null, status: 'published'));
       await _pump(tester);
       expect(find.text('LIVE NOW'), findsNothing);
       expect(api.sent('GET', '/events/7/live/stream'), isEmpty);
     });
 
     testWidgets(
-        'a live event on a server that streams: the strip follows the stream '
-        'after the first fetch', (tester) async {
+        'a live event on a server that streams: the strip follows the '
+        'banner stream after the first read, and nothing is polled',
+        (tester) async {
       final body = StreamController<Uint8List>();
       api
         ..on('GET', '/events/info/7', _info())
-        ..on('GET', '/events/7/live', room('Doors open at 6'))
+        ..on('GET', banner, strip('Doors open at 6'))
         ..stream('/events/7/live/stream', () => body.stream);
       await _pump(tester);
       expect(find.text('Doors open at 6'), findsOneWidget);
@@ -408,8 +441,12 @@ void main() {
       expect(find.text('Demos move to Lab 3B'), findsNothing);
 
       final sent = api.sent('GET', '/events/7/live/stream').single;
-      expect(sent.queryParameters, {'view': 'room'});
-      expect(api.sent('GET', '/events/7/live'), hasLength(1));
+      expect(sent.queryParameters, {'view': 'banner'});
+      await tester.pump(const Duration(seconds: 40));
+      body.add(Uint8List.fromList(utf8.encode('event: ping\n\n')));
+      await _settle(tester);
+      expect(api.sent('GET', banner), hasLength(1),
+          reason: 'the stream is the source');
 
       // The event ends: the stream closes, and nothing takes its place.
       body.add(snapshot('Thanks for coming', id: 3, status: 'closed'));
@@ -418,7 +455,7 @@ void main() {
       expect(body.hasListener, isFalse);
       await tester.pump(const Duration(hours: 1));
       expect(api.sent('GET', '/events/7/live/stream'), hasLength(1));
-      expect(api.sent('GET', '/events/7/live'), hasLength(1));
+      expect(api.sent('GET', banner), hasLength(1));
     });
 
     testWidgets(
@@ -427,7 +464,7 @@ void main() {
       final bodies = <StreamController<Uint8List>>[];
       api
         ..on('GET', '/events/info/7', _info())
-        ..on('GET', '/events/7/live', room('Doors open at 6'))
+        ..on('GET', banner, strip('Doors open at 6'))
         ..stream('/events/7/live/stream', () {
           final body = StreamController<Uint8List>();
           bodies.add(body);
@@ -450,14 +487,15 @@ void main() {
       expect(streams.last.headers['Last-Event-ID'], '41');
       expect(find.text('Demos move to Lab 3B'), findsOneWidget,
           reason: 'the strip stays while the stream reopens');
-      expect(api.sent('GET', '/events/7/live'), hasLength(1));
+      expect(api.sent('GET', banner), hasLength(1),
+          reason: 'the stream brings what was missed');
     });
 
     testWidgets('leaving the page closes the stream', (tester) async {
       final body = StreamController<Uint8List>();
       api
         ..on('GET', '/events/info/7', _info())
-        ..on('GET', '/events/7/live', room('Doors open at 6'))
+        ..on('GET', banner, strip('Doors open at 6'))
         ..stream('/events/7/live/stream', () => body.stream);
       await _pump(tester);
       body.add(snapshot('Demos', id: 1));
@@ -468,6 +506,99 @@ void main() {
       await tester.pumpWidget(const SizedBox());
       await _settle(tester);
       expect(body.hasListener, isFalse);
+    });
+  });
+
+  group('a way into the live room from the bottom sheet', () {
+    Map<String, dynamic> stripView(String status) => {
+          'event': {'id': 7, 'name': 'Hack Night', 'status': status},
+          'banner': null,
+        };
+
+    Future<void> pumpWithRoom(WidgetTester tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+          paymentRepositoryProvider.overrideWithValue(FakePaymentRepository()),
+          liveIdentityProvider
+              .overrideWithValue(LiveIdentity(MemoryLiveStore())),
+        ],
+        child: const MaterialApp(home: IndividualEventPage(eventId: 7)),
+      ));
+      await _settle(tester);
+    }
+
+    testWidgets('a ticket holder, while the event is live: beside the ticket',
+        (tester) async {
+      api
+        ..on('GET', '/events/info/7', _info(isPaid: true))
+        ..on('GET', '/events/7/live/banner', stripView('live'));
+      await _pump(tester);
+      expect(find.text('VIEW TICKET'), findsOneWidget);
+      expect(find.text('OPEN THE LIVE ROOM'), findsOneWidget);
+    });
+
+    testWidgets('not before the event is live', (tester) async {
+      api
+        ..on('GET', '/events/info/7', _info(isPaid: true))
+        ..on('GET', '/events/7/live/banner', stripView('published'));
+      await _pump(tester);
+      expect(find.text('VIEW TICKET'), findsOneWidget);
+      expect(find.text('OPEN THE LIVE ROOM'), findsNothing);
+    });
+
+    testWidgets('checked in: beside the certificate, while the room is open',
+        (tester) async {
+      api
+        ..on('GET', '/events/info/7', _info(attended: true))
+        ..on('GET', '/events/7/live/banner', stripView('live'));
+      await _pump(tester);
+      expect(find.text('VIEW CERTIFICATE'), findsOneWidget);
+      expect(find.text('OPEN THE LIVE ROOM'), findsOneWidget);
+    });
+
+    testWidgets('not once the room has closed', (tester) async {
+      api
+        ..on('GET', '/events/info/7', _info(attended: true))
+        ..on('GET', '/events/7/live/banner', stripView('closed'));
+      await _pump(tester);
+      expect(find.text('VIEW CERTIFICATE'), findsOneWidget);
+      expect(find.text('OPEN THE LIVE ROOM'), findsNothing);
+    });
+
+    testWidgets('it opens the room in the app, and Back comes back',
+        (tester) async {
+      api
+        ..on('GET', '/events/info/7', _info(isPaid: true))
+        ..on('GET', '/events/7/live/banner', stripView('live'))
+        ..on('GET', '/events/7/live', {
+          'event': {'id': 7, 'name': 'Hack Night', 'status': 'live'},
+          'banner': null,
+          'updates': <dynamic>[],
+          'poll': null,
+          'questions': <dynamic>[],
+          'qa': {'open': true, 'approve_first': false},
+          'quiz': {'live': false, 'title': null},
+        });
+      await pumpWithRoom(tester);
+      await tester.tap(find.byKey(const ValueKey('open-live-room')));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await _settle(tester);
+      expect(find.byType(LiveRoomPage), findsOneWidget);
+      expect(find.text('Ask the room'), findsOneWidget);
+      // The room's own reads carry this phone's key.
+      expect(api.sent('GET', '/events/7/live').last.headers['X-Live-Key'],
+          isNotNull);
+
+      await tester.tap(find.descendant(
+          of: find.byType(LiveRoomPage), matching: find.byType(BackButton)));
+      // The page transition, then the page underneath settling.
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await _settle(tester);
+      expect(find.byType(LiveRoomPage), findsNothing);
+      expect(find.text('VIEW TICKET'), findsOneWidget);
     });
   });
 }

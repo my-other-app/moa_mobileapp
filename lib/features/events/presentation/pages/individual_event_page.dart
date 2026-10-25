@@ -13,6 +13,7 @@ import 'package:finnet/common/models/events/event_page_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
 import 'package:finnet/features/events/data/datasources/live_remote_datasource.dart';
 import 'package:finnet/features/events/data/live/live_stream_client.dart';
+import 'package:finnet/features/live/live_routes.dart';
 import 'package:finnet/features/events/domain/event_page_rules.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/presentation/providers/event_page_provider.dart';
@@ -249,18 +250,22 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     final liveSource = ref.read(liveRemoteDataSourceProvider);
     _live = LiveStreamClient<LiveFeed>(
       // Started only once the event has loaded, when its id is known.
-      open: ({lastEventId, required abort}) => liveSource.openRoomStream(
+      open: ({lastEventId, required abort}) => liveSource.openBannerStream(
         _idOrZero,
         lastEventId: lastEventId,
         abort: abort,
       ),
-      poll: () => liveSource.fetchRoom(_idOrZero),
+      poll: () => liveSource.fetchBanner(_idOrZero),
       parse: LiveFeed.tryParse,
       onData: (feed) {
         if (mounted) setState(() => live = feed);
       },
       // As the website: a stream only while the event is happening.
       shouldStream: (feed) => feed.isEventLive,
+      // Without a stream (today's server), the strip is read every 30 s
+      // while the page is in front, around the event's time.
+      pollEvery: const Duration(seconds: 30),
+      shouldPoll: _stripWorthPolling,
     );
     WidgetsBinding.instance.addObserver(this);
     _fetchData();
@@ -603,25 +608,53 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// it was: the room is optional; the event itself has loaded.
   late final LiveStreamClient<LiveFeed> _live;
 
-  /// The room is the web page, so voting, polls and the quiz are the same
-  /// on every phone. It opens inside the app (SFSafariViewController /
-  /// Custom Tabs), so closing it comes back here; the browser if it cannot.
-  Future<void> _openLiveRoom() async {
-    // By slug when it is known (or the page was opened by one); by id
-    // otherwise, which the website sends on to the slug.
-    final knownSlug = (slug?.isNotEmpty ?? false)
-        ? slug
-        : eventIdOf(widget.ref) == null
-            ? widget.ref
-            : null;
-    final opened = await ref.read(linkLauncherProvider)(
-        eventLiveRoomUri(id: _eventId ?? widget.ref, slug: knownSlug));
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Couldn't open the live room")),
-      );
-    }
+  /// Whether the strip is worth reading every 30 s: from three hours before
+  /// the event until six after it (or while its room says it is live), and
+  /// never once the room has closed.
+  bool _stripWorthPolling(LiveFeed? feed) {
+    if (feed != null && feed.isClosed) return false;
+    if (feed != null && feed.isEventLive) return true;
+    final start = feed?.startsAt ?? eventDateTime;
+    if (start == null) return false;
+    final end = feed?.endsAt ?? start.add(hoursToDuration(duration ?? 0));
+    final now = DateTime.now();
+    return now.isAfter(start.subtract(const Duration(hours: 3))) &&
+        now.isBefore(end.add(const Duration(hours: 6)));
   }
+
+  /// Whether the live room is open to go into: the room says the event is
+  /// live, or -- from a server that does not say -- the event's dates do.
+  bool get _liveRoomOpen => live.eventStatus != null
+      ? live.isEventLive
+      : _registerState.kind == RegisterKind.live;
+
+  /// The live room, in the app, on top of this page: Back comes back here.
+  /// The strip rests while it is open, and is read again on the way back.
+  Future<void> _openLiveRoom() async {
+    _live.hidden();
+    await openLiveRoom(context, _eventId ?? widget.ref, eventName: name);
+    if (mounted) _live.shown();
+  }
+
+  /// "OPEN THE LIVE ROOM" beside the ticket or the certificate, while the
+  /// room is open.
+  Widget _liveRoomButton() => Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            key: const ValueKey('open-live-room'),
+            onPressed: _openLiveRoom,
+            icon: const Icon(Icons.podcasts, size: 18),
+            label: const Text('OPEN THE LIVE ROOM'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF2C333D),
+              side: const BorderSide(color: Color(0xFF2C333D)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
+      );
 
   Widget _buildLiveStrip(BuildContext context) {
     return Container(
@@ -2434,6 +2467,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               ),
             ),
           ),
+          if (_liveRoomOpen) _liveRoomButton(),
           const SizedBox(height: 10),
         ],
       ),
@@ -2496,6 +2530,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               ),
             ),
           ),
+          if (_liveRoomOpen) _liveRoomButton(),
           const SizedBox(height: 10),
         ],
       ),

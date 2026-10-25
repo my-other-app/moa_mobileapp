@@ -74,6 +74,9 @@ enum NotificationType {
   clubAnnouncement('club_announcement'),
   clubThread('club_thread'),
   eventLiveJoin('event_live_join'),
+  eventLiveStarted('event_live_started'),
+  eventLiveQa('event_live_qa'),
+  eventLiveUpdate('event_live_update'),
   volunteerAdded('volunteer_added'),
   volunteerRemoved('volunteer_removed');
 
@@ -188,12 +191,21 @@ class NotificationModel {
     return (id == null || id.isEmpty) ? null : id;
   }
 
-  /// The event a "join now" row (`event_live_join`) is about: the row's
-  /// event, else the push's `event_id`.
+  /// The event a live-room row (`event_live_join`, `event_live_started`,
+  /// `event_live_qa`, `event_live_update`) is about: the row's event, else
+  /// the push's `event_id`.
   int? get liveEventId => event?.id ?? jsonInt(data?['event_id']);
 
-  /// `quiz` or `poll`, from the push's `what`.
+  /// `quiz`, `poll`, `qa` or `room`, from the push's `what`.
   String? get liveWhat => jsonString(data?['what']);
+
+  /// A row that opens an event's live room.
+  bool get opensLiveRoom => const {
+        'event_live_join',
+        'event_live_started',
+        'event_live_qa',
+        'event_live_update',
+      }.contains(type);
 
   /// A check-in note that opens People Like You (`open: people` in its
   /// data): the event has it, and it was open when they came in.
@@ -204,6 +216,12 @@ class NotificationModel {
     switch (type) {
       case 'event_live_join':
         return liveWhat == 'quiz' ? '🧠' : '📊';
+      case 'event_live_started':
+        return '🔴';
+      case 'event_live_qa':
+        return '🙋';
+      case 'event_live_update':
+        return '📢';
       case 'certificate_generated':
         return '🏆';
       case 'event_checkin':

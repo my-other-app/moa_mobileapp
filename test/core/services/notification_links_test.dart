@@ -29,7 +29,7 @@ void main() {
         NotificationService.routeFor(const {
           'url': 'https://www.myotherapp.in/events/hack-night-04/live',
         }),
-        '/events/hack-night-04?live=room',
+        '/events/hack-night-04/live',
       );
     });
 
@@ -44,13 +44,13 @@ void main() {
     });
 
     test('a page the app does not have opens in the browser instead', () {
-      const quiz = {
+      const pricing = {
         'type': 'something_new',
-        'url': 'https://myotherapp.in/play/12',
+        'url': 'https://myotherapp.in/pricing',
       };
-      expect(NotificationService.routeFor(quiz), isNull);
-      expect(NotificationService.webUrlFor(quiz).toString(),
-          'https://myotherapp.in/play/12');
+      expect(NotificationService.routeFor(pricing), isNull);
+      expect(NotificationService.webUrlFor(pricing).toString(),
+          'https://myotherapp.in/pricing');
       expect(
         NotificationService.webUrlFor(const {'url': 'https://example.com/x'})
             .toString(),
@@ -72,7 +72,7 @@ void main() {
           'what': 'quiz',
           'url': 'https://myotherapp.in/events/hack-night-04',
         }),
-        '/events/12?live=quiz',
+        '/events/12/live/quiz',
       );
       expect(
         NotificationService.routeFor(const {
@@ -126,6 +126,11 @@ void main() {
       for (final data in [
         const {'type': 'event_live_join', 'event_id': '12', 'what': 'poll'},
         const {'type': 'event_live_update', 'event_id': '12'},
+        const {'type': 'event_live_started', 'event_id': '12', 'what': 'room'},
+        const {'type': 'event_live_qa', 'event_id': '12', 'what': 'qa'},
+        const {'type': 'event_live_join', 'event_id': '12', 'what': 'quiz'},
+        const {'url': 'https://myotherapp.in/events/hack-night-04/live'},
+        const {'url': 'https://myotherapp.in/play/12'},
         const {'type': 'event_started', 'event_id': '12'},
         const {'type': 'event_checkin', 'event_id': '12'},
         const {'type': 'event_checkin', 'event_id': '12', 'open': 'people'},
