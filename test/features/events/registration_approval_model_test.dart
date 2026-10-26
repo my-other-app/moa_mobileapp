@@ -44,6 +44,7 @@ Map<String, dynamic> payBody({double amount = 199}) => {
       'amount': amount,
       'pay_by': '2030-11-02T12:30:00Z',
       'claim_token': 'clm_1',
+      'claim_url': 'https://myotherapp.in/claim/clm_1',
     };
 
 ApiException _refused(String code) => ApiException(
@@ -102,6 +103,7 @@ void main() {
       expect(r.pay!.amount, 199.5);
       expect(r.pay!.payBy, DateTime.utc(2030, 11, 2, 12, 30));
       expect(r.pay!.claimToken, 'clm_1');
+      expect(r.pay!.claimUrl, 'https://myotherapp.in/claim/clm_1');
       expect(claimRoute(r.pay!.claimToken), '/claim/clm_1');
     });
 
@@ -265,6 +267,19 @@ void main() {
       expect(result.needsPayment, isTrue);
     });
 
+    test('ADD_ONS_NOT_ALLOWED is said plainly', () {
+      final refusal = describeRegistrationError(ApiException(
+        message: 'Refused',
+        statusCode: 422,
+        type: ApiExceptionType.badRequest,
+        errorCode: 'ADD_ONS_NOT_ALLOWED',
+        serverMessage: 'A request holds no add-ons.',
+      ));
+      expect(refusal.title, 'The club confirms each place now');
+      expect(refusal.message, contains("can't include add-ons"));
+      expect(refusal.action, isNull);
+    });
+
     test('REQUEST_DECLINED and APPROVAL_REQUIRED are said plainly', () {
       final declined = describeRegistrationError(_refused('REQUEST_DECLINED'));
       expect(declined.title, "The club couldn't offer you a place");
@@ -361,6 +376,24 @@ void main() {
       expect(o.fromApproval, isFalse);
       expect(o.reason, isNull);
       expect(o.clubOrDefault, 'The club');
+      expect(o.payable, 199);
+    });
+
+    test('the confirmed amount: what a confirmed place costs', () {
+      final o = WaitlistOffer.fromJson(
+          {...offer(reason: 'approved'), 'amount': 159.2})!;
+      expect(o.amount, 159.2);
+      expect(o.payable, 159.2);
+      final none = WaitlistOffer.fromJson(offer(reason: 'approved'))!;
+      expect(none.amount, isNull);
+      expect(none.payable, 199);
+    });
+
+    test('reason "waitlist" is a waiting list\'s turn: no amount applies', () {
+      final o =
+          WaitlistOffer.fromJson({...offer(reason: 'waitlist'), 'amount': 99})!;
+      expect(o.fromApproval, isFalse);
+      expect(o.payable, 199);
     });
   });
 }

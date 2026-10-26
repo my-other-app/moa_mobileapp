@@ -137,6 +137,9 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
       _emailError = null;
     });
     try {
+      // A confirmed request's place registers the request's own name and
+      // code: nothing of them goes from here (an email only if the offer
+      // somehow lacks one, as any claim).
       final result =
           await _api.claim(widget.token, email: offer.needsEmail ? email : null);
       if (!mounted) return;
@@ -588,8 +591,8 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
                     : Text(!offer.needsPayment
                         ? 'CLAIM MY PLACE'
                         : pending || _result != null
-                            ? 'PAY ${formatRupees(offer.price).toUpperCase()}'
-                            : 'CLAIM AND PAY ${formatRupees(offer.price)}'),
+                            ? 'PAY ${formatRupees(offer.payable).toUpperCase()}'
+                            : 'CLAIM AND PAY ${formatRupees(offer.payable)}'),
               ),
               const SizedBox(height: 8),
               TextButton(
@@ -669,7 +672,7 @@ class _OfferCard extends StatelessWidget {
                         fontSize: 15, fontWeight: FontWeight.w600)),
               ),
               if (showPrice)
-                Text(priceLabel(offer.price),
+                Text(priceLabel(offer.payable),
                     style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.w700)),
             ],

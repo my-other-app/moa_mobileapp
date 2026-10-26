@@ -94,10 +94,15 @@ class RequestPay {
   final DateTime? payBy;
   final String claimToken;
 
+  /// The claim link on the website (`claim_url`), when sent. The app opens
+  /// its own claim screen by [claimToken].
+  final String? claimUrl;
+
   const RequestPay({
     required this.amount,
     this.payBy,
     required this.claimToken,
+    this.claimUrl,
   });
 
   static RequestPay? fromJson(Object? value) {
@@ -108,6 +113,7 @@ class RequestPay {
       amount: (jsonDouble(json['amount']) ?? 0).clamp(0, double.infinity),
       payBy: jsonDate(json['pay_by']),
       claimToken: token,
+      claimUrl: _text(json['claim_url']),
     );
   }
 }
@@ -278,6 +284,11 @@ abstract final class ApprovalErrorCodes {
   /// The club declined this person's request before; they can't ask again
   /// unless the club reopens it.
   static const requestDeclined = 'REQUEST_DECLINED';
+
+  /// Add-ons (`store` picks) sent with a request (422): a request holds
+  /// none. Only when the club turned the setting on after the form loaded
+  /// its shelf.
+  static const addOnsNotAllowed = 'ADD_ONS_NOT_ALLOWED';
 
   /// Withdrawing a request that has moved on (decided, paid, closed): 409,
   /// with the request as it stands in `errors.request`.

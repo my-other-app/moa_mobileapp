@@ -46,6 +46,10 @@ abstract final class RegistrationErrorCodes {
   /// as one ([ApprovalErrorCodes]).
   static const requestDeclined = ApprovalErrorCodes.requestDeclined;
   static const approvalRequired = ApprovalErrorCodes.approvalRequired;
+
+  /// Add-ons sent with a request (422): the club turned "Confirm each
+  /// registration" on after the form loaded its shelf.
+  static const addOnsNotAllowed = ApprovalErrorCodes.addOnsNotAllowed;
 }
 
 /// What the server said is wrong with each answer, by question key, when it
@@ -187,6 +191,8 @@ RegistrationRefusal describeRegistrationError(Object? error) {
       return requestDeclinedRefusal;
     case RegistrationErrorCodes.approvalRequired:
       return approvalRequiredRefusal;
+    case RegistrationErrorCodes.addOnsNotAllowed:
+      return addOnsNotAllowedRefusal;
   }
 
   if (said != null && _eventFull.hasMatch(said)) return _full;
@@ -251,6 +257,15 @@ const approvalRequiredRefusal = RegistrationRefusal(
   title: 'The club confirms each place',
   message: 'This event needs the club to confirm each place. Go back to the '
       'event and tap Request a place.',
+);
+
+/// Add-ons sent with a request (422 ADD_ONS_NOT_ALLOWED): the club now
+/// confirms each place, and a request holds no add-ons. The form takes the
+/// picks off and asks for a place when this comes back.
+const addOnsNotAllowedRefusal = RegistrationRefusal(
+  title: 'The club confirms each place now',
+  message: "A request for a place can't include add-ons, so they've been "
+      'taken off. Send the form again to ask for a place.',
 );
 
 /// The club called the event off: registering (REGISTRATIONS_CLOSED with

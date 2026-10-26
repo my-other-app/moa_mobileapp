@@ -381,6 +381,15 @@ void main() {
       expect(_title(tester), "This link isn't valid");
     });
 
+    testWidgets('too many reads: said plainly', (tester) async {
+      api.on('GET', _path, {'message': 'Rate limit exceeded'}, status: 429);
+      await _pump(tester);
+
+      expect(_title(tester), "We couldn't open your request");
+      expect(find.text('Too many tries. Wait a minute, then try again.'),
+          findsOneWidget);
+    });
+
     testWidgets('a failure, then Try again', (tester) async {
       api
         ..on('GET', _path, {'message': 'Boom'}, status: 500)

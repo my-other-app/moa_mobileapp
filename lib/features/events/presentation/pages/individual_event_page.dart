@@ -2569,7 +2569,12 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         ? null
         : _approvalButton(
             registering: places.isEmpty && !joinInstead && state.canRegister);
-    final VoidCallback? pressed = approval?.onPressed ?? onPressed;
+    // A request of theirs decides the button, even when it can't be opened.
+    final VoidCallback? pressed = approval == null
+        ? onPressed
+        : approval.request != null
+            ? approval.onPressed
+            : approval.onPressed ?? onPressed;
     if (approval != null) label = approval.label;
     // Some types on sale, another sold out with its list open: both.
     final alsoJoin =
@@ -2683,15 +2688,21 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     final named = clubName != null && clubName.isNotEmpty;
     final who = named ? clubName : 'The club';
     final mine = _viewerRequest;
-    final route = mine?.route;
-    if (mine != null && route != null) {
+    if (mine != null) {
+      final confirmed = mine.status == RequestStatus.approved;
+      final route = mine.route;
       return (
-        label: 'VIEW YOUR REQUEST',
-        note: mine.status == RequestStatus.approved
-            ? '$who confirmed your place. Finish it to get your ticket.'
+        // Without its link (none sent), the button only says it was sent.
+        label: route == null
+            ? 'REQUEST SENT'
+            : confirmed
+                ? 'PAY FOR YOUR TICKET'
+                : 'VIEW YOUR REQUEST',
+        note: confirmed
+            ? '$who confirmed your place. Pay to get your ticket.'
             : 'Waiting for ${named ? clubName : 'the club'} to confirm your '
                 'place.',
-        onPressed: () => _openRequest(route, mine),
+        onPressed: route == null ? null : () => _openRequest(route, mine),
         request: mine,
       );
     }

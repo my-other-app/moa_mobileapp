@@ -1028,6 +1028,17 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       });
       return;
     }
+    // The club turned "Confirm each registration" on after the form opened:
+    // from now on the form asks for a place, with no add-ons (a request
+    // carries none), and says so.
+    final approvalCode = errorCodeOf(error);
+    if (approvalCode == RegistrationErrorCodes.addOnsNotAllowed ||
+        approvalCode == RegistrationErrorCodes.approvalRequired) {
+      setState(() {
+        _requiresApproval = true;
+        _picks = {};
+      });
+    }
     final refused = invalidAnswersOf(
         error, _questions.map((detail) => detail.key));
     if (refused != null) {
@@ -1302,7 +1313,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             ),
     );
     ref.read(myRegistrationRequestsProvider.notifier).remember(request);
-    context.go('/events/request-sent', extra: {'request': request});
+    context.go('/events/request-sent', extra: {
+      'request': request,
+      'email': _emailController.text.trim(),
+    });
   }
 
   /// What shows instead of the form: a way to sign in, the event loading

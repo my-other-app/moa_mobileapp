@@ -114,15 +114,18 @@ Widget buildRequestPage(BuildContext context, GoRouterState state) {
 /// `/events/request-sent`: the form's answer when the club confirms each
 /// place -- the request's screen, over My events (as a registration's
 /// success is), so Back shows it waiting there. extra: `request`, the
-/// request the registration answered with.
+/// request the registration answered with, and `email`, the address the
+/// form was sent with (its link is emailed there when the answer has none).
 Widget buildRequestSentPage(BuildContext context, GoRouterState state) {
   final request = _requestIn(state.extra);
   final token = request?.token ?? '';
+  final extra = state.extra is Map ? state.extra as Map : const {};
   return RegistrationRequestPage(
     key: ValueKey('request-sent-$token'),
     token: token,
     initial: request,
     justSent: true,
+    sentTo: extra['email'] is String ? extra['email'] as String : null,
   );
 }
 
