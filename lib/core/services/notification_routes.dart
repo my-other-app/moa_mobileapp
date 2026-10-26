@@ -22,11 +22,16 @@
 /// | `volunteer_added` (its inbox line)   |                              |
 /// | `certificate_generated`              | My Certificates              |
 /// | `waitlist_offer` (`token`, `url`)    | the claim screen             |
+/// | `request_approved` (`token`)         | the ticket (`ticket_id`), or |
+/// |                                      | the request's screen         |
+/// | `request_approved_pay` (`token`)     | the claim screen, to pay     |
+/// | `request_declined` (`token`)         | the request's screen         |
 ///
 /// A push carries its event as the string `event_id`; an inbox line as its
 /// `event` (and the push's data beside it).
 library;
 
+import 'package:finnet/features/events/domain/registration_request.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/live/live_locations.dart';
 
@@ -67,6 +72,59 @@ const certificateTypes = {'certificate_generated', 'certificate_ready'};
 /// (`app/api/ticketing/waitlist.py`), with `token` and `url`.
 const waitlistOfferType = 'waitlist_offer';
 
+/// "Confirm each registration": the club confirmed a request (a free
+/// ticket, registered), confirmed one for a paid ticket (pay to get it), or
+/// declined one. Each carries the request's `token` and its `event_id`.
+const requestApprovedType = 'request_approved';
+const requestApprovedPayType = 'request_approved_pay';
+const requestDeclinedType = 'request_declined';
+const requestTypes = {
+  requestApprovedType,
+  requestApprovedPayType,
+  requestDeclinedType,
+};
+
+/// Where a request push (or its inbox line) opens; [requestTypes] only.
+///
+/// - confirmed: the ticket when the push names it (`ticket_id`), else the
+///   request's screen, which goes on to the ticket once it is there;
+/// - confirmed, to pay: the claim screen, by the claim link's token
+///   (`claim_token`, or the one in its `claim_url`) when the push has it;
+///   else the request's screen told to go on to paying (`?next=pay`);
+/// - declined: the request's screen, which says so (and the club's note).
+///
+/// The request's token is the push's `token`, or the one in its `url`
+/// (`https://myotherapp.in/requests/...`). Without one: the event.
+String? requestRouteFor(String type, int? eventId, Map<String, dynamic> data) {
+  String? text(Object? value) {
+    final s = value?.toString().trim();
+    return s == null || s.isEmpty ? null : s;
+  }
+
+  final url = text(data['url']);
+  final token = requestTokenFrom(text(data['token'])) ??
+      (url != null && url.contains('/requests/')
+          ? requestTokenFrom(url)
+          : null);
+  final eventPage = eventId == null ? null : '/events/$eventId';
+  switch (type) {
+    case requestApprovedType:
+      final ticketId = text(data['ticket_id']);
+      if (ticketId != null) return '/tickets/${Uri.encodeComponent(ticketId)}';
+      return token == null ? eventPage : requestRoute(token);
+    case requestApprovedPayType:
+      final claimUrl = text(data['claim_url']) ?? url;
+      final claim = claimTokenFrom(text(data['claim_token'])) ??
+          (claimUrl != null && claimUrl.contains('/claim/')
+              ? claimTokenFrom(claimUrl)
+              : null);
+      if (claim != null) return claimRoute(claim);
+      return token == null ? eventPage : '${requestRoute(token)}?next=pay';
+    default:
+      return token == null ? eventPage : requestRoute(token);
+  }
+}
+
 /// The live room in the app for a live push or its inbox line: the quiz for
 /// [what] `quiz`, to join with the code on the screen; the room for anything
 /// else (`room`, `qa`, `poll`, or none).
@@ -100,6 +158,9 @@ String? notificationRoute(
         claimTokenFrom(data['url']?.toString());
     if (token != null) return claimRoute(token);
     return eventId == null ? null : '/events/$eventId';
+  }
+  if (type != null && requestTypes.contains(type)) {
+    return requestRouteFor(type, eventId, data);
   }
   if (eventId == null) {
     final clubId = int.tryParse(data['club_id']?.toString().trim() ?? '');

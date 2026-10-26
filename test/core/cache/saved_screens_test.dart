@@ -10,6 +10,9 @@ import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/cache/cache_store.dart';
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/network/interceptors/error_interceptor.dart';
+import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
+import 'package:finnet/features/events/data/repositories/saved_tickets_repository.dart';
+import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/events/presentation/pages/upcoming_events_page.dart';
 import 'package:finnet/features/notifications/data/datasources/notification_remote_datasource.dart';
 import 'package:finnet/features/notifications/data/repositories/notification_repository_impl.dart';
@@ -25,6 +28,21 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../features/auth/auth_fakes.dart';
+
+/// The phone's saved tickets, empty and never fetched: the feed is what
+/// these tests are about.
+class _NoTickets extends SavedTicketsRepository {
+  _NoTickets()
+      : super(dio: Dio(), local: SavedTicketsLocalDataSource(MemoryStorage()));
+
+  @override
+  Future<List<SavedTicket>> saved() async => const [];
+
+  @override
+  Future<List<SavedTicket>> refresh() async => const [];
+}
 
 /// A server whose answers can be held back, or that cannot be reached.
 class _Server implements HttpClientAdapter {
@@ -129,8 +147,12 @@ void main() {
       tester.view.physicalSize = const Size(800, 3000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(
-          const MaterialApp(home: Scaffold(body: UpcomingEventsPage())));
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          savedTicketsRepositoryProvider.overrideWithValue(_NoTickets()),
+        ],
+        child: const MaterialApp(home: Scaffold(body: UpcomingEventsPage())),
+      ));
     }
 
     testWidgets('shows the saved copy at once, then the fresh one',

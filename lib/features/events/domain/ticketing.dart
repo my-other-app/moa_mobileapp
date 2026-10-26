@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/core/utils/json_read.dart';
+import 'package:finnet/features/events/domain/registration_request.dart';
 
 // Ticket types, discount codes, waiting lists and cancelled events, as the
 // server describes them (moa_backend `docs/TICKETING.md`, and the club tools'
@@ -244,6 +245,19 @@ class EventTicketing {
   /// The signed-in viewer's own places in line.
   final List<WaitlistEntry> viewerWaitlist;
 
+  /// The club confirms each registration (`requires_approval`): the form
+  /// sends a request, not a registration. False when the server doesn't say.
+  final bool requiresApproval;
+
+  /// The signed-in viewer's open request for this event (`viewer_request`:
+  /// `{id, status, token, status_url}`, pending or confirmed and unpaid);
+  /// null when they have none.
+  final RegistrationRequest? viewerRequest;
+
+  /// The server says whether the viewer has a request (`viewer_request` is
+  /// there, even null): nothing else need be asked.
+  final bool saysViewerRequest;
+
   const EventTicketing({
     this.types = const [],
     this.requiresChoice = false,
@@ -252,6 +266,9 @@ class EventTicketing {
     this.waitlistEnabled = false,
     this.offerHours = 24,
     this.viewerWaitlist = const [],
+    this.requiresApproval = false,
+    this.viewerRequest,
+    this.saysViewerRequest = false,
   });
 
   /// The object, or null when [value] isn't one -- a server older than
@@ -274,6 +291,9 @@ class EventTicketing {
         for (final item in jsonObjects(json['viewer_waitlist']))
           if (WaitlistEntry.fromJson(item) case final entry?) entry,
       ],
+      requiresApproval: jsonBool(json['requires_approval']) ?? false,
+      viewerRequest: RegistrationRequest.fromJson(json['viewer_request']),
+      saysViewerRequest: json.containsKey('viewer_request'),
     );
   }
 
@@ -453,6 +473,11 @@ class RegistrationResult {
   /// someone else): the registration isn't this account's.
   final bool forGuest;
 
+  /// The event confirms each registration: this is a request, not a
+  /// registration (`approval`). No ticket, and nothing to pay, until the
+  /// club confirms it. Null for a registration.
+  final RegistrationRequest? approval;
+
   const RegistrationResult({
     this.eventId,
     this.eventName,
@@ -469,9 +494,15 @@ class RegistrationResult {
     this.discountAmount,
     this.isPaid = false,
     this.forGuest = false,
+    this.approval,
   });
 
-  bool get needsPayment => payAmount > 0;
+  /// Something to pay now. Never for a request: it is paid, if at all,
+  /// once the club confirms it.
+  bool get needsPayment => approval == null && payAmount > 0;
+
+  /// A request the club will confirm or decline, not a registration.
+  bool get awaitingApproval => approval != null;
 
   static RegistrationResult fromJson(Object? value) {
     final json = jsonObject(value) ?? const <String, dynamic>{};
@@ -498,6 +529,7 @@ class RegistrationResult {
       isPaid: jsonBool(json['is_paid']) ?? false,
       forGuest: jsonObject(json['auth_token']) != null ||
           text(json['auth_token']) != null,
+      approval: RegistrationRequest.fromJson(json['approval']),
     );
   }
 }
@@ -544,6 +576,14 @@ class WaitlistOffer {
   /// A claim was started and is waiting for its payment.
   final String? registrationId;
 
+  /// Why the place is offered: `approved` when the club confirmed the
+  /// person's request for it ("Confirm each registration"); null for a
+  /// waiting list's turn.
+  final String? reason;
+
+  /// The event's club, when the offer says (`event.club.name`).
+  final String? clubName;
+
   const WaitlistOffer({
     required this.id,
     required this.status,
@@ -563,7 +603,16 @@ class WaitlistOffer {
     this.needsEmail = false,
     this.needsPayment = false,
     this.registrationId,
+    this.reason,
+    this.clubName,
   });
+
+  /// The club confirmed the person's request: a place of their own, not a
+  /// turn from a waiting list.
+  bool get fromApproval => reason == 'approved';
+
+  /// The club's name, or "The club" when the offer doesn't say.
+  String get clubOrDefault => clubName ?? 'The club';
 
   /// The app's route to the event.
   String get eventRoute =>
@@ -600,6 +649,9 @@ class WaitlistOffer {
       needsPayment: jsonBool(json['needs_payment']) ??
           (jsonDouble(type['price']) ?? 0) > 0,
       registrationId: text(json['registration_id']),
+      reason: text(json['reason'])?.toLowerCase(),
+      clubName: text(jsonObject(event['club'])?['name']) ??
+          text(event['club_name']),
     );
   }
 }

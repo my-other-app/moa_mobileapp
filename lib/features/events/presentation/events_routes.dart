@@ -2,12 +2,14 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/features/events/domain/event_page_rules.dart';
+import 'package:finnet/features/events/domain/registration_request.dart';
 import 'package:finnet/features/events/presentation/pages/claim_offer_page.dart';
 import 'package:finnet/features/events/presentation/pages/competition_page.dart';
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
 import 'package:finnet/features/events/presentation/pages/feedback_survey_page.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
 import 'package:finnet/features/events/presentation/pages/networking_page.dart';
+import 'package:finnet/features/events/presentation/pages/registration_request_page.dart';
 import 'package:finnet/shared/widgets/poster_hero.dart';
 
 // The event routes batch B adds, and the builders for the two event routes
@@ -62,9 +64,10 @@ int? linkedTicketTypeOf(GoRouterState state) {
 /// `/events/:eventId/register`: the registration form.
 ///
 /// extra (from the event page): `additionalDetails` (the questions),
-/// `hasFee`, `isOnline`, and the club's `clubName` and `clubUpdates` (it
-/// offers "Get updates from `<club>` on WhatsApp"). Without them -- a link
-/// straight to the form -- the form reads the event itself.
+/// `hasFee`, `isOnline`, the club's `clubName` and `clubUpdates` (it
+/// offers "Get updates from `<club>` on WhatsApp"), the event's `eventName`,
+/// and `requiresApproval` (the club confirms each place). Without them -- a
+/// link straight to the form -- the form reads the event itself.
 Widget buildEventRegisterPage(BuildContext context, GoRouterState state) {
   final ref = eventRefOf(state);
   final extra = state.extra is Map ? state.extra as Map : const {};
@@ -79,8 +82,54 @@ Widget buildEventRegisterPage(BuildContext context, GoRouterState state) {
     offersClubUpdates:
         extra['clubUpdates'] is bool ? extra['clubUpdates'] as bool : null,
     linkedTicketTypeId: linkedTicketTypeOf(state),
+    eventName:
+        extra['eventName'] is String ? extra['eventName'] as String : null,
+    requiresApproval: extra['requiresApproval'] is bool
+        ? extra['requiresApproval'] as bool
+        : null,
   );
 }
+
+/// The request [extra] carries (`request`), when it does.
+RegistrationRequest? _requestIn(Object? extra) {
+  final given = extra is Map ? extra['request'] : null;
+  return given is RegistrationRequest ? given : null;
+}
+
+/// `/requests/:token`: where a request for a place stands. `?next=pay` (the
+/// "confirmed, pay" push) goes on to paying once it is read; `?withdraw=1`
+/// (the email's "Withdraw your request") asks whether to. extra: `request`,
+/// what the opener knows of it already.
+Widget buildRequestPage(BuildContext context, GoRouterState state) {
+  final token = state.pathParameters['token'] ?? '';
+  return RegistrationRequestPage(
+    key: ValueKey('request-$token'),
+    token: token,
+    initial: _requestIn(state.extra),
+    openPay: state.uri.queryParameters['next'] == 'pay',
+    askWithdraw: state.uri.queryParameters['withdraw'] == '1',
+  );
+}
+
+/// `/events/request-sent`: the form's answer when the club confirms each
+/// place -- the request's screen, over My events (as a registration's
+/// success is), so Back shows it waiting there. extra: `request`, the
+/// request the registration answered with.
+Widget buildRequestSentPage(BuildContext context, GoRouterState state) {
+  final request = _requestIn(state.extra);
+  final token = request?.token ?? '';
+  return RegistrationRequestPage(
+    key: ValueKey('request-sent-$token'),
+    token: token,
+    initial: request,
+    justSent: true,
+  );
+}
+
+/// No request handed to `/events/request-sent` (the app restored there):
+/// My events, which lists it.
+String? requestSentRedirect(BuildContext context, GoRouterState state) =>
+    _requestIn(state.extra) == null ? '/events' : null;
 
 /// Route names, unique in the app's router.
 abstract final class EventRouteNames {
@@ -88,6 +137,8 @@ abstract final class EventRouteNames {
   static const feedback = 'eventFeedback';
   static const people = 'eventPeople';
   static const claim = 'waitlistClaim';
+  static const request = 'registrationRequest';
+  static const requestSent = 'registrationRequestSent';
 }
 
 /// Batch B's new routes, top level (each opens over the tabs):
@@ -103,7 +154,16 @@ abstract final class EventRouteNames {
 /// - `/claim/:token` -- a place offered from a waiting list (the website's
 ///   address too: the offer's email, WhatsApp and push link to it); needs
 ///   no account, the token is the proof.
+/// - `/requests/:token` -- a request for a place at an event whose club
+///   confirms each registration (the website's address too: the request's
+///   emails and pushes link to it); needs no account, the token is the
+///   proof.
 final List<RouteBase> eventsRoutes = [
+  GoRoute(
+    path: '/requests/:token',
+    name: EventRouteNames.request,
+    builder: buildRequestPage,
+  ),
   GoRoute(
     path: '/claim/:token',
     name: EventRouteNames.claim,

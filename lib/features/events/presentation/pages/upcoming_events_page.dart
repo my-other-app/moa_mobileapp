@@ -12,7 +12,9 @@ import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/presentation/pages/no_registered_event_page.dart';
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart';
 import 'package:finnet/features/events/presentation/providers/event_cancellation_provider.dart';
+import 'package:finnet/features/events/presentation/providers/registration_requests_provider.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
+import 'package:finnet/features/events/presentation/widgets/approval/waiting_requests_section.dart';
 
 class UpcomingEventsPage extends ConsumerStatefulWidget {
   const UpcomingEventsPage({super.key});
@@ -43,7 +45,18 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
   void initState() {
     super.initState();
     fetchFirstPage();
+    // Requests waiting for a club to confirm them (or for the payment):
+    // the phone's copy at once, then the server's. A server without them
+    // shows nothing.
+    _requests.refresh();
   }
+
+  MyRegistrationRequestsNotifier get _requests =>
+      ref.read(myRegistrationRequestsProvider.notifier);
+
+  /// Pull to refresh: the registrations and the requests together.
+  Future<void> _refreshAll() =>
+      Future.wait([fetchFirstPage(), _requests.refresh()]);
 
   /// The list came from the server: every ticket on it is saved for the
   /// door in the background -- its details, its QR, the club's design and
@@ -51,7 +64,11 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
   /// network too, not only those saved at start-up.
   @override
   void onFirstPage(List<dynamic> items, {required bool fresh}) {
-    if (!fresh || items.isEmpty) return;
+    if (!fresh) return;
+    // Back online, or pulled: the requests too (a confirmed one has become
+    // a registration on this list).
+    _requests.refreshIfOlderThan(const Duration(seconds: 30));
+    if (items.isEmpty) return;
     ref
         .read(savedTicketsProvider.notifier)
         .refreshIfOlderThan(const Duration(seconds: 30));
@@ -70,6 +87,7 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final waiting = ref.watch(myRegistrationRequestsProvider).open;
 
     if (isLoading) {
       return Container(
@@ -104,17 +122,32 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
     }
 
     if (events.isEmpty) {
-      return NoRegisteredEventPage();
+      if (waiting.isEmpty) return NoRegisteredEventPage();
+      // No tickets yet, but requests waiting: those.
+      return Container(
+        color: Colors.white,
+        child: RefreshIndicator(
+          onRefresh: _refreshAll,
+          child: ListView(
+            primary: true,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            children: [WaitingRequestsSection(requests: waiting)],
+          ),
+        ),
+      );
     }
 
+    // The requests, above the registrations, when there are any.
+    final header = waiting.isEmpty ? 0 : 1;
     return NotificationListener<ScrollNotification>(
       onNotification: onFeedScroll,
       child: RefreshIndicator(
-        onRefresh: fetchFirstPage,
+        onRefresh: _refreshAll,
         child: ListView.separated(
           primary: true,
           padding: const EdgeInsets.all(16),
-          itemCount: events.length + (hasMore ? 1 : 0),
+          itemCount: header + events.length + (hasMore ? 1 : 0),
           separatorBuilder: (context, index) => const Padding(
             padding: EdgeInsets.symmetric(vertical: 20.0),
             child: Divider(
@@ -124,7 +157,9 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
               endIndent: 50,
             ),
           ),
-          itemBuilder: (context, index) {
+          itemBuilder: (context, at) {
+            if (at < header) return WaitingRequestsSection(requests: waiting);
+            final index = at - header;
             if (index == events.length) {
               return const Center(
                 child: Padding(

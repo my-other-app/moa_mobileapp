@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/app/router/tracking_ref.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
+import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/core/utils/whatsapp_number.dart';
 import 'package:finnet/features/clubs/domain/club_updates.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
@@ -17,7 +18,9 @@ import 'package:finnet/features/events/presentation/utils/registration_refusal.d
 import 'package:finnet/features/events/presentation/widgets/merch_picker.dart';
 import 'package:finnet/features/events/presentation/widgets/registration_feedback.dart';
 import 'package:finnet/features/events/data/ticketing_api.dart';
+import 'package:finnet/features/events/domain/registration_request.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
+import 'package:finnet/features/events/presentation/providers/registration_requests_provider.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/widgets/ticketing/discount_code_field.dart';
 import 'package:finnet/features/events/presentation/widgets/ticketing/ticket_type_picker.dart';
@@ -62,6 +65,15 @@ class EventFormPage extends ConsumerStatefulWidget {
   /// chosen, as the website does.
   final int? linkedTicketTypeId;
 
+  /// The event's name, from the event page, for the request's screen.
+  final String? eventName;
+
+  /// The club confirms each place ("Confirm each registration"), from the
+  /// event page: the form asks for a place rather than registering. The
+  /// form also reads it from the event and its ticket types, and handles a
+  /// request's answer whatever this says.
+  final bool? requiresApproval;
+
   const EventFormPage({
     super.key,
     this.eventId,
@@ -72,6 +84,8 @@ class EventFormPage extends ConsumerStatefulWidget {
     this.clubName,
     this.offersClubUpdates,
     this.linkedTicketTypeId,
+    this.eventName,
+    this.requiresApproval,
   }) : assert(eventId != null || eventRef != null,
             'A registration form needs an event');
 
@@ -130,6 +144,21 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   bool _offersClubUpdates = false;
   String _clubName = '';
   bool _clubUpdates = false;
+
+  /// The event's name, when known (for the request's screen).
+  String? _eventName;
+
+  /// The club confirms each place: by the event page's word, or the
+  /// event's own (`requires_approval`).
+  bool _requiresApproval = false;
+
+  /// [_requiresApproval], or the ticket types say so.
+  bool get _confirmsEach =>
+      _requiresApproval || (_ticketing?.requiresApproval ?? false);
+
+  /// "Tinkerhub", or "The club".
+  String get _clubOrDefault =>
+      _clubName.trim().isEmpty ? 'The club' : _clubName.trim();
 
   /// What the server said of the phone number (WHATSAPP_NUMBER), shown
   /// under it until it, or the box, changes.
@@ -205,6 +234,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     _isOnline = widget.isOnline;
     _offersClubUpdates = widget.offersClubUpdates == true;
     _clubName = widget.clubName ?? '';
+    _eventName = widget.eventName;
+    _requiresApproval = widget.requiresApproval ?? false;
     final questions = widget.additionalDetails;
     if (questions != null) _setQuestions(questions);
     final mustRead = questions == null ||
@@ -296,6 +327,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           _offersClubUpdates = info.club.whatsappUpdates;
           if (info.club.name.trim().isNotEmpty) _clubName = info.club.name;
         }
+        if (info.name.trim().isNotEmpty) _eventName ??= info.name.trim();
+        if (data is Map && jsonBool(data['requires_approval']) == true) {
+          _requiresApproval = true;
+        }
         if (widget.additionalDetails == null) {
           _setQuestions(info.additionalDetails);
         }
@@ -319,7 +354,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   /// failed call, simply shows no shelf.
   Future<void> _fetchCatalog() async {
     final id = _eventId;
-    if (id == null) return;
+    // A request carries no add-ons: nothing to show.
+    if (id == null || _requiresApproval) return;
     try {
       final res = await APIService.instance.request('/events/$id/store/catalog', DioMethod.get, skipAuth: true);
       final data = res.data;
@@ -1022,8 +1058,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     }
     final action = await showRegistrationRefusal(context, refusal);
     if (!mounted) return;
-    // Cancelled meanwhile: back to the event, which says so.
-    if (isCancelledRefusal(error)) {
+    // Cancelled meanwhile, or the club declined this person before: back
+    // to the event -- asking again won't change it.
+    if (isCancelledRefusal(error) ||
+        code == RegistrationErrorCodes.requestDeclined) {
       if (context.canPop()) context.pop();
       return;
     }
@@ -1122,7 +1160,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           // Whenever the event sells merch, what is picked now -- even
           // nothing: a registration coming back to pay with its picks
           // cleared must drop the earlier order, not keep charging for it.
-          if (_catalog.hasAnything) 'store': picksToPayload(_catalog, _picks),
+          // A request carries no add-ons (the club confirms the place
+          // first), so none go with one.
+          if (_catalog.hasAnything && !_confirmsEach)
+            'store': picksToPayload(_catalog, _picks),
           // Only when ticked: unticked is the server's default.
           if (_wantsClubUpdates) 'club_updates_whatsapp': true,
           // The ticket and the day-before reminder on WhatsApp too.
@@ -1135,6 +1176,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           if (_ticketTypeId != null) 'ticket_type_id': _ticketTypeId,
           if (_codeController.text.trim().isNotEmpty)
             'discount_code': _codeController.text.trim(),
+          // This app takes a request for a place, for an event whose club
+          // confirms each one. Always said: an event can turn it on after
+          // the page was read, and a server without it ignores the field.
+          'accepts_approval': true,
         };
 
         final response = await APIService.instance.request(
@@ -1147,6 +1192,13 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           // Extract ticket data from response
           final data = response.data as Map<String, dynamic>;
           final result = RegistrationResult.fromJson(data);
+          // A request, not a registration: no ticket and no payment until
+          // the club confirms it.
+          if (result.approval case final approval?) {
+            _eventName ??= result.eventName;
+            _requestSent(approval);
+            return;
+          }
           // The ticket type, kept with the ticket on this phone: the list
           // of registrations doesn't say it.
           if (result.ticketId != null && result.ticketTypeName != null) {
@@ -1223,6 +1275,34 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         }
       }
     }
+  }
+
+  /// The club confirms each place, and the request is in: its screen, over
+  /// My events (as a registration's success is), which says what happens
+  /// next.
+  void _requestSent(RegistrationRequest approval) {
+    final eventId = _eventId;
+    final request = RegistrationRequest(
+      id: approval.id,
+      status: approval.status == RequestStatus.unknown
+          ? RequestStatus.pending
+          : approval.status,
+      token: approval.token,
+      statusUrl: approval.statusUrl,
+      submittedAt: approval.submittedAt,
+      fullName: _nameController.text.trim(),
+      ticketTypeId: _chosenType?.id,
+      ticketTypeName: _showPicker ? _chosenType?.name : null,
+      event: eventId == null
+          ? null
+          : RequestEvent(
+              id: eventId,
+              name: _eventName ?? '',
+              clubName: _clubName.trim().isEmpty ? null : _clubName.trim(),
+            ),
+    );
+    ref.read(myRegistrationRequestsProvider.notifier).remember(request);
+    context.go('/events/request-sent', extra: {'request': request});
   }
 
   /// What shows instead of the form: a way to sign in, the event loading
@@ -1674,7 +1754,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                         ),
 
                       // The shelf: what the event sells with its ticket.
-                      MerchPicker(catalog: _catalog, picks: _picks, onChanged: (next) => setState(() => _picks = next)),
+                      // Not for a request: it carries no add-ons.
+                      if (!_confirmsEach)
+                        MerchPicker(catalog: _catalog, picks: _picks, onChanged: (next) => setState(() => _picks = next)),
 
                       // A discount code, and what the order comes to, for
                       // an event with a paid ticket type.
@@ -1707,7 +1789,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                                     _quote?.ticketTypeId == type.id
                                 ? _quote
                                 : null,
-                            addOns: picksTotal(_catalog, _picks),
+                            addOns: _confirmsEach
+                                ? 0
+                                : picksTotal(_catalog, _picks),
                           ),
                         ],
                       ],
@@ -1716,6 +1800,20 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                 ),
               ),
               SizedBox(height: 16),
+              if (_confirmsEach) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    '$_clubOrDefault confirms each place. Nothing is charged '
+                    "now: you'll get your ticket, or a link to pay for it, "
+                    'when they confirm yours.',
+                    key: const ValueKey('form-approval-note'),
+                    style: const TextStyle(
+                        fontSize: 13, height: 1.35, color: Color(0xFF4B5563)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -1731,7 +1829,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                   child: _isSubmitting
                       ? CircularProgressIndicator(color: Colors.white)
                       : Text(
-                          'Continue',
+                          _confirmsEach ? 'Request a place' : 'Continue',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,

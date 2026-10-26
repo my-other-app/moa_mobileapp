@@ -343,6 +343,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                         ticketType: extra?['ticketType'] as String?,
                       );
                     }),
+                // A request sent to a club that confirms each place: its
+                // screen, over My events, which lists it as waiting.
+                GoRoute(
+                    path: 'request-sent',
+                    name: EventRouteNames.requestSent,
+                    parentNavigatorKey: rootKey,
+                    redirect: requestSentRedirect,
+                    builder: buildRequestSentPage),
               ]),
           // My clubs: followed and pinned. Signed in only.
           GoRoute(

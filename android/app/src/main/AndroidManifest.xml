@@ -100,7 +100,9 @@
                APP_PATHS). /events/{slug}/live, the live room, is under
                /events/; /play/{event} is the quiz's QR on the big screen,
                which opens the quiz in the app; /claim/{token} is a
-               waiting list's offer. An intent filter cannot
+               waiting list's offer; /requests/{token} is a request for a
+               place at an event whose club confirms each one. An intent
+               filter cannot
                leave a path out: the router sends what it can't show to
                the browser. -->
           <intent-filter android:autoVerify="true">
@@ -119,6 +121,7 @@
               <data android:pathPrefix="/topics/"/>
               <data android:pathPrefix="/tickets/"/>
               <data android:pathPrefix="/claim/"/>
+              <data android:pathPrefix="/requests/"/>
               <data android:pathPrefix="/certificates/"/>
               <data android:pathPrefix="/feedback/"/>
               <data android:pathPrefix="/play/"/>

@@ -243,6 +243,12 @@ class NotificationModel {
         return '💬';
       case 'event_reminder':
         return '⏰';
+      case 'request_approved':
+        return '🎟️';
+      case 'request_approved_pay':
+        return '💳';
+      case 'request_declined':
+        return '📭';
       default:
         return '🔔';
     }

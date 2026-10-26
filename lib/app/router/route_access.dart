@@ -27,6 +27,7 @@ final List<RegExp> _private = [
   // The Events tab: the person's registrations and tickets.
   RegExp(r'^/events/?$', caseSensitive: false),
   RegExp(r'^/events/registration-success/?$', caseSensitive: false),
+  RegExp(r'^/events/request-sent/?$', caseSensitive: false),
   // People Like You at an event: who else is checked in.
   RegExp(r'^/events/[^/]+/people/?$', caseSensitive: false),
   // The Clubs tab: the clubs they follow and pinned.

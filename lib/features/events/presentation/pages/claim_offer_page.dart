@@ -34,6 +34,11 @@ const _ink = Color(0xFF2C333D);
 /// guest's (the offer is another address's than the account's, or nobody is
 /// signed in): that one is paid on the website, which keeps a guest's
 /// session. "No thanks" passes the place to the next person in line.
+///
+/// The same link pays for a place a club confirmed on an event that
+/// confirms each registration (the offer's `reason: "approved"`): then the
+/// page says "{Club} confirmed your place" rather than speaking of a
+/// waiting list.
 class ClaimOfferPage extends ConsumerStatefulWidget {
   const ClaimOfferPage({super.key, required this.token});
 
@@ -46,6 +51,7 @@ class ClaimOfferPage extends ConsumerStatefulWidget {
   static const problemKey = ValueKey('claim-offer-problem');
   static const websiteKey = ValueKey('claim-offer-website');
   static const statusKey = ValueKey('claim-offer-status');
+  static const titleKey = ValueKey('claim-offer-title');
 
   @override
   ConsumerState<ClaimOfferPage> createState() => _ClaimOfferPageState();
@@ -244,9 +250,11 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Give up this place?'),
-        content: Text(
-            'It goes to the next person in line for ${offer.eventName}. '
-            "You can't take it back."),
+        content: Text(offer.fromApproval
+            ? '${offer.clubOrDefault} can then offer it to someone else. '
+                "You can't take it back."
+            : 'It goes to the next person in line for ${offer.eventName}. '
+                "You can't take it back."),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -323,10 +331,14 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
           ),
         );
       case _Stage.declined:
+        final approved = _offer?.fromApproval ?? false;
         return _message(
           icon: Icons.check_circle_outline,
           title: 'Thanks for letting us know',
-          text: 'The place has gone to the next person in line.',
+          text: approved
+              ? '${_offer!.clubOrDefault} can now offer your place to '
+                  'someone else.'
+              : 'The place has gone to the next person in line.',
           action: _eventButton(),
         );
       case _Stage.done:
@@ -424,7 +436,15 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
   Widget _offerView(BuildContext context) {
     final offer = _offer!;
     final cancelled = _cancellation;
+    final club = offer.clubOrDefault;
     final statusView = switch (offer.status) {
+      OfferStatus.expired when offer.fromApproval => (
+          Icons.timer_off_outlined,
+          'Your place was released',
+          '$club held your place until '
+              '${offer.expiresAt == null ? 'its time ran out' : _when(offer.expiresAt!)}, '
+              "and the payment didn't arrive in time.",
+        ),
       OfferStatus.expired => (
           Icons.timer_off_outlined,
           'This offer ran out',
@@ -436,6 +456,16 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
           'This place has been claimed',
           'The ticket went to the email it was offered to. Find it in My '
               'events, or in that email.'
+        ),
+      OfferStatus.left when offer.fromApproval => (
+          Icons.logout,
+          'You gave up this place',
+          '$club can now offer it to someone else.'
+        ),
+      OfferStatus.removed when offer.fromApproval => (
+          Icons.person_remove_outlined,
+          'This place was withdrawn',
+          '$club took this place back. Open the event for the latest.'
         ),
       OfferStatus.left => (
           Icons.logout,
@@ -471,7 +501,12 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            cancelled == null ? 'A place opened up for you' : offer.eventName,
+            cancelled != null
+                ? offer.eventName
+                : offer.fromApproval
+                    ? '$club confirmed your place'
+                    : 'A place opened up for you',
+            key: ClaimOfferPage.titleKey,
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 16),
@@ -560,7 +595,9 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
               TextButton(
                 key: ClaimOfferPage.declineKey,
                 onPressed: _busy ? null : _decline,
-                child: const Text('No thanks, give it to the next person'),
+                child: Text(offer.fromApproval
+                    ? "I can't make it, give up my place"
+                    : 'No thanks, give it to the next person'),
               ),
             ],
           ],
