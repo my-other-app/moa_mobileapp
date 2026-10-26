@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 import 'package:finnet/core/utils/json_read.dart';
+import 'package:finnet/features/events/domain/registration_request.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 
@@ -39,6 +40,12 @@ abstract final class RegistrationErrorCodes {
   /// address or date where the question asks for one. `errors` maps each
   /// question's key to what is wrong with its answer.
   static const invalidAnswers = 'INVALID_ANSWERS';
+
+  /// The event confirms each registration ("Confirm each registration"):
+  /// the club declined this person's request, or the request wasn't sent
+  /// as one ([ApprovalErrorCodes]).
+  static const requestDeclined = ApprovalErrorCodes.requestDeclined;
+  static const approvalRequired = ApprovalErrorCodes.approvalRequired;
 }
 
 /// What the server said is wrong with each answer, by question key, when it
@@ -176,6 +183,10 @@ RegistrationRefusal describeRegistrationError(Object? error) {
         message:
             "This email belongs to a club's account. Sign in with your own account to register.",
       );
+    case RegistrationErrorCodes.requestDeclined:
+      return requestDeclinedRefusal;
+    case RegistrationErrorCodes.approvalRequired:
+      return approvalRequiredRefusal;
   }
 
   if (said != null && _eventFull.hasMatch(said)) return _full;
@@ -222,6 +233,24 @@ const _fullWithWaitlist = RegistrationRefusal(
   message: "Every place has been taken. Join the waiting list and we'll tell "
       'you if one opens up.',
   action: RegistrationAction.joinWaitlist,
+);
+
+/// The club declined this person's request for a place before (409
+/// REQUEST_DECLINED): asking again is refused unless the club reopens it.
+const requestDeclinedRefusal = RegistrationRefusal(
+  title: "The club couldn't offer you a place",
+  message: "The club confirms each place at this event, and couldn't offer "
+      "you one this time, so you can't ask again.",
+  closed: true,
+);
+
+/// The event confirms each place, and the registration wasn't sent as a
+/// request (409 APPROVAL_REQUIRED). This app always says it takes one, so
+/// it is said for the odd path that doesn't (paying an older registration).
+const approvalRequiredRefusal = RegistrationRefusal(
+  title: 'The club confirms each place',
+  message: 'This event needs the club to confirm each place. Go back to the '
+      'event and tap Request a place.',
 );
 
 /// The club called the event off: registering (REGISTRATIONS_CLOSED with

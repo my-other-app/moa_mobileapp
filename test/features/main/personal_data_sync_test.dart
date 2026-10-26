@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/events/data/registration_requests_api.dart';
+import 'package:finnet/features/events/domain/registration_request.dart';
+import 'package:finnet/features/events/presentation/providers/registration_requests_provider.dart';
 import 'package:finnet/features/main/presentation/widgets/personal_data_sync.dart';
 import 'package:finnet/features/notifications/data/datasources/notification_remote_datasource.dart';
 import 'package:finnet/features/notifications/data/models/notification_model.dart';
@@ -85,6 +88,22 @@ class _Inbox implements NotificationRepository {
       throw UnimplementedError('${invocation.memberName} not needed here');
 }
 
+/// The person's requests for a place: counts the server's reads; a 404
+/// (an older server) when [missing].
+class _Requests extends RegistrationRequestsApi {
+  int reads = 0;
+  bool missing = false;
+
+  @override
+  Future<List<RegistrationRequest>?> savedMine() async => null;
+
+  @override
+  Future<List<RegistrationRequest>?> mine() async {
+    reads++;
+    return missing ? null : const [];
+  }
+}
+
 const _signedIn = AuthState(accessToken: 'token', isInitialized: true);
 const _signedOut = AuthState(isInitialized: true);
 
@@ -92,6 +111,7 @@ void main() {
   late _FakeAuth auth;
   late _Switches switches;
   late _Inbox inbox;
+  late _Requests requests;
   late ValueNotifier<int> arrivals;
   late DateTime now;
   late ProviderContainer container;
@@ -100,6 +120,7 @@ void main() {
     auth = _FakeAuth(start);
     switches = _Switches();
     inbox = _Inbox();
+    requests = _Requests();
     arrivals = ValueNotifier(0);
     now = DateTime(2026, 10, 22, 9);
     await tester.pumpWidget(ProviderScope(
@@ -107,6 +128,7 @@ void main() {
         authStateProvider.overrideWith((ref) => auth),
         pushSettingsRepositoryProvider.overrideWithValue(switches),
         notificationRepositoryProvider.overrideWithValue(inbox),
+        registrationRequestsApiProvider.overrideWithValue(requests),
       ],
       child: MaterialApp(
         home: PersonalDataSync(
@@ -132,6 +154,32 @@ void main() {
     expect(inbox.reads, 1);
     expect(container.read(pushSwitchesProvider).switches?.clubs, isFalse);
     expect(container.read(pushSwitchesProvider).checked, isTrue);
+  });
+
+  testWidgets(
+      'a push while the app is open reads the requests again -- once they '
+      'have been read, and the server has them', (tester) async {
+    await pump(tester, _signedIn);
+    expect(requests.reads, 0, reason: 'nobody has looked at them yet');
+
+    arrivals.value++;
+    await tester.pump();
+    expect(requests.reads, 0);
+
+    await container.read(myRegistrationRequestsProvider.notifier).refresh();
+    expect(requests.reads, 1);
+    arrivals.value++;
+    await tester.pump();
+    expect(requests.reads, 2);
+
+    // An older server: never again.
+    requests.missing = true;
+    arrivals.value++;
+    await tester.pump();
+    expect(requests.reads, 3);
+    arrivals.value++;
+    await tester.pump();
+    expect(requests.reads, 3);
   });
 
   testWidgets('signed out, nothing is asked; signing in asks at once',

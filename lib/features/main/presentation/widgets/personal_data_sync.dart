@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:finnet/core/services/push_arrivals.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/events/presentation/providers/registration_requests_provider.dart';
 import 'package:finnet/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:finnet/features/notifications/presentation/providers/push_settings_provider.dart';
 
@@ -15,7 +16,8 @@ import 'package:finnet/features/notifications/presentation/providers/push_settin
 /// `SavedTicketsSync`. It reads both when it first appears and when someone
 /// signs in; again when the app comes back to the front (at most every
 /// [resumeEvery]); and the inbox again whenever a push arrives while the
-/// app is open ([arrivals]). Signed out it asks nothing.
+/// app is open ([arrivals]) -- the person's requests for a place too, once
+/// read. Signed out it asks nothing.
 ///
 /// The switches and the inbox each read their saved copy first and keep it
 /// on screen if the network cannot be reached, so on a weak signal this
@@ -79,6 +81,13 @@ class _PersonalDataSyncState extends ConsumerState<PersonalDataSync>
   void _onPush() {
     if (!mounted || !_signedIn) return;
     ref.read(notificationsProvider.notifier).prefetch();
+    // A club may have confirmed or declined a request: My events' "Waiting
+    // for confirmation" and the event's button read it again -- once the
+    // list has been read at all this session, and the server has it.
+    final requests = ref.read(myRegistrationRequestsProvider);
+    if (requests.loaded && requests.supported) {
+      ref.read(myRegistrationRequestsProvider.notifier).refresh();
+    }
   }
 
   void _sync() {

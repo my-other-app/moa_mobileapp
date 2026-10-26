@@ -342,6 +342,10 @@ class EventPageDetails {
   /// null otherwise. [phase] is then null: no list shows it.
   final EventCancellation? cancellation;
 
+  /// The club confirms each registration (`requires_approval`; false when
+  /// not said): the register button asks for a place.
+  final bool requiresApproval;
+
   /// Whether a new registration would be taken right now.
   final bool registrationOpen;
   final DateTime? regOpensAt;
@@ -380,6 +384,7 @@ class EventPageDetails {
     this.url,
     this.phase,
     this.cancellation,
+    this.requiresApproval = false,
     this.registrationOpen = false,
     this.regOpensAt,
     this.regClosesAt,
@@ -452,6 +457,11 @@ class EventPageDetails {
       url: _text(event['url']),
       phase: eventPhaseFrom(event['status']),
       cancellation: EventCancellation.of(event),
+      // On the event, or on its `ticketing` (the event's, or the page's).
+      requiresApproval: jsonBool(event['requires_approval']) ??
+          jsonBool(jsonObject(event['ticketing'])?['requires_approval']) ??
+          jsonBool(jsonObject(root['ticketing'])?['requires_approval']) ??
+          false,
       registrationOpen: jsonBool(event['registration_open']) ?? false,
       regOpensAt: jsonDate(event['reg_opens_at'])?.toLocal(),
       regClosesAt: jsonDate(event['reg_closes_at'])?.toLocal(),
