@@ -150,10 +150,8 @@ void main() {
       });
     await _pump(tester);
 
-    expect(find.text('VIEW YOUR REQUEST'), findsOneWidget);
-    expect(
-        find.text('Tinkerhub confirmed your place. Finish it to get your '
-            'ticket.'),
+    expect(find.text('PAY FOR YOUR TICKET'), findsOneWidget);
+    expect(find.text('Tinkerhub confirmed your place. Pay to get your ticket.'),
         findsOneWidget);
   });
 
@@ -206,10 +204,47 @@ void main() {
       await _pump(tester);
 
       expect(
-          find.text('Tinkerhub confirmed your place. Finish it to get your '
-              'ticket.'),
+          find.text('Tinkerhub confirmed your place. Pay to get your ticket.'),
           findsOneWidget);
-      expect(find.text('VIEW YOUR REQUEST'), findsOneWidget);
+      expect(find.text('PAY FOR YOUR TICKET'), findsOneWidget);
+      await tester.tap(find.text('PAY FOR YOUR TICKET'));
+      await tester.pumpAndSettle();
+      expect(find.text('Request tok_9'), findsOneWidget);
+    });
+
+    testWidgets('without its link: "Request sent", and the form isn\'t offered',
+        (tester) async {
+      api.on(
+          'GET',
+          _info,
+          withViewer({
+            'id': 'req-1',
+            'status': 'pending',
+            'token': null,
+            'status_url': null,
+          }));
+      await _pump(tester);
+
+      expect(find.text('Waiting for Tinkerhub to confirm your place.'),
+          findsOneWidget);
+      expect(find.text('REQUEST SENT'), findsOneWidget);
+      expect(find.text('REQUEST A PLACE'), findsNothing);
+      final button = tester.widget<FilledButton>(
+          find.byKey(const ValueKey('event-register-button')));
+      expect(button.onPressed, isNull);
+    });
+
+    testWidgets('a declined one: ask for a place as before', (tester) async {
+      api.on(
+          'GET',
+          _info,
+          withViewer({
+            'id': 'req-1',
+            'status': 'declined',
+            'token': 'tok_9',
+          }));
+      await _pump(tester);
+      expect(find.text('REQUEST A PLACE'), findsOneWidget);
     });
 
     testWidgets('null: ask for a place, and nothing else is asked',

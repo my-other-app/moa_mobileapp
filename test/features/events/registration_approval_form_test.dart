@@ -282,10 +282,79 @@ void main() {
     await _submit(tester, 'Request a place');
 
     expect(find.text("You're on the waiting list"), findsOneWidget);
+    expect(
+        find.text("We've emailed you the link at asha@example.com. It shows "
+            'where your request stands, and lets you withdraw it.'),
+        findsOneWidget);
     expect(find.byKey(RegistrationRequestPage.withdrawKey), findsNothing);
     expect(
         api.requests.where((r) => r.path.startsWith('/registration-requests')),
         isEmpty);
+  });
+
+  testWidgets(
+      'sent again for a request the club confirmed already: says so, and '
+      'that the link was emailed', (tester) async {
+    api.on('POST', _register, {
+      'approval': {
+        'id': 'req-1',
+        'status': 'approved',
+        'submitted_at': '2026-10-26T09:00:00Z',
+        'token': null,
+        'status_url': null,
+      },
+      'event_registration_id': null,
+      'event_id': 7,
+      'event_name': 'Hack Night',
+    });
+    await _pump(tester, requiresApproval: true);
+
+    await _submit(tester, 'Request a place');
+
+    expect(find.text('Tinkerhub confirmed your place'), findsOneWidget);
+    expect(find.text("You're on the waiting list"), findsNothing);
+    expect(
+        find.text('You asked for a place at Hack Night already, and '
+            'Tinkerhub has confirmed it. Your ticket, or the link to pay for '
+            'it, is in your email.'),
+        findsOneWidget);
+    expect(find.byKey(RegistrationRequestPage.emailedKey), findsOneWidget);
+  });
+
+  testWidgets(
+      'turned on after the form loaded its shelf: ADD_ONS_NOT_ALLOWED said '
+      'plainly, the picks taken off, and the form asks for a place',
+      (tester) async {
+    api
+      ..on('GET', '/events/7/store/catalog', {
+        'enabled': true,
+        'items': [
+          {'id': 'tee', 'name': 'Hack Night tee', 'price': 399, 'variants': []},
+        ],
+      })
+      ..on(
+          'POST',
+          _register,
+          {
+            'message': 'A request holds no add-ons.',
+            'error_code': 'ADD_ONS_NOT_ALLOWED',
+          },
+          status: 422)
+      ..on('POST', _register, _approval());
+    await _pump(tester);
+    expect(find.text('Hack Night tee'), findsOneWidget);
+
+    await _submit(tester, 'Continue');
+    expect(find.text('The club confirms each place now'), findsOneWidget);
+    expect(find.textContaining("can't include add-ons"), findsOneWidget);
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hack Night tee'), findsNothing);
+    await _submit(tester, 'Request a place');
+    final second = api.sent('POST', _register).last.data as Map;
+    expect(second.containsKey('store'), isFalse);
+    expect(find.byType(RegistrationRequestPage), findsOneWidget);
   });
 
   testWidgets('declined before: said plainly, then back to the event',

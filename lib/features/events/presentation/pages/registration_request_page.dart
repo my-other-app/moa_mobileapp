@@ -43,6 +43,7 @@ class RegistrationRequestPage extends ConsumerStatefulWidget {
     this.justSent = false,
     this.openPay = false,
     this.askWithdraw = false,
+    this.sentTo,
   });
 
   final String token;
@@ -62,6 +63,10 @@ class RegistrationRequestPage extends ConsumerStatefulWidget {
   /// mind? Withdraw your request" in the request's email).
   final bool askWithdraw;
 
+  /// The address the form was sent with ([justSent]): where the request's
+  /// link was emailed when the answer came without it.
+  final String? sentTo;
+
   static const statusKey = ValueKey('request-status');
   static const titleKey = ValueKey('request-title');
   static const withdrawKey = ValueKey('request-withdraw');
@@ -71,6 +76,7 @@ class RegistrationRequestPage extends ConsumerStatefulWidget {
   static const retryKey = ValueKey('request-retry');
   static const problemKey = ValueKey('request-problem');
   static const noteKey = ValueKey('request-decline-note');
+  static const emailedKey = ValueKey('request-link-emailed');
 
   @override
   ConsumerState<RegistrationRequestPage> createState() =>
@@ -153,7 +159,7 @@ class _RegistrationRequestPageState
       }
       setState(() {
         _stage = missing ? _Stage.notFound : _Stage.failed;
-        _problem = readableError(e,
+        _problem = _said(e,
             fallback: "We couldn't read your request. Try again in a moment.");
       });
     }
@@ -310,8 +316,8 @@ class _RegistrationRequestPageState
         await _load(quiet: true);
         if (!mounted) return;
       }
-      setState(() => _problem = readableError(e,
-          fallback: "We couldn't withdraw your request. Try again."));
+      setState(() => _problem =
+          _said(e, fallback: "We couldn't withdraw your request. Try again."));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -436,6 +442,15 @@ class _RegistrationRequestPageState
               ? 'Your place is held for you.'
               : 'Your place is held for you until ${requestMoment(payBy)}.',
         ),
+      // The form sent again for a request the club confirmed already.
+      RequestStatus.approved when widget.justSent => (
+          Icons.verified,
+          const Color(0xFF16A34A),
+          '$club confirmed your place',
+          'You asked for a place at $event already, and '
+              '${request.event?.clubName ?? 'the club'} has confirmed it. Your '
+              'ticket, or the link to pay for it, is in your email.',
+        ),
       RequestStatus.approved => (
           Icons.verified,
           const Color(0xFF16A34A),
@@ -484,6 +499,35 @@ class _RegistrationRequestPageState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _header(icon: icon, color: color, title: title, text: text),
+        // Sent again, signed out or as someone else, for an address with a
+        // request open: the answer has no link (whoever typed the address
+        // hasn't shown it is theirs); the link went to the address.
+        if (widget.justSent && !_hasToken) ...[
+          const SizedBox(height: 16),
+          Container(
+            key: RegistrationRequestPage.emailedKey,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.mail_outline,
+                    size: 20, color: Color(0xFF1D4ED8)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    emailedLine(widget.sentTo),
+                    style: const TextStyle(
+                        fontSize: 14, height: 1.35, color: Color(0xFF1E3A8A)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         if (request.status == RequestStatus.declined && note != null) ...[
           const SizedBox(height: 16),
           Container(
@@ -554,6 +598,20 @@ class _RegistrationRequestPageState
         ],
       ],
     );
+  }
+
+  /// [e] in words: the server's limits (30 reads, 10 withdrawals a minute)
+  /// plainly, anything else as the events screens say it.
+  static String _said(Object e, {required String fallback}) =>
+      statusCodeOf(e) == 429
+          ? 'Too many tries. Wait a minute, then try again.'
+          : readableError(e, fallback: fallback);
+
+  /// "We've emailed you the link at asha@example.com. ..."
+  static String emailedLine(String? email) {
+    final to = email?.trim() ?? '';
+    return "We've emailed you the link${to.isEmpty ? '' : ' at $to'}. It "
+        'shows where your request stands, and lets you withdraw it.';
   }
 
   static final _primary = FilledButton.styleFrom(

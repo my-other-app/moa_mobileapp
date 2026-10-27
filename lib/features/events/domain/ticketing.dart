@@ -577,9 +577,13 @@ class WaitlistOffer {
   final String? registrationId;
 
   /// Why the place is offered: `approved` when the club confirmed the
-  /// person's request for it ("Confirm each registration"); null for a
-  /// waiting list's turn.
+  /// person's request for it ("Confirm each registration"); `waitlist` (or
+  /// nothing, from an older server) for a waiting list's turn.
   final String? reason;
+
+  /// What a confirmed request's place costs (`amount`): its ticket's price
+  /// with the request's code already taken off. Null when not said.
+  final double? amount;
 
   /// The event's club, when the offer says (`event.club.name`).
   final String? clubName;
@@ -605,6 +609,7 @@ class WaitlistOffer {
     this.registrationId,
     this.reason,
     this.clubName,
+    this.amount,
   });
 
   /// The club confirmed the person's request: a place of their own, not a
@@ -613,6 +618,10 @@ class WaitlistOffer {
 
   /// The club's name, or "The club" when the offer doesn't say.
   String get clubOrDefault => clubName ?? 'The club';
+
+  /// What claiming it costs: for a confirmed request, the price the club
+  /// confirmed ([amount], its code taken off); else the ticket's price.
+  double get payable => fromApproval && amount != null ? amount! : price;
 
   /// The app's route to the event.
   String get eventRoute =>
@@ -650,6 +659,7 @@ class WaitlistOffer {
           (jsonDouble(type['price']) ?? 0) > 0,
       registrationId: text(json['registration_id']),
       reason: text(json['reason'])?.toLowerCase(),
+      amount: jsonDouble(json['amount']),
       clubName: text(jsonObject(event['club'])?['name']) ??
           text(event['club_name']),
     );
