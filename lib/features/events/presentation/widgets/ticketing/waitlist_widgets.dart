@@ -109,6 +109,7 @@ Future<WaitlistEntry?> showJoinWaitlistSheet(
   String? email,
   String? phone,
   int? ticketTypeId,
+  String? clubName,
 }) {
   return showModalBottomSheet<WaitlistEntry>(
     context: context,
@@ -127,6 +128,7 @@ Future<WaitlistEntry?> showJoinWaitlistSheet(
         email: email,
         phone: phone,
         ticketTypeId: ticketTypeId,
+        clubName: clubName,
         onJoined: (entry) => Navigator.of(context).pop(entry),
       ),
     ),
@@ -145,6 +147,7 @@ class JoinWaitlistForm extends StatefulWidget {
     this.email,
     this.phone,
     this.ticketTypeId,
+    this.clubName,
   });
 
   final Object event;
@@ -155,6 +158,10 @@ class JoinWaitlistForm extends StatefulWidget {
   final String? email;
   final String? phone;
   final int? ticketTypeId;
+
+  /// The event's club, named when the server says it reviews every
+  /// registration (and so has no waiting list).
+  final String? clubName;
 
   static const submitKey = ValueKey('waitlist-join-submit');
   static const errorKey = ValueKey('waitlist-join-error');
@@ -172,14 +179,14 @@ class _JoinWaitlistFormState extends State<JoinWaitlistForm> {
   String? _problem;
   int? _type;
 
-  /// The server said the club confirms each place here (409
+  /// The server said the club reviews every registration here (409
   /// WAITLIST_OFF_ON_APPROVAL_EVENTS): there is no list to join, so no
   /// button to try again.
   bool _noList = false;
 
   /// The types whose list can be joined: those the server says, or -- an
   /// answer from before they sold out -- every sold-out one. None when the
-  /// club confirms each place.
+  /// club reviews every registration.
   List<TicketType> get _choices {
     final ticketing = widget.ticketing;
     if (ticketing == null || ticketing.requiresApproval) return const [];
@@ -251,7 +258,7 @@ class _JoinWaitlistFormState extends State<JoinWaitlistForm> {
       if (!mounted) return;
       setState(() {
         _sending = false;
-        _problem = waitlistJoinProblem(e);
+        _problem = waitlistJoinProblem(e, clubName: widget.clubName);
         _noList = errorCodeOf(e) ==
             TicketingErrorCodes.waitlistOffOnApprovalEvents;
       });

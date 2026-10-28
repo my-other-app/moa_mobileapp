@@ -343,8 +343,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                         ticketType: extra?['ticketType'] as String?,
                       );
                     }),
-                // A request sent to a club that confirms each place: its
-                // screen, over My events, which lists it as waiting.
+                // A registration sent to a club that reviews every one: its
+                // screen, over My events, which lists it under review.
                 GoRoute(
                     path: 'request-sent',
                     name: EventRouteNames.requestSent,

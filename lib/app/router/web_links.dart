@@ -23,7 +23,7 @@ import 'package:finnet/core/config/app_config.dart';
 /// | `/threads/{id}`                  | the post                              |
 /// | `/tickets/{id}`                  | the ticket (its QR works offline)     |
 /// | `/claim/{token}`                 | a place offered from a waiting list   |
-/// | `/requests/{token}`              | a request for a place, and its status |
+/// | `/requests/{token}`              | a registration under review           |
 /// | `/certificates/{id}`             | the certificate                       |
 /// | `/topics`, `/topics/{slug}`      | the topics, a topic                   |
 /// | `/feedback/{event}/{reg}?k=`     | the feedback survey                   |
@@ -113,8 +113,8 @@ String? webLocation(Uri uri) {
       // A waiting list's offer: its link in the email, WhatsApp and push.
       return rest.length == 1 ? at('/claim/${one(rest.first)}') : null;
     case 'requests':
-      // A request for a place at an event whose club confirms each one:
-      // its link in the request's emails and pushes.
+      // A registration at an event whose club reviews every one: its link
+      // in the registration's emails and pushes.
       return rest.length == 1 ? at('/requests/${one(rest.first)}') : null;
     case 'play':
       // The website's quiz, joined from its live room.

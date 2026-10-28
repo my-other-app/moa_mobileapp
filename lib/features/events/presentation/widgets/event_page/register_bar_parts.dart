@@ -5,14 +5,14 @@ import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 /// How full the event is: a bar of the places taken, and "82 going · 38
 /// seats left". Nothing for an event with no limit and nobody going.
 ///
-/// With nobody going yet, an event whose club confirms each place
-/// ([confirmsEach]) says "{club} confirms each place" instead.
+/// With nobody going yet, an event whose club reviews every registration
+/// ([confirmsEach]) says "{club} reviews every registration" instead.
 class SeatsMeter extends StatelessWidget {
   final int going;
   final int? capacity;
   final int? seatsLeft;
 
-  /// The club confirms each place; [clubName] names it.
+  /// The club reviews every registration; [clubName] names it.
   final bool confirmsEach;
   final String? clubName;
 

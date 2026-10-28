@@ -83,7 +83,8 @@ class DiscoverEvent extends Equatable {
   final String? summary;
   final List<Topic> topics;
 
-  /// The club confirms each place (`requires_approval`; false when not said).
+  /// The club reviews every registration (`requires_approval`; false when
+  /// not said).
   final bool requiresApproval;
 
   /// The club has its "High demand" label on (`high_demand`; false when not

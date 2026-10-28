@@ -25,10 +25,11 @@ import 'event_page_fixtures.dart';
 import 'events_fakes.dart';
 import 'ticketing_model_test.dart' show ticketingBody;
 
-// Events whose club confirms each place, as the public see them
-// (feature-register/approval-stats-contract.md, "Website and app"):
-// "{Club} confirms each place" in place of "Be the first to register", the
-// club's "High demand" chip, and no waiting list at all.
+// Events whose club reviews every registration, as the public see them
+// (feature-register/approval-stats-contract.md, "Website and app", worded
+// as review-wording-contract.md §1.1 says): "{Club} reviews every
+// registration" in place of "Be the first to register", the club's "High
+// demand" chip, and no waiting list at all.
 
 /// Every type sold out, and -- as an older server may still say -- the
 /// list open for VIP.
@@ -85,16 +86,16 @@ ApiException _refusal(String code, {Map<String, dynamic>? errors}) =>
     );
 
 void main() {
-  group('"{Club} confirms each place"', () {
+  group('"{Club} reviews every registration"', () {
     test('in place of "Be the first to register", with the seats left', () {
       expect(
           seatsLine(
               going: 0, seatsLeft: 38, confirmsEach: true, clubName: 'Tinkerhub'),
-          'Tinkerhub confirms each place · 38 seats left');
+          'Tinkerhub reviews every registration · 38 seats left');
       expect(seatsLine(going: 0, seatsLeft: 0, confirmsEach: true),
-          'The club confirms each place');
+          'The club reviews every registration');
       expect(seatsLine(going: 0, confirmsEach: true, clubName: '  '),
-          'The club confirms each place');
+          'The club reviews every registration');
     });
 
     test('once someone is going, the count, as before', () {
@@ -107,7 +108,19 @@ void main() {
     test('an event without the setting is as it was', () {
       expect(seatsLine(going: 0, seatsLeft: 0), 'Be the first to register');
       expect(seatsLine(going: 0, seatsLeft: 38), '38 seats left');
-      expect(confirmsEachPlaceLine('Tinkerhub'), 'Tinkerhub confirms each place');
+      expect(confirmsEachPlaceLine('Tinkerhub'),
+          'Tinkerhub reviews every registration');
+    });
+
+    test('the full note, by the button and on the form', () {
+      expect(
+          reviewsEveryRegistrationNote('Tinkerhub'),
+          'Tinkerhub reviews every registration and emails tickets to the '
+          'people it confirms.');
+      expect(
+          reviewsEveryRegistrationNote(null),
+          'The club reviews every registration and emails tickets to the '
+          'people it confirms.');
     });
 
     testWidgets('on the event page, beside the seats left', (tester) async {
@@ -117,7 +130,7 @@ void main() {
       await _pumpPage(tester);
 
       expect(find.byKey(SeatsMeter.lineKey), findsOneWidget);
-      expect(find.text('Tinkerhub confirms each place · 120 seats left'),
+      expect(find.text('Tinkerhub reviews every registration · 120 seats left'),
           findsOneWidget);
       expect(find.textContaining('Be the first'), findsNothing);
     });
@@ -300,8 +313,14 @@ void main() {
       expect(
           waitlistJoinProblem(
               _refusal(TicketingErrorCodes.waitlistOffOnApprovalEvents)),
-          "This event has no waiting list: the club confirms each place. "
-          "Request a place instead, and they'll let you know.");
+          'This event has no waiting list: the club reviews every '
+          "registration. Register instead, and they'll get back to you.");
+      expect(
+          waitlistJoinProblem(
+              _refusal(TicketingErrorCodes.waitlistOffOnApprovalEvents),
+              clubName: 'Tinkerhub'),
+          'This event has no waiting list: Tinkerhub reviews every '
+          "registration. Register instead, and they'll get back to you.");
     });
 
     testWidgets('the event page offers none, the tickets say only "Sold out"',

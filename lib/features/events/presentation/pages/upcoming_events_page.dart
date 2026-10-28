@@ -45,7 +45,7 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
   void initState() {
     super.initState();
     fetchFirstPage();
-    // Requests waiting for a club to confirm them (or for the payment):
+    // Registrations under review (or waiting for the payment):
     // the phone's copy at once, then the server's. A server without them
     // shows nothing.
     _requests.refresh();
@@ -123,7 +123,7 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
 
     if (events.isEmpty) {
       if (waiting.isEmpty) return NoRegisteredEventPage();
-      // No tickets yet, but requests waiting: those.
+      // No tickets yet, but registrations under review: those.
       return Container(
         color: Colors.white,
         child: RefreshIndicator(

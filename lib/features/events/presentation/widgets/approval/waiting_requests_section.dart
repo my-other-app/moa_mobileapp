@@ -1,20 +1,22 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'package:finnet/features/events/domain/registration_request.dart';
-import 'package:finnet/features/events/domain/ticketing.dart' show claimRoute;
+import 'package:finnet/features/events/domain/ticketing.dart'
+    show claimRoute, formatRupees;
 
-/// My events' "Waiting for confirmation": the person's requests at events
-/// whose club confirms each place, still waiting for the club or for the
-/// payment. Each opens its request's screen.
+/// My events' "Under review": the person's registrations at events whose
+/// club reviews every registration, still under review or waiting for the
+/// payment. Each opens its registration's screen.
 class WaitingRequestsSection extends StatelessWidget {
   const WaitingRequestsSection({super.key, required this.requests});
 
   final List<RegistrationRequest> requests;
 
   static const sectionKey = ValueKey('waiting-for-confirmation');
-  static const title = 'WAITING FOR CONFIRMATION';
+  static const title = 'UNDER REVIEW';
 
   @override
   Widget build(BuildContext context) {
@@ -36,14 +38,15 @@ class WaitingRequestsSection extends StatelessWidget {
   }
 }
 
-/// One request: its event, when, and where it stands.
+/// One registration: its event, when, where it stands, and what tapping
+/// it does.
 class RequestTile extends StatelessWidget {
   const RequestTile({super.key, required this.request});
 
   final RegistrationRequest request;
 
-  /// Where tapping it goes: the request's screen; without its token, the
-  /// claim screen for a place to pay for, else the event.
+  /// Where tapping it goes: the registration's screen; without its token,
+  /// the claim screen for a ticket to pay for, else the event.
   String? get location {
     final route = request.route;
     if (route != null) return route;
@@ -54,20 +57,24 @@ class RequestTile extends StatelessWidget {
     return request.event?.route;
   }
 
-  /// "Waiting for Tinkerhub to confirm", or, confirmed for a paid ticket,
-  /// "Tinkerhub confirmed your place · finish by Sat 1 Nov, 6:00 PM". No
-  /// price: an iPhone doesn't show one for a paid online event.
-  String get statusLine {
-    if (request.awaitingPayment) {
-      final by = request.pay?.payBy;
-      return by == null
-          ? '${request.clubName} confirmed your place · finish it to get your ticket'
-          : '${request.clubName} confirmed your place · finish by ${requestMoment(by)}';
+  /// "Under review", or, confirmed for a paid ticket, "Confirmed · pay by
+  /// Sat 1 Nov, 6:00 PM to get your ticket". No price: an iPhone doesn't
+  /// show one for a paid online event.
+  String get statusLine => request.statusWord ?? 'Under review';
+
+  /// What tapping it does, in words: "See your registration", or "Pay
+  /// ₹199" for a confirmed paid ticket. An iPhone names no price (it
+  /// doesn't sell a paid online event): the registration's screen says
+  /// whether it can be paid here.
+  String get actionLine {
+    final pay = request.pay;
+    if (request.awaitingPayment &&
+        pay != null &&
+        pay.amount > 0 &&
+        defaultTargetPlatform != TargetPlatform.iOS) {
+      return 'Pay ${formatRupees(pay.amount)}';
     }
-    final club = request.event?.clubName;
-    return club == null
-        ? 'Waiting for the club to confirm'
-        : 'Waiting for $club to confirm';
+    return 'See your registration';
   }
 
   @override
@@ -75,6 +82,8 @@ class RequestTile extends StatelessWidget {
     final when = request.event?.eventDateTime;
     final to = location;
     final confirmed = request.awaitingPayment;
+    final accent =
+        confirmed ? const Color(0xFF047857) : const Color(0xFF1D4ED8);
     return Material(
       color: confirmed ? const Color(0xFFECFDF5) : const Color(0xFFEFF6FF),
       borderRadius: BorderRadius.circular(12),
@@ -91,9 +100,7 @@ class RequestTile extends StatelessWidget {
               Icon(
                 confirmed ? Icons.celebration_outlined : Icons.hourglass_top,
                 size: 22,
-                color: confirmed
-                    ? const Color(0xFF047857)
-                    : const Color(0xFF1D4ED8),
+                color: accent,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -103,7 +110,7 @@ class RequestTile extends StatelessWidget {
                     Text(
                       request.event?.name.isNotEmpty == true
                           ? request.event!.name
-                          : 'Your request',
+                          : 'Your registration',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -123,6 +130,16 @@ class RequestTile extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF374151)),
                     ),
+                    if (to != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        actionLine,
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: accent),
+                      ),
+                    ],
                   ],
                 ),
               ),

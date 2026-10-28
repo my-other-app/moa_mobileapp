@@ -6,9 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/features/events/data/registration_requests_api.dart';
 import 'package:finnet/features/events/domain/registration_request.dart';
 
-/// The signed-in person's requests for a place (`GET
-/// /registration-requests/mine`), for My events' "Waiting for
-/// confirmation" and the event page's button.
+/// The signed-in person's registrations under review (`GET
+/// /registration-requests/mine`), for My events' "Under review" and the
+/// event page's button.
 @immutable
 class MyRegistrationRequests {
   /// Every request the server listed, open ones first.

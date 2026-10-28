@@ -35,9 +35,10 @@ const _ink = Color(0xFF2C333D);
 /// signed in): that one is paid on the website, which keeps a guest's
 /// session. "No thanks" passes the place to the next person in line.
 ///
-/// The same link pays for a place a club confirmed on an event that
-/// confirms each registration (the offer's `reason: "approved"`): then the
-/// page says "{Club} confirmed your place" rather than speaking of a
+/// The same link pays for a ticket a club confirmed on an event whose club
+/// reviews every registration (the offer's `reason: "approved"`): then the
+/// page says "{Club} confirmed your registration" (feature-register
+/// `review-wording-contract.md` §1.6) and never speaks of a place or a
 /// waiting list.
 class ClaimOfferPage extends ConsumerStatefulWidget {
   const ClaimOfferPage({super.key, required this.token});
@@ -52,6 +53,9 @@ class ClaimOfferPage extends ConsumerStatefulWidget {
   static const websiteKey = ValueKey('claim-offer-website');
   static const statusKey = ValueKey('claim-offer-status');
   static const titleKey = ValueKey('claim-offer-title');
+
+  /// A confirmed registration's "Pay ₹199 by {time} to get your ticket."
+  static const payByKey = ValueKey('claim-offer-pay-by');
 
   @override
   ConsumerState<ClaimOfferPage> createState() => _ClaimOfferPageState();
@@ -189,9 +193,10 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
     }
     if (!paid.right) {
       final until = offer.expiresAt;
+      final what = offer.fromApproval ? 'ticket' : 'place';
       setState(() => _problem = until == null
-          ? 'Payment not completed. Your place is still held: tap Pay to try again.'
-          : 'Payment not completed. Your place is held until '
+          ? 'Payment not completed. Your $what is still held: tap Pay to try again.'
+          : 'Payment not completed. Your $what is held until '
               '${_when(until)}: tap Pay to try again.');
       return;
     }
@@ -243,7 +248,9 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
       return;
     }
     setState(() => _problem = readableError(e,
-        fallback: "We couldn't claim this place. Try again in a moment."));
+        fallback: (_offer?.fromApproval ?? false)
+            ? "We couldn't get your ticket. Try again in a moment."
+            : "We couldn't claim this place. Try again in a moment."));
   }
 
   Future<void> _decline() async {
@@ -252,21 +259,23 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
     final sure = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Give up this place?'),
+        title: Text(offer.fromApproval
+            ? 'Cancel your registration?'
+            : 'Give up this place?'),
         content: Text(offer.fromApproval
-            ? '${offer.clubOrDefault} can then offer it to someone else. '
-                "You can't take it back."
+            ? "Your ticket will go to someone else, and you can't undo this."
             : 'It goes to the next person in line for ${offer.eventName}. '
                 "You can't take it back."),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Keep it'),
+            child: Text(
+                offer.fromApproval ? 'Keep my registration' : 'Keep it'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: _ink),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('No thanks'),
+            child: Text(offer.fromApproval ? 'Yes, cancel it' : 'No thanks'),
           ),
         ],
       ),
@@ -287,7 +296,9 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
         await _load();
       } else {
         setState(() => _problem = readableError(e,
-            fallback: "We couldn't pass the place on. Try again."));
+            fallback: offer.fromApproval
+                ? "We couldn't cancel your registration. Try again."
+                : "We couldn't pass the place on. Try again."));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -303,9 +314,9 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: const Text(
-          'Your place',
-          style: TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
+        title: Text(
+          (_offer?.fromApproval ?? false) ? 'Your registration' : 'Your place',
+          style: const TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
         ),
       ),
       body: SafeArea(child: _body(context)),
@@ -337,10 +348,12 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
         final approved = _offer?.fromApproval ?? false;
         return _message(
           icon: Icons.check_circle_outline,
-          title: 'Thanks for letting us know',
+          title: approved
+              ? 'Your registration was cancelled'
+              : 'Thanks for letting us know',
           text: approved
-              ? '${_offer!.clubOrDefault} can now offer your place to '
-                  'someone else.'
+              ? 'Thanks for letting us know. ${_offer!.clubOrDefault} can '
+                  'give your ticket to someone else.'
               : 'The place has gone to the next person in line.',
           action: _eventButton(),
         );
@@ -443,16 +456,22 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
     final statusView = switch (offer.status) {
       OfferStatus.expired when offer.fromApproval => (
           Icons.timer_off_outlined,
-          'Your place was released',
-          '$club held your place until '
-              '${offer.expiresAt == null ? 'its time ran out' : _when(offer.expiresAt!)}, '
-              "and the payment didn't arrive in time.",
+          'Your registration has expired',
+          '$club confirmed your registration for ${offer.eventName}, but it '
+              "wasn't paid in time. If registration is still open, you can "
+              'register again.',
         ),
       OfferStatus.expired => (
           Icons.timer_off_outlined,
           'This offer ran out',
           'The place was held until ${offer.expiresAt == null ? 'its time ran out' : _when(offer.expiresAt!)}, '
               'and has gone to the next person in line.'
+        ),
+      OfferStatus.claimed when offer.fromApproval => (
+          Icons.confirmation_number_outlined,
+          "You're in",
+          'Your ticket went to your email. Find it in My events, or in that '
+              'email.'
         ),
       OfferStatus.claimed => (
           Icons.confirmation_number_outlined,
@@ -462,13 +481,13 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
         ),
       OfferStatus.left when offer.fromApproval => (
           Icons.logout,
-          'You gave up this place',
-          '$club can now offer it to someone else.'
+          'You cancelled your registration',
+          '$club can now give your ticket to someone else.'
         ),
       OfferStatus.removed when offer.fromApproval => (
           Icons.person_remove_outlined,
-          'This place was withdrawn',
-          '$club took this place back. Open the event for the latest.'
+          'This registration is closed',
+          '$club took this ticket back. Open the event for the latest.'
         ),
       OfferStatus.left => (
           Icons.logout,
@@ -479,6 +498,12 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
           Icons.person_remove_outlined,
           'This offer was withdrawn',
           'The organiser took this place off the waiting list.'
+        ),
+      OfferStatus.unknown when offer.fromApproval => (
+          Icons.help_outline,
+          'Your registration',
+          'Check your email for the latest from '
+              '${offer.clubName ?? 'the club'} about your registration.'
         ),
       OfferStatus.unknown => (
           Icons.help_outline,
@@ -507,7 +532,7 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
             cancelled != null
                 ? offer.eventName
                 : offer.fromApproval
-                    ? '$club confirmed your place'
+                    ? '$club confirmed your registration'
                     : 'A place opened up for you',
             key: ClaimOfferPage.titleKey,
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
@@ -518,7 +543,25 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
           if (cancelled != null)
             CancelledNotice(cancellation: cancelled)
           else ...[
-            if (expires != null)
+            // A confirmed registration: what to pay, by when (no price on
+            // an iPhone for a paid online event).
+            if (offer.fromApproval && offer.needsPayment)
+              Text(
+                _sellable
+                    ? 'Pay ${formatRupees(offer.payable)}'
+                        '${expires == null ? '' : ' by ${_when(expires)}'} to '
+                        'get your ticket.'
+                    : expires == null
+                        ? 'Your ticket is held for you.'
+                        : 'Your ticket is held for you until '
+                            '${_when(expires)}.',
+                key: ClaimOfferPage.payByKey,
+                style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFB45309)),
+              )
+            else if (expires != null)
               Text(
                 'Held for you until ${_when(expires)}.',
                 style: const TextStyle(
@@ -553,8 +596,11 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
                   ),
                   TextButton(
                     onPressed: () => ensureSignedInFor(context, ref,
-                        reason: 'Sign in to claim your place for '
-                            '${offer.eventName}.'),
+                        reason: offer.fromApproval
+                            ? 'Sign in to get your ticket for '
+                                '${offer.eventName}.'
+                            : 'Sign in to claim your place for '
+                                '${offer.eventName}.'),
                     child: const Text('Sign in'),
                   ),
                 ],
@@ -589,8 +635,10 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
                             strokeWidth: 2, color: Colors.white),
                       )
                     : Text(!offer.needsPayment
-                        ? 'CLAIM MY PLACE'
-                        : pending || _result != null
+                        ? offer.fromApproval
+                            ? 'GET MY TICKET'
+                            : 'CLAIM MY PLACE'
+                        : pending || _result != null || offer.fromApproval
                             ? 'PAY ${formatRupees(offer.payable).toUpperCase()}'
                             : 'CLAIM AND PAY ${formatRupees(offer.payable)}'),
               ),
@@ -599,7 +647,7 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
                 key: ClaimOfferPage.declineKey,
                 onPressed: _busy ? null : _decline,
                 child: Text(offer.fromApproval
-                    ? "I can't make it, give up my place"
+                    ? "I can't come: cancel my registration"
                     : 'No thanks, give it to the next person'),
               ),
             ],
@@ -613,9 +661,13 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
     final email = _result?.email ?? _offer?.email;
     return [
       Text(
-        'This place is held for ${email ?? 'another email address'}, which '
-        "isn't the account you're signed in with. Pay on the website to keep "
-        'it, before the offer runs out.',
+        (_offer?.fromApproval ?? false)
+            ? 'This ticket is held for ${email ?? 'another email address'}, '
+                "which isn't the account you're signed in with. Pay on the "
+                'website to keep it, before the time to pay runs out.'
+            : 'This place is held for ${email ?? 'another email address'}, '
+                "which isn't the account you're signed in with. Pay on the "
+                'website to keep it, before the offer runs out.',
         style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
       ),
       const SizedBox(height: 12),

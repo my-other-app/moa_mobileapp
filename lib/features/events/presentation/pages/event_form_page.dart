@@ -68,10 +68,10 @@ class EventFormPage extends ConsumerStatefulWidget {
   /// The event's name, from the event page, for the request's screen.
   final String? eventName;
 
-  /// The club confirms each place ("Confirm each registration"), from the
-  /// event page: the form asks for a place rather than registering. The
-  /// form also reads it from the event and its ticket types, and handles a
-  /// request's answer whatever this says.
+  /// The club reviews every registration ("Review registrations"), from the
+  /// event page: the form registers for review (the API's request), and
+  /// says how the club reviews. The form also reads it from the event and
+  /// its ticket types, and handles a review's answer whatever this says.
   final bool? requiresApproval;
 
   const EventFormPage({
@@ -148,17 +148,13 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   /// The event's name, when known (for the request's screen).
   String? _eventName;
 
-  /// The club confirms each place: by the event page's word, or the
+  /// The club reviews every registration: by the event page's word, or the
   /// event's own (`requires_approval`).
   bool _requiresApproval = false;
 
   /// [_requiresApproval], or the ticket types say so.
   bool get _confirmsEach =>
       _requiresApproval || (_ticketing?.requiresApproval ?? false);
-
-  /// "Tinkerhub", or "The club".
-  String get _clubOrDefault =>
-      _clubName.trim().isEmpty ? 'The club' : _clubName.trim();
 
   /// What the server said of the phone number (WHATSAPP_NUMBER), shown
   /// under it until it, or the box, changes.
@@ -1028,9 +1024,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       });
       return;
     }
-    // The club turned "Confirm each registration" on after the form opened:
-    // from now on the form asks for a place, with no add-ons (a request
-    // carries none), and says so.
+    // The club turned "Review registrations" on after the form opened: from
+    // now on the form registers for review, with no add-ons (one under
+    // review carries none), and says so.
     final approvalCode = errorCodeOf(error);
     if (approvalCode == RegistrationErrorCodes.addOnsNotAllowed ||
         approvalCode == RegistrationErrorCodes.approvalRequired) {
@@ -1060,9 +1056,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       );
       return;
     }
-    // A request (the club confirms each place) is never offered a waiting
-    // list, whatever the refusal says.
-    final refusal = describeRegistrationError(error, approval: _confirmsEach);
+    // A registration to review is never offered a waiting list, whatever
+    // the refusal says.
+    final refusal = describeRegistrationError(error,
+        approval: _confirmsEach, clubName: _clubName);
     // The ticket type: what is on sale may have changed since the form
     // opened. The types are read again, and the choice is said under them.
     if (code != null && code.startsWith('TICKET_TYPE_')) {
@@ -1189,9 +1186,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           if (_ticketTypeId != null) 'ticket_type_id': _ticketTypeId,
           if (_codeController.text.trim().isNotEmpty)
             'discount_code': _codeController.text.trim(),
-          // This app takes a request for a place, for an event whose club
-          // confirms each one. Always said: an event can turn it on after
-          // the page was read, and a server without it ignores the field.
+          // This app can take a registration under review, for an event
+          // whose club reviews every one. Always said: an event can turn it
+          // on after the page was read, and a server without it ignores the
+          // field.
           'accepts_approval': true,
         };
 
@@ -1290,9 +1288,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     }
   }
 
-  /// The club confirms each place, and the request is in: its screen, over
-  /// My events (as a registration's success is), which says what happens
-  /// next.
+  /// The club reviews every registration, and this one is in: its screen
+  /// ("You're registered!"), over My events (as a registration's success
+  /// is), which says what happens next.
   void _requestSent(RegistrationRequest approval) {
     final eventId = _eventId;
     final request = RegistrationRequest(
@@ -1446,7 +1444,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                             }),
                             // Sold out with its list open: back to the
                             // event, which offers the waiting list -- never
-                            // when the club confirms each place.
+                            // when the club reviews every registration.
                             onJoinWaitlist: _confirmsEach
                                 ? null
                                 : () {
@@ -1827,9 +1825,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                 SizedBox(
                   width: double.infinity,
                   child: Text(
-                    '$_clubOrDefault confirms each place. Nothing is charged '
-                    "now: you'll get your ticket, or a link to pay for it, "
-                    'when they confirm yours.',
+                    reviewsEveryRegistrationNote(_clubName),
                     key: const ValueKey('form-approval-note'),
                     style: const TextStyle(
                         fontSize: 13, height: 1.35, color: Color(0xFF4B5563)),
@@ -1852,7 +1848,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                   child: _isSubmitting
                       ? CircularProgressIndicator(color: Colors.white)
                       : Text(
-                          _confirmsEach ? 'Request a place' : 'Continue',
+                          _confirmsEach ? 'Register' : 'Continue',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,

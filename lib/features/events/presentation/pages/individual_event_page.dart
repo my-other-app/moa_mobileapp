@@ -113,9 +113,13 @@ class IndividualEventPage extends ConsumerStatefulWidget {
   }) : assert(eventId != null || eventRef != null,
             'An event page needs an id or a slug');
 
-  /// The line by the register button on an event whose club confirms each
-  /// place.
+  /// The line by the register button on an event whose club reviews every
+  /// registration.
   static const approvalNoteKey = ValueKey('event-approval-note');
+
+  /// Over [approvalNoteKey]'s line, when the person has registered: "Your
+  /// registration is under review", or confirmed.
+  static const approvalTitleKey = ValueKey('event-approval-title');
 
   /// The event as it was asked for: [eventRef] when given, else [eventId].
   String get ref {
@@ -260,21 +264,22 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// Leaving the waiting list is under way.
   bool _leavingWaitlist = false;
 
-  /// The club confirms each registration, by `/events/info`'s word
+  /// The club reviews every registration, by `/events/info`'s word
   /// (`requires_approval`).
   bool _infoRequiresApproval = false;
 
-  /// The club confirms each place ("Confirm each registration"): the
-  /// button asks for a place, and the form sends a request. By the event's
-  /// word, its ticket types' or the website page's; false when none says.
+  /// The club reviews every registration ("Review registrations"): the
+  /// button says how, and the form sends one for review (the API's
+  /// request). By the event's word, its ticket types' or the website
+  /// page's; false when none says.
   bool get _requiresApproval =>
       _infoRequiresApproval ||
       (_ticketing?.requiresApproval ?? false) ||
       (_page?.requiresApproval ?? false);
 
   /// The event's tickets as the page offers them: an event whose club
-  /// confirms each place has no waiting list, whatever its tickets say
-  /// (people request a place and wait in the club's queue).
+  /// reviews every registration has no waiting list, whatever its tickets
+  /// say (people register, and the club reviews each one).
   EventTicketing? get _tickets =>
       _requiresApproval ? _ticketing?.withoutWaitlist() : _ticketing;
 
@@ -402,9 +407,10 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     // A link that named a hidden ticket type: the types again, with it.
     if (widget.linkedTicketTypeId != null) await _loadTicketing();
     if (!mounted) return;
-    // A club that confirms each place: the person's own request for it, if
-    // there is one, so the button opens it rather than asking again. The
-    // event's `viewer_request` says it; a server without it, My events' list.
+    // A club that reviews every registration: the person's own registration
+    // for it, if there is one, so the button opens it rather than
+    // registering again. The event's `viewer_request` says it; a server
+    // without it, My events' list.
     if (_requiresApproval &&
         !(_ticketing?.saysViewerRequest ?? false) &&
         ref.read(isAuthenticatedProvider)) {
@@ -700,6 +706,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       email: profile?.email,
       phone: phone,
       ticketTypeId: type?.id,
+      clubName: _page?.club?.name ?? club?.name,
     );
     if (entry == null || !mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -2306,7 +2313,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                 (_ticketing?.types.length ?? 0) > 1) ...[
               TicketTypesList(
                 types: _tickets!.types,
-                // None on an event whose club confirms each place.
+                // None on an event whose club reviews every registration.
                 onJoinWaitlist: isRegistered || _requiresApproval
                     ? null
                     : (type) => _joinWaitlist(type: type),
@@ -2582,7 +2589,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         (state.kind == RegisterKind.open || state.kind == RegisterKind.full);
     // The waiting list: the person's places in line, and whether one can
     // be joined (a sold-out type with its list open). Never on an event
-    // whose club confirms each place ([_tickets]).
+    // whose club reviews every registration ([_tickets]).
     final ticketing = _tickets;
     final places = ticketing?.openPlaces ?? const <WaitlistEntry>[];
     final canWait = (ticketing?.canJoinWaitlist ?? false) &&
@@ -2607,19 +2614,20 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     } else {
       onPressed = null;
     }
-    // The club confirms each place: the button asks for one, with a word
-    // on how it works -- or opens the request already sent.
+    // The club reviews every registration: the button registers as on any
+    // event, with a word on how it works -- or opens their registration.
     final approval = isLoading
         ? null
         : _approvalButton(
             registering: places.isEmpty && !joinInstead && state.canRegister);
-    // A request of theirs decides the button, even when it can't be opened.
+    // A registration of theirs decides the button, even when it can't be
+    // opened.
     final VoidCallback? pressed = approval == null
         ? onPressed
         : approval.request != null
             ? approval.onPressed
             : approval.onPressed ?? onPressed;
-    if (approval != null) label = approval.label;
+    if (approval?.label case final said?) label = said;
     // Some types on sale, another sold out with its list open: both.
     final alsoJoin =
         canWait && !joinInstead && places.isEmpty && approval?.request == null;
@@ -2647,13 +2655,27 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                     bottom: state.note != null ? 6 : 0),
                 child: SizedBox(
                   width: double.infinity,
-                  child: Text(
-                    approval.note,
-                    key: IndividualEventPage.approvalNoteKey,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1D4ED8)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (approval.title case final title?)
+                        Text(
+                          title,
+                          key: IndividualEventPage.approvalTitleKey,
+                          style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1E3A8A)),
+                        ),
+                      Text(
+                        approval.note,
+                        key: IndividualEventPage.approvalNoteKey,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1D4ED8)),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -2717,16 +2739,24 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     );
   }
 
-  /// The register button on an event whose club confirms each place; null
-  /// for any other event, or when the button doesn't register now
-  /// ([registering]) and there is no request of theirs to open.
+  /// The register button on an event whose club reviews every
+  /// registration; null for any other event, or when the button doesn't
+  /// register now ([registering]) and there is no registration of theirs to
+  /// open.
   ///
-  /// With a request of theirs still open -- the event's `viewer_request`,
-  /// or, from a server without it, `/registration-requests/mine` -- it says
-  /// "Waiting for {club} to confirm" and the button opens the request;
-  /// otherwise the button asks for a place.
-  ({String label, String note, VoidCallback? onPressed, RegistrationRequest? request})?
-      _approvalButton({required bool registering}) {
+  /// With a registration of theirs still open -- the event's
+  /// `viewer_request`, or, from a server without it,
+  /// `/registration-requests/mine` -- it says "Your registration is under
+  /// review" (or confirmed, to pay) and the button opens it; otherwise the
+  /// button registers as on any event ([label] null keeps its word), with
+  /// a note on how the club reviews.
+  ({
+    String? title,
+    String? label,
+    String note,
+    VoidCallback? onPressed,
+    RegistrationRequest? request,
+  })? _approvalButton({required bool registering}) {
     if (!_requiresApproval || isRegistered || _cancellation != null) {
       return null;
     }
@@ -2737,32 +2767,60 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     if (mine != null) {
       final confirmed = mine.status == RequestStatus.approved;
       final route = mine.route;
+      // What to pay, and by when: the event's `viewer_request` doesn't
+      // say; My events' list may.
+      final pay = mine.pay ?? _listedPay(mine);
+      final amount = pay == null || pay.amount <= 0
+          ? null
+          : formatRupees(pay.amount);
+      final by = pay?.payBy;
       return (
-        // Without its link (none sent), the button only says it was sent.
+        title: confirmed
+            ? 'Your registration is confirmed'
+            : 'Your registration is under review',
+        // Without its link (none sent), the button only says where it
+        // stands.
         label: route == null
-            ? 'REQUEST SENT'
+            ? confirmed
+                ? 'CONFIRMED'
+                : 'UNDER REVIEW'
             : confirmed
-                ? 'PAY FOR YOUR TICKET'
-                : 'VIEW YOUR REQUEST',
+                ? amount == null
+                    ? 'PAY NOW'
+                    : 'PAY $amount'
+                : 'SEE YOUR REGISTRATION',
         note: confirmed
-            ? '$who confirmed your place. Pay to get your ticket.'
-            : 'Waiting for ${named ? clubName : 'the club'} to confirm your '
-                'place.',
+            ? 'Pay${amount == null ? '' : ' $amount'}'
+                '${by == null ? '' : ' by ${requestMoment(by)}'} to get your '
+                'ticket.'
+            : '$who reviews every registration. If yours is confirmed, your '
+                'ticket will come by email.',
         onPressed: route == null ? null : () => _openRequest(route, mine),
         request: mine,
       );
     }
     if (!registering) return null;
     return (
-      label: 'REQUEST A PLACE',
-      note: "$who confirms each place. You'll get your ticket when they do.",
+      title: null,
+      label: null,
+      note: reviewsEveryRegistrationNote(clubName),
       onPressed: null,
       request: null,
     );
   }
 
-  /// The signed-in person's open request for this event (waiting for the
-  /// club, or confirmed and not paid): the event's own `viewer_request`, or
+  /// What My events' list says [mine] has to pay, when it lists the same
+  /// registration: the event's `viewer_request` carries no amount.
+  RequestPay? _listedPay(RegistrationRequest mine) {
+    final listed = ref.watch(myRegistrationRequestsProvider).openFor(_eventId);
+    if (listed == null) return null;
+    final same = (mine.id.isNotEmpty && listed.id == mine.id) ||
+        (mine.token != null && listed.token == mine.token);
+    return same ? listed.pay : null;
+  }
+
+  /// The signed-in person's open registration for this event (under review,
+  /// or confirmed and not paid): the event's own `viewer_request`, or
   /// -- from a server without it -- the one My events' list has. Null when
   /// signed out, or there is none. Read while building.
   RegistrationRequest? get _viewerRequest {
@@ -2780,8 +2838,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     return open ? found : null;
   }
 
-  /// The request's screen; the event is read again after, since the request
-  /// may have been withdrawn or paid there.
+  /// The registration's screen; the event is read again after, since it may
+  /// have been cancelled or paid there.
   Future<void> _openRequest(String route, RegistrationRequest request) async {
     await context.push(route, extra: {'request': request});
     if (mounted) await _fetchData();
