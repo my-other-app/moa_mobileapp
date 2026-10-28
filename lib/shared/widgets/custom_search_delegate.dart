@@ -7,7 +7,7 @@ import 'package:finnet/features/events/domain/registration_status.dart'
     show isAwaitingPayment;
 import 'package:finnet/shared/widgets/event_card.dart' show PaymentDueBadge;
 import 'package:finnet/shared/widgets/event_poster_image.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/utils/latest_search.dart';
 
 /// `/events/list` for a search, narrowed to the tab it was started from.
@@ -240,8 +240,9 @@ class EventSearchDelegate extends SearchDelegate<String> {
           ? EventPosterImage.fromEvent(
               event,
               slot: PosterSlot.thumb,
-              width: 50,
-              height: 50,
+              // 4:5, the poster's own shape, as tall as the row allows.
+              width: 44,
+              height: 55,
               borderRadius: BorderRadius.circular(8),
             )
           : null,
@@ -382,18 +383,20 @@ class ClubSearchDelegate extends SearchDelegate<String> {
         tile: _buildClubTile,
       );
 
-  /// The club's logo, or a grey disc with a group icon when it has none or
-  /// it fails -- not a placeholder service's image.
+  /// The club's logo -- whole when it is not square (a wordmark), on a
+  /// white disc -- or a grey disc with a group icon when it has none or it
+  /// fails, not a placeholder service's image.
   Widget _clubAvatar(Object? url) {
-    final hasUrl = url is String && url.trim().isNotEmpty;
-    return CircleAvatar(
-      backgroundColor: const Color(0xFFF3F3F3),
-      foregroundImage: hasUrl
-          // A 40pt disc: 160px is enough on any phone's screen.
-          ? appImageProvider(url, decodeWidth: 160)
-          : null,
-      onForegroundImageError: hasUrl ? (_, __) {} : null,
-      child: const Icon(Icons.group, color: Colors.grey),
+    return ClubLogo(
+      url: url is String ? url : null,
+      size: 40,
+      circle: true,
+      fallback: Container(
+        width: 40,
+        height: 40,
+        color: const Color(0xFFF3F3F3),
+        child: const Icon(Icons.group, color: Colors.grey),
+      ),
     );
   }
 

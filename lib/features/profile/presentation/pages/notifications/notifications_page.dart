@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/features/notifications/data/models/notification_model.dart';
 import 'package:finnet/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:finnet/features/profile/presentation/pages/notifications/no_notification_page.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 
 /// Notifications page showing in-app notification history.
@@ -243,21 +243,12 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
     // Also show club logo for volunteer_added notifications if available
     if (notification.fromClub?.logo != null &&
         notification.fromClub!.logo!.isNotEmpty) {
-      return Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.grey[200],
-        ),
-        child: ClipOval(
-          child: AppNetworkImage(
-            url: notification.fromClub!.logo!,
-            width: 48,
-            height: 48,
-            errorWidget: (_) => _buildIconAvatar(notification),
-          ),
-        ),
+      // Whole when it is not square (a wordmark), on a white disc.
+      return ClubLogo(
+        url: notification.fromClub!.logo!,
+        size: 48,
+        circle: true,
+        fallback: _buildIconAvatar(notification),
       );
     }
 

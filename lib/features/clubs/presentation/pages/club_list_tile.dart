@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/shared/widgets/clubs_option_screen.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
 
 class ClubListTile extends StatelessWidget {
   final int clubId;
@@ -71,18 +71,16 @@ class ClubListTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: AppNetworkImage(
-                url: imageUrl,
+            // Whole when it is not square (a wordmark), on white.
+            ClubLogo(
+              url: imageUrl,
+              size: 36,
+              radius: 6,
+              fallback: Container(
                 width: 36,
                 height: 36,
-                errorWidget: (_) => Container(
-                  width: 36,
-                  height: 36,
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.group, size: 20),
-                ),
+                color: Colors.grey[200],
+                child: const Icon(Icons.group, size: 20),
               ),
             ),
             const SizedBox(width: 8),

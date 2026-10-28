@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
 
 /// Page showing events the user is volunteering for
 class VolunteerEventsPage extends ConsumerStatefulWidget {
@@ -165,7 +165,8 @@ class _VolunteerEventsPageState extends ConsumerState<VolunteerEventsPage> {
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(16)),
                 child: AspectRatio(
-                  aspectRatio: 16 / 9,
+                  // The poster's own shape, shown whole.
+                  aspectRatio: posterAspectRatio,
                   // The drawn cover when there is no poster, while it
                   // loads, and if it fails.
                   child: EventPosterImage(
@@ -180,34 +181,24 @@ class _VolunteerEventsPageState extends ConsumerState<VolunteerEventsPage> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    // Club logo
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: AppNetworkImage(
-                        url: event.clubLogoUrl,
+                    // Club logo: whole when it is not square (a wordmark), on white.
+                    ClubLogo(
+                      url: event.clubLogoUrl,
+                      size: 40,
+                      radius: 8,
+                      fallback: Container(
                         width: 40,
                         height: 40,
-                        placeholder: (context) => Container(
-                          width: 40,
-                          height: 40,
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.group,
-                              color: Colors.grey, size: 20),
-                        ),
-                        errorWidget: (context) => Container(
-                          width: 40,
-                          height: 40,
-                          color: const Color(0xFF2C333D),
-                          child: Center(
-                            child: Text(
-                              event.clubName.isNotEmpty
-                                  ? event.clubName[0].toUpperCase()
-                                  : 'C',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        color: const Color(0xFF2C333D),
+                        child: Center(
+                          child: Text(
+                            event.clubName.isNotEmpty
+                                ? event.clubName[0].toUpperCase()
+                                : 'C',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),

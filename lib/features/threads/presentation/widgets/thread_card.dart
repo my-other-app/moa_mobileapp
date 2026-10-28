@@ -5,6 +5,7 @@ import 'package:finnet/features/threads/domain/entities/thread.dart';
 import 'package:finnet/shared/motion.dart';
 import 'package:finnet/shared/widgets/animated_count.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/pressable.dart';
 
 /// A club's post, as a card: who posted and when, what they said, the photo
@@ -242,27 +243,15 @@ class ThreadClubAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fallback = _Initial(name: name, size: size);
-    final url = logoUrl;
-
-    final image = url == null
-        ? fallback
-        : AppNetworkImage(
-            url: url,
-            width: size,
-            height: size,
-            // A plain tile while loading, so the row does not jump once the
-            // image arrives; the initial if it never does.
-            placeholder: (_) => const ColoredBox(color: Color(0xFFEFEFEF)),
-            errorWidget: (_) => fallback,
-          );
-
-    return SizedBox(
-      width: size,
-      height: size,
-      child: circle
-          ? ClipOval(child: image)
-          : ClipRRect(borderRadius: BorderRadius.circular(6), child: image),
+    // The club's logo as everywhere else: whole when it is not square (a
+    // wordmark), on white; a plain tile while it loads, so the row does not
+    // jump; the initial without one, or if it never loads.
+    return ClubLogo(
+      url: logoUrl,
+      size: size,
+      circle: circle,
+      radius: 6,
+      fallback: _Initial(name: name, size: size),
     );
   }
 }

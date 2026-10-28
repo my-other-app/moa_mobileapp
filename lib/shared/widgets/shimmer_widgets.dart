@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:finnet/shared/widgets/event_poster_image.dart'
+    show posterAspectRatio;
 
 /// A generic shimmer box for creating loading placeholders.
 class ShimmerBox extends StatelessWidget {
@@ -345,8 +347,13 @@ class ShimmerEventDetail extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Event poster
-            const ShimmerBox(height: 220, borderRadius: 12),
+            // Event poster: 4:5, as the page draws it.
+            LayoutBuilder(
+              builder: (context, box) => ShimmerBox(
+                height: box.maxWidth / posterAspectRatio,
+                borderRadius: 12,
+              ),
+            ),
             const SizedBox(height: 20),
             ...rest,
           ],

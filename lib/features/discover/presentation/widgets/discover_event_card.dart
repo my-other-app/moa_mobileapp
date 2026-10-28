@@ -118,7 +118,9 @@ class DiscoverEventCard extends StatelessWidget {
     this.index = 0,
   });
 
-  static const defaultWidth = 248.0;
+  // Narrower than when posters were cut to 16:9: a 4:5 poster this wide
+  // keeps a rail of cards about as tall as half the screen.
+  static const defaultWidth = 200.0;
 
   final DiscoverEvent event;
   final double width;
@@ -130,12 +132,13 @@ class DiscoverEventCard extends StatelessWidget {
   /// is exactly this tall, whatever it holds.
   static double heightFor(BuildContext context,
           {double width = defaultWidth}) =>
-      width * 9 / 16 + EventCardSlots.of(context).cardBody;
+      width / posterAspectRatio + EventCardSlots.of(context).cardBody;
 
   @override
   Widget build(BuildContext context) {
     final slots = EventCardSlots.of(context);
-    final posterHeight = width * 9 / 16;
+    // The poster's own shape, 4:5: never cropped to a strip.
+    final posterHeight = width / posterAspectRatio;
     final heroTag = PosterHeroScope.tagFor(context, event.id, index);
     void open() => openDiscoverEvent(
           context,
@@ -213,7 +216,6 @@ class DiscoverEventTile extends StatelessWidget {
 
   final DiscoverEvent event;
 
-  static const thumbWidth = 96.0;
   static const _padding = 10.0;
 
   @override
@@ -253,6 +255,7 @@ class DiscoverEventTile extends StatelessWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          // 4:5, as tall as the facts beside it.
                           EventPosterImage(
                             poster: event.poster,
                             eventId: event.id,
@@ -261,7 +264,7 @@ class DiscoverEventTile extends StatelessWidget {
                             startsAt: event.startsAt,
                             isOnline: event.isOnline,
                             slot: PosterSlot.thumb,
-                            width: thumbWidth,
+                            width: slots.content * posterAspectRatio,
                             height: slots.content,
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -536,7 +539,10 @@ class EventCardSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ShimmerBox(height: width * 9 / 16, width: width, borderRadius: 10),
+          ShimmerBox(
+              height: width / posterAspectRatio,
+              width: width,
+              borderRadius: 10),
           Padding(
             padding: const EdgeInsets.all(EventCardSlots.padding),
             child: Column(

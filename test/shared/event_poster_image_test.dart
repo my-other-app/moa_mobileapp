@@ -31,15 +31,16 @@ Widget _host(Widget child, {double width = 320, double height = 400}) =>
 
 void main() {
   group('pickPosterUrl', () {
-    test('cards take large, then medium, original, thumbnail', () {
+    test('cards take large, then original, medium, thumbnail', () {
+      // A card is up to ~360pt wide: over 1000px on a 3x phone.
       expect(pickPosterUrl(_poster), _poster['large']);
       expect(
         pickPosterUrl({..._poster, 'large': null}),
-        _poster['medium'],
+        _poster['original'],
       );
       expect(
-        pickPosterUrl({'original': _poster['original'], 'thumbnail': 'x'}),
-        _poster['original'],
+        pickPosterUrl({'medium': _poster['medium'], 'thumbnail': 'x'}),
+        _poster['medium'],
       );
       expect(
         pickPosterUrl({'thumbnail': _poster['thumbnail']}),
@@ -47,16 +48,30 @@ void main() {
       );
     });
 
-    test('the event page takes large, then original, then medium', () {
-      expect(pickPosterUrl(_poster, slot: PosterSlot.hero), _poster['large']);
+    test('the event page takes the original, then large, then medium', () {
+      // As wide as the screen: an old poster's large is only 640px across.
       expect(
-        pickPosterUrl({..._poster, 'large': ''}, slot: PosterSlot.hero),
-        _poster['original'],
+          pickPosterUrl(_poster, slot: PosterSlot.hero), _poster['original']);
+      expect(
+        pickPosterUrl({..._poster, 'original': ''}, slot: PosterSlot.hero),
+        _poster['large'],
       );
       expect(
         pickPosterUrl({'medium': _poster['medium']}, slot: PosterSlot.hero),
         _poster['medium'],
       );
+    });
+
+    test('each slot asks first for a size at least twice as wide as it is', () {
+      // The server's boxes for the sizes (app/core/storage/shapes.py).
+      const widths = {'thumbnail': 240, 'medium': 540, 'large': 1080};
+      // The widest each slot is drawn, in points.
+      const slots = {PosterSlot.thumb: 120.0, PosterSlot.card: 540.0};
+      slots.forEach((slot, points) {
+        final first = posterSizePreference[slot]!.first;
+        expect(widths[first]! >= 2 * points, isTrue, reason: '$slot');
+      });
+      expect(posterSizePreference[PosterSlot.hero]!.first, 'original');
     });
 
     test('small thumbnails take the thumbnail', () {
@@ -127,7 +142,7 @@ void main() {
       expect(image.cacheKey, '$_bucket/e7f1.large.jpeg');
     });
 
-    testWidgets('the event page loads the large poster', (tester) async {
+    testWidgets('the event page loads the original poster', (tester) async {
       await tester.pumpWidget(_host(EventPosterImage(
         poster: _poster,
         eventId: 42,
@@ -136,8 +151,8 @@ void main() {
 
       final image =
           tester.widget<CachedNetworkImage>(find.byType(CachedNetworkImage));
-      expect(image.imageUrl, _poster['large']);
-      expect(image.cacheKey, '$_bucket/e7f1.large.jpeg');
+      expect(image.imageUrl, _poster['original']);
+      expect(image.cacheKey, '$_bucket/e7f1.jpeg');
     });
 
     testWidgets('shows the cover while loading and if the poster fails',

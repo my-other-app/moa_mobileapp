@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:finnet/common/models/events/event_page_model.dart'
     show PersonLink, PersonLinkKind;
 import 'package:finnet/features/clubs/data/models/club_info.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/detail_sheet.dart';
 import 'package:finnet/shared/widgets/pressable.dart';
 
@@ -131,9 +134,9 @@ class _Face extends StatelessWidget {
   }
 }
 
-/// A partner's logo, whole: [height] tall and as wide as it is, up to
-/// [maxWidth] -- many are wordmarks, far wider than tall. Their initials
-/// without one.
+/// A partner's logo in its square, [height] across (and no wider than
+/// [maxWidth]): whole when it is not square -- many are wordmarks, far wider
+/// than tall -- on white, as a club's logo is. Their initials without one.
 class _Logo extends StatelessWidget {
   final ClubPartner partner;
   final double height;
@@ -147,17 +150,12 @@ class _Logo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initials =
-        InitialsTile(name: partner.name, size: height, circle: false);
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: height),
-      child: AppNetworkImage(
-        url: partner.logoUrl,
-        height: height,
-        fit: BoxFit.contain,
-        placeholder: (_) => initials,
-        errorWidget: (_) => initials,
-      ),
+    final size = math.min(height, maxWidth);
+    return ClubLogo(
+      url: partner.logoUrl,
+      size: size,
+      radius: size * 0.16,
+      fallback: InitialsTile(name: partner.name, size: size, circle: false),
     );
   }
 }

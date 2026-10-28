@@ -136,9 +136,17 @@ void main() {
       await tester.pageBack();
       await settle(tester, 16);
 
-      await _scrollTo(tester, _rail('this-week'));
-      await tester.tap(find.descendant(
-          of: _rail('this-week'), matching: find.text('See all')));
+      // The rail's header, out from under the search bar: a rail of 4:5
+      // posters is tall enough to leave it there once its cards are in
+      // view. A drag back down brings the bar in and the header with it.
+      final seeAll = find.descendant(
+          of: _rail('this-week'), matching: find.text('See all'));
+      await _scrollTo(tester, seeAll);
+      if (seeAll.hitTestable().evaluate().isEmpty) {
+        await tester.drag(scrollableIn('discover-home'), const Offset(0, 300));
+        await settle(tester);
+      }
+      await tester.tap(seeAll);
       await settle(tester);
       expect(h.went.last, '/discover/events?when=this_week');
       await tester.pageBack();
