@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:finnet/common/models/events/event_page_model.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_section.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 
 /// The event's sponsors, or its partners: square tiles, three to a row on
-/// a phone, each with the logo whole (never cropped) on white, the name,
-/// and the label under it. A tile with a link opens it.
+/// a phone, each with the logo (ClubLogo: on white, whole unless it is
+/// square, never cropped), the name, and the label under it. A tile with a
+/// link opens it.
 class EventBackersSection extends StatelessWidget {
   final String title;
   final List<EventBacker> backers;
@@ -78,34 +79,27 @@ class _BackerTile extends StatelessWidget {
         ),
       ),
     );
-    final logo = backer.logo;
-    final inner = size * 0.76;
     final tile = Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // White whatever the theme: logos are made for a light ground.
-        Container(
+        // The logo as every logo in the app is drawn (ClubLogo): on white
+        // whatever the theme, filling its square when it is square, else
+        // whole with room around it -- never cropped.
+        ClubLogo(
           key: const ValueKey('backer-logo-tile'),
-          width: size,
-          height: size,
-          padding: EdgeInsets.all(size * 0.12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
+          url: backer.logo,
+          size: size,
+          radius: 12,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: initials,
           ),
-          child: logo == null
-              ? initials
-              : AppNetworkImage(
-                  url: logo,
-                  width: inner,
-                  height: inner,
-                  fit: BoxFit.contain,
-                  placeholder: (_) => initials,
-                  errorWidget: (_) => initials,
-                  decodeWidth: decodeWidthFor(
-                      inner, inner, MediaQuery.devicePixelRatioOf(context)),
-                ),
         ),
         const SizedBox(height: 6),
         Text(
