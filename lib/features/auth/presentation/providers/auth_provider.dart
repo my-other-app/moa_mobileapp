@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/auth/session_events.dart';
+import 'package:finnet/core/services/app_badge.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/features/auth/data/services/session_services.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
@@ -131,6 +132,9 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
       } else {
         state = state.copyWith(isInitialized: true);
         debugPrint('AuthStateNotifier: No saved session found');
+        // Nobody signed in: no number on the icon, whatever the last
+        // session or push left there.
+        unawaited(_ref.read(appBadgeProvider).clear());
       }
     } catch (e) {
       debugPrint('AuthStateNotifier: Error initializing: $e');
@@ -229,6 +233,8 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
         }
       }
       unawaited(push.onSignedOut());
+      // The person's unread count leaves the icon with them.
+      unawaited(_ref.read(appBadgeProvider).clear());
       try {
         await storage.clearTokens();
       } catch (e) {
@@ -253,6 +259,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     if (_signingOut || !state.isAuthenticated) return;
     debugPrint('AuthStateNotifier: session ended by the server ($reason)');
     unawaited(_ref.read(pushRegistrationProvider).onSignedOut());
+    unawaited(_ref.read(appBadgeProvider).clear());
     try {
       await _ref.read(secureStorageServiceProvider).clearTokens();
     } catch (e) {

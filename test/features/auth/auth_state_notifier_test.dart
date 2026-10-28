@@ -1,10 +1,12 @@
 import 'package:finnet/core/auth/session_events.dart';
+import 'package:finnet/core/services/app_badge.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/features/auth/data/services/session_services.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../core/services/app_badge_fakes.dart';
 import 'auth_fakes.dart';
 
 void main() {
@@ -12,9 +14,11 @@ void main() {
   late FakePushRegistration push;
   late FakeSessionRevoker revoker;
   late FakeSessionCaches caches;
+  late FakeBadgeChannel icon;
 
   ProviderContainer containerWith({AuthState? seed}) {
     final container = ProviderContainer(overrides: [
+      appBadgeProvider.overrideWithValue(icon.badge()),
       secureStorageServiceProvider.overrideWithValue(storage),
       pushRegistrationProvider.overrideWithValue(push),
       sessionRevokerProvider.overrideWithValue(revoker),
@@ -33,6 +37,7 @@ void main() {
     push = FakePushRegistration();
     revoker = FakeSessionRevoker();
     caches = FakeSessionCaches();
+    icon = FakeBadgeChannel.install();
   });
 
   group('start-up', () {
@@ -252,5 +257,49 @@ void main() {
     container.read(authStateProvider.notifier).acknowledgeSessionEnd();
 
     expect(container.read(authStateProvider).endedBecause, isNull);
+  });
+
+  group('the number on the app\'s icon', () {
+    test('start-up with no session takes it off', () async {
+      final container = containerWith();
+      container.read(authStateProvider);
+      await settle();
+
+      expect(icon.counts, [0]);
+    });
+
+    test('a restored session leaves it for the unread count to set', () async {
+      storage.values.addAll({'access_token': 'a', 'refresh_token': 'r'});
+      final container = containerWith();
+      container.read(authStateProvider);
+      await settle();
+
+      expect(icon.calls, isEmpty);
+    });
+
+    test('signing out takes it off', () async {
+      storage.values.addAll({'access_token': 'a', 'refresh_token': 'r'});
+      final container = containerWith();
+      container.read(authStateProvider);
+      await settle();
+
+      await container.read(authStateProvider.notifier).logout();
+      await settle();
+
+      expect(icon.counts, [0]);
+    });
+
+    test('the server ending the session takes it off too', () async {
+      storage.values.addAll({'access_token': 'a', 'refresh_token': 'r'});
+      final container = containerWith();
+      container.read(authStateProvider);
+      await settle();
+
+      SessionEvents.reportRevoked(SessionEndReason.expired);
+      await settle();
+      await settle();
+
+      expect(icon.counts, [0]);
+    });
   });
 }

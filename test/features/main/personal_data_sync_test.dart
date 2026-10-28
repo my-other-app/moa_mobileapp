@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:finnet/core/error/either.dart';
+import 'package:finnet/core/services/app_badge.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/data/registration_requests_api.dart';
 import 'package:finnet/features/events/domain/registration_request.dart';
@@ -18,6 +19,8 @@ import 'package:finnet/features/notifications/presentation/providers/push_settin
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../core/services/app_badge_fakes.dart';
 
 class _FakeAuth extends StateNotifier<AuthState> implements AuthStateNotifier {
   _FakeAuth(super.state);
@@ -80,8 +83,13 @@ class _Inbox implements NotificationRepository {
     return Either.right(NotificationPage(items: fresh, total: fresh.length));
   }
 
+  int counts = 0;
+
   @override
-  Future<Result<int>> unreadCount() async => Either.right(fresh.length);
+  Future<Result<int>> unreadCount() async {
+    counts++;
+    return Either.right(fresh.length);
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) =>
@@ -115,6 +123,7 @@ void main() {
   late ValueNotifier<int> arrivals;
   late DateTime now;
   late ProviderContainer container;
+  late FakeBadgeChannel icon;
 
   Future<void> pump(WidgetTester tester, AuthState start) async {
     auth = _FakeAuth(start);
@@ -123,8 +132,10 @@ void main() {
     requests = _Requests();
     arrivals = ValueNotifier(0);
     now = DateTime(2026, 10, 22, 9);
+    icon = FakeBadgeChannel.install();
     await tester.pumpWidget(ProviderScope(
       overrides: [
+        appBadgeProvider.overrideWithValue(icon.badge()),
         authStateProvider.overrideWith((ref) => auth),
         pushSettingsRepositoryProvider.overrideWithValue(switches),
         notificationRepositoryProvider.overrideWithValue(inbox),
@@ -225,6 +236,69 @@ void main() {
     await tester.pump();
     expect(switches.checks, 2);
     expect(inbox.reads, 2);
+  });
+
+  group('the number on the app\'s icon', () {
+    testWidgets('start-up reads the unread count and puts it on the icon',
+        (tester) async {
+      await pump(tester, _signedIn);
+      await tester.pump();
+
+      expect(inbox.counts, 1);
+      expect(icon.counts, [0],
+          reason: 'nothing unread: 0, not what a push left');
+    });
+
+    testWidgets(
+        'back to the front -- a tap on a push, say -- reads the count every '
+        'time, however recently the inbox was read', (tester) async {
+      await pump(tester, _signedIn);
+      await tester.pump();
+      inbox.fresh = [_line('n-1', 'Code Club posted an update')];
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      await tester.pump();
+
+      expect(inbox.reads, 1, reason: 'the list itself waits its 5 minutes');
+      expect(inbox.counts, 2);
+      expect(icon.shown, 1);
+
+      inbox.fresh = const [];
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      await tester.pump();
+
+      expect(inbox.counts, 3);
+      expect(icon.counts, [0, 1, 0]);
+    });
+
+    testWidgets('a push while the app is open sets it from the new count',
+        (tester) async {
+      await pump(tester, _signedIn);
+      await tester.pump();
+      inbox.fresh = [_line('n-1', 'Code Club posted an update')];
+
+      arrivals.value++;
+      await tester.pump();
+      await tester.pump();
+
+      expect(icon.shown, 1);
+    });
+
+    testWidgets('signed out, coming back to the front asks nothing',
+        (tester) async {
+      await pump(tester, _signedOut);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+
+      expect(inbox.counts, 0);
+      expect(icon.calls, isEmpty);
+    });
   });
 
   group('the inbox read ahead', () {
