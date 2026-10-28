@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:finnet/common/models/events/cohost_model.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
@@ -60,6 +61,14 @@ List<String> eventCardTags(Map<String, dynamic> event,
 int eventClubId(Map<String, dynamic> event) =>
     _int(_map(event['club'])['id']) ?? 0;
 
+/// The names of the clubs co-hosting [event] with its club (`cohosts`), in
+/// their order; none without (an older server).
+List<String> eventCohostNames(Map<String, dynamic> event) => [
+      for (final cohost in EventCohost.listFrom(event['cohosts'],
+          hostId: eventClubId(event)))
+        cohost.name,
+    ];
+
 /// The event's page on the public site: by slug, or by id when it has none.
 String eventShareUrl({required int id, String? slug}) {
   final s = slug?.trim() ?? '';
@@ -87,6 +96,7 @@ EventCard eventCardFromJson(
     orgImage: imageUrlFrom(club['logo']) ?? '',
     title: name.isEmpty ? 'No Title' : name,
     organizer: organizer.isEmpty ? 'Unknown Organizer' : organizer,
+    cohosts: eventCohostNames(event),
     tags: eventCardTags(event),
     onTap: () {},
     poster: event['poster'],

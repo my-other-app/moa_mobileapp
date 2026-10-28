@@ -1,3 +1,4 @@
+import 'package:finnet/common/models/events/cohost_model.dart';
 import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/shared/utils/image_url.dart';
@@ -436,6 +437,10 @@ class EventPageDetails {
   final String? guidelines;
   final EventContact contact;
   final EventPageClub? club;
+
+  /// The clubs co-hosting the event with [club] (`cohosts`, beside it); empty
+  /// when it has none, and from a server older than co-hosting.
+  final List<EventCohost> cohosts;
   final List<EventPerson> speakers;
   final List<EventPerson> team;
 
@@ -476,6 +481,7 @@ class EventPageDetails {
     this.guidelines,
     this.contact = EventContact.none,
     this.club,
+    this.cohosts = const [],
     this.speakers = const [],
     this.team = const [],
     this.teamSource,
@@ -559,6 +565,9 @@ class EventPageDetails {
       contact: EventContact.fromJson(
           jsonObject(event['contact']) ?? const <String, dynamic>{}),
       club: EventPageClub.fromJson(root['club']),
+      // Beside the club; read from the event too, should it come there.
+      cohosts: EventCohost.listFrom(root['cohosts'] ?? event['cohosts'],
+          hostId: jsonInt(jsonObject(root['club'])?['id'])),
       speakers: EventPerson.speakersFrom(root['speakers']),
       team: teamSource == null ? const [] : team,
       teamSource: team.isEmpty ? null : teamSource,

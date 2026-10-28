@@ -53,6 +53,7 @@ class DiscoverEvent extends Equatable {
     this.fee,
     this.category,
     this.club,
+    this.cohosts = const [],
     this.going = 0,
     this.capacity,
     this.status = DiscoverEventStatus.upcoming,
@@ -77,6 +78,11 @@ class DiscoverEvent extends Equatable {
   final double? fee;
   final DiscoverCategoryRef? category;
   final DiscoverClubRef? club;
+
+  /// The clubs co-hosting the event with [club], its host, in the order
+  /// they accepted (`cohosts`); empty when it has none, and from a server
+  /// older than co-hosting.
+  final List<DiscoverClubRef> cohosts;
   final int going;
   final int? capacity;
   final DiscoverEventStatus status;
@@ -108,6 +114,7 @@ class DiscoverEvent extends Equatable {
         fee,
         category,
         club,
+        cohosts,
         going,
         capacity,
         status,

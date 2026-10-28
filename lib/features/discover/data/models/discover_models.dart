@@ -103,6 +103,29 @@ DiscoverClubRef? parseClubRef(Object? value) {
   );
 }
 
+/// The clubs co-hosting an event (`cohosts`: `{club_id, name, slug, logo}`,
+/// feature-register cohosts-contract.md §8), in their order: a row without
+/// a name is skipped, a club named twice is kept once, and [host] is never
+/// its own co-host. Absent (an older server): none.
+List<DiscoverClubRef> parseCohosts(Object? value, {DiscoverClubRef? host}) {
+  final seen = <int>{};
+  final hostId = host?.id ?? 0;
+  final cohosts = <DiscoverClubRef>[];
+  for (final o in jsonObjects(value)) {
+    final name = _str(o['name']);
+    if (name == null) continue;
+    final id = math.max(0, jsonInt(o['club_id']) ?? jsonInt(o['id']) ?? 0);
+    if (id > 0 && (id == hostId || !seen.add(id))) continue;
+    cohosts.add(DiscoverClubRef(
+      id: id,
+      name: name,
+      slug: _str(o['slug']),
+      logo: _image(o['logo']),
+    ));
+  }
+  return cohosts;
+}
+
 DiscoverCategoryRef? _category(Object? value) {
   final o = jsonObject(value);
   final id = jsonInt(o?['id']);
@@ -115,6 +138,7 @@ DiscoverEvent? parseEvent(Object? value) {
   final o = jsonObject(value);
   final id = jsonInt(o?['id']);
   if (o == null || id == null) return null;
+  final club = parseClubRef(o['club']);
   return DiscoverEvent(
     id: id,
     name: _str(o['name']) ?? 'Untitled event',
@@ -128,7 +152,8 @@ DiscoverEvent? parseEvent(Object? value) {
     hasFee: jsonBool(o['has_fee']) ?? false,
     fee: _positive(o['fee']),
     category: _category(o['category']),
-    club: parseClubRef(o['club']),
+    club: club,
+    cohosts: parseCohosts(o['cohosts'], host: club),
     going: _count(o['going']),
     capacity: _positive(o['capacity'])?.round(),
     status: _statuses[o['status']] ?? DiscoverEventStatus.upcoming,
@@ -147,6 +172,7 @@ DiscoverEvent? parseListEvent(Object? value) {
   if (o == null || id == null) return null;
   final start = _instant(o['event_datetime']);
   final hours = _finite(o['duration']);
+  final club = parseClubRef(o['club']);
   return DiscoverEvent(
     id: id,
     name: _str(o['name']) ?? 'Untitled event',
@@ -160,7 +186,8 @@ DiscoverEvent? parseListEvent(Object? value) {
     isOnline: jsonBool(o['is_online']) ?? false,
     hasFee: jsonBool(o['has_fee']) ?? false,
     category: _category(o['category']),
-    club: parseClubRef(o['club']),
+    club: club,
+    cohosts: parseCohosts(o['cohosts'], host: club),
   );
 }
 

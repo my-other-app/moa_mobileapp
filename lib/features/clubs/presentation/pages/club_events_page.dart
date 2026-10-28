@@ -353,9 +353,12 @@ class _ClubEventsPageState extends ConsumerState<ClubEventsPage> {
 }
 
 /// [event] with the club whose page this is filled in where the item leaves
-/// it out. Every event here is this club's, so the page's own id, name and
-/// logo stand in for a missing (or logo-less) `club`; the card is then built
-/// by [eventCardFromJson] like every other list's.
+/// it out. An event here is this club's own -- the page's id, name and logo
+/// then stand in for a missing (or logo-less) `club` -- or one it co-hosts,
+/// whose `club` is another club, its host: that is kept as it came, so the
+/// card names the host and then this club ("Design Society and Robotics
+/// Club"), never this club's logo for the host's. The card is then built by
+/// [eventCardFromJson] like every other list's.
 @visibleForTesting
 Map<String, dynamic> clubEventWithClub(
   Map<String, dynamic> event, {
@@ -368,13 +371,16 @@ Map<String, dynamic> clubEventWithClub(
       : <String, dynamic>{};
   final id = eventClubId(event);
   final name = club['name'];
+  final named = name is String && name.trim().isNotEmpty;
+  // Another club's event, which this one co-hosts.
+  final hosted = id != 0 && clubId > 0 && id != clubId;
   return {
     ...event,
     'club': {
       ...club,
       'id': id != 0 ? id : clubId,
-      'name': name is String && name.trim().isNotEmpty ? name : clubName,
-      'logo': imageUrlFrom(club['logo']) ?? clubLogo,
+      'name': named || hosted ? name : clubName,
+      'logo': imageUrlFrom(club['logo']) ?? (hosted ? null : clubLogo),
     },
   };
 }
@@ -400,5 +406,7 @@ Map<String, dynamic> discoverEventAsListItem(Map<String, dynamic> card) {
     'has_fee': card['has_fee'] == true,
     'category': card['category'],
     'club': card['club'],
+    // The clubs co-hosting it, when it has any; the host stays `club`.
+    if (card['cohosts'] != null) 'cohosts': card['cohosts'],
   };
 }

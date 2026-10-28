@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/common/models/events/cohost_model.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
@@ -79,7 +80,14 @@ class PaymentDueBadge extends StatelessWidget {
 
 class EventCard extends StatelessWidget {
   final String title;
+
+  /// The event's own club, its host.
   final String organizer;
+
+  /// The names of the clubs co-hosting it with [organizer]: the card then
+  /// reads "A and B", or "A + 2" with more. Empty (and from an older
+  /// server): the host's name alone, as always.
+  final List<String> cohosts;
 
   /// The event's poster map from the API (`{thumbnail, medium, large,
   /// original}`) or a single URL. Without one -- every upcoming event
@@ -131,6 +139,7 @@ class EventCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.organizer,
+    this.cohosts = const [],
     this.poster,
     this.categoryId,
     this.categoryName,
@@ -235,7 +244,8 @@ class EventCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Organizer - tap to go to club page
+                  // Organizer - tap to go to club page (on a co-hosted
+                  // event the host's; the event page names every club).
                   InkWell(
                     onTap: () {
                       context.push('/clubs/$clubId', extra: {
@@ -244,7 +254,11 @@ class EventCard extends StatelessWidget {
                       });
                     },
                     child: Text(
-                      organizer,
+                      hostNamesCompact(organizer, cohosts),
+                      key: const ValueKey('event-card-organizer'),
+                      semanticsLabel: cohosts.isEmpty
+                          ? null
+                          : hostedByText(organizer, cohosts),
                       style: textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w400,
                         color: Colors.black,

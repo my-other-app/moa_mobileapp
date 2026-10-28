@@ -278,12 +278,25 @@ void main() {
     test("the event's own club wins, and a missing logo falls back", () {
       final card = eventCardFromJson(withClub({
         'id': 3,
+        'club': {'id': 9, 'name': 'IEDC', 'slug': 'iedc-cet', 'logo': null},
+      }));
+      expect(card.clubId, 9);
+      expect(card.organizer, 'IEDC');
+      expect(card.clubSlug, 'iedc-cet');
+      expect(card.orgImage, 'https://x/logo.png');
+    });
+
+    test("another club's event (one this club co-hosts) keeps that club",
+        () {
+      // Its host's: the page's logo is never drawn for another club.
+      final card = eventCardFromJson(withClub({
+        'id': 3,
         'club': {'id': 4, 'name': 'Other', 'slug': 'other', 'logo': null},
       }));
       expect(card.clubId, 4);
       expect(card.organizer, 'Other');
       expect(card.clubSlug, 'other');
-      expect(card.orgImage, 'https://x/logo.png');
+      expect(card.orgImage, isEmpty);
     });
 
     test('the length tag is left out rather than "null Hours"', () {

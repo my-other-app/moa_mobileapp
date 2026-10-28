@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:finnet/common/models/events/cohost_model.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/features/discover/domain/entities/discover_event.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
@@ -97,7 +98,11 @@ String discoverEventLabel(DiscoverEvent event) {
   final status = statusLabel(event);
   return [
     event.name,
-    if (event.club != null) event.club!.name,
+    if (event.club != null)
+      event.cohosts.isEmpty
+          ? event.club!.name
+          : hostedByText(
+              event.club!.name, [for (final c in event.cohosts) c.name]),
     if (when.isNotEmpty) when,
     placeLine(event),
     if (price != null) price,
@@ -313,7 +318,10 @@ class _EventFacts extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        club.name,
+                        // "A and B", "A + 2" on an event clubs co-host.
+                        hostNamesCompact(
+                            club.name, [for (final c in event.cohosts) c.name]),
+                        key: const ValueKey('discover-event-club'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         strutStyle: EventCardSlots.smallStrut,
