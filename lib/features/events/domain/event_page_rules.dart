@@ -153,17 +153,47 @@ RegisterState registerStateFor({
   );
 }
 
+/// "Tinkerhub confirms each place", or "The club confirms each place"
+/// without a name: said where an event whose club confirms each place
+/// would say "Be the first to register". Never a count of requests.
+String confirmsEachPlaceLine(String? clubName) {
+  final name = clubName?.trim();
+  return '${name == null || name.isEmpty ? 'The club' : name} confirms each place';
+}
+
 /// "12 going · 38 seats left", "Be the first to register", or null when
 /// there is nothing to say.
-String? seatsLine({required int going, int? seatsLeft}) {
+///
+/// An event whose club confirms each place ([confirmsEach]) with nobody
+/// going yet says so instead ("Tinkerhub confirms each place · 38 seats
+/// left"): people may have asked already, and the page shows no numbers.
+String? seatsLine({
+  required int going,
+  int? seatsLeft,
+  bool confirmsEach = false,
+  String? clubName,
+}) {
   final parts = [
-    if (going > 0) '$going going',
+    if (going > 0)
+      '$going going'
+    else if (confirmsEach)
+      confirmsEachPlaceLine(clubName),
     if (seatsLeft != null && seatsLeft > 0)
       '$seatsLeft ${seatsLeft == 1 ? 'seat' : 'seats'} left',
   ];
   if (parts.isNotEmpty) return parts.join(' · ');
   return seatsLeft != null ? 'Be the first to register' : null;
 }
+
+/// Whether an event shows the club's "High demand" chip (`high_demand`,
+/// the club's own label, with no number behind it): while it is still to
+/// come or on, never once it has ended or was called off.
+bool showsHighDemand({
+  required bool highDemand,
+  bool ended = false,
+  bool cancelled = false,
+}) =>
+    highDemand && !ended && !cancelled;
 
 /// The share of places taken, 0 to 1; null when the event has no limit.
 double? seatsTaken({int? capacity, int? seatsLeft}) {

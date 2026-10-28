@@ -4,23 +4,38 @@ import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 
 /// How full the event is: a bar of the places taken, and "82 going · 38
 /// seats left". Nothing for an event with no limit and nobody going.
+///
+/// With nobody going yet, an event whose club confirms each place
+/// ([confirmsEach]) says "{club} confirms each place" instead.
 class SeatsMeter extends StatelessWidget {
   final int going;
   final int? capacity;
   final int? seatsLeft;
+
+  /// The club confirms each place; [clubName] names it.
+  final bool confirmsEach;
+  final String? clubName;
 
   const SeatsMeter({
     super.key,
     required this.going,
     this.capacity,
     this.seatsLeft,
+    this.confirmsEach = false,
+    this.clubName,
   });
 
   static const meterKey = ValueKey('event-seats-meter');
+  static const lineKey = ValueKey('event-seats-line');
 
   @override
   Widget build(BuildContext context) {
-    final line = seatsLine(going: going, seatsLeft: seatsLeft);
+    final line = seatsLine(
+      going: going,
+      seatsLeft: seatsLeft,
+      confirmsEach: confirmsEach,
+      clubName: clubName,
+    );
     final taken = seatsTaken(capacity: capacity, seatsLeft: seatsLeft);
     if (line == null && taken == null) return const SizedBox.shrink();
     return Padding(
@@ -47,6 +62,7 @@ class SeatsMeter extends StatelessWidget {
           if (line != null) ...[
             const SizedBox(height: 6),
             Text(line,
+                key: lineKey,
                 style: const TextStyle(fontSize: 12.5, color: Color(0xFF4B5563))),
           ],
         ],

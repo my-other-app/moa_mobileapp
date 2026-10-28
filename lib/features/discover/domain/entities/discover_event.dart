@@ -58,6 +58,8 @@ class DiscoverEvent extends Equatable {
     this.status = DiscoverEventStatus.upcoming,
     this.summary,
     this.topics = const [],
+    this.requiresApproval = false,
+    this.highDemand = false,
   });
 
   final int id;
@@ -81,6 +83,13 @@ class DiscoverEvent extends Equatable {
   final String? summary;
   final List<Topic> topics;
 
+  /// The club confirms each place (`requires_approval`; false when not said).
+  final bool requiresApproval;
+
+  /// The club has its "High demand" label on (`high_demand`; false when not
+  /// said). No number comes with it.
+  final bool highDemand;
+
   bool get isEnded => status == DiscoverEventStatus.ended;
 
   @override
@@ -103,5 +112,7 @@ class DiscoverEvent extends Equatable {
         status,
         summary,
         topics,
+        requiresApproval,
+        highDemand,
       ];
 }

@@ -8,6 +8,7 @@ import 'package:finnet/features/discover/presentation/widgets/discover_format.da
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
+import 'package:finnet/shared/widgets/high_demand_chip.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/shared/widgets/poster_hero.dart';
 import 'package:finnet/shared/widgets/pressable.dart';
@@ -101,6 +102,7 @@ String discoverEventLabel(DiscoverEvent event) {
     placeLine(event),
     if (price != null) price,
     if (status != null) status,
+    if (cardShowsHighDemand(event)) HighDemandChip.label,
     if (event.going > 0) '${formatCount(event.going)} going',
   ].join(', ');
 }
@@ -401,6 +403,24 @@ class _Foot extends StatelessWidget {
   Widget build(BuildContext context) {
     final price = cardPrice(event);
     final status = statusLabel(event);
+    final badge = status == null
+        ? null
+        : StatusBadge(label: status, tone: statusTone(event));
+    // The club's "High demand" label, after the status; shrunk to fit
+    // rather than ever spilling out of the row.
+    final demand = cardShowsHighDemand(event)
+        ? FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerEnd,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (badge != null) ...[badge, const SizedBox(width: 6)],
+                const HighDemandChip(compact: true),
+              ],
+            ),
+          )
+        : null;
     return Row(
       children: [
         if (price != null) ...[
@@ -420,9 +440,9 @@ class _Foot extends StatelessWidget {
         Expanded(
           child: Align(
             alignment: AlignmentDirectional.centerEnd,
-            child: status != null
-                ? StatusBadge(label: status, tone: statusTone(event))
-                : event.going > 0
+            child: demand ??
+                badge ??
+                (event.going > 0
                     ? Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -441,7 +461,7 @@ class _Foot extends StatelessWidget {
                           ),
                         ],
                       )
-                    : null,
+                    : null),
           ),
         ),
       ],

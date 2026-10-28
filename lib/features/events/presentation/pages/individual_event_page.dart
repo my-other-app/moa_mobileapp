@@ -46,6 +46,7 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
+import 'package:finnet/shared/widgets/high_demand_chip.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
@@ -269,6 +270,21 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       _infoRequiresApproval ||
       (_ticketing?.requiresApproval ?? false) ||
       (_page?.requiresApproval ?? false);
+
+  /// The event's tickets as the page offers them: an event whose club
+  /// confirms each place has no waiting list, whatever its tickets say
+  /// (people request a place and wait in the club's queue).
+  EventTicketing? get _tickets =>
+      _requiresApproval ? _ticketing?.withoutWaitlist() : _ticketing;
+
+  /// The club's "High demand" label (no number), while the event is still
+  /// to come or on.
+  bool get _showsHighDemand => showsHighDemand(
+        highDemand: _page?.highDemand ?? false,
+        ended: _page?.phase == EventPhase.ended ||
+            _registerState.kind == RegisterKind.ended,
+        cancelled: _cancellation != null,
+      );
 
   /// Cancelled, by `/events/info`'s word or the website page's.
   EventCancellation? get _cancellation =>
@@ -631,7 +647,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       _openTicket();
     } else if (result == RegistrationAction.finishPayment && awaitingPayment) {
       await _finishPayment();
-    } else if (result == RegistrationAction.joinWaitlist && !isRegistered) {
+    } else if (result == RegistrationAction.joinWaitlist &&
+        !isRegistered &&
+        !_requiresApproval) {
       await _joinWaitlist();
     }
   }
@@ -675,7 +693,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     final entry = await showJoinWaitlistSheet(
       context,
       event: _idOrZero,
-      ticketing: _ticketing,
+      ticketing: _tickets,
       api: ref.read(ticketingApiProvider),
       name: profile?.fullName,
       email: profile?.email,
@@ -1976,6 +1994,11 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                 ),
               ],
             ),
+            // The club's "High demand" label, beside the topics' chips.
+            if (_showsHighDemand) ...[
+              const SizedBox(height: 16),
+              const HighDemandChip(),
+            ],
             // Its topics in their colours, then its interests. A topic
             // opens its own page, as on the site.
             TopicTagStrip(
@@ -2263,8 +2286,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                 _sellable &&
                 (_ticketing?.types.length ?? 0) > 1) ...[
               TicketTypesList(
-                types: _ticketing!.types,
-                onJoinWaitlist: isRegistered
+                types: _tickets!.types,
+                // None on an event whose club confirms each place.
+                onJoinWaitlist: isRegistered || _requiresApproval
                     ? null
                     : (type) => _joinWaitlist(type: type),
               ),
@@ -2538,8 +2562,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         page.capacity != null &&
         (state.kind == RegisterKind.open || state.kind == RegisterKind.full);
     // The waiting list: the person's places in line, and whether one can
-    // be joined (a sold-out type with its list open).
-    final ticketing = _ticketing;
+    // be joined (a sold-out type with its list open). Never on an event
+    // whose club confirms each place ([_tickets]).
+    final ticketing = _tickets;
     final places = ticketing?.openPlaces ?? const <WaitlistEntry>[];
     final canWait = (ticketing?.canJoinWaitlist ?? false) &&
         state.kind != RegisterKind.ended;
@@ -2646,6 +2671,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                 going: page.going,
                 capacity: page.capacity,
                 seatsLeft: page.seatsLeft,
+                confirmsEach: _requiresApproval,
+                clubName: page.club?.name ?? club?.name,
               ),
             SizedBox(
               width: double.infinity,

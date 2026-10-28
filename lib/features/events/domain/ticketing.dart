@@ -149,6 +149,25 @@ class TicketType {
       waitlist: jsonBool(json['waitlist']) ?? false,
     );
   }
+
+  /// This type with no waiting list to offer: an event whose club confirms
+  /// each place has none.
+  TicketType withoutWaitlist() => !waitlist
+      ? this
+      : TicketType(
+          id: id,
+          name: name,
+          description: description,
+          price: price,
+          currency: currency,
+          capacity: capacity,
+          available: available,
+          status: status,
+          salesStart: salesStart,
+          salesEnd: salesEnd,
+          perPersonLimit: perPersonLimit,
+          isHidden: isHidden,
+        );
 }
 
 // ---------------------------------------------------------------- waiting list
@@ -273,11 +292,15 @@ class EventTicketing {
 
   /// The object, or null when [value] isn't one -- a server older than
   /// ticket types sends `ticketing: null`, or nothing.
+  ///
+  /// An event whose club confirms each place has no waiting list (people
+  /// request a place and wait in the club's queue): it reads as off, and no
+  /// type offers one, whatever an older server still says.
   static EventTicketing? fromJson(Object? value) {
     final json = jsonObject(value);
     if (json == null || json['types'] is! List) return null;
     final waitlist = jsonObject(json['waitlist']);
-    return EventTicketing(
+    final read = EventTicketing(
       types: [
         for (final item in jsonObjects(json['types']))
           if (TicketType.fromJson(item) case final type?) type,
@@ -295,7 +318,24 @@ class EventTicketing {
       viewerRequest: RegistrationRequest.fromJson(json['viewer_request']),
       saysViewerRequest: json.containsKey('viewer_request'),
     );
+    return read.requiresApproval ? read.withoutWaitlist() : read;
   }
+
+  /// These tickets for an event whose club confirms each place: no waiting
+  /// list (off, and no type offering one). The viewer's places already in
+  /// line are kept, to be seen and left.
+  EventTicketing withoutWaitlist() => EventTicketing(
+        types: [for (final type in types) type.withoutWaitlist()],
+        requiresChoice: requiresChoice,
+        available: available,
+        soldOut: soldOut,
+        waitlistEnabled: false,
+        offerHours: offerHours,
+        viewerWaitlist: viewerWaitlist,
+        requiresApproval: true,
+        viewerRequest: viewerRequest,
+        saysViewerRequest: saysViewerRequest,
+      );
 
   TicketType? typeById(int? id) {
     if (id == null) return null;
@@ -305,9 +345,11 @@ class EventTicketing {
     return null;
   }
 
-  /// The types whose waiting list can be joined now.
-  List<TicketType> get waitlistTypes =>
-      [for (final type in types) if (type.waitlist) type];
+  /// The types whose waiting list can be joined now; none when the club
+  /// confirms each place.
+  List<TicketType> get waitlistTypes => requiresApproval
+      ? const []
+      : [for (final type in types) if (type.waitlist) type];
 
   bool get canJoinWaitlist => waitlistTypes.isNotEmpty;
 
@@ -704,6 +746,10 @@ abstract final class TicketingErrorCodes {
   static const waitlistClosed = 'WAITLIST_CLOSED';
   static const waitlistNotNeeded = 'WAITLIST_NOT_NEEDED';
   static const waitlistContactRequired = 'WAITLIST_CONTACT_REQUIRED';
+
+  /// Joining the waiting list of an event whose club confirms each place
+  /// (409): it has none.
+  static const waitlistOffOnApprovalEvents = 'WAITLIST_OFF_ON_APPROVAL_EVENTS';
   static const alreadyRegistered = 'ALREADY_REGISTERED';
   static const whatsappNumber = 'WHATSAPP_NUMBER';
 
@@ -723,7 +769,10 @@ Map<String, dynamic>? _errorsOf(Object? error) => apiExceptionOf(error)?.errors;
 
 /// Whether the refusal says the waiting list can be joined instead
 /// (`EVENT_FULL` or `TICKET_TYPE_SOLD_OUT` with `errors.waitlist: true`).
-bool offersWaitlist(Object? error) {
+/// Never for a request ([approval]: the club confirms each place), whatever
+/// the refusal says: such an event has no waiting list.
+bool offersWaitlist(Object? error, {bool approval = false}) {
+  if (approval) return false;
   final code = errorCodeOf(error);
   if (code != TicketingErrorCodes.eventFull &&
       code != TicketingErrorCodes.ticketTypeSoldOut) {
@@ -765,12 +814,20 @@ String? discountCodeProblem(Object? error) {
   return null;
 }
 
+/// Joining refused because the club confirms each place
+/// ([TicketingErrorCodes.waitlistOffOnApprovalEvents]), in words.
+const waitlistOffOnApprovalProblem = 'This event has no waiting list: the '
+    "club confirms each place. Request a place instead, and they'll let you "
+    'know.';
+
 /// What went wrong joining a waiting list, in words.
 String waitlistJoinProblem(Object? error) {
   if (statusCodeOf(error) == 429) return _tooManyTries;
   switch (errorCodeOf(error)) {
     case TicketingErrorCodes.waitlistClosed:
       return "This event's waiting list isn't open.";
+    case TicketingErrorCodes.waitlistOffOnApprovalEvents:
+      return waitlistOffOnApprovalProblem;
     case TicketingErrorCodes.waitlistNotNeeded:
       return 'Tickets are available again: you can register instead.';
     case TicketingErrorCodes.waitlistContactRequired:
