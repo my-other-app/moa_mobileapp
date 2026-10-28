@@ -1,6 +1,6 @@
 # Media CDN at `media.myotherapp.in`
 
-A Cloudflare Worker in front of the S3 bucket. It serves the public pictures — event posters, club logos and covers, speakers', team members' and partners' photos, posts' images, the stock avatars and store photos — from Cloudflare's edge near the viewer. No new vendor: DNS is already on Cloudflare.
+A Cloudflare Worker in front of the S3 bucket. It serves the public pictures — event posters, club logos and covers, speakers', team members' and partners' photos, events' sponsor and partner logos, posts' images, the stock avatars and store photos — from Cloudflare's edge near the viewer. No new vendor: DNS is already on Cloudflare.
 
 Until now, every one of these pictures reached a browser as a presigned S3 link from us-east-1. That meant about 280 ms per hop from India, a different address every few days (so nothing could cache it for long), and S3 egress on every view.
 
@@ -15,6 +15,7 @@ Until now, every one of these pictures reached a browser as a presigned S3 link 
   - `clubs/partners/`
   - `clubs/threads/`
   - `events/speakers/`
+  - `events/partners/` (an event's sponsors' and partners' logos)
   - `avatars/`
   - `events/{id}/merch/`
 
@@ -82,6 +83,7 @@ Deploy the branch with `APP_MEDIA_CDN_URL` unset. Responses stay exactly as they
            "arn:aws:s3:::BUCKET/clubs/partners/*",
            "arn:aws:s3:::BUCKET/clubs/threads/*",
            "arn:aws:s3:::BUCKET/events/speakers/*",
+           "arn:aws:s3:::BUCKET/events/partners/*",
            "arn:aws:s3:::BUCKET/avatars/*",
            "arn:aws:s3:::BUCKET/events/*/merch/*"
          ]

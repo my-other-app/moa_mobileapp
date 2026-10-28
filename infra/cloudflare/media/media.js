@@ -23,6 +23,7 @@ export const PUBLIC_FOLDERS = [
   "clubs/partners/",
   "clubs/threads/", // a post's image
   "events/speakers/",
+  "events/partners/", // an event's sponsors' and partners' logos
   "avatars/", // the stock avatars people pick from
   "events/{id}/merch/", // store and merch photos
 ];

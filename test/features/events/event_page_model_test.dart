@@ -204,4 +204,63 @@ void main() {
       }
     });
   });
+
+  group('the event\'s sponsors and partners', () {
+    test('are read in order, with a label, an https link and one logo', () {
+      final page = EventPageDetails.fromJson({
+        ...discoverEventPage(),
+        'sponsors': [
+          {
+            'id': 11,
+            'kind': 'sponsor',
+            'name': ' Kinetic Labs ',
+            'label': 'Title sponsor',
+            'link': 'https://kinetic.example/fest',
+            'logo': 'https://media.example/k.medium.png',
+          },
+          {'id': 12, 'name': 'Arc Foundry', 'label': '  ', 'logo': null},
+          {'id': 13, 'name': '   '},
+        ],
+        'partners': [
+          {
+            'id': 21,
+            'name': 'Radio City',
+            'label': 'Media partner',
+            // An older shape: the sizes, not one URL.
+            'logo': {'thumbnail': 'https://m/t.png', 'medium': 'https://m/m.png'},
+            'link': 'http://radiocity.example',
+          },
+          'nonsense',
+        ],
+      })!;
+
+      expect(page.sponsors.map((b) => b.name), ['Kinetic Labs', 'Arc Foundry']);
+      final title = page.sponsors.first;
+      expect(title.kind, BackerKind.sponsor);
+      expect(title.id, 11);
+      expect(title.label, 'Title sponsor');
+      expect(title.link.toString(), 'https://kinetic.example/fest');
+      expect(title.logo, 'https://media.example/k.medium.png');
+      expect(title.initials, 'KL');
+      expect(page.sponsors.last.label, isNull);
+      expect(page.sponsors.last.logo, isNull);
+
+      final radio = page.partners.single;
+      expect(radio.kind, BackerKind.partner);
+      expect(radio.logo, 'https://m/m.png');
+      // Only https: an http link is no link.
+      expect(radio.link, isNull);
+    });
+
+    test('are none from an API without them', () {
+      final page = EventPageDetails.fromJson(discoverEventPage())!;
+      expect(page.sponsors, isEmpty);
+      expect(page.partners, isEmpty);
+      final sparse = EventPageDetails.fromJson({
+        'event': {'id': 7},
+        'sponsors': 'not a list',
+      })!;
+      expect(sparse.sponsors, isEmpty);
+    });
+  });
 }
