@@ -21,7 +21,8 @@ import 'ticketing_model_test.dart' show ticketingBody;
 const _register = '/events/registration/7/register';
 const _types = '/events/7/ticket-types';
 
-/// The answer to registering on an event whose club confirms each place.
+/// The answer to registering on an event whose club reviews every
+/// registration.
 Map<String, dynamic> _approval({double payAmount = 0}) => {
       'approval': {
         'id': 'req-1',
@@ -134,7 +135,7 @@ void main() {
     api.on('POST', _register, _registered());
     await _pump(tester);
 
-    // An event that doesn't confirm each place: the form as it was.
+    // An event that doesn't review registrations: the form as it was.
     expect(find.text('Continue'), findsOneWidget);
     expect(find.byKey(const ValueKey('form-approval-note')), findsNothing);
     await _submit(tester, 'Continue');
@@ -144,18 +145,19 @@ void main() {
   });
 
   testWidgets(
-      'the club confirms each place: "Request a place", and how it works',
+      'the club reviews every registration: "Register", and how it works',
       (tester) async {
     api.on('POST', _register, _approval());
     await _pump(tester, requiresApproval: true);
 
-    expect(find.text('Request a place'), findsOneWidget);
+    expect(find.text('Register'), findsOneWidget);
+    expect(find.text('Request a place'), findsNothing);
     expect(find.text('Continue'), findsNothing);
     expect(
-        find.text('Tinkerhub confirms each place. Nothing is charged now: '
-            "you'll get your ticket, or a link to pay for it, when they "
-            'confirm yours.'),
+        find.text('Tinkerhub reviews every registration and emails tickets '
+            'to the people it confirms.'),
         findsOneWidget);
+    expect(find.textContaining('confirms each place'), findsNothing);
   });
 
   group('add-ons', () {
@@ -175,7 +177,7 @@ void main() {
 
       expect(find.text('Hack Night tee'), findsNothing);
       expect(api.sent('GET', '/events/7/store/catalog'), isEmpty);
-      await _submit(tester, 'Request a place');
+      await _submit(tester, 'Register');
       expect(_sent(api).containsKey('store'), isFalse);
     });
 
@@ -193,7 +195,7 @@ void main() {
       await _pump(tester);
 
       expect(find.text('Hack Night tee'), findsNothing);
-      await _submit(tester, 'Request a place');
+      await _submit(tester, 'Register');
       expect(_sent(api).containsKey('store'), isFalse);
     });
 
@@ -217,11 +219,11 @@ void main() {
       'requires_approval': true,
     });
     await _pump(tester);
-    expect(find.text('Request a place'), findsOneWidget);
+    expect(find.text('Register'), findsOneWidget);
   });
 
   testWidgets(
-      'an approval answer: the request\'s screen, not the ticket, and no '
+      'an approval answer: "You\'re registered!", not the ticket, and no '
       'payment even on a paid event', (tester) async {
     api
       ..on('POST', _register, _approval(payAmount: 199))
@@ -229,7 +231,7 @@ void main() {
     final (_, payments) =
         await _pump(tester, requiresApproval: true, hasFee: true);
 
-    await _submit(tester, 'Request a place');
+    await _submit(tester, 'Register');
 
     expect(_sent(api)['accepts_approval'], isTrue);
     expect(payments.orders, isEmpty, reason: 'nothing is paid at submission');
@@ -241,11 +243,22 @@ void main() {
     expect(page.initial!.status, RequestStatus.pending);
     expect(page.initial!.event!.id, 7);
     expect(page.initial!.event!.clubName, 'Tinkerhub');
-    expect(find.text("You're on the waiting list"), findsOneWidget);
+    expect(page.sentTo, 'asha@example.com');
+    expect(find.text('Under review'), findsOneWidget, reason: 'the chip');
+    expect(find.text("You're registered!"), findsOneWidget);
     expect(
-        find.text('Tinkerhub confirms each registration. We\'ll notify you '
-            'and email your ticket as soon as they confirm your place.'),
+        find.text('Tinkerhub reviews every registration. If yours is '
+            'confirmed, your ticket will come by email.'),
         findsOneWidget);
+    expect(
+        find.text("We've emailed you a link to check on your registration, "
+            'at asha@example.com.'),
+        findsOneWidget);
+    expect(find.text('See your registration'), findsOneWidget);
+    expect(find.text('Back to the event'), findsOneWidget);
+    // Cancelling is on the registration's own screen.
+    expect(find.byKey(RegistrationRequestPage.withdrawKey), findsNothing);
+    expect(find.textContaining('waiting list'), findsNothing);
   });
 
   testWidgets(
@@ -258,13 +271,13 @@ void main() {
 
     expect(find.byType(RegistrationRequestPage), findsOneWidget);
     // The server can't be read here: what the form knew is shown.
-    expect(find.text("You're on the waiting list"), findsOneWidget);
+    expect(find.text("You're registered!"), findsOneWidget);
     expect(find.text('Hack Night'), findsOneWidget);
   });
 
   testWidgets(
-      'an approval without its link (sent again from elsewhere): the '
-      'waiting word, with nothing to read or withdraw', (tester) async {
+      'an approval without its link (sent again from elsewhere): "You\'ve '
+      'already registered", with nothing to read or cancel', (tester) async {
     api.on('POST', _register, {
       'approval': {
         'id': 'req-1',
@@ -279,22 +292,24 @@ void main() {
     });
     await _pump(tester, requiresApproval: true);
 
-    await _submit(tester, 'Request a place');
+    await _submit(tester, 'Register');
 
-    expect(find.text("You're on the waiting list"), findsOneWidget);
+    expect(find.text("You've already registered"), findsOneWidget);
     expect(
-        find.text("We've emailed you the link at asha@example.com. It shows "
-            'where your request stands, and lets you withdraw it.'),
+        find.text("We've emailed the link to your registration to "
+            'asha@example.com again.'),
         findsOneWidget);
+    expect(find.text('Under review'), findsOneWidget, reason: 'the chip');
     expect(find.byKey(RegistrationRequestPage.withdrawKey), findsNothing);
+    expect(find.byKey(RegistrationRequestPage.seeKey), findsNothing);
     expect(
         api.requests.where((r) => r.path.startsWith('/registration-requests')),
         isEmpty);
   });
 
   testWidgets(
-      'sent again for a request the club confirmed already: says so, and '
-      'that the link was emailed', (tester) async {
+      'sent again for a registration the club confirmed already: the link '
+      'was emailed again', (tester) async {
     api.on('POST', _register, {
       'approval': {
         'id': 'req-1',
@@ -309,21 +324,19 @@ void main() {
     });
     await _pump(tester, requiresApproval: true);
 
-    await _submit(tester, 'Request a place');
+    await _submit(tester, 'Register');
 
-    expect(find.text('Tinkerhub confirmed your place'), findsOneWidget);
-    expect(find.text("You're on the waiting list"), findsNothing);
+    expect(find.text("You've already registered"), findsOneWidget);
+    expect(find.text('Confirmed'), findsOneWidget, reason: 'the chip');
     expect(
-        find.text('You asked for a place at Hack Night already, and '
-            'Tinkerhub has confirmed it. Your ticket, or the link to pay for '
-            'it, is in your email.'),
+        find.text("We've emailed the link to your registration to "
+            'asha@example.com again.'),
         findsOneWidget);
-    expect(find.byKey(RegistrationRequestPage.emailedKey), findsOneWidget);
   });
 
   testWidgets(
       'turned on after the form loaded its shelf: ADD_ONS_NOT_ALLOWED said '
-      'plainly, the picks taken off, and the form asks for a place',
+      'plainly, the picks taken off, and the form registers for review',
       (tester) async {
     api
       ..on('GET', '/events/7/store/catalog', {
@@ -345,13 +358,17 @@ void main() {
     expect(find.text('Hack Night tee'), findsOneWidget);
 
     await _submit(tester, 'Continue');
-    expect(find.text('The club confirms each place now'), findsOneWidget);
-    expect(find.textContaining("can't include add-ons"), findsOneWidget);
+    expect(find.text('This event reviews registrations now'), findsOneWidget);
+    expect(
+        find.text("Add-ons can't be picked when registrations are reviewed, "
+            "so they've been removed. Check your details and register "
+            'again.'),
+        findsOneWidget);
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
     expect(find.text('Hack Night tee'), findsNothing);
-    await _submit(tester, 'Request a place');
+    await _submit(tester, 'Register');
     final second = api.sent('POST', _register).last.data as Map;
     expect(second.containsKey('store'), isFalse);
     expect(find.byType(RegistrationRequestPage), findsOneWidget);
@@ -363,15 +380,19 @@ void main() {
         'POST',
         _register,
         {
-          'message': 'The club declined your request for this event.',
+          'message': "The organisers couldn't confirm your registration "
+              "for this event, so you can't register again with this email.",
           'error_code': 'REQUEST_DECLINED',
         },
         status: 409);
     final (closedWith, _) = await _pump(tester, requiresApproval: true);
 
-    await _submit(tester, 'Request a place');
-    expect(find.text("The club couldn't offer you a place"), findsOneWidget);
-    expect(find.textContaining("you can't ask again"), findsOneWidget);
+    await _submit(tester, 'Register');
+    expect(find.text("You can't register again"), findsOneWidget);
+    expect(
+        find.text("Tinkerhub couldn't confirm your registration for this "
+            "event, so you can't register again with this email."),
+        findsOneWidget);
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
@@ -392,7 +413,8 @@ void main() {
     await _pump(tester);
 
     await _submit(tester, 'Continue');
-    expect(find.text('The club confirms each place'), findsOneWidget);
+    expect(find.text('This event reviews registrations now'), findsOneWidget);
+    expect(find.text('Register again from the event page.'), findsOneWidget);
     expect(find.textContaining('Update the app'), findsNothing);
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();

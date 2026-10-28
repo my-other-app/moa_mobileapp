@@ -7,8 +7,8 @@ import 'package:finnet/features/events/domain/registration_request.dart';
 final registrationRequestsApiProvider =
     Provider<RegistrationRequestsApi>((ref) => RegistrationRequestsApi());
 
-/// A person's requests for a place at events that confirm each
-/// registration (feature-register `approvals-contract.md`). Through the
+/// A person's registrations under review (the API's requests) at events
+/// whose club reviews every registration (feature-register `approvals-contract.md`). Through the
 /// app's one API client, as [TicketingApi] is: refusals arrive as
 /// `ApiException`s with their `error_code`.
 class RegistrationRequestsApi {

@@ -153,20 +153,30 @@ RegisterState registerStateFor({
   );
 }
 
-/// "Tinkerhub confirms each place", or "The club confirms each place"
-/// without a name: said where an event whose club confirms each place
-/// would say "Be the first to register". Never a count of requests.
+/// "Tinkerhub reviews every registration", or "The club reviews every
+/// registration" without a name: the short form, said in one-line stat
+/// spots where an event whose club reviews every registration would say
+/// "Be the first to register". Never a count of registrations under review.
 String confirmsEachPlaceLine(String? clubName) {
   final name = clubName?.trim();
-  return '${name == null || name.isEmpty ? 'The club' : name} confirms each place';
+  return '${name == null || name.isEmpty ? 'The club' : name} reviews every '
+      'registration';
 }
+
+/// "Tinkerhub reviews every registration and emails tickets to the people
+/// it confirms.": the note by the register button, and on the form, of an
+/// event whose club reviews every registration.
+String reviewsEveryRegistrationNote(String? clubName) =>
+    '${confirmsEachPlaceLine(clubName)} and emails tickets to the people it '
+    'confirms.';
 
 /// "12 going · 38 seats left", "Be the first to register", or null when
 /// there is nothing to say.
 ///
-/// An event whose club confirms each place ([confirmsEach]) with nobody
-/// going yet says so instead ("Tinkerhub confirms each place · 38 seats
-/// left"): people may have asked already, and the page shows no numbers.
+/// An event whose club reviews every registration ([confirmsEach]) with
+/// nobody going yet says so instead ("Tinkerhub reviews every registration
+/// · 38 seats left"): people may have registered already, and the page
+/// shows no numbers.
 String? seatsLine({
   required int going,
   int? seatsLeft,

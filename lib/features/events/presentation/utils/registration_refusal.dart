@@ -41,14 +41,14 @@ abstract final class RegistrationErrorCodes {
   /// question's key to what is wrong with its answer.
   static const invalidAnswers = 'INVALID_ANSWERS';
 
-  /// The event confirms each registration ("Confirm each registration"):
-  /// the club declined this person's request, or the request wasn't sent
-  /// as one ([ApprovalErrorCodes]).
+  /// The club reviews every registration ("Review registrations"): it
+  /// declined this person's registration before, or the registration wasn't
+  /// sent as one to review ([ApprovalErrorCodes]).
   static const requestDeclined = ApprovalErrorCodes.requestDeclined;
   static const approvalRequired = ApprovalErrorCodes.approvalRequired;
 
-  /// Add-ons sent with a request (422): the club turned "Confirm each
-  /// registration" on after the form loaded its shelf.
+  /// Add-ons sent with a registration to review (422): the club turned
+  /// "Review registrations" on after the form loaded its shelf.
   static const addOnsNotAllowed = ApprovalErrorCodes.addOnsNotAllowed;
 }
 
@@ -114,11 +114,12 @@ final _deadlinePassed = RegExp(
 /// and "Registration deadline has passed" from a server older than the
 /// codes.
 ///
-/// [approval]: the form sent a request (the club confirms each place).
-/// Such an event has no waiting list, so none is offered, whatever the
-/// refusal says.
+/// [approval]: the form sent a registration to review (the club reviews
+/// every registration). Such an event has no waiting list, so none is
+/// offered, whatever the refusal says. [clubName] names the club, where a
+/// refusal speaks of it.
 RegistrationRefusal describeRegistrationError(Object? error,
-    {bool approval = false}) {
+    {bool approval = false, String? clubName}) {
   final code = errorCodeOf(error);
   final said = serverMessageOf(error);
 
@@ -157,6 +158,7 @@ RegistrationRefusal describeRegistrationError(Object? error,
         closed: true,
       );
     case RegistrationErrorCodes.eventFull:
+      if (approval) return _fullReviewed;
       return offersWaitlist(error, approval: approval)
           ? _fullWithWaitlist
           : _full;
@@ -195,7 +197,7 @@ RegistrationRefusal describeRegistrationError(Object? error,
             "This email belongs to a club's account. Sign in with your own account to register.",
       );
     case RegistrationErrorCodes.requestDeclined:
-      return requestDeclinedRefusal;
+      return requestDeclinedRefusalFor(clubName);
     case RegistrationErrorCodes.approvalRequired:
       return approvalRequiredRefusal;
     case RegistrationErrorCodes.addOnsNotAllowed:
@@ -241,6 +243,13 @@ const _full = RegistrationRefusal(
   message: 'Every place at this event has been taken.',
 );
 
+/// Full, for an event whose club reviews every registration: no waiting
+/// list, and no "place".
+const _fullReviewed = RegistrationRefusal(
+  title: 'This event is full',
+  message: 'Every seat at this event has been taken.',
+);
+
 const _fullWithWaitlist = RegistrationRefusal(
   title: 'This event is full',
   message: "Every place has been taken. Join the waiting list and we'll tell "
@@ -248,31 +257,39 @@ const _fullWithWaitlist = RegistrationRefusal(
   action: RegistrationAction.joinWaitlist,
 );
 
-/// The club declined this person's request for a place before (409
-/// REQUEST_DECLINED): asking again is refused unless the club reopens it.
-const requestDeclinedRefusal = RegistrationRefusal(
-  title: "The club couldn't offer you a place",
-  message: "The club confirms each place at this event, and couldn't offer "
-      "you one this time, so you can't ask again.",
-  closed: true,
-);
+/// The club declined this person's registration before (409
+/// REQUEST_DECLINED): registering again is refused unless the club reopens
+/// it. [clubName] names the club ("The club" without one).
+RegistrationRefusal requestDeclinedRefusalFor(String? clubName) {
+  final name = clubName?.trim() ?? '';
+  return RegistrationRefusal(
+    title: "You can't register again",
+    message: "${name.isEmpty ? 'The club' : name} couldn't confirm your "
+        "registration for this event, so you can't register again with "
+        'this email.',
+    closed: true,
+  );
+}
 
-/// The event confirms each place, and the registration wasn't sent as a
-/// request (409 APPROVAL_REQUIRED). This app always says it takes one, so
-/// it is said for the odd path that doesn't (paying an older registration).
+/// [requestDeclinedRefusalFor] without the club's name.
+final requestDeclinedRefusal = requestDeclinedRefusalFor(null);
+
+/// The event reviews every registration, and the registration wasn't sent
+/// as one to review (409 APPROVAL_REQUIRED). This app always says it can
+/// take one, so it is said for the odd path that doesn't (paying an older
+/// registration).
 const approvalRequiredRefusal = RegistrationRefusal(
-  title: 'The club confirms each place',
-  message: 'This event needs the club to confirm each place. Go back to the '
-      'event and tap Request a place.',
+  title: 'This event reviews registrations now',
+  message: 'Register again from the event page.',
 );
 
-/// Add-ons sent with a request (422 ADD_ONS_NOT_ALLOWED): the club now
-/// confirms each place, and a request holds no add-ons. The form takes the
-/// picks off and asks for a place when this comes back.
+/// Add-ons sent with a registration to review (422 ADD_ONS_NOT_ALLOWED):
+/// the club now reviews every registration, and one under review holds no
+/// add-ons. The form takes the picks off when this comes back.
 const addOnsNotAllowedRefusal = RegistrationRefusal(
-  title: 'The club confirms each place now',
-  message: "A request for a place can't include add-ons, so they've been "
-      'taken off. Send the form again to ask for a place.',
+  title: 'This event reviews registrations now',
+  message: "Add-ons can't be picked when registrations are reviewed, so "
+      "they've been removed. Check your details and register again.",
 );
 
 /// The club called the event off: registering (REGISTRATIONS_CLOSED with

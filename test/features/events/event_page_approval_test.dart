@@ -1,4 +1,5 @@
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/events/domain/registration_request.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
@@ -72,23 +73,38 @@ Future<void> _pump(WidgetTester tester, {bool signedIn = true}) async {
   }
 }
 
-const _note =
-    "Tinkerhub confirms each place. You'll get your ticket when they do.";
+const _note = 'Tinkerhub reviews every registration and emails tickets to '
+    'the people it confirms.';
+
+const _underReview = 'Tinkerhub reviews every registration. If yours is '
+    'confirmed, your ticket will come by email.';
+
+/// "Pay ₹199 by {time} to get your ticket.", for [payBody]'s time.
+String _payBy() {
+  final by = RegistrationRequest.fromJson(
+          requestBody(status: 'approved', pay: payBody()))!
+      .pay!
+      .payBy!;
+  return 'Pay ₹199 by ${requestMoment(by)} to get your ticket.';
+}
 
 void main() {
   late RouteAdapter api;
 
   setUp(() => api = useFakeApi());
 
-  testWidgets('the club confirms each place: "Request a place", and the note',
-      (tester) async {
+  testWidgets(
+      'the club reviews every registration: "Register", as on any event, '
+      'and the note', (tester) async {
     api.on('GET', _info, _event(requiresApproval: true));
     await _pump(tester);
 
-    expect(find.text('REQUEST A PLACE'), findsOneWidget);
-    expect(find.text('REGISTER NOW'), findsNothing);
+    expect(find.text('REGISTER NOW'), findsOneWidget);
+    expect(find.text('REQUEST A PLACE'), findsNothing);
     expect(find.byKey(IndividualEventPage.approvalNoteKey), findsOneWidget);
+    expect(find.byKey(IndividualEventPage.approvalTitleKey), findsNothing);
     expect(find.text(_note), findsOneWidget);
+    expect(find.textContaining('confirms each place'), findsNothing);
   });
 
   testWidgets('said by the ticket types instead', (tester) async {
@@ -102,7 +118,8 @@ void main() {
           'requires_approval': true,
         }));
     await _pump(tester);
-    expect(find.text('REQUEST A PLACE'), findsOneWidget);
+    expect(find.text('REGISTER NOW'), findsOneWidget);
+    expect(find.text(_note), findsOneWidget);
   });
 
   testWidgets('without requires_approval: as it was', (tester) async {
@@ -123,7 +140,8 @@ void main() {
     expect(find.byKey(IndividualEventPage.approvalNoteKey), findsNothing);
   });
 
-  testWidgets('a request already sent: the button opens it', (tester) async {
+  testWidgets('registered already, under review: the button opens it',
+      (tester) async {
     api
       ..on('GET', _info, _event(requiresApproval: true))
       ..on('GET', _mine, {
@@ -131,10 +149,10 @@ void main() {
       });
     await _pump(tester);
 
-    expect(find.text('VIEW YOUR REQUEST'), findsOneWidget);
-    expect(find.text('Waiting for Tinkerhub to confirm your place.'),
-        findsOneWidget);
-    await tester.tap(find.text('VIEW YOUR REQUEST'));
+    expect(find.text('Your registration is under review'), findsOneWidget);
+    expect(find.text(_underReview), findsOneWidget);
+    expect(find.text('SEE YOUR REGISTRATION'), findsOneWidget);
+    await tester.tap(find.text('SEE YOUR REGISTRATION'));
     await tester.pumpAndSettle();
     expect(find.text('Request tok_1'), findsOneWidget);
   });
@@ -150,9 +168,12 @@ void main() {
       });
     await _pump(tester);
 
-    expect(find.text('PAY FOR YOUR TICKET'), findsOneWidget);
-    expect(find.text('Tinkerhub confirmed your place. Pay to get your ticket.'),
-        findsOneWidget);
+    expect(find.text('Your registration is confirmed'), findsOneWidget);
+    expect(find.text(_payBy()), findsOneWidget);
+    expect(find.text('PAY ₹199'), findsOneWidget);
+    await tester.tap(find.text('PAY ₹199'));
+    await tester.pumpAndSettle();
+    expect(find.text('Request tok_1'), findsOneWidget);
   });
 
   group('the event\'s own viewer_request', () {
@@ -165,8 +186,9 @@ void main() {
           'viewer_request': request,
         });
 
-    testWidgets('waiting: "Waiting for {club} to confirm", which opens it',
-        (tester) async {
+    testWidgets(
+        'under review: "Your registration is under review", which '
+        'opens it', (tester) async {
       api.on(
           'GET',
           _info,
@@ -178,20 +200,21 @@ void main() {
           }));
       await _pump(tester);
 
-      expect(find.text('Waiting for Tinkerhub to confirm your place.'),
-          findsOneWidget);
-      expect(find.text('VIEW YOUR REQUEST'), findsOneWidget);
-      expect(find.text('REQUEST A PLACE'), findsNothing);
+      expect(find.text('Your registration is under review'), findsOneWidget);
+      expect(find.text(_underReview), findsOneWidget);
+      expect(find.text('SEE YOUR REGISTRATION'), findsOneWidget);
+      expect(find.text('REGISTER NOW'), findsNothing);
       expect(api.sent('GET', _mine), isEmpty,
           reason: 'the event said it; My events\' list is not asked');
 
-      await tester.tap(find.text('VIEW YOUR REQUEST'));
+      await tester.tap(find.text('SEE YOUR REGISTRATION'));
       await tester.pumpAndSettle();
       expect(find.text('Request tok_9'), findsOneWidget);
     });
 
-    testWidgets('confirmed and unpaid: said so, and it opens the request',
-        (tester) async {
+    testWidgets(
+        'confirmed and unpaid, with no amount said: "Pay now", and it '
+        'opens the registration', (tester) async {
       api.on(
           'GET',
           _info,
@@ -203,16 +226,15 @@ void main() {
           }));
       await _pump(tester);
 
-      expect(
-          find.text('Tinkerhub confirmed your place. Pay to get your ticket.'),
-          findsOneWidget);
-      expect(find.text('PAY FOR YOUR TICKET'), findsOneWidget);
-      await tester.tap(find.text('PAY FOR YOUR TICKET'));
+      expect(find.text('Your registration is confirmed'), findsOneWidget);
+      expect(find.text('Pay to get your ticket.'), findsOneWidget);
+      expect(find.text('PAY NOW'), findsOneWidget);
+      await tester.tap(find.text('PAY NOW'));
       await tester.pumpAndSettle();
       expect(find.text('Request tok_9'), findsOneWidget);
     });
 
-    testWidgets('without its link: "Request sent", and the form isn\'t offered',
+    testWidgets('without its link: "Under review", and the form isn\'t offered',
         (tester) async {
       api.on(
           'GET',
@@ -225,16 +247,15 @@ void main() {
           }));
       await _pump(tester);
 
-      expect(find.text('Waiting for Tinkerhub to confirm your place.'),
-          findsOneWidget);
-      expect(find.text('REQUEST SENT'), findsOneWidget);
-      expect(find.text('REQUEST A PLACE'), findsNothing);
+      expect(find.text('Your registration is under review'), findsOneWidget);
+      expect(find.text('UNDER REVIEW'), findsOneWidget);
+      expect(find.text('REGISTER NOW'), findsNothing);
       final button = tester.widget<FilledButton>(
           find.byKey(const ValueKey('event-register-button')));
       expect(button.onPressed, isNull);
     });
 
-    testWidgets('a declined one: ask for a place as before', (tester) async {
+    testWidgets('a declined one: register as before', (tester) async {
       api.on(
           'GET',
           _info,
@@ -244,20 +265,20 @@ void main() {
             'token': 'tok_9',
           }));
       await _pump(tester);
-      expect(find.text('REQUEST A PLACE'), findsOneWidget);
+      expect(find.text('REGISTER NOW'), findsOneWidget);
+      expect(find.text(_note), findsOneWidget);
     });
 
-    testWidgets('null: ask for a place, and nothing else is asked',
-        (tester) async {
+    testWidgets('null: register, and nothing else is asked', (tester) async {
       api.on('GET', _info, withViewer(null));
       await _pump(tester);
 
-      expect(find.text('REQUEST A PLACE'), findsOneWidget);
+      expect(find.text('REGISTER NOW'), findsOneWidget);
       expect(api.sent('GET', _mine), isEmpty);
     });
   });
 
-  testWidgets('a request for another event, or a settled one: ask again',
+  testWidgets('a registration for another event, or a settled one: register',
       (tester) async {
     api
       ..on('GET', _info, _event(requiresApproval: true))
@@ -268,21 +289,23 @@ void main() {
         ]
       });
     await _pump(tester);
-    expect(find.text('REQUEST A PLACE'), findsOneWidget);
+    expect(find.text('REGISTER NOW'), findsOneWidget);
+    expect(find.text('Your registration is under review'), findsNothing);
   });
 
-  testWidgets('signed out: asks for a place, and reads no requests',
+  testWidgets('signed out: registers, and reads no registrations',
       (tester) async {
     api.on('GET', _info, _event(requiresApproval: true));
     await _pump(tester, signedIn: false);
-    expect(find.text('REQUEST A PLACE'), findsOneWidget);
+    expect(find.text('REGISTER NOW'), findsOneWidget);
+    expect(find.text(_note), findsOneWidget);
     expect(api.sent('GET', _mine), isEmpty);
   });
 
   testWidgets('registered already: the ticket, no note', (tester) async {
     api.on('GET', _info, _event(requiresApproval: true, registered: true));
     await _pump(tester);
-    expect(find.text('REQUEST A PLACE'), findsNothing);
+    expect(find.text('REGISTER NOW'), findsNothing);
     expect(find.byKey(IndividualEventPage.approvalNoteKey), findsNothing);
   });
 }

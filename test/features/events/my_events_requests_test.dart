@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
@@ -120,7 +121,7 @@ RegistrationRequest _req(String id,
         requestBody(id: id, token: 'tok_$id', status: status, eventId: event))!;
 
 void main() {
-  group('My events: "Waiting for confirmation"', () {
+  group('My events: "Under review"', () {
     testWidgets('lists the open requests above the registrations',
         (tester) async {
       useFakeApi()
@@ -131,15 +132,25 @@ void main() {
       await _pump(tester);
 
       expect(find.byKey(WaitingRequestsSection.sectionKey), findsOneWidget);
-      expect(find.text(WaitingRequestsSection.title), findsOneWidget);
+      expect(WaitingRequestsSection.title, 'UNDER REVIEW');
+      expect(find.text('UNDER REVIEW'), findsOneWidget);
+      expect(find.textContaining('WAITING FOR'), findsNothing);
       expect(
           find.byKey(const ValueKey('request-tile-r-pending')), findsOneWidget);
-      expect(find.text('Waiting for Tinkerhub to confirm'), findsOneWidget);
+      expect(find.text('Under review'), findsOneWidget);
+      expect(find.text('See your registration'), findsOneWidget);
       expect(find.byKey(const ValueKey('request-tile-r-pay')), findsOneWidget);
-      expect(find.textContaining('Figma Club confirmed your place · finish by'),
+      final payBy = RegistrationRequest.fromJson(
+              requestBody(status: 'approved', pay: payBody()))!
+          .pay!
+          .payBy!;
+      expect(
+          find.text('Confirmed · pay by ${requestMoment(payBy)} to get your '
+              'ticket'),
           findsOneWidget);
-      expect(find.textContaining('₹'), findsNothing,
-          reason: 'no price in the list (an iPhone shows none for online)');
+      expect(find.text('Pay ₹199'), findsOneWidget);
+      expect(find.textContaining('Waiting for'), findsNothing);
+      expect(find.textContaining('confirmed your place'), findsNothing);
       for (final settled in [
         'r-ticket',
         'r-declined',
@@ -155,6 +166,23 @@ void main() {
       final sectionTop =
           tester.getTopLeft(find.byKey(WaitingRequestsSection.sectionKey)).dy;
       expect(sectionTop, lessThan(tester.getTopLeft(find.text('Event 1')).dy));
+    });
+
+    testWidgets('on an iPhone: no price, "See your registration" for both',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      useFakeApi()
+        ..on('GET', _list, {
+          'items': [_event(1)]
+        })
+        ..on('GET', _mine, _requests());
+      await _pump(tester);
+
+      expect(find.textContaining('₹'), findsNothing,
+          reason: 'an iPhone shows no price for a paid online event');
+      expect(find.text('See your registration'), findsNWidgets(2));
+      debugDefaultTargetPlatformOverride = null;
     });
 
     testWidgets('a request opens its status screen', (tester) async {

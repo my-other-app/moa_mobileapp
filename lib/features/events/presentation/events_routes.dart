@@ -66,8 +66,8 @@ int? linkedTicketTypeOf(GoRouterState state) {
 /// extra (from the event page): `additionalDetails` (the questions),
 /// `hasFee`, `isOnline`, the club's `clubName` and `clubUpdates` (it
 /// offers "Get updates from `<club>` on WhatsApp"), the event's `eventName`,
-/// and `requiresApproval` (the club confirms each place). Without them -- a
-/// link straight to the form -- the form reads the event itself.
+/// and `requiresApproval` (the club reviews every registration). Without
+/// them -- a link straight to the form -- the form reads the event itself.
 Widget buildEventRegisterPage(BuildContext context, GoRouterState state) {
   final ref = eventRefOf(state);
   final extra = state.extra is Map ? state.extra as Map : const {};
@@ -96,10 +96,10 @@ RegistrationRequest? _requestIn(Object? extra) {
   return given is RegistrationRequest ? given : null;
 }
 
-/// `/requests/:token`: where a request for a place stands. `?next=pay` (the
-/// "confirmed, pay" push) goes on to paying once it is read; `?withdraw=1`
-/// (the email's "Withdraw your request") asks whether to. extra: `request`,
-/// what the opener knows of it already.
+/// `/requests/:token`: where a registration under review stands (the API's
+/// request). `?next=pay` (the "confirmed, pay" push) goes on to paying once
+/// it is read; `?withdraw=1` (the email's "Cancel my registration") asks
+/// whether to. extra: `request`, what the opener knows of it already.
 Widget buildRequestPage(BuildContext context, GoRouterState state) {
   final token = state.pathParameters['token'] ?? '';
   return RegistrationRequestPage(
@@ -111,11 +111,11 @@ Widget buildRequestPage(BuildContext context, GoRouterState state) {
   );
 }
 
-/// `/events/request-sent`: the form's answer when the club confirms each
-/// place -- the request's screen, over My events (as a registration's
-/// success is), so Back shows it waiting there. extra: `request`, the
-/// request the registration answered with, and `email`, the address the
-/// form was sent with (its link is emailed there when the answer has none).
+/// `/events/request-sent`: the form's answer when the club reviews every
+/// registration -- "You're registered!", over My events (as a
+/// registration's success is), so Back shows it under review there. extra:
+/// `request`, the request the registration answered with, and `email`, the
+/// address the form was sent with (its link is emailed there).
 Widget buildRequestSentPage(BuildContext context, GoRouterState state) {
   final request = _requestIn(state.extra);
   final token = request?.token ?? '';
@@ -157,10 +157,9 @@ abstract final class EventRouteNames {
 /// - `/claim/:token` -- a place offered from a waiting list (the website's
 ///   address too: the offer's email, WhatsApp and push link to it); needs
 ///   no account, the token is the proof.
-/// - `/requests/:token` -- a request for a place at an event whose club
-///   confirms each registration (the website's address too: the request's
-///   emails and pushes link to it); needs no account, the token is the
-///   proof.
+/// - `/requests/:token` -- a registration at an event whose club reviews
+///   every registration (the website's address too: its emails and pushes
+///   link to it); needs no account, the token is the proof.
 final List<RouteBase> eventsRoutes = [
   GoRoute(
     path: '/requests/:token',

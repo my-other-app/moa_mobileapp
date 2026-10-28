@@ -80,33 +80,61 @@ void main() {
 
   setUp(() => api = useFakeApi());
 
-  testWidgets('reason "approved": the club confirmed your place',
+  testWidgets('reason "approved": the club confirmed your registration',
       (tester) async {
     api.on('GET', _offerPath, _offer(reason: 'approved'));
     await _pump(tester);
 
-    expect(_title(tester), 'Tinkerhub confirmed your place');
+    expect(_title(tester), 'Tinkerhub confirmed your registration');
+    expect(find.text('Your registration'), findsOneWidget,
+        reason: 'the app bar');
     expect(find.text('A place opened up for you'), findsNothing);
-    expect(find.text('CLAIM AND PAY ₹199'), findsOneWidget);
-    expect(find.text("I can't make it, give up my place"), findsOneWidget);
+    final payBy =
+        tester.widget<Text>(find.byKey(ClaimOfferPage.payByKey)).data!;
+    expect(payBy, startsWith('Pay ₹199 by '));
+    expect(payBy, endsWith(' to get your ticket.'));
+    expect(find.text('PAY ₹199'), findsOneWidget);
+    expect(find.text("I can't come: cancel my registration"), findsOneWidget);
     expect(find.text('No thanks, give it to the next person'), findsNothing);
+    expect(find.textContaining('place'), findsNothing);
 
     await tester.tap(find.byKey(ClaimOfferPage.declineKey));
     await tester.pumpAndSettle();
+    expect(find.text('Cancel your registration?'), findsOneWidget);
     expect(
-        find.text("Tinkerhub can then offer it to someone else. You can't "
-            'take it back.'),
+        find.text("Your ticket will go to someone else, and you can't undo "
+            'this.'),
         findsOneWidget);
+    expect(find.text('Keep my registration'), findsOneWidget);
+    expect(find.text('Yes, cancel it'), findsOneWidget);
     expect(find.textContaining('next person in line'), findsNothing);
   });
 
-  testWidgets('reason "approved", ran out: the place was released',
+  testWidgets('reason "approved", cancelled: said so', (tester) async {
+    api
+      ..on('GET', _offerPath, _offer(reason: 'approved'))
+      ..on('POST', '/waitlist/offers/clm_1/decline', {'declined': true});
+    await _pump(tester);
+
+    await tester.tap(find.byKey(ClaimOfferPage.declineKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Yes, cancel it'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your registration was cancelled'), findsOneWidget);
+    expect(find.textContaining('place'), findsNothing);
+  });
+
+  testWidgets('reason "approved", ran out: the registration expired',
       (tester) async {
     api.on('GET', _offerPath, _offer(reason: 'approved', status: 'expired'));
     await _pump(tester);
 
-    expect(find.text('Your place was released'), findsOneWidget);
-    expect(find.textContaining("the payment didn't arrive in time"),
+    expect(find.text('Your registration has expired'), findsOneWidget);
+    expect(
+        find.text("Tinkerhub confirmed your registration for Hack Night, but "
+            "it wasn't paid in time. If registration is still open, you can "
+            'register again.'),
         findsOneWidget);
     expect(find.text('This offer ran out'), findsNothing);
   });
@@ -129,7 +157,7 @@ void main() {
       });
     final payments = await _pump(tester);
 
-    expect(find.text('CLAIM AND PAY ₹159.20'), findsOneWidget);
+    expect(find.text('PAY ₹159.20'), findsOneWidget);
     expect(find.text('₹159.20'), findsOneWidget);
     expect(find.text('₹199'), findsNothing);
     expect(find.byKey(ClaimOfferPage.emailKey), findsNothing);
@@ -144,11 +172,11 @@ void main() {
     expect(find.text("You're in!"), findsOneWidget);
   });
 
-  testWidgets('a confirmed place without an amount: the ticket\'s price',
+  testWidgets('a confirmed ticket without an amount: the ticket\'s price',
       (tester) async {
     api.on('GET', _offerPath, _offer(reason: 'approved'));
     await _pump(tester);
-    expect(find.text('CLAIM AND PAY ₹199'), findsOneWidget);
+    expect(find.text('PAY ₹199'), findsOneWidget);
   });
 
   testWidgets('reason "waitlist" is a waiting list\'s place, as no reason',

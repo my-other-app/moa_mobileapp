@@ -60,9 +60,26 @@ Future<void> _pump(
           Scaffold(body: Text('Ticket ${state.pathParameters['code']}')),
     ),
     GoRoute(
-      path: '/events/:ref',
-      builder: (_, state) =>
-          Scaffold(body: Text('Event ${state.pathParameters['ref']}')),
+      path: '/discover/events',
+      builder: (_, __) => const Scaffold(body: Text('Find events')),
+    ),
+    GoRoute(
+      path: '/events',
+      builder: (_, __) => const Scaffold(body: Text('My events')),
+      routes: [
+        GoRoute(
+          path: ':ref',
+          builder: (_, state) =>
+              Scaffold(body: Text('Event ${state.pathParameters['ref']}')),
+          routes: [
+            GoRoute(
+              path: 'register',
+              builder: (_, state) => Scaffold(
+                  body: Text('Register ${state.pathParameters['ref']}')),
+            ),
+          ],
+        ),
+      ],
     ),
   ]);
   await tester.pumpWidget(ProviderScope(
@@ -82,46 +99,78 @@ Future<void> _pump(
 String _title(WidgetTester tester) =>
     tester.widget<Text>(find.byKey(RegistrationRequestPage.titleKey)).data!;
 
+/// The status chip's word, over the title; null without one.
+String? _chip(WidgetTester tester) {
+  final chip = find.byKey(RegistrationRequestPage.chipKey);
+  if (chip.evaluate().isEmpty) return null;
+  return tester
+      .widget<Text>(find.descendant(of: chip, matching: find.byType(Text)))
+      .data;
+}
+
+/// The label of the button at [key].
+String _label(WidgetTester tester, Key key) => tester
+    .widget<Text>(
+        find.descendant(of: find.byKey(key), matching: find.byType(Text)))
+    .data!;
+
 void main() {
   late RouteAdapter api;
 
   setUp(() => api = useFakeApi());
 
-  group('pending', () {
-    testWidgets('on the waiting list, with the club named', (tester) async {
+  group('under review', () {
+    testWidgets('its chip, title and words, with the club and name',
+        (tester) async {
       api.on('GET', _path, requestBody());
       await _pump(tester);
 
-      expect(_title(tester), "You're on the waiting list");
+      expect(find.text('Your registration'), findsOneWidget,
+          reason: 'the app bar');
+      expect(_chip(tester), 'Under review');
+      expect(_title(tester), 'Your registration is under review');
       expect(
-          find.text('Tinkerhub confirms each registration. We\'ll notify you '
-              'and email your ticket as soon as they confirm your place.'),
+          find.text("Asha, you're registered for Hack Night. Tinkerhub "
+              'reviews every registration. If yours is confirmed, your '
+              "ticket will come by email. There's nothing else to do."),
           findsOneWidget);
       expect(find.text('Hack Night'), findsOneWidget);
       expect(find.text('Student'), findsOneWidget);
       expect(find.text('For Asha Menon'), findsOneWidget);
-      expect(find.byKey(RegistrationRequestPage.withdrawKey), findsOneWidget);
+      expect(find.textContaining('Registered '), findsOneWidget);
+      expect(find.textContaining('Asked '), findsNothing);
+      expect(_label(tester, RegistrationRequestPage.eventKey),
+          'Back to the event');
+      expect(_label(tester, RegistrationRequestPage.withdrawKey),
+          'Cancel my registration');
       expect(find.byKey(RegistrationRequestPage.payKey), findsNothing);
       // Read with the token alone: no session goes.
       expect(api.sent('GET', _path).single.extra['skipAuth'], isTrue);
     });
 
-    testWidgets('withdraw asks first; "Keep it" does nothing', (tester) async {
+    testWidgets('cancelling asks first; "Keep my registration" does nothing',
+        (tester) async {
       api.on('GET', _path, requestBody());
       await _pump(tester);
 
       await tester.tap(find.byKey(RegistrationRequestPage.withdrawKey));
       await tester.pumpAndSettle();
-      expect(find.text('Withdraw your request?'), findsOneWidget);
-      await tester.tap(find.text('Keep it'));
+      expect(find.text('Cancel your registration?'), findsOneWidget);
+      expect(
+          find.text("Tinkerhub won't review it any more. You can register "
+              'again while registration is open.'),
+          findsOneWidget);
+      expect(find.text('Yes, cancel it'), findsOneWidget);
+      await tester.tap(find.text('Keep my registration'));
       await tester.pumpAndSettle();
 
       expect(api.sent('POST', _withdrawPath), isEmpty);
-      expect(_title(tester), "You're on the waiting list");
+      expect(_title(tester), 'Your registration is under review');
     });
 
-    testWidgets('withdrawn once confirmed: says so, and no more Withdraw',
-        (tester) async {
+    testWidgets(
+        'cancelled: says so, offers "Register again", and no more '
+        'cancelling', (tester) async {
       api
         ..on('GET', _path, requestBody())
         ..on('POST', _withdrawPath, requestBody(status: 'withdrawn'));
@@ -129,47 +178,56 @@ void main() {
 
       await tester.tap(find.byKey(RegistrationRequestPage.withdrawKey));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Withdraw'));
+      await tester.tap(find.text('Yes, cancel it'));
       await tester.pumpAndSettle();
 
       expect(api.sent('POST', _withdrawPath), hasLength(1));
-      expect(_title(tester), 'You withdrew your request');
-      expect(find.text('Your request was withdrawn.'), findsOneWidget);
+      expect(_chip(tester), 'Cancelled');
+      expect(_title(tester), 'You cancelled your registration');
+      expect(
+          find.text("Tinkerhub won't review it any more. If you change your "
+              'mind, you can register again while registration is open.'),
+          findsOneWidget);
+      expect(find.text('Your registration was cancelled.'), findsOneWidget);
       expect(find.byKey(RegistrationRequestPage.withdrawKey), findsNothing);
+
+      await tester.tap(find.byKey(RegistrationRequestPage.registerAgainKey));
+      await tester.pumpAndSettle();
+      expect(find.text('Register hack-night'), findsOneWidget);
     });
 
-    testWidgets('the email\'s "Withdraw your request" asks at once',
+    testWidgets('the email\'s "Cancel my registration" asks at once',
         (tester) async {
       api
         ..on('GET', _path, requestBody())
         ..on('POST', _withdrawPath, requestBody(status: 'withdrawn'));
       await _pump(tester, location: '/requests/tok_1?withdraw=1');
 
-      expect(find.text('Withdraw your request?'), findsOneWidget);
-      await tester.tap(find.widgetWithText(FilledButton, 'Withdraw'));
+      expect(find.text('Cancel your registration?'), findsOneWidget);
+      await tester.tap(find.text('Yes, cancel it'));
       await tester.pumpAndSettle();
-      expect(_title(tester), 'You withdrew your request');
+      expect(_title(tester), 'You cancelled your registration');
     });
 
-    testWidgets('... and asks nothing of a request already decided',
+    testWidgets('... and asks nothing of a registration already decided',
         (tester) async {
       api.on('GET', _path, requestBody(status: 'declined'));
       await _pump(tester, location: '/requests/tok_1?withdraw=1');
 
-      expect(find.text('Withdraw your request?'), findsNothing);
-      expect(_title(tester), "Tinkerhub couldn't offer you a place");
+      expect(find.text('Cancel your registration?'), findsNothing);
+      expect(_title(tester), "Your registration wasn't confirmed");
     });
 
     testWidgets(
-        'not withdrawable any more: the request as it stands, from the '
-        'refusal', (tester) async {
+        "it can't be cancelled any more: \"changed meanwhile\", over the "
+        'registration as it stands, from the refusal', (tester) async {
       api
         ..on('GET', _path, requestBody())
         ..on(
             'POST',
             _withdrawPath,
             {
-              'message': 'This request can no longer be withdrawn.',
+              'message': "This registration can't be cancelled any more.",
               'error_code': 'REQUEST_NOT_WITHDRAWABLE',
               'errors': {
                 'request':
@@ -181,39 +239,59 @@ void main() {
 
       await tester.tap(find.byKey(RegistrationRequestPage.withdrawKey));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Withdraw'));
+      await tester.tap(find.text('Yes, cancel it'));
       await tester.pumpAndSettle();
 
       expect(api.sent('GET', _path), hasLength(1),
           reason: 'the refusal said how it stands');
-      expect(_title(tester), 'Tinkerhub confirmed your place');
-      expect(find.text('PAY ₹299'), findsOneWidget);
-      expect(find.text('This request can no longer be withdrawn.'),
+      expect(_title(tester), 'Your registration is confirmed');
+      expect(find.text('Pay ₹299'), findsOneWidget);
+      expect(
+          find.text(RegistrationRequestPage.changedMeanwhile), findsOneWidget);
+      expect(
+          find.text(
+              "Your registration changed meanwhile, so it wasn't cancelled. "
+              "Here's where it stands now."),
           findsOneWidget);
+      expect(find.byKey(RegistrationRequestPage.problemKey), findsNothing);
     });
 
-    testWidgets('withdrawing a request decided meanwhile shows what it is now',
-        (tester) async {
+    testWidgets(
+        'cancelling one decided meanwhile (another refusal): read again, '
+        'and "changed meanwhile"', (tester) async {
       api
         ..on('GET', _path, requestBody())
         ..on('GET', _path, requestBody(status: 'declined'))
-        ..on(
-            'POST',
-            _withdrawPath,
-            {
-              'message': 'This request can no longer be withdrawn.',
-              'error_code': 'REQUEST_CLOSED'
-            },
+        ..on('POST', _withdrawPath,
+            {'message': 'No longer open.', 'error_code': 'REQUEST_CLOSED'},
             status: 409);
       await _pump(tester);
 
       await tester.tap(find.byKey(RegistrationRequestPage.withdrawKey));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Withdraw'));
+      await tester.tap(find.text('Yes, cancel it'));
       await tester.pumpAndSettle();
 
-      expect(_title(tester), "Tinkerhub couldn't offer you a place");
+      expect(_title(tester), "Your registration wasn't confirmed");
+      expect(find.byKey(RegistrationRequestPage.noticeKey), findsOneWidget);
+    });
+
+    testWidgets("a failure: \"We couldn't cancel your registration\"",
+        (tester) async {
+      api
+        ..on('GET', _path, requestBody())
+        ..on('POST', _withdrawPath, {'message': 'Boom'}, status: 500);
+      await _pump(tester);
+
+      await tester.tap(find.byKey(RegistrationRequestPage.withdrawKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Yes, cancel it'));
+      await tester.pumpAndSettle();
+
       expect(find.byKey(RegistrationRequestPage.problemKey), findsOneWidget);
+      expect(find.text("We couldn't cancel your registration"), findsOneWidget);
+      expect(_title(tester), 'Your registration is under review');
+      expect(find.byKey(RegistrationRequestPage.withdrawKey), findsOneWidget);
     });
 
     const initial = RegistrationRequest(
@@ -223,12 +301,18 @@ void main() {
       event: RequestEvent(id: 7, name: 'Hack Night', clubName: 'Tinkerhub'),
     );
 
-    testWidgets('what the opener knew stays when the server can\'t be read',
-        (tester) async {
+    testWidgets(
+        'what the opener knew stays when the server can\'t be read; no '
+        'name: "You\'re registered for…"', (tester) async {
       api.on('GET', _path, {'message': 'Boom'}, status: 503);
       await _pump(tester, initial: initial);
 
-      expect(_title(tester), "You're on the waiting list");
+      expect(_title(tester), 'Your registration is under review');
+      expect(
+          find.text("You're registered for Hack Night. Tinkerhub reviews "
+              'every registration. If yours is confirmed, your ticket will '
+              "come by email. There's nothing else to do."),
+          findsOneWidget);
       expect(find.byKey(RegistrationRequestPage.retryKey), findsNothing);
       expect(find.byKey(RegistrationRequestPage.withdrawKey), findsOneWidget);
     });
@@ -238,7 +322,7 @@ void main() {
       api.on('GET', _path, requestBody(status: 'declined'));
       await _pump(tester, initial: initial);
 
-      expect(_title(tester), "Tinkerhub couldn't offer you a place");
+      expect(_title(tester), "Your registration wasn't confirmed");
     });
   });
 
@@ -250,11 +334,36 @@ void main() {
       expect(find.text('Ticket T-9'), findsOneWidget);
       expect(find.byType(RegistrationRequestPage), findsNothing,
           reason: 'the ticket took its place');
-      // Back goes where it would have from the request.
+      // Back goes where it would have from the registration.
       final router = GoRouter.of(tester.element(find.text('Ticket T-9')));
       router.pop();
       await tester.pumpAndSettle();
       expect(find.text('Open'), findsOneWidget);
+    });
+
+    testWidgets('with its ticket, before it hands over: "You\'re in"',
+        (tester) async {
+      api.on('GET', _path, {'message': 'Boom'}, status: 503);
+      await _pump(tester,
+          initial: const RegistrationRequest(
+            id: 'req-1',
+            status: RequestStatus.approved,
+            token: 'tok_1',
+            ticketId: 'T-9',
+            event:
+                RequestEvent(id: 7, name: 'Hack Night', clubName: 'Tinkerhub'),
+          ));
+
+      expect(_chip(tester), 'Confirmed');
+      expect(_title(tester), "You're in");
+      expect(
+          find.text('Tinkerhub confirmed your registration for Hack Night. '
+              'Your ticket is in your email too.'),
+          findsOneWidget);
+      expect(_label(tester, RegistrationRequestPage.ticketKey),
+          'View your ticket');
+      expect(_label(tester, RegistrationRequestPage.eventKey),
+          'Back to the event');
     });
 
     testWidgets('to pay: "Pay ₹X by {time}", which opens the claim screen',
@@ -262,19 +371,38 @@ void main() {
       api.on('GET', _path, requestBody(status: 'approved', pay: payBody()));
       await _pump(tester);
 
-      expect(_title(tester), 'Tinkerhub confirmed your place');
+      expect(_chip(tester), startsWith('Confirmed · pay by '));
+      expect(_chip(tester), endsWith(' to get your ticket'));
+      expect(_title(tester), 'Your registration is confirmed');
       expect(find.textContaining('Pay ₹199 by '), findsOneWidget);
-      expect(find.textContaining('to get your ticket.'), findsOneWidget);
-      expect(find.text('PAY ₹199'), findsOneWidget);
-      expect(find.text("I can't make it, give up my place"), findsOneWidget);
+      expect(
+          find.textContaining(' to get your ticket for Hack Night. Your '
+              'ticket is held for you until then.'),
+          findsOneWidget);
+      expect(find.text('Pay ₹199'), findsOneWidget);
+      expect(find.text("I can't come: cancel my registration"), findsOneWidget);
 
       await tester.tap(find.byKey(RegistrationRequestPage.payKey));
       await tester.pumpAndSettle();
       expect(find.text('Claim clm_1'), findsOneWidget);
     });
 
+    testWidgets('cancelling it says the ticket goes to someone else',
+        (tester) async {
+      api.on('GET', _path, requestBody(status: 'approved', pay: payBody()));
+      await _pump(tester);
+
+      await tester.tap(find.byKey(RegistrationRequestPage.withdrawKey));
+      await tester.pumpAndSettle();
+      expect(find.text('Cancel your registration?'), findsOneWidget);
+      expect(
+          find.text("Your ticket will go to someone else, and you can't undo "
+              'this.'),
+          findsOneWidget);
+    });
+
     testWidgets(
-        'paid there: back on the request, it reads again and goes on '
+        'paid there: back on the registration, it reads again and goes on '
         'to the ticket', (tester) async {
       api
         ..on('GET', _path, requestBody(status: 'approved', pay: payBody()))
@@ -288,6 +416,24 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Ticket T-9'), findsOneWidget);
+    });
+
+    testWidgets('neither a ticket nor a pay link: look in your email',
+        (tester) async {
+      api.on('GET', _path, requestBody(status: 'approved'));
+      await _pump(tester);
+
+      expect(_chip(tester), 'Confirmed');
+      expect(_title(tester), 'Your registration is confirmed');
+      expect(
+          find.text('Look in your email for your ticket, or for the link to '
+              'pay for it.'),
+          findsOneWidget);
+      expect(
+          _label(tester, RegistrationRequestPage.myTicketsKey), 'My tickets');
+      await tester.tap(find.byKey(RegistrationRequestPage.myTicketsKey));
+      await tester.pumpAndSettle();
+      expect(find.text('My events'), findsOneWidget);
     });
 
     testWidgets('the "pay" push goes straight on to the claim screen',
@@ -315,62 +461,141 @@ void main() {
         });
       await _pump(tester);
 
-      expect(_title(tester), 'Tinkerhub confirmed your place');
+      expect(_title(tester), 'Your registration is confirmed');
       expect(find.textContaining('₹'), findsNothing);
       expect(find.byKey(RegistrationRequestPage.payKey), findsNothing);
       expect(find.byKey(IosSaleBlockedNotice.noticeKey), findsOneWidget);
+      expect(
+          find.textContaining('Your ticket for Hack Night is held for you '
+              'until '),
+          findsOneWidget);
       debugDefaultTargetPlatformOverride = null;
     });
   });
 
   group('settled', () {
-    testWidgets('declined, with the club\'s note', (tester) async {
+    testWidgets('not confirmed, with the club\'s note', (tester) async {
       api.on('GET', _path,
           requestBody(status: 'declined', declineNote: 'We ran out of room.'));
       await _pump(tester);
 
-      expect(_title(tester), "Tinkerhub couldn't offer you a place");
+      expect(_chip(tester), 'Not confirmed');
+      expect(_title(tester), "Your registration wasn't confirmed");
       expect(
-          find.text("Sorry, Tinkerhub couldn't offer you a place at Hack "
-              'Night this time.'),
+          find.text('Thank you for your interest in Hack Night. Tinkerhub '
+              "couldn't confirm your registration this time."),
           findsOneWidget);
       expect(find.text('Tinkerhub said: We ran out of room.'), findsOneWidget);
       expect(find.byKey(RegistrationRequestPage.withdrawKey), findsNothing);
+      expect(_label(tester, RegistrationRequestPage.findEventsKey),
+          'Find other events');
 
       await tester.tap(find.byKey(RegistrationRequestPage.eventKey));
       await tester.pumpAndSettle();
       expect(find.text('Event hack-night'), findsOneWidget);
     });
 
-    testWidgets('withdrawn', (tester) async {
+    testWidgets('"Find other events" finds them', (tester) async {
+      api.on('GET', _path, requestBody(status: 'declined'));
+      await _pump(tester);
+
+      await tester.tap(find.byKey(RegistrationRequestPage.findEventsKey));
+      await tester.pumpAndSettle();
+      expect(find.text('Find events'), findsOneWidget);
+    });
+
+    testWidgets('cancelled', (tester) async {
       api.on('GET', _path, requestBody(status: 'withdrawn'));
       await _pump(tester);
-      expect(_title(tester), 'You withdrew your request');
+      expect(_chip(tester), 'Cancelled');
+      expect(_title(tester), 'You cancelled your registration');
+      expect(_label(tester, RegistrationRequestPage.registerAgainKey),
+          'Register again');
       expect(find.byKey(RegistrationRequestPage.withdrawKey), findsNothing);
     });
 
-    testWidgets('lapsed', (tester) async {
+    testWidgets('expired', (tester) async {
       api.on('GET', _path, requestBody(status: 'lapsed'));
       await _pump(tester);
-      expect(_title(tester), 'Your place was released');
-      expect(find.textContaining("the payment didn't arrive in time"),
-          findsOneWidget);
-    });
-
-    testWidgets('closed', (tester) async {
-      api.on('GET', _path, requestBody(status: 'closed'));
-      await _pump(tester);
-      expect(_title(tester), 'This request is closed');
+      expect(_chip(tester), 'Expired');
+      expect(_title(tester), 'Your registration has expired');
       expect(
-          find.text('Hack Night is over or was cancelled, so its requests '
-              'are closed.'),
+          find.text('Tinkerhub confirmed your registration for Hack Night, '
+              "but it wasn't paid in time. If registration is still open, "
+              'you can register again.'),
           findsOneWidget);
+      expect(find.byKey(RegistrationRequestPage.eventKey), findsOneWidget);
+      expect(find.byKey(RegistrationRequestPage.findEventsKey), findsOneWidget);
     });
 
-    testWidgets('a word this build doesn\'t know: the event', (tester) async {
+    group('closed, by its reason', () {
+      for (final reason in [null, 'event_ended', 'event_deleted']) {
+        testWidgets(
+            '${reason ?? 'no reason'}: ended before the club could '
+            'confirm it', (tester) async {
+          api.on('GET', _path,
+              requestBody(status: 'closed', closedReason: reason));
+          await _pump(tester);
+          expect(_chip(tester), 'Closed');
+          expect(_title(tester), 'This registration is closed');
+          expect(
+              find.text('Hack Night ended before Tinkerhub could confirm your '
+                  'registration.'),
+              findsOneWidget);
+          expect(find.byKey(RegistrationRequestPage.eventKey), findsOneWidget);
+          expect(find.byKey(RegistrationRequestPage.findEventsKey),
+              findsOneWidget);
+        });
+      }
+
+      testWidgets('event_cancelled: the event was cancelled', (tester) async {
+        api.on('GET', _path,
+            requestBody(status: 'closed', closedReason: 'event_cancelled'));
+        await _pump(tester);
+        expect(_chip(tester), 'Closed');
+        expect(_title(tester), 'This registration is closed');
+        expect(
+            find.text("Hack Night was cancelled. We've emailed you about it."),
+            findsOneWidget);
+      });
+
+      testWidgets('registered_directly: they have a ticket already',
+          (tester) async {
+        api.on('GET', _path,
+            requestBody(status: 'closed', closedReason: 'registered_directly'));
+        await _pump(tester);
+        expect(_title(tester), "You're registered");
+        expect(find.text('You have a ticket for Hack Night already.'),
+            findsOneWidget);
+        expect(
+            _label(tester, RegistrationRequestPage.myTicketsKey), 'My tickets');
+        expect(find.byKey(RegistrationRequestPage.eventKey), findsOneWidget);
+      });
+
+      testWidgets('without the event\'s name: "The event ended…", "the club"',
+          (tester) async {
+        api.on('GET', _path, {
+          ...requestBody(status: 'closed', closedReason: 'event_ended'),
+          'event': null,
+        });
+        await _pump(tester);
+        expect(
+            find.text('The event ended before the club could confirm your '
+                'registration.'),
+            findsOneWidget);
+      });
+    });
+
+    testWidgets('a word this build doesn\'t know: check your email',
+        (tester) async {
       api.on('GET', _path, requestBody(status: 'archived'));
       await _pump(tester);
-      expect(_title(tester), "We can't show this request");
+      expect(_chip(tester), isNull);
+      expect(_title(tester), 'Your registration');
+      expect(
+          find.text('Check your email for the latest from Tinkerhub about '
+              'your registration.'),
+          findsOneWidget);
       expect(find.byKey(RegistrationRequestPage.eventKey), findsOneWidget);
     });
   });
@@ -379,13 +604,18 @@ void main() {
     testWidgets('an unknown token: the link isn\'t valid', (tester) async {
       await _pump(tester);
       expect(_title(tester), "This link isn't valid");
+      expect(
+          find.text("We couldn't find a registration at this address. Check "
+              'that the whole link was copied from your email: each link '
+              'shows one registration.'),
+          findsOneWidget);
     });
 
     testWidgets('too many reads: said plainly', (tester) async {
       api.on('GET', _path, {'message': 'Rate limit exceeded'}, status: 429);
       await _pump(tester);
 
-      expect(_title(tester), "We couldn't open your request");
+      expect(_title(tester), "Your registration didn't load");
       expect(find.text('Too many tries. Wait a minute, then try again.'),
           findsOneWidget);
     });
@@ -396,10 +626,14 @@ void main() {
         ..on('GET', _path, requestBody());
       await _pump(tester);
 
-      expect(_title(tester), "We couldn't open your request");
+      expect(_title(tester), "Your registration didn't load");
+      expect(
+          find.text("We couldn't reach MyOtherApp to read this registration. "
+              'Check your connection and try again.'),
+          findsOneWidget);
       await tester.tap(find.byKey(RegistrationRequestPage.retryKey));
       await tester.pumpAndSettle();
-      expect(_title(tester), "You're on the waiting list");
+      expect(_title(tester), 'Your registration is under review');
     });
   });
 }

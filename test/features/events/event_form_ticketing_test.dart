@@ -299,7 +299,7 @@ void main() {
     expect(closedWith, [RegistrationAction.joinWaitlist]);
   });
 
-  group('the club confirms each place: no waiting list', () {
+  group('the club reviews every registration: no waiting list', () {
     testWidgets('a sold-out type is only "Sold out" in the picker',
         (tester) async {
       // As an older server may still send it: VIP's list open.
@@ -322,10 +322,12 @@ void main() {
       }, status: 400);
       final (closedWith, _) = await _pump(tester, requiresApproval: true);
 
-      await tester.ensureVisible(find.text('Request a place'));
-      await tester.tap(find.text('Request a place'));
+      await tester.ensureVisible(find.text('Register'));
+      await tester.tap(find.text('Register'));
       await tester.pumpAndSettle();
       expect(find.text('This event is full'), findsOneWidget);
+      expect(find.text('Every seat at this event has been taken.'),
+          findsOneWidget);
       expect(find.text('Join the waiting list'), findsNothing);
       expect(closedWith, isNot(contains(RegistrationAction.joinWaitlist)));
     });

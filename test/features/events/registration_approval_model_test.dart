@@ -15,6 +15,7 @@ Map<String, dynamic> requestBody({
   String? ticketId,
   Map<String, dynamic>? pay,
   String? declineNote,
+  String? closedReason,
   String id = 'req-1',
   int eventId = 7,
 }) =>
@@ -35,6 +36,7 @@ Map<String, dynamic> requestBody({
       'submitted_at': '2026-10-26T09:00:00Z',
       'decided_at': status == 'pending' ? null : '2026-10-26T12:00:00Z',
       'decline_note': declineNote,
+      if (closedReason != null) 'closed_reason': closedReason,
       'ticket_id': ticketId,
       'pay': pay,
     };
@@ -52,8 +54,8 @@ ApiException _refused(String code) => ApiException(
       statusCode: 409,
       type: ApiExceptionType.badRequest,
       errorCode: code,
-      serverMessage: 'This event needs the club to confirm each place. '
-          'Update the app, or register on myotherapp.in.',
+      serverMessage: 'This event reviews every registration. Update the '
+          'app, or register on myotherapp.in.',
     );
 
 void main() {
@@ -138,6 +140,67 @@ void main() {
         expect(r.status, status, reason: '$word');
         expect(r.isOpen, isFalse, reason: '$word');
       }
+    });
+
+    test('closed: its reason, read when the server says it', () {
+      for (final reason in [
+        'event_ended',
+        'event_deleted',
+        'event_cancelled',
+        'registered_directly',
+      ]) {
+        final r = RegistrationRequest.fromJson(
+            requestBody(status: 'closed', closedReason: reason))!;
+        expect(r.closedReason, reason);
+        expect(r.registeredDirectly, reason == 'registered_directly');
+      }
+      final upper = RegistrationRequest.fromJson(
+          requestBody(status: 'closed', closedReason: 'REGISTERED_DIRECTLY'))!;
+      expect(upper.closedReason, RequestClosedReasons.registeredDirectly);
+      expect(
+          RegistrationRequest.fromJson(requestBody(status: 'closed'))!
+              .closedReason,
+          isNull);
+      // Read again: the fresh reason.
+      final merged = RegistrationRequest.fromJson(requestBody())!.mergedWith(
+          RegistrationRequest.fromJson(
+              requestBody(status: 'closed', closedReason: 'event_cancelled'))!);
+      expect(merged.closedReason, RequestClosedReasons.eventCancelled);
+    });
+
+    test('where it stands, in the attendee\'s words', () {
+      String? word(Map<String, dynamic> body) =>
+          RegistrationRequest.fromJson(body)!.statusWord;
+      expect(word(requestBody()), 'Under review');
+      expect(
+          word(requestBody(status: 'approved', ticketId: 'T-9')), 'Confirmed');
+      expect(word(requestBody(status: 'approved')), 'Confirmed');
+      final pay = RegistrationRequest.fromJson(
+          requestBody(status: 'approved', pay: payBody()))!;
+      expect(
+          pay.statusWord,
+          'Confirmed · pay by ${requestMoment(pay.pay!.payBy!)} to get your '
+          'ticket');
+      expect(
+          word(requestBody(
+              status: 'approved', pay: {...payBody(), 'pay_by': null})),
+          'Confirmed · pay to get your ticket');
+      expect(word(requestBody(status: 'declined')), 'Not confirmed');
+      expect(word(requestBody(status: 'withdrawn')), 'Cancelled');
+      expect(word(requestBody(status: 'lapsed')), 'Expired');
+      expect(word(requestBody(status: 'closed')), 'Closed');
+      expect(word(requestBody(status: 'archived')), isNull);
+    });
+
+    test('the first name, and "the club" mid-sentence', () {
+      final r = RegistrationRequest.fromJson(requestBody())!;
+      expect(r.firstName, 'Asha');
+      expect(r.clubMidSentence, 'Tinkerhub');
+      final bare = RegistrationRequest.fromJson(
+          {'id': 'r', 'status': 'pending', 'full_name': '  '})!;
+      expect(bare.firstName, isNull);
+      expect(bare.clubName, 'The club');
+      expect(bare.clubMidSentence, 'the club');
     });
 
     test('the token: its own, else the status link\'s, else the one asked by',
@@ -275,23 +338,50 @@ void main() {
         errorCode: 'ADD_ONS_NOT_ALLOWED',
         serverMessage: 'A request holds no add-ons.',
       ));
-      expect(refusal.title, 'The club confirms each place now');
-      expect(refusal.message, contains("can't include add-ons"));
+      expect(refusal.title, 'This event reviews registrations now');
+      expect(
+          refusal.message,
+          "Add-ons can't be picked when registrations are reviewed, so "
+          "they've been removed. Check your details and register again.");
       expect(refusal.action, isNull);
     });
 
     test('REQUEST_DECLINED and APPROVAL_REQUIRED are said plainly', () {
       final declined = describeRegistrationError(_refused('REQUEST_DECLINED'));
-      expect(declined.title, "The club couldn't offer you a place");
-      expect(declined.message, contains("can't ask again"));
+      expect(declined.title, "You can't register again");
+      expect(
+          declined.message,
+          "The club couldn't confirm your registration for this event, so "
+          "you can't register again with this email.");
       expect(declined.closed, isTrue);
       expect(declined.action, isNull);
+      expect(
+          describeRegistrationError(_refused('REQUEST_DECLINED'),
+                  clubName: 'Tinkerhub')
+              .message,
+          "Tinkerhub couldn't confirm your registration for this event, so "
+          "you can't register again with this email.");
 
       final required = describeRegistrationError(_refused('APPROVAL_REQUIRED'));
-      expect(required.title, 'The club confirms each place');
-      expect(required.message, contains('Request a place'));
+      expect(required.title, 'This event reviews registrations now');
+      expect(required.message, 'Register again from the event page.');
       expect(required.message, isNot(contains('Update the app')),
           reason: "this app is the updated one");
+    });
+
+    test('full, on an event that reviews registrations: no "place"', () {
+      final full = describeRegistrationError(
+          ApiException(
+            message: 'Refused',
+            statusCode: 409,
+            type: ApiExceptionType.badRequest,
+            errorCode: 'EVENT_FULL',
+            errors: const {'waitlist': true},
+          ),
+          approval: true);
+      expect(full.title, 'This event is full');
+      expect(full.message, 'Every seat at this event has been taken.');
+      expect(full.action, isNull);
     });
   });
 

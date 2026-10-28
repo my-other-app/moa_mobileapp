@@ -2,31 +2,38 @@ import 'package:intl/intl.dart';
 
 import 'package:finnet/core/utils/json_read.dart';
 
-// "Confirm each registration": a club that turns it on for an event takes
-// requests instead of registrations, and confirms or declines each one
-// (feature-register `approvals-contract.md`). Read without trusting any
-// field to be there, as the ticketing models are: a server without the
-// feature sends none of it, and every screen does what it did before.
+// "Review registrations": a club that turns it on for an event reviews
+// every registration, and confirms or declines each one (feature-register
+// `approvals-contract.md`; the words people see are
+// `review-wording-contract.md`'s). The API still calls each one a request,
+// and so does the code; people only ever see "registration". Read without
+// trusting any field to be there, as the ticketing models are: a server
+// without the feature sends none of it, and every screen does what it did
+// before.
 
 /// Where a request stands (`status`).
 enum RequestStatus {
-  /// Sent; the club hasn't decided.
+  /// Registered; the club hasn't decided. "Under review".
   pending,
 
-  /// Confirmed: registered (a free ticket, or paid), or a place held while
-  /// it is paid for ([RegistrationRequest.pay]).
+  /// Confirmed: registered (a free ticket, or paid), or a ticket held while
+  /// it is paid for ([RegistrationRequest.pay]). "Confirmed".
   approved,
 
-  /// The club couldn't offer a place. Asking again is refused.
+  /// The club didn't confirm it. Registering again is refused. "Not
+  /// confirmed".
   declined,
 
-  /// The person took the request back. They may ask again.
+  /// The person cancelled it. They may register again. "Cancelled".
   withdrawn,
 
   /// Confirmed for a paid ticket, and the payment didn't arrive in time.
+  /// "Expired".
   lapsed,
 
-  /// The event was cancelled, or is over.
+  /// Closed without a decision: the event ended, was deleted or cancelled,
+  /// or the person got a ticket another way
+  /// ([RegistrationRequest.closedReason]). "Closed".
   closed,
 
   /// A word this build doesn't know.
@@ -118,10 +125,10 @@ class RequestPay {
   }
 }
 
-/// A request for a place at an event that confirms each registration:
-/// `GET /registration-requests/{token}`, a row of `.../mine`, or -- with
-/// only its id, status, time and token -- the `approval` a registration
-/// answers with.
+/// A registration at an event whose club reviews every registration (the
+/// API's "request"): `GET /registration-requests/{token}`, a row of
+/// `.../mine`, or -- with only its id, status, time and token -- the
+/// `approval` a registration answers with.
 class RegistrationRequest {
   final String id;
   final RequestStatus status;
@@ -140,6 +147,10 @@ class RegistrationRequest {
 
   /// The club's short note when it declined, if it wrote one.
   final String? declineNote;
+
+  /// Why a [RequestStatus.closed] request closed (`closed_reason`): one of
+  /// [RequestClosedReasons], or null when not said.
+  final String? closedReason;
 
   /// Set once registered: the free ticket at confirmation, or the paid one
   /// once paid.
@@ -160,6 +171,7 @@ class RegistrationRequest {
     this.submittedAt,
     this.decidedAt,
     this.declineNote,
+    this.closedReason,
     this.ticketId,
     this.pay,
   });
@@ -173,18 +185,54 @@ class RegistrationRequest {
   bool get awaitingPayment =>
       status == RequestStatus.approved && ticketId == null && pay != null;
 
-  /// Still going somewhere: waiting for the club, or for the payment. What
-  /// My events lists under "Waiting for confirmation".
+  /// Still going somewhere: under review, or waiting for the payment. What
+  /// My events lists under "Under review".
   bool get isOpen => isPending || awaitingPayment;
 
-  /// The club's name, or "The club" when the server didn't say.
+  /// The club's name, or "The club" when the server didn't say: for the
+  /// start of a sentence.
   String get clubName => event?.clubName ?? 'The club';
+
+  /// The club's name, or "the club": for the middle of a sentence.
+  String get clubMidSentence => event?.clubName ?? 'the club';
 
   /// The event's name, or "the event".
   String get eventName {
     final name = event?.name ?? '';
     return name.isEmpty ? 'the event' : name;
   }
+
+  /// The first word of [fullName], or null without one.
+  String? get firstName {
+    final first = fullName?.trim().split(RegExp(r'\s+')).first ?? '';
+    return first.isEmpty ? null : first;
+  }
+
+  /// The person got a ticket another way, so the request closed
+  /// (`closed_reason: "registered_directly"`).
+  bool get registeredDirectly =>
+      status == RequestStatus.closed &&
+      closedReason == RequestClosedReasons.registeredDirectly;
+
+  /// Where it stands, in the attendee's words (feature-register
+  /// `review-wording-contract.md` §0): "Under review", "Confirmed",
+  /// "Confirmed · pay by Sat 1 Nov, 6:00 PM to get your ticket", "Not
+  /// confirmed", "Cancelled", "Expired" or "Closed". Null for a status this
+  /// build doesn't know.
+  String? get statusWord => switch (status) {
+        RequestStatus.pending => 'Under review',
+        RequestStatus.approved when awaitingPayment => switch (pay?.payBy) {
+            final by? => 'Confirmed · pay by ${requestMoment(by)} to get '
+                'your ticket',
+            null => 'Confirmed · pay to get your ticket',
+          },
+        RequestStatus.approved => 'Confirmed',
+        RequestStatus.declined => 'Not confirmed',
+        RequestStatus.withdrawn => 'Cancelled',
+        RequestStatus.lapsed => 'Expired',
+        RequestStatus.closed => 'Closed',
+        RequestStatus.unknown => null,
+      };
 
   /// The status screen, when the token is known.
   String? get route {
@@ -207,6 +255,7 @@ class RegistrationRequest {
         submittedAt: fresh.submittedAt ?? submittedAt,
         decidedAt: fresh.decidedAt,
         declineNote: fresh.declineNote,
+        closedReason: fresh.closedReason,
         ticketId: fresh.ticketId,
         pay: fresh.pay,
       );
@@ -233,6 +282,7 @@ class RegistrationRequest {
       submittedAt: jsonDate(json['submitted_at']),
       decidedAt: jsonDate(json['decided_at']),
       declineNote: _text(json['decline_note']),
+      closedReason: _text(json['closed_reason'])?.toLowerCase(),
       ticketId: _text(json['ticket_id']),
       pay: RequestPay.fromJson(json['pay']),
     );
@@ -274,15 +324,30 @@ String requestRoute(String token) => '/requests/${Uri.encodeComponent(token)}';
 String requestMoment(DateTime at) =>
     DateFormat('EEE d MMM, h:mm a').format(at.toLocal());
 
-/// The `error_code`s registering refuses with on an event that confirms
-/// each registration.
+/// Why a request closed (`closed_reason`, on a [RequestStatus.closed] one).
+abstract final class RequestClosedReasons {
+  /// The event ended while the registration was still under review.
+  static const eventEnded = 'event_ended';
+
+  /// The event was deleted while the registration was still under review.
+  static const eventDeleted = 'event_deleted';
+
+  /// The event was cancelled.
+  static const eventCancelled = 'event_cancelled';
+
+  /// The person got a ticket another way.
+  static const registeredDirectly = 'registered_directly';
+}
+
+/// The `error_code`s registering refuses with on an event whose club
+/// reviews every registration.
 abstract final class ApprovalErrorCodes {
-  /// The event confirms each place and the client didn't say it can take a
-  /// request (`accepts_approval`). An older app lands here.
+  /// The event reviews every registration and the client didn't say it can
+  /// take one under review (`accepts_approval`). An older app lands here.
   static const approvalRequired = 'APPROVAL_REQUIRED';
 
-  /// The club declined this person's request before; they can't ask again
-  /// unless the club reopens it.
+  /// The club declined this person's registration before; they can't
+  /// register again unless the club reopens it.
   static const requestDeclined = 'REQUEST_DECLINED';
 
   /// Add-ons (`store` picks) sent with a request (422): a request holds
@@ -290,7 +355,7 @@ abstract final class ApprovalErrorCodes {
   /// its shelf.
   static const addOnsNotAllowed = 'ADD_ONS_NOT_ALLOWED';
 
-  /// Withdrawing a request that has moved on (decided, paid, closed): 409,
-  /// with the request as it stands in `errors.request`.
+  /// Cancelling (withdrawing) a request that has moved on (decided, paid,
+  /// closed): 409, with the request as it stands in `errors.request`.
   static const requestNotWithdrawable = 'REQUEST_NOT_WITHDRAWABLE';
 }
