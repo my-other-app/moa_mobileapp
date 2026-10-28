@@ -15,7 +15,7 @@ import 'package:finnet/features/profile/presentation/pages/certificates/certific
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/utils/certificate_share.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 
 /// Opens the PDF at a path in the phone's own viewer: true when one opened
 /// it. A provider so a test can see what would have been opened.
@@ -307,21 +307,12 @@ class _ClubRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: SizedBox(
-            width: 28,
-            height: 28,
-            child: logoUrl == null || logoUrl!.isEmpty
-                ? const ColoredBox(color: Color(0xFFEFEFEF))
-                : AppNetworkImage(
-                    url: logoUrl,
-                    width: 28,
-                    height: 28,
-                    errorWidget: (_) =>
-                        const ColoredBox(color: Color(0xFFEFEFEF)),
-                  ),
-          ),
+        // Whole when it is not square (a wordmark), on white.
+        ClubLogo(
+          url: logoUrl,
+          size: 28,
+          radius: 4,
+          fallback: const ColoredBox(color: Color(0xFFEFEFEF)),
         ),
         const SizedBox(width: 10),
         Expanded(

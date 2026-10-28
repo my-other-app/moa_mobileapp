@@ -55,7 +55,7 @@ import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart'
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/widgets/networking/people_like_you_card.dart';
 import 'package:finnet/core/utils/hours.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/discover/presentation/discover_navigation.dart';
 import 'package:finnet/shared/widgets/poster_hero.dart';
@@ -1862,7 +1862,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               : PosterHero(
                   tag: widget.posterHero,
                   child: AspectRatio(
-                    aspectRatio: 1.0,
+                    aspectRatio: posterAspectRatio,
                     child: EventPosterImage(
                       poster: widget.posterHint?.poster,
                       eventId: widget.eventId ?? widget.ref,
@@ -1939,8 +1939,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             // card's poster flies to (and back from).
             PosterHero(
               tag: widget.posterHero,
+              // 4:5, the poster's own shape: shown whole, never cropped.
               child: AspectRatio(
-                aspectRatio: 1.0,
+                aspectRatio: posterAspectRatio,
                 child: EventPosterImage(
                   poster: poster,
                   eventId: _eventId ?? widget.ref,
@@ -3072,17 +3073,17 @@ class _ClubLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = this.url;
-    final hasUrl = url is String && url.trim().isNotEmpty;
-    return CircleAvatar(
-      radius: 24,
-      backgroundColor: const Color(0xFFF3F3F3),
-      foregroundImage: hasUrl
-          ? appImageProvider(url,
-              decodeWidth: decodeWidthFor(
-                  48, 48, MediaQuery.devicePixelRatioOf(context)))
-          : null,
-      onForegroundImageError: hasUrl ? (_, __) {} : null,
-      child: const Icon(Icons.group, color: Colors.grey),
+    // Whole when it is not square (a wordmark), on a white disc.
+    return ClubLogo(
+      url: url is String ? url : null,
+      size: 48,
+      circle: true,
+      fallback: Container(
+        width: 48,
+        height: 48,
+        color: const Color(0xFFF3F3F3),
+        child: const Icon(Icons.group, color: Colors.grey),
+      ),
     );
   }
 }

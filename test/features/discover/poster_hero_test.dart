@@ -125,7 +125,8 @@ void main() {
         tester.widget<CachedNetworkImage>(find.byType(CachedNetworkImage));
     // The card's 248 points, at 3x: the same decode, the same cached copy.
     expect(image.memCacheWidth, 744);
-    expect(image.fit, BoxFit.cover);
+    // Drawn whole, as the card drew it (PosterPicture), never cropped.
+    expect(image.imageBuilder, isNotNull);
   });
 
   test("a card's poster is offered only when there is one to offer", () {

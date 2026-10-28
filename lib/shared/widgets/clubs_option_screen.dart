@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/notifications/data/repositories/push_settings_repository_impl.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/settings_row.dart';
 
 class ClubsOptionScreen extends ConsumerStatefulWidget {
@@ -207,19 +207,13 @@ class _ClubsOptionScreenState extends ConsumerState<ClubsOptionScreen> {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.white,
-                // A club without a logo has no address to load.
-                backgroundImage: widget.imageUrl.isEmpty
-                    ? null
-                    : appImageProvider(
-                        widget.imageUrl,
-                        decodeWidth: decodeWidthFor(
-                            48, 48, MediaQuery.devicePixelRatioOf(context)),
-                      ),
-                onBackgroundImageError:
-                    widget.imageUrl.isEmpty ? null : (_, __) {},
+              // Whole when it is not square (a wordmark), on a white disc;
+              // a plain white disc for a club without a logo.
+              ClubLogo(
+                url: widget.imageUrl,
+                size: 48,
+                circle: true,
+                fallback: const ColoredBox(color: Colors.white),
               ),
               const SizedBox(height: 8),
               Text(

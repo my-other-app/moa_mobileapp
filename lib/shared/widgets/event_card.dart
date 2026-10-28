@@ -12,7 +12,7 @@ import 'package:finnet/features/events/presentation/widgets/event_page/register_
     show IosSaleBlockedNotice;
 import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
-import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/high_demand_chip.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
@@ -180,7 +180,6 @@ class EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
     final textTheme = Theme.of(context).textTheme;
 
     return Column(
@@ -199,22 +198,16 @@ class EventCard extends StatelessWidget {
                   'clubName': organizer,
                 });
               },
-              child: SizedBox(
-                width: 48,
-                height: 48,
-                child: ClipOval(
-                  // Logos are presigned too: AppNetworkImage keys the cache
-                  // on the object, not the signature, or it never hits.
-                  child: AppNetworkImage(
-                    url: orgImage,
-                    width: 48,
-                    height: 48,
-                    errorWidget: (_) => Container(
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.group, color: Colors.grey),
-                    ),
-                    placeholder: (_) => ColoredBox(color: Colors.grey[300]!),
-                  ),
+              // Whole when it is not square (a wordmark), on a white disc.
+              child: ClubLogo(
+                url: orgImage,
+                size: 48,
+                circle: true,
+                fallback: Container(
+                  width: 48,
+                  height: 48,
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.group, color: Colors.grey),
                 ),
               ),
             ),
@@ -279,16 +272,18 @@ class EventCard extends StatelessWidget {
                     context.push('/events/$eventId',
                         extra: _getNavigationExtras());
                   },
-                  child: EventPosterImage(
-                    poster: poster,
-                    eventId: eventId,
-                    categoryId: categoryId,
-                    categoryName: categoryName,
-                    startsAt: startsAt,
-                    isOnline: isOnline,
-                    width: double.infinity,
-                    height: size.height * 0.5,
-                    borderRadius: BorderRadius.circular(10.0),
+                  // 4:5, the poster's own shape, as wide as the card.
+                  child: AspectRatio(
+                    aspectRatio: posterAspectRatio,
+                    child: EventPosterImage(
+                      poster: poster,
+                      eventId: eventId,
+                      categoryId: categoryId,
+                      categoryName: categoryName,
+                      startsAt: startsAt,
+                      isOnline: isOnline,
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
                   ),
                 )),
             if (_showsHighDemand)

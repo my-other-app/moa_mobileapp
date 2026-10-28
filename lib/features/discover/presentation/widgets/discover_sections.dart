@@ -5,6 +5,8 @@ import 'package:finnet/features/discover/domain/entities/discover_event.dart';
 import 'package:finnet/features/discover/presentation/providers/paged_list.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_club_card.dart';
 import 'package:finnet/features/discover/presentation/widgets/discover_event_card.dart';
+import 'package:finnet/shared/widgets/event_poster_image.dart'
+    show posterAspectRatio;
 import 'package:finnet/shared/widgets/section_header.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/shared/widgets/poster_hero.dart';
@@ -212,8 +214,9 @@ class ListSkeleton extends StatelessWidget {
                   children: [
                     ShimmerBox(
                         height: height,
+                        // An event row's poster is 4:5 (DiscoverEventTile).
                         width: rowHeight == null
-                            ? DiscoverEventTile.thumbWidth
+                            ? height * posterAspectRatio
                             : height),
                     const SizedBox(width: 12),
                     const Expanded(

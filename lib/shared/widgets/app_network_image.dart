@@ -78,6 +78,12 @@ class AppNetworkImage extends StatelessWidget {
   /// How wide to decode, in pixels. Defaults to the box, else the screen.
   final int? decodeWidth;
 
+  /// Draws the loaded picture, for a frame that places it itself (a club's
+  /// logo, whole or filling its square by its shape). Drawn at [fit] in
+  /// the box when not given.
+  final Widget Function(BuildContext context, ImageProvider image)?
+      imageBuilder;
+
   const AppNetworkImage({
     super.key,
     required this.url,
@@ -88,6 +94,7 @@ class AppNetworkImage extends StatelessWidget {
     this.placeholder,
     this.errorWidget,
     this.decodeWidth,
+    this.imageBuilder,
   });
 
   /// The grey box drawn when nothing better was given.
@@ -120,6 +127,14 @@ class AppNetworkImage extends StatelessWidget {
       memCacheWidth: decode,
       fadeInDuration: const Duration(milliseconds: 200),
       fadeOutDuration: const Duration(milliseconds: 100),
+      // Handed the provider resized as the widget resized it: the picture
+      // already decoded, not a second, full-size decode.
+      imageBuilder: imageBuilder == null
+          ? null
+          : (context, image) => imageBuilder!(
+                context,
+                ResizeImage.resizeIfNeeded(decode, null, image),
+              ),
       placeholder: (context, _) =>
           placeholder?.call(context) ?? _fallback(context),
       errorWidget: (context, _, __) => _fallback(context),

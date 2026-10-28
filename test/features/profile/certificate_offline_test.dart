@@ -496,6 +496,9 @@ void main() {
     ]);
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    // Under the card's 4:5 poster, below the test screen's fold.
+    await tester.ensureVisible(find.text('VIEW CERTIFICATE'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('VIEW CERTIFICATE'));
     await tester.pumpAndSettle();

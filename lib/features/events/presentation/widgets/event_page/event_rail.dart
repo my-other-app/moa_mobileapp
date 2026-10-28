@@ -39,7 +39,7 @@ class EventRail extends StatelessWidget {
               child: const Text('See all'),
             ),
       child: SizedBox(
-        height: 236,
+        height: EventSummaryCard.height,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: shown.length,
@@ -62,6 +62,9 @@ class EventSummaryCard extends StatelessWidget {
   const EventSummaryCard({super.key, required this.event, required this.onTap});
 
   static const width = 168.0;
+
+  /// The poster (4:5, as wide as the card) and the words under it.
+  static const height = width / posterAspectRatio + 124;
 
   String? get _when {
     final start = event.startsAt;
@@ -100,8 +103,9 @@ class EventSummaryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 4:5, the poster's own shape: shown whole, never cropped.
               SizedBox(
-                height: 112,
+                height: width / posterAspectRatio,
                 width: width,
                 child: EventPosterImage(
                   poster: event.poster,
