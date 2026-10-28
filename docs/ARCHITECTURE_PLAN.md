@@ -213,8 +213,9 @@ Not part of the restack (it stays Python), and it is the healthiest repo. Archit
 Both **bypass `SES_DEFAULT_SENDER`** and hardcode the old domain. Whether payment receipts and registration
 confirmations are currently failing depends on which domain identity is verified in production SES — the local
 `.env` only has a placeholder, so this needs checking against the real SES config.
-(`app.myotherapp.com` in `lib/firebase_options.dart:75` and `app/config.py:35` is an Apple **bundle ID**, not a
-domain — leave it alone.)
+(The app's Apple **bundle ID** in `lib/firebase_options.dart` and the backend's `APPLE_CLIENT_ID` is an identifier,
+not a domain, so the rebrand leaves it alone. It is `app.myotherapp.in` since 2026-10-28, when the app moved to the
+Firebase project `myotherapp-in` for its first store release; it was `app.myotherapp.com`.)
 
 ---
 
@@ -367,4 +368,5 @@ Not architecture — things that are broken right now.
   If that trade does not feel worth it, keeping admin on Vite while it consumes `packages/ui` + `packages/api` is a
   defensible alternative.
 - **Does not introduce a state library to `apps/events`.** Server components plus URL state cover it.
-- **Does not change the Apple/Firebase bundle IDs** (`app.myotherapp.com`) — those are identifiers, not domains.
+- **Does not change the Apple/Firebase bundle IDs** as part of the domain move — those are identifiers, not domains.
+  (They moved separately, to `app.myotherapp.in` with the Firebase project `myotherapp-in`, on 2026-10-28.)

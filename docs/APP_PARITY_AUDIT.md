@@ -319,11 +319,11 @@ Four batches, each owning its own folders, so parallel builders don't collide.
   - pin SDK 36; bump to AGP 8.11+ and Gradle 8.14+;
   - `allowBackup`;
   - check 16 KB alignment on the built AAB.
-- **Website (`moa_eventwebsite`):** serve `/.well-known/apple-app-site-association` (JSON, no redirect) for app ID `PX6QV826X4.app.myotherapp.com`.
+- **Website (`moa_eventwebsite`):** serve `/.well-known/apple-app-site-association` (JSON, no redirect) for app ID `PX6QV826X4.app.myotherapp.in` (the app's id was `app.myotherapp.com` until 2026-10-28).
   - **Claim:** `/events/*`, `/clubs/*`, `/threads/*`, `/tickets/*`, `/certificates/*`, `/topics/*`.
   - **Exclude:** `/feedback/*`, `/play/*`, `/for-clubs`, `/pricing`, `/api/*`, `/og/*`, `/media/*`.
 
-  Also serve `/.well-known/assetlinks.json` for `app.myotherapp.com` with the **Play App Signing SHA-256**. `www` and `events.` redirect to the apex, so claim only `myotherapp.in`, and send email links to the apex.
+  Also serve `/.well-known/assetlinks.json` for `app.myotherapp.in` with the **Play App Signing SHA-256**. `www` and `events.` redirect to the apex, so claim only `myotherapp.in`, and send email links to the apex.
 - **Backend:** nothing for links. Optional: set `android.notification.channel_id` on FCM sends.
 
 **Order:**

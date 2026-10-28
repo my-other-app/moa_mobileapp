@@ -37,6 +37,9 @@ def debugSignedReleaseAllowed = !isCi && (
 def sharedDebugKeystore = file("debug-key.keystore")
 
 android {
+    // The code's package (MainActivity.kt), not the store identity. It stays
+    // app.myotherapp.com because "in" is a hard keyword in Kotlin, so the
+    // package can't be app.myotherapp.in. The store identity is applicationId.
     namespace = "app.myotherapp.com"
     // Pinned rather than taken from the Flutter SDK, so an older SDK on the
     // build machine can't quietly build for API 35: Play requires target 36
@@ -55,7 +58,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.myotherapp.com"
+        // The app's identity on Play and in Firebase (myotherapp-in).
+        applicationId = "app.myotherapp.in"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode

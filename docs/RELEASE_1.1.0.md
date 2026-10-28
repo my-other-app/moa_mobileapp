@@ -51,10 +51,15 @@ Each item below is outside the app, or needs a key the repo doesn't hold.
 6. **Real `.env` for the store builds.** See section 4.
 7. **Keys:**
    - the Android upload keystore and `android/key.properties`;
-   - the iOS APNs key in Firebase;
-   - the Play and Firebase SHA fingerprints.
+   - the iOS APNs key in the Firebase project `myotherapp-in`;
+   - the Google sign-in clients for `app.myotherapp.in` in the Google Cloud project "My Other App": Android ones for each SHA-1, and one for iOS.
 
    See sections 5 and 6. Also, if the Apple Wallet pass-signing key has not been rotated since it was exposed, rotate it before Wallet is reviewed.
+8. **The new app ID and Firebase project.** The app is now **`app.myotherapp.in`** on both stores (it was `app.myotherapp.com`), and neither store has it yet, so both need new records (sections 5 and 6). Its Firebase project is now **`myotherapp-in`** (677703780077), which replaces `myotherapp-com`: Crashlytics, Analytics and FCM all live there. What follows from that, outside the app:
+   - **Backend pushes.** The backend sends pushes with a Firebase service account (`FIREBASE_SERVICE_ACCOUNT_PATH` or `_BASE64`). It must be a service account of `myotherapp-in`, or no push reaches the new app.
+   - **Backend Sign in with Apple.** It checks the token's audience against `APPLE_CLIENT_ID`, which must be `app.myotherapp.in` (my-other-app/moa_backend#132; check the server's `.env` too).
+   - **Website links.** The site's `apple-app-site-association`, `assetlinks.json`, Play link and web manifest name the app (my-other-app/moa_events#44).
+   - **iOS Google sign-in.** Until the new iOS OAuth client exists, `GIDClientID` and its URL scheme in `ios/Runner/Info.plist` are the client of the old bundle id. Put the new client's id in both before the iOS build that goes to review (section 6).
 
 ---
 
@@ -284,14 +289,16 @@ Delete `build/` afterwards (disk is tight).
    keyPassword=...
    ```
    Without that file, a local release build is signed with the debug key, which Play rejects, and a CI build fails on purpose.
-2. **Play App Signing.** Let Google manage the app signing key (the default on first upload). `versionCode` 3 must be higher than any build already uploaded.
-3. **SHA fingerprints, which Google sign-in needs.**
+2. **A new app, and Play App Signing.** Create a new app in Play Console for `app.myotherapp.in`. A Play app's package name is fixed, so any app made for `app.myotherapp.com` can't take this build. Let Google manage the app signing key (the default on first upload). Nothing has been uploaded under this id yet, so `versionCode` 3 is fine.
+3. **SHA-1 fingerprints, which Google sign-in needs.**
    1. In Play Console, go to *Test and release → Setup → App signing*.
-   2. Copy the SHA-1 and SHA-256 of both the **app signing key** and the **upload key**.
-   3. In Firebase, go to *Project settings → Your apps → Android `app.myotherapp.com` → Add fingerprint*, and add all four.
-   4. Download `google-services.json` again into `android/app/`, and commit it if it changed.
+   2. Copy the SHA-1 of both the **app signing key** and the **upload key**.
+   3. In Google Cloud, open the project **"My Other App"** (497245325238), not the Firebase project. Go to *APIs & Services → Credentials → Create credentials → OAuth client ID → Android*. Make one client for each SHA-1, each with package name `app.myotherapp.in`:
+      - the debug key: `E8:8C:2A:23:06:DD:8E:1A:2A:2D:3B:39:35:04:9D:F4:AE:D2:94:59`;
+      - the upload key;
+      - the Play App Signing key.
 
-   The app signs in with the web client as `serverClientId`. The Android OAuth client is matched by package name and SHA-1, so a missing fingerprint fails sign-in with code 10 on Play-installed builds only.
+   The app signs in with that project's web client as `serverClientId` (`497245325238-ceiht9g22u4eh9a3mdkmfbssa0fkevt1`), which doesn't change. Google matches the Android OAuth client by package name and SHA-1, so a missing fingerprint fails sign-in with code 10 (DEVELOPER_ERROR). Without the Play App Signing one, only Play-installed builds fail. The Firebase project `myotherapp-in` holds no sign-in clients, so `google-services.json` doesn't change for this.
 4. **Internal testing.** Upload the AAB to the internal track, install it from Play, and run section 3 on that build.
 5. **App content forms:**
 
@@ -329,17 +336,18 @@ Photo and media permissions are removed on purpose: a profile photo is chosen wi
 ## 6. App Store
 
 1. **Xcode.** Install the iOS 26.2 platform: Xcode → Settings → Components, or `xcodebuild -downloadPlatform iOS`.
-2. **Signing.**
-   - Settings: Runner target, team `PX6QV826X4`, bundle id `app.myotherapp.com`, automatic signing.
-   - Release uses `Runner.Release.entitlements`: `aps-environment = production` and Sign in with Apple.
-   - The App ID needs the **Push Notifications** and **Sign in with Apple** capabilities.
+2. **App ID, record and signing.**
+   - The bundle id is new. On developer.apple.com, register the App ID `app.myotherapp.in` with the **Push Notifications**, **Sign in with Apple** and **Associated Domains** capabilities. Then create a new app in App Store Connect with that bundle id.
+   - Settings: Runner target, team `PX6QV826X4`, bundle id `app.myotherapp.in`, automatic signing.
+   - Release uses `Runner.Release.entitlements`: `aps-environment = production`, Sign in with Apple and `applinks:myotherapp.in`.
 3. **APNs key.**
-   1. On developer.apple.com, go to *Keys* and add a key with **Apple Push Notifications service**. Download the `.p8`; it downloads once only.
-   2. In Firebase, go to *Project settings → Cloud Messaging → Apple app configuration*, and upload the `.p8` with its Key ID and the Team ID.
+   1. On developer.apple.com, go to *Keys* and add a key with **Apple Push Notifications service**. Download the `.p8`; it downloads once only. A key belongs to the team, not to one app, so an existing one works too if you still have its `.p8` and it hasn't been revoked.
+   2. In the Firebase project **`myotherapp-in`**, go to *Project settings → Cloud Messaging → Apple app configuration* (the iOS app `app.myotherapp.in`), and upload the `.p8` with its Key ID and the Team ID.
 
-   Without it, no iPhone gets a push. If a key is already there, check that it hasn't been revoked.
-4. **Archive and upload.** Run `flutter build ipa --release` (section 4). Then open `build/ios/archive/Runner.xcarchive` in Xcode's Organizer and choose *Distribute App → App Store Connect → Upload*, or upload the `.ipa` with Transporter.
-5. **App Store Connect, version 1.1.0:**
+   Without it, no iPhone gets a push. The project is new, so no key is there yet.
+4. **Google sign-in client.** In the Google Cloud project **"My Other App"** (497245325238), create an OAuth client ID of type **iOS** with bundle id `app.myotherapp.in`. In `ios/Runner/Info.plist`, set `GIDClientID` to its client id, and the URL scheme under `CFBundleURLTypes` to its reversed form (`com.googleusercontent.apps.<the part before .apps.googleusercontent.com>`). Today both are the client of the old bundle id (`497245325238-e5o64rt0gpkpmp4730hrs7be5l7qk8ml`).
+5. **Archive and upload.** Run `flutter build ipa --release` (section 4). Then open `build/ios/archive/Runner.xcarchive` in Xcode's Organizer and choose *Distribute App → App Store Connect → Upload*, or upload the `.ipa` with Transporter.
+6. **App Store Connect, version 1.1.0:**
    - **Build:** pick build 3 once it has processed.
    - **Screenshots:** **iPhone 6.9" only**, 1320×2868 or 1290×2796 (portrait). No iPad screenshots: the app is iPhone-only now.
    - **App Privacy:** section 9.
@@ -349,7 +357,7 @@ Photo and media permissions are removed on purpose: a profile photo is chosen wi
    - **Privacy Policy URL:** https://myotherapp.in/privacy.
    - **Support URL:** a page on myotherapp.in that gives the support email.
    - **Availability (optional):** untick Mac (Apple silicon) and Apple Vision Pro, since the layouts are phone-only.
-6. Submit. A phased release is optional.
+7. Submit. A phased release is optional.
 
 ---
 
@@ -404,9 +412,14 @@ For Play's *App access* form, give the same credentials, with "Sign in with LOGI
 | | Android | iOS |
 | --- | --- | --- |
 | Version | 1.1.0 (versionCode 3) | 1.1.0 (build 3) |
-| ID | `app.myotherapp.com` | `app.myotherapp.com` |
+| ID | `app.myotherapp.in` (`applicationId`) | `app.myotherapp.in` (bundle id) |
+| Firebase app | `1:677703780077:android:14695a029d68626d3daee4` | `1:677703780077:ios:82e5f762775b3a873daee4` |
 | Minimum OS | API 24 (Android 7.0) | iOS 13.0 |
 | Devices | phones | iPhone only (`TARGETED_DEVICE_FAMILY = 1`) |
+
+- **Firebase:** the project `myotherapp-in` (677703780077). Crashlytics, Analytics and FCM live there. It replaces `myotherapp-com`, which belonged to the old id `app.myotherapp.com`.
+- **Google sign-in:** the Google Cloud project "My Other App" (497245325238), separate from Firebase. Its web client is the app's `serverClientId` and doesn't change.
+- **Android code package:** `namespace` in `android/app/build.gradle` and the Kotlin package (`MainActivity.kt`) stay `app.myotherapp.com`, because `in` is a hard keyword in Kotlin. They are internal; only `applicationId` is the store identity.
 
 ---
 

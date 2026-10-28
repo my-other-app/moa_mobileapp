@@ -15,8 +15,9 @@ import 'package:flutter/foundation.dart'
 /// );
 /// ```
 ///
-/// TODO: Run `flutterfire configure` to regenerate this file with complete Firebase config.
-/// For now, this contains placeholder values that need to be updated.
+/// Firebase project `myotherapp-in` (677703780077). The values match
+/// android/app/google-services.json and ios/Runner/GoogleService-Info.plist.
+/// To regenerate: `flutterfire configure --project=myotherapp-in`.
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -52,28 +53,20 @@ class DefaultFirebaseOptions {
     }
   }
 
-  // TODO: Replace placeholder values with actual Firebase config from Firebase Console
-
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAwwXeUkVuKGohaPNg-0pV-Kj9K4hgWiSo',
-    appId: '1:444091936624:android:8eaffa590c9b9de6c569b5',
-    messagingSenderId: '444091936624',
-    projectId: 'myotherapp-com',
-    storageBucket: 'myotherapp-com.firebasestorage.app',
+    apiKey: 'AIzaSyAVAmTq9isN44oGbrLzEvYnL8AFgxEKwlo',
+    appId: '1:677703780077:android:14695a029d68626d3daee4',
+    messagingSenderId: '677703780077',
+    projectId: 'myotherapp-in',
+    storageBucket: 'myotherapp-in.firebasestorage.app',
   );
-
-  // or run: flutterfire configure --project=myotherapp-com
-
-  // TODO: Replace placeholder values with actual Firebase config from Firebase Console
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAITon1MoEsrf0kTQTyQu2PTVshkylOxCs',
-    appId: '1:444091936624:ios:5acc8757c1ad3a5bc569b5',
-    messagingSenderId: '444091936624',
-    projectId: 'myotherapp-com',
-    storageBucket: 'myotherapp-com.firebasestorage.app',
-    iosBundleId: 'app.myotherapp.com',
+    apiKey: 'AIzaSyDuRbkHu4oIpASpWWEBAYmMOk-8lXQla-w',
+    appId: '1:677703780077:ios:82e5f762775b3a873daee4',
+    messagingSenderId: '677703780077',
+    projectId: 'myotherapp-in',
+    storageBucket: 'myotherapp-in.firebasestorage.app',
+    iosBundleId: 'app.myotherapp.in',
   );
-
-  // or run: flutterfire configure --project=myotherapp-com
 }
