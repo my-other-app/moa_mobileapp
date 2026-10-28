@@ -345,7 +345,7 @@ Photo and media permissions are removed on purpose: a profile photo is chosen wi
    2. In the Firebase project **`myotherapp-in`**, go to *Project settings → Cloud Messaging → Apple app configuration* (the iOS app `app.myotherapp.in`), and upload the `.p8` with its Key ID and the Team ID.
 
    Without it, no iPhone gets a push. The project is new, so no key is there yet.
-4. **Google sign-in client.** In the Google Cloud project **"My Other App"** (497245325238), create an OAuth client ID of type **iOS** with bundle id `app.myotherapp.in`. In `ios/Runner/Info.plist`, set `GIDClientID` to its client id, and the URL scheme under `CFBundleURLTypes` to its reversed form (`com.googleusercontent.apps.<the part before .apps.googleusercontent.com>`). Today both are the client of the old bundle id (`497245325238-e5o64rt0gpkpmp4730hrs7be5l7qk8ml`).
+4. **Google sign-in client.** In the Google Cloud project **"My Other App"** (497245325238), create an OAuth client ID of type **iOS** with bundle id `app.myotherapp.in`. In `ios/Runner/Info.plist`, set `GIDClientID` to its client id, and the URL scheme under `CFBundleURLTypes` to its reversed form (`com.googleusercontent.apps.<the part before .apps.googleusercontent.com>`). Done: both now use the iOS client `497245325238-36lce0n03ducsp3orqhhf0hjassb1nf0`, created for `app.myotherapp.in`.
 5. **Archive and upload.** Run `flutter build ipa --release` (section 4). Then open `build/ios/archive/Runner.xcarchive` in Xcode's Organizer and choose *Distribute App → App Store Connect → Upload*, or upload the `.ipa` with Transporter.
 6. **App Store Connect, version 1.1.0:**
    - **Build:** pick build 3 once it has processed.
