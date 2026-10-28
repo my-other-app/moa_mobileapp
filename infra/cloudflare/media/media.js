@@ -17,13 +17,14 @@
  */
 
 export const PUBLIC_FOLDERS = [
-  "clubs/logos/", // club logos, and event posters (stored here since the start)
+  "clubs/logos/", // club logos, and event posters uploaded before Oct 2026
   "clubs/covers/",
   "clubs/team/",
   "clubs/partners/",
   "clubs/threads/", // a post's image
   "events/speakers/",
   "events/partners/", // an event's sponsors' and partners' logos
+  "events/posters/", // event posters uploaded since Oct 2026
   "avatars/", // the stock avatars people pick from
   "events/{id}/merch/", // store and merch photos
 ];

@@ -9,13 +9,14 @@ Until now, every one of these pictures reached a browser as a presigned S3 link 
 - **Backend:** with `APP_MEDIA_CDN_URL=https://media.myotherapp.in`, every public picture in an API response, on a club's site, in a link preview or behind an email is handed out as `https://media.myotherapp.in/<key>`. The address is built in one place, `app/core/storage/media.py`. Unset, the backend hands out the signed links exactly as before.
 - **Route:** `media.myotherapp.in/*` → `media`. This is more specific than club-sites' `*.myotherapp.in/*`, so it wins for this host. club-sites also lists `media` as reserved.
 - **Allow-list:** only one file directly inside one of these folders, with a `.png`, `.jpg`, `.jpeg`, `.webp` or `.gif` name, is ever served:
-  - `clubs/logos/` (holds event posters too)
+  - `clubs/logos/` (also holds the event posters uploaded before Oct 2026)
   - `clubs/covers/`
   - `clubs/team/`
   - `clubs/partners/`
   - `clubs/threads/`
   - `events/speakers/`
   - `events/partners/` (an event's sponsors' and partners' logos)
+  - `events/posters/` (event posters uploaded since Oct 2026)
   - `avatars/`
   - `events/{id}/merch/`
 
@@ -84,6 +85,7 @@ Deploy the branch with `APP_MEDIA_CDN_URL` unset. Responses stay exactly as they
            "arn:aws:s3:::BUCKET/clubs/threads/*",
            "arn:aws:s3:::BUCKET/events/speakers/*",
            "arn:aws:s3:::BUCKET/events/partners/*",
+           "arn:aws:s3:::BUCKET/events/posters/*",
            "arn:aws:s3:::BUCKET/avatars/*",
            "arn:aws:s3:::BUCKET/events/*/merch/*"
          ]

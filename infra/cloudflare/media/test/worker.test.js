@@ -100,7 +100,7 @@ describe("which paths are pictures", () => {
 
   test("the same folders as the backend's app/core/storage/media.py PUBLIC_FOLDERS", () => {
     assert.deepEqual(PUBLIC_FOLDERS, [
-      "clubs/logos/", "clubs/covers/", "clubs/team/", "clubs/partners/", "clubs/threads/", "events/speakers/", "events/partners/", "avatars/", "events/{id}/merch/",
+      "clubs/logos/", "clubs/covers/", "clubs/team/", "clubs/partners/", "clubs/threads/", "events/speakers/", "events/partners/", "events/posters/", "avatars/", "events/{id}/merch/",
     ]);
   });
 
