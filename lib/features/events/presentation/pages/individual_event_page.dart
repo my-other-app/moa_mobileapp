@@ -20,6 +20,7 @@ import 'package:finnet/features/events/presentation/providers/event_page_provide
 import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
 import 'package:finnet/features/events/presentation/utils/event_sign_in.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_contact.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/event_backers.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_people.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_rail.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_section.dart';
@@ -1167,9 +1168,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     if (uri != null) await _openLink(uri, "Couldn't open the survey");
   }
 
-  /// Speakers, the agenda, the venue, guidelines, the team, contact, and
-  /// the rails -- the website's order -- each only when there is something
-  /// to show.
+  /// Speakers, the agenda, the sponsors and partners, the venue,
+  /// guidelines, the team, contact, and the rails -- the website's order --
+  /// each only when there is something to show.
   List<Widget> _buildWebsiteSections(BuildContext context) {
     final page = _page;
     final speakers = _speakers;
@@ -1184,6 +1185,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     final clubId = club?.id ?? page?.club?.id;
     final more = page?.moreFromClub ?? const <EventSummary>[];
     final similar = page?.similar ?? const <EventSummary>[];
+    final sponsors = page?.sponsors ?? const <EventBacker>[];
+    final partners = page?.partners ?? const <EventBacker>[];
     return [
       if (speakers.isNotEmpty)
         EventPeopleSection(
@@ -1195,6 +1198,22 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       // The run of show, when the organiser has written one: after the
       // speakers, as on the website.
       if (agenda.items.isNotEmpty) _buildAgendaSection(context),
+      // The event's own sponsors, then its partners: after the agenda, as on
+      // the website.
+      if (sponsors.isNotEmpty)
+        EventBackersSection(
+          key: const ValueKey('event-sponsors'),
+          title: sponsors.length == 1 ? 'Sponsor' : 'Sponsors',
+          backers: sponsors,
+          onOpen: (uri) => _openLink(uri, "Couldn't open the link"),
+        ),
+      if (partners.isNotEmpty)
+        EventBackersSection(
+          key: const ValueKey('event-partners'),
+          title: partners.length == 1 ? 'Partner' : 'Partners',
+          backers: partners,
+          onOpen: (uri) => _openLink(uri, "Couldn't open the link"),
+        ),
       if (hasVenue)
         EventVenueSection(
           isOnline: online,

@@ -607,6 +607,78 @@ void main() {
       expect(find.byKey(FeedbackEntryCard.entryKey), findsNothing);
     });
   });
+
+  group('the event\'s sponsors and partners', () {
+    Map<String, dynamic> withBackers() => {
+          ...discoverEventPage(),
+          'sponsors': [
+            {
+              'id': 11,
+              'kind': 'sponsor',
+              'name': 'Kinetic Labs',
+              'label': 'Title sponsor',
+              'link': 'https://kinetic.example/fest',
+              'logo': null,
+            },
+            {'id': 12, 'kind': 'sponsor', 'name': 'Arc Foundry'},
+          ],
+          'partners': [
+            {
+              'id': 21,
+              'kind': 'partner',
+              'name': 'Radio City',
+              'label': 'Media partner',
+            },
+          ],
+        };
+
+    testWidgets('a Sponsors section then a Partners one, after the agenda, '
+        'each logo whole in a square tile', (tester) async {
+      api
+        ..on('GET', '/events/info/7', eventInfo())
+        ..on('GET', '/discover/events/7', withBackers())
+        ..on('GET', '/events/7/agenda', {
+          'timezone': 'Asia/Kolkata',
+          'items': [
+            {'id': 1, 'starts_at': '2030-12-01T10:00:00Z', 'title': 'Doors open'},
+          ],
+        });
+      final h = await _pump(tester);
+
+      expect(find.text('Sponsors'), findsOneWidget);
+      expect(find.text('Partner'), findsOneWidget);
+      expect(find.text('Title sponsor'), findsOneWidget);
+      expect(find.text('Media partner'), findsOneWidget);
+      final tops = ['Agenda', 'Sponsors', 'Partner', 'Venue']
+          .map((t) => tester.getTopLeft(find.text(t)).dy)
+          .toList();
+      expect(tops, orderedEquals([...tops]..sort()));
+
+      // Square, whatever the logo's shape; the initials without one.
+      final tile = tester.getSize(find.descendant(
+          of: find.byKey(const ValueKey('backer-sponsor-11')),
+          matching: find.byKey(const ValueKey('backer-logo-tile'))));
+      expect(tile.width, tile.height);
+      expect(find.text('KL'), findsOneWidget);
+
+      // A tile with a link opens it; one without stays still.
+      await _tap(tester, find.text('Kinetic Labs'));
+      expect(h.opened.single.toString(), 'https://kinetic.example/fest');
+      await _tap(tester, find.text('Arc Foundry'));
+      expect(h.opened, hasLength(1));
+    });
+
+    testWidgets('neither section from an API without them', (tester) async {
+      api
+        ..on('GET', '/events/info/7', eventInfo())
+        ..on('GET', '/discover/events/7', discoverEventPage());
+      await _pump(tester);
+
+      expect(find.byKey(const ValueKey('event-sponsors')), findsNothing);
+      expect(find.byKey(const ValueKey('event-partners')), findsNothing);
+      expect(find.text('Sponsors'), findsNothing);
+    });
+  });
 }
 
 /// The `from` a sign-in location carries.

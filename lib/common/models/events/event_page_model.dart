@@ -185,6 +185,69 @@ class EventPerson {
       ];
 }
 
+/// Whether an [EventBacker] sponsors the event or partners it.
+enum BackerKind { sponsor, partner }
+
+/// One of the event's own sponsors or partners (`/discover/events/{ref}`
+/// `sponsors` and `partners`; the API's docs/EVENT_PARTNERS.md): a name, a
+/// label ("Title sponsor"), an https link and a logo, shown whole in a
+/// square tile. The website reads the same lists (`parseBacker` in
+/// moa_eventwebsite `src/api/parse.js`).
+class EventBacker {
+  final int? id;
+  final BackerKind kind;
+  final String name;
+
+  /// "Title sponsor", "Venue partner"; null when the club set none.
+  final String? label;
+
+  /// Where a tap goes: https only, else null.
+  final Uri? link;
+
+  /// The logo's URL, or null for the initials.
+  final String? logo;
+
+  const EventBacker({
+    this.id,
+    required this.kind,
+    required this.name,
+    this.label,
+    this.link,
+    this.logo,
+  });
+
+  /// "Kinetic Labs" -> "KL"; "?" without a name.
+  String get initials {
+    final words = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    final letters = words.take(2).map((w) => w[0].toUpperCase()).join();
+    return letters.isEmpty ? '?' : letters;
+  }
+
+  /// One row of [kind]; null without a name. A link that is not https is
+  /// dropped, as the website drops it.
+  static EventBacker? fromJson(Map<String, dynamic> json, BackerKind kind) {
+    final name = _text(json['name']);
+    if (name == null) return null;
+    final link = safeWebLink(json['link']);
+    return EventBacker(
+      id: jsonInt(json['id']),
+      kind: kind,
+      name: name,
+      label: _text(json['label']),
+      link: link != null && link.isScheme('https') ? link : null,
+      logo: imageUrlFrom(json['logo'],
+          prefer: const ['medium', 'large', 'original', 'thumbnail']),
+    );
+  }
+
+  /// Every row in [value] (a list), skipping any without a name. Absent
+  /// (an older API): none.
+  static List<EventBacker> listFrom(Object? value, BackerKind kind) => [
+        for (final json in jsonObjects(value))
+          if (fromJson(json, kind) case final backer?) backer,
+      ];
+}
+
 /// Who to ask about the event.
 class EventContact {
   final String? name;
@@ -378,6 +441,11 @@ class EventPageDetails {
 
   /// Null when there is no team to show.
   final TeamSource? teamSource;
+
+  /// The event's own sponsors, then its partners, each in the club's
+  /// order; empty from an API that has none (the sections then hide).
+  final List<EventBacker> sponsors;
+  final List<EventBacker> partners;
   final List<EventSummary> moreFromClub;
   final List<EventSummary> similar;
 
@@ -411,6 +479,8 @@ class EventPageDetails {
     this.speakers = const [],
     this.team = const [],
     this.teamSource,
+    this.sponsors = const [],
+    this.partners = const [],
     this.moreFromClub = const [],
     this.similar = const [],
   });
@@ -492,6 +562,8 @@ class EventPageDetails {
       speakers: EventPerson.speakersFrom(root['speakers']),
       team: teamSource == null ? const [] : team,
       teamSource: team.isEmpty ? null : teamSource,
+      sponsors: EventBacker.listFrom(root['sponsors'], BackerKind.sponsor),
+      partners: EventBacker.listFrom(root['partners'], BackerKind.partner),
       moreFromClub: others(root['more_from_club']),
       similar: others(root['similar']),
     );
