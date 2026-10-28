@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/network/network_status.dart';
+import 'package:finnet/core/services/app_badge.dart';
 import 'package:finnet/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:finnet/features/notifications/data/models/notification_model.dart';
 import 'package:finnet/features/notifications/domain/repositories/notification_repository.dart';
@@ -52,10 +53,21 @@ class NotificationsState {
 }
 
 /// Provider for notification list management
+///
+/// Whenever it learns the unread count -- read from the server, or 0 after
+/// "Mark all read" -- the number on the app's icon is set to it ([badge]).
 class NotificationsNotifier extends StateNotifier<NotificationsState> {
-  NotificationsNotifier(this._repository) : super(const NotificationsState());
+  NotificationsNotifier(this._repository, {AppBadge? badge})
+      : _badge = badge,
+        super(const NotificationsState());
 
   final NotificationRepository _repository;
+  final AppBadge? _badge;
+
+  /// Bumped by each count read and by "Mark all read": a read that comes
+  /// back after a newer one started (or after everything was marked read)
+  /// is stale, and sets neither the count nor the icon.
+  int _countTicket = 0;
 
   static const int _pageSize = 20;
 
@@ -147,17 +159,28 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
     );
   }
 
-  /// Fetch unread notification count
+  /// Read the unread count from the server, and put it on the app's icon.
+  ///
+  /// Called when the inbox is read, and on its own at start-up and each
+  /// time the app comes to the front (PersonalDataSync).
   Future<void> fetchUnreadCount() async {
+    final ticket = ++_countTicket;
     final result = await _repository.unreadCount();
-    if (!mounted) return;
+    if (!mounted || ticket != _countTicket) return;
     // A failed count is not worth surfacing: the badge keeps its previous
     // value rather than flashing an error over a screen nobody asked to
     // refresh.
-    result.fold((_) {}, (count) => state = state.copyWith(unreadCount: count));
+    result.fold((_) {}, (count) {
+      state = state.copyWith(unreadCount: count);
+      _badge?.show(count);
+    });
   }
 
   /// Mark a single notification as read
+  ///
+  /// The count drops by one on screen at once, then is read again from the
+  /// server, which sets the icon: the line may have been one the count did
+  /// not hold, or others may have been read elsewhere.
   Future<void> markAsRead(String notificationId) async {
     final result = await _repository.markAsRead(notificationId);
     if (result.isLeft || !mounted) return;
@@ -169,6 +192,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
       ],
       unreadCount: (state.unreadCount - 1).clamp(0, 9999),
     );
+    await fetchUnreadCount();
   }
 
   /// Mark all notifications as read
@@ -176,12 +200,15 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
     final result = await _repository.markAllAsRead();
     if (result.isLeft || !mounted) return;
 
+    // A count read before this answered would bring the old number back.
+    _countTicket++;
     state = state.copyWith(
       notifications: [
         for (final n in state.notifications) n.copyWithStatus('read'),
       ],
       unreadCount: 0,
     );
+    _badge?.show(0);
   }
 
   /// Back online: read again, if the list was read (or failed) before and
@@ -208,10 +235,13 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 /// Provider instance
 ///
 /// Read again when the app comes back online, if it has been read at all.
+/// The unread count it learns goes on the app's icon ([appBadgeProvider]).
 final notificationsProvider =
     StateNotifierProvider<NotificationsNotifier, NotificationsState>((ref) {
-  final notifier =
-      NotificationsNotifier(ref.watch(notificationRepositoryProvider));
+  final notifier = NotificationsNotifier(
+    ref.watch(notificationRepositoryProvider),
+    badge: ref.watch(appBadgeProvider),
+  );
   ref.listen<int>(backOnlineProvider, (_, __) {
     if (notifier.mounted) notifier.reloadIfShown();
   });

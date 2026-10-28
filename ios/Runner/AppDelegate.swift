@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UserNotifications
 import FirebaseCore
 import FirebaseMessaging
 
@@ -29,6 +30,9 @@ import FirebaseMessaging
     Messaging.messaging().delegate = self
 
     GeneratedPluginRegistrant.register(with: self)
+    if let registrar = self.registrar(forPlugin: "AppIconBadge") {
+      AppIconBadge.register(with: registrar)
+    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
@@ -45,5 +49,47 @@ extension AppDelegate: MessagingDelegate {
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
     // The token is read and sent to the server by the Flutter plugin. It is
     // not printed: device logs are readable by anything attached to them.
+  }
+}
+
+// MARK: - The number on the app's icon
+/// Sets the number on the app's icon from Dart (lib/core/services/app_badge.dart):
+/// the person's unread inbox count, or 0. Pushes set it too (APNs' `badge`),
+/// but only the app knows when lines are read, so it sets it whenever it
+/// learns the count.
+enum AppIconBadge {
+  static let channelName = "finnet/app_badge"
+
+  static func register(with registrar: FlutterPluginRegistrar) {
+    let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger())
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "set" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      guard let count = call.arguments as? Int else {
+        result(FlutterError(code: "bad_count", message: "set takes the count, an int", details: nil))
+        return
+      }
+      set(max(0, count), result: result)
+    }
+  }
+
+  private static func set(_ count: Int, result: @escaping FlutterResult) {
+    if #available(iOS 16.0, *) {
+      UNUserNotificationCenter.current().setBadgeCount(count) { error in
+        DispatchQueue.main.async {
+          if let error = error {
+            result(FlutterError(code: "badge_failed", message: error.localizedDescription, details: nil))
+          } else {
+            result(nil)
+          }
+        }
+      }
+    } else {
+      // Deprecated from iOS 17, which never reaches this branch.
+      UIApplication.shared.applicationIconBadgeNumber = count
+      result(nil)
+    }
   }
 }

@@ -19,6 +19,11 @@ import 'package:finnet/features/notifications/presentation/providers/push_settin
 /// app is open ([arrivals]) -- the person's requests for a place too, once
 /// read. Signed out it asks nothing.
 ///
+/// The unread count, which is the number on the app's icon (AppBadge), is
+/// read with the inbox and on its own every time the app comes to the
+/// front, however recently it was read: a push that arrived meanwhile set
+/// the icon from the server, and a tap on one is how the app came back.
+///
 /// The switches and the inbox each read their saved copy first and keep it
 /// on screen if the network cannot be reached, so on a weak signal this
 /// costs nothing but the attempt.
@@ -75,6 +80,10 @@ class _PersonalDataSyncState extends ConsumerState<PersonalDataSync>
     final last = _lastSync;
     if (last == null || _now().difference(last) >= widget.resumeEvery) {
       _sync();
+    } else if (_signedIn) {
+      // The inbox was read a moment ago; the count (and the icon) is read
+      // again anyway.
+      ref.read(notificationsProvider.notifier).fetchUnreadCount();
     }
   }
 
