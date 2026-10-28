@@ -346,6 +346,10 @@ class EventPageDetails {
   /// not said): the register button asks for a place.
   final bool requiresApproval;
 
+  /// The club has its "High demand" label on (`high_demand`; false when
+  /// not said). No number comes with it.
+  final bool highDemand;
+
   /// Whether a new registration would be taken right now.
   final bool registrationOpen;
   final DateTime? regOpensAt;
@@ -385,6 +389,7 @@ class EventPageDetails {
     this.phase,
     this.cancellation,
     this.requiresApproval = false,
+    this.highDemand = false,
     this.registrationOpen = false,
     this.regOpensAt,
     this.regClosesAt,
@@ -462,6 +467,7 @@ class EventPageDetails {
           jsonBool(jsonObject(event['ticketing'])?['requires_approval']) ??
           jsonBool(jsonObject(root['ticketing'])?['requires_approval']) ??
           false,
+      highDemand: jsonBool(event['high_demand']) ?? false,
       registrationOpen: jsonBool(event['registration_open']) ?? false,
       regOpensAt: jsonDate(event['reg_opens_at'])?.toLocal(),
       regClosesAt: jsonDate(event['reg_closes_at'])?.toLocal(),

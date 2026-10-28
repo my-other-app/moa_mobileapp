@@ -1060,7 +1060,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       );
       return;
     }
-    final refusal = describeRegistrationError(error);
+    // A request (the club confirms each place) is never offered a waiting
+    // list, whatever the refusal says.
+    final refusal = describeRegistrationError(error, approval: _confirmsEach);
     // The ticket type: what is on sale may have changed since the form
     // opened. The types are read again, and the choice is said under them.
     if (code != null && code.startsWith('TICKET_TYPE_')) {
@@ -1432,7 +1434,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                         KeyedSubtree(
                           key: _ticketKey,
                           child: TicketTypePicker(
-                            types: _ticketing!.types,
+                            // A request has no waiting list to mention.
+                            types: _confirmsEach
+                                ? _ticketing!.withoutWaitlist().types
+                                : _ticketing!.types,
                             selected: _ticketTypeId,
                             errorText: _ticketTypeError,
                             onChanged: (id) => setState(() {
@@ -1440,12 +1445,16 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                               _ticketTypeError = null;
                             }),
                             // Sold out with its list open: back to the
-                            // event, which offers the waiting list.
-                            onJoinWaitlist: () {
-                              if (context.canPop()) {
-                                context.pop(RegistrationAction.joinWaitlist);
-                              }
-                            },
+                            // event, which offers the waiting list -- never
+                            // when the club confirms each place.
+                            onJoinWaitlist: _confirmsEach
+                                ? null
+                                : () {
+                                    if (context.canPop()) {
+                                      context
+                                          .pop(RegistrationAction.joinWaitlist);
+                                    }
+                                  },
                           ),
                         ),
                         const SizedBox(height: 16),

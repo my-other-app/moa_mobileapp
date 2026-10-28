@@ -107,5 +107,8 @@ EventCard eventCardFromJson(
     // The row's own word, when the server puts it there; else the caller's.
     cancellation: cancellation ?? EventCancellation.of(event),
     paidTicket: event['has_fee'] == true && event['is_paid'] == true,
+    // The club's "High demand" label, where the row says it (never on one
+    // that has ended).
+    highDemand: event['high_demand'] == true && event['status'] != 'ended',
   );
 }

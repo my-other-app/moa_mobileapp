@@ -134,6 +134,8 @@ DiscoverEvent? parseEvent(Object? value) {
     status: _statuses[o['status']] ?? DiscoverEventStatus.upcoming,
     summary: _str(o['summary']),
     topics: _topics(o['topics']),
+    requiresApproval: jsonBool(o['requires_approval']) ?? false,
+    highDemand: jsonBool(o['high_demand']) ?? false,
   );
 }
 

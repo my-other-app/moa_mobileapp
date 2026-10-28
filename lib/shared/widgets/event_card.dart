@@ -14,6 +14,7 @@ import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
+import 'package:finnet/shared/widgets/high_demand_chip.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
 import 'package:finnet/shared/widgets/pressable.dart';
 import 'package:share_plus/share_plus.dart';
@@ -120,6 +121,10 @@ class EventCard extends StatelessWidget {
   /// The ticket was paid for: a cancelled event's refund applies.
   final bool paidTicket;
 
+  /// The club has its "High demand" label on (`high_demand`): a chip on
+  /// the poster's top-left corner -- not once the event is over or off.
+  final bool highDemand;
+
   static const cancelledBadgeKey = ValueKey('event-cancelled-badge');
 
   const EventCard({
@@ -146,7 +151,15 @@ class EventCard extends StatelessWidget {
     this.onFinishPayment,
     this.cancellation,
     this.paidTicket = false,
+    this.highDemand = false,
   });
+
+  /// [highDemand], while the event is still to come or on.
+  bool get _showsHighDemand =>
+      highDemand &&
+      cancellation == null &&
+      status != EventCardStatus.attended &&
+      status != EventCardStatus.notAttended;
 
   /// The event's public page, or null with neither a slug nor an id to
   /// link to (the share button is then left out).
@@ -278,6 +291,8 @@ class EventCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10.0),
                   ),
                 )),
+            if (_showsHighDemand)
+              const Positioned(top: 12, left: 12, child: HighDemandChip()),
             if (cancellation != null)
               Positioned(
                 top: 12,

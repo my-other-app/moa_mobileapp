@@ -42,7 +42,7 @@ Map<String, dynamic> _registered({double pay = 0, String? type}) => {
 /// The form, pushed from a page that keeps what it was closed with; the
 /// success page says the ticket type it was handed.
 Future<(List<Object?>, FakePaymentRepository)> _pump(WidgetTester tester,
-    {int? linked}) async {
+    {int? linked, bool? requiresApproval}) async {
   tester.view.physicalSize = const Size(800, 3200);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -65,7 +65,10 @@ Future<(List<Object?>, FakePaymentRepository)> _pump(WidgetTester tester,
     GoRoute(
       path: '/form',
       builder: (_, __) => EventFormPage(
-          eventId: 7, additionalDetails: const [], linkedTicketTypeId: linked),
+          eventId: 7,
+          additionalDetails: const [],
+          linkedTicketTypeId: linked,
+          requiresApproval: requiresApproval),
     ),
     GoRoute(
       path: '/events/registration-success',
@@ -294,6 +297,38 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(closedWith, [RegistrationAction.joinWaitlist]);
+  });
+
+  group('the club confirms each place: no waiting list', () {
+    testWidgets('a sold-out type is only "Sold out" in the picker',
+        (tester) async {
+      // As an older server may still send it: VIP's list open.
+      api.on('GET', _types, ticketingBody());
+      final (closedWith, _) = await _pump(tester, requiresApproval: true);
+
+      expect(find.byKey(TicketTypePicker.tileKey(13)), findsOneWidget);
+      expect(find.text('Sold out · waiting list open'), findsNothing);
+      expect(find.text('Sold out'), findsOneWidget);
+      expect(find.byKey(const ValueKey('ticket-type-waitlist-13')),
+          findsNothing);
+      expect(closedWith, isEmpty);
+    });
+
+    testWidgets('a full event says so, with no list to join', (tester) async {
+      api.on('POST', _register, {
+        'message': 'Event is full',
+        'error_code': 'EVENT_FULL',
+        'errors': {'max_participants': 100, 'waitlist': true},
+      }, status: 400);
+      final (closedWith, _) = await _pump(tester, requiresApproval: true);
+
+      await tester.ensureVisible(find.text('Request a place'));
+      await tester.tap(find.text('Request a place'));
+      await tester.pumpAndSettle();
+      expect(find.text('This event is full'), findsOneWidget);
+      expect(find.text('Join the waiting list'), findsNothing);
+      expect(closedWith, isNot(contains(RegistrationAction.joinWaitlist)));
+    });
   });
 
   testWidgets('cancelled meanwhile: said, then back to the event',

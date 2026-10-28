@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/core/utils/whatsapp_number.dart';
 import 'package:finnet/features/events/data/ticketing_api.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
@@ -171,11 +172,17 @@ class _JoinWaitlistFormState extends State<JoinWaitlistForm> {
   String? _problem;
   int? _type;
 
+  /// The server said the club confirms each place here (409
+  /// WAITLIST_OFF_ON_APPROVAL_EVENTS): there is no list to join, so no
+  /// button to try again.
+  bool _noList = false;
+
   /// The types whose list can be joined: those the server says, or -- an
-  /// answer from before they sold out -- every sold-out one.
+  /// answer from before they sold out -- every sold-out one. None when the
+  /// club confirms each place.
   List<TicketType> get _choices {
     final ticketing = widget.ticketing;
-    if (ticketing == null) return const [];
+    if (ticketing == null || ticketing.requiresApproval) return const [];
     final open = ticketing.waitlistTypes;
     if (open.isNotEmpty) return open;
     return [
@@ -245,6 +252,8 @@ class _JoinWaitlistFormState extends State<JoinWaitlistForm> {
       setState(() {
         _sending = false;
         _problem = waitlistJoinProblem(e);
+        _noList = errorCodeOf(e) ==
+            TicketingErrorCodes.waitlistOffOnApprovalEvents;
       });
     }
   }
@@ -341,22 +350,23 @@ class _JoinWaitlistFormState extends State<JoinWaitlistForm> {
               ),
             ],
             const SizedBox(height: 16),
-            FilledButton(
-              key: JoinWaitlistForm.submitKey,
-              onPressed: _sending ? null : _join,
-              style: FilledButton.styleFrom(
-                backgroundColor: _ink,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+            if (!_noList)
+              FilledButton(
+                key: JoinWaitlistForm.submitKey,
+                onPressed: _sending ? null : _join,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _ink,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: _sending
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('JOIN THE WAITING LIST'),
               ),
-              child: _sending
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Text('JOIN THE WAITING LIST'),
-            ),
           ],
         ),
       ),

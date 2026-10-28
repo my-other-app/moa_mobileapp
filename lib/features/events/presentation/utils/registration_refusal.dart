@@ -113,12 +113,17 @@ final _deadlinePassed = RegExp(
 /// has existed, so its words are matched too; so are "already registered"
 /// and "Registration deadline has passed" from a server older than the
 /// codes.
-RegistrationRefusal describeRegistrationError(Object? error) {
+///
+/// [approval]: the form sent a request (the club confirms each place).
+/// Such an event has no waiting list, so none is offered, whatever the
+/// refusal says.
+RegistrationRefusal describeRegistrationError(Object? error,
+    {bool approval = false}) {
   final code = errorCodeOf(error);
   final said = serverMessageOf(error);
 
   if (isCancelledRefusal(error)) return cancelledRefusal;
-  final ticketing = _ticketingRefusal(error, code);
+  final ticketing = _ticketingRefusal(error, code, approval: approval);
   if (ticketing != null) return ticketing;
 
   switch (code) {
@@ -152,7 +157,9 @@ RegistrationRefusal describeRegistrationError(Object? error) {
         closed: true,
       );
     case RegistrationErrorCodes.eventFull:
-      return offersWaitlist(error) ? _fullWithWaitlist : _full;
+      return offersWaitlist(error, approval: approval)
+          ? _fullWithWaitlist
+          : _full;
     case RegistrationErrorCodes.soldOut:
       return RegistrationRefusal(
         title: 'Sold out',
@@ -281,8 +288,8 @@ const cancelledRefusal = RegistrationRefusal(
 /// other. A discount code's refusal is said under its field instead
 /// ([discountCodeProblem]); here it is the dialog's words for a screen
 /// without one.
-RegistrationRefusal? _ticketingRefusal(
-    Object? error, String? code) {
+RegistrationRefusal? _ticketingRefusal(Object? error, String? code,
+    {bool approval = false}) {
   switch (code) {
     case TicketingErrorCodes.ticketTypeRequired:
       return const RegistrationRefusal(
@@ -312,7 +319,7 @@ RegistrationRefusal? _ticketingRefusal(
         message: 'Choose another ticket, if there is one.',
       );
     case TicketingErrorCodes.ticketTypeSoldOut:
-      return offersWaitlist(error)
+      return offersWaitlist(error, approval: approval)
           ? const RegistrationRefusal(
               title: 'This ticket is sold out',
               message: "Join its waiting list and we'll tell you if a place "

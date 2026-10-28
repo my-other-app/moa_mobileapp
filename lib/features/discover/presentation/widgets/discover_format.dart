@@ -61,6 +61,11 @@ String? formatDistance(double? km) {
 String plural(int n, String one, [String? many]) =>
     '${formatCount(n)} ${n == 1 ? one : (many ?? '${one}s')}';
 
+/// Whether a card shows the club's "High demand" label (`high_demand`):
+/// while the event is still to come or on, never once it has ended.
+bool cardShowsHighDemand(DiscoverEvent event) =>
+    event.highDemand && !event.isEnded;
+
 /// What is most pressing about an event, for a pill; null when nothing is.
 String? statusLabel(DiscoverEvent event) {
   switch (event.status) {
