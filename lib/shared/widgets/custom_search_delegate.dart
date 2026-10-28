@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/common/models/events/cohost_model.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/events/domain/registration_status.dart'
     show isAwaitingPayment;
 import 'package:finnet/shared/widgets/event_card.dart' show PaymentDueBadge;
@@ -269,12 +271,16 @@ class EventSearchDelegate extends SearchDelegate<String> {
     );
   }
 
-  /// The hosting club's name, or nothing for an event that came without
-  /// its club.
+  /// The hosting club's name ("A and B", "A + 2" with co-hosts), or nothing
+  /// for an event that came without its club.
   static String _clubNameOf(dynamic event) {
     final club = event is Map ? event['club'] : null;
     final name = club is Map ? club['name'] : null;
-    return name is String ? name : '';
+    if (name is! String) return '';
+    final cohosts = EventCohost.listFrom(
+        event is Map ? event['cohosts'] : null,
+        hostId: club is Map ? jsonInt(club['id']) : null);
+    return hostNamesCompact(name, [for (final c in cohosts) c.name]);
   }
 
   /// Registered (by the tab searched from, or by the result itself) and

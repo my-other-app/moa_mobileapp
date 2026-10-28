@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/agenda_model.dart';
+import 'package:finnet/common/models/events/cohost_model.dart';
 import 'package:finnet/common/models/events/live_model.dart';
 import 'package:finnet/common/models/events/event_page_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
@@ -21,6 +22,7 @@ import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
 import 'package:finnet/features/events/presentation/utils/event_sign_in.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_contact.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_backers.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/hosted_by.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_people.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_rail.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_section.dart';
@@ -151,6 +153,10 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   DateTime? regStartDate;
   DateTime? regEndDate;
   Club? club;
+
+  /// The clubs co-hosting the event with [club], by `/events/info`'s word;
+  /// empty when it has none, or from a server older than co-hosting.
+  List<EventCohost> infoCohosts = const [];
   Category? category;
   List<Interest> interests = [];
 
@@ -295,6 +301,52 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// Cancelled, by `/events/info`'s word or the website page's.
   EventCancellation? get _cancellation =>
       _infoCancellation ?? _page?.cancellation;
+
+  /// The clubs co-hosting the event with its host, by `/events/info`'s word
+  /// or the website page's; none on an event only its club hosts (and from
+  /// an older server), which the page then shows as it always did.
+  List<EventCohost> get _cohosts => infoCohosts.isNotEmpty
+      ? infoCohosts
+      : (_page?.cohosts ?? const <EventCohost>[]);
+
+  /// The event's own club, its host, in the co-hosts' shape.
+  EventCohost get _host {
+    final info = club;
+    final page = _page?.club;
+    final named = info != null && info.name.trim().isNotEmpty;
+    return EventCohost(
+      clubId: info != null && info.id > 0 ? info.id : (page?.id ?? 0),
+      name: named ? info.name.trim() : (page?.name ?? 'Organizer'),
+      slug: info != null && info.slug.isNotEmpty ? info.slug : (page?.slug ?? ''),
+      logo: imageUrlFrom(info?.logo) ?? page?.logo,
+    );
+  }
+
+  /// A club's page: the host's, or a co-host's.
+  void _openClub(EventCohost club) => openDiscoverClub(context,
+      id: club.clubId, slug: club.slug, name: club.name);
+
+  /// The title, then "Hosted by A and B" (or "A, B and C"): the host's logo
+  /// first, then each co-host's, and each name opening its club.
+  Widget _buildCohostedTitle() {
+    return Column(
+      key: const ValueKey('event-title-cohosted'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          name ?? 'Event Name',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 8),
+        HostedByLine(host: _host, cohosts: _cohosts, onOpen: _openClub),
+      ],
+    );
+  }
 
   /// A ticket held on it was paid for: a cancelled event's refund applies.
   bool get _paidTicket =>
@@ -463,6 +515,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       regStartDate = eventInfo.regStartDate;
       regEndDate = eventInfo.regEndDate;
       club = eventInfo.club;
+      infoCohosts = eventInfo.cohosts;
       category = eventInfo.category;
       interests = eventInfo.interests;
       topics = eventInfo.topics;
@@ -1238,8 +1291,12 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       if (team.isNotEmpty)
         EventPeopleSection(
           key: const ValueKey('event-team'),
+          // The host's team. On a co-hosted event "Hosted by" is the line
+          // under the title, naming every club; this is only the host's.
           title: page?.teamSource == TeamSource.club
-              ? 'Hosted by ${clubName ?? 'the club'}'
+              ? (_cohosts.isEmpty
+                  ? 'Hosted by ${clubName ?? 'the club'}'
+                  : 'The team at ${clubName ?? 'the host'}')
               : 'Organising team',
           people: team,
           trailing: page?.teamSource == TeamSource.club &&
@@ -1960,7 +2017,11 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               ),
             ),
             const SizedBox(height: 20),
-            // Title & Organizer.
+            // Title & Organizer. On an event other clubs co-host: the title,
+            // then "Hosted by A and B", with every club's logo and name.
+            if (_cohosts.isNotEmpty)
+              _buildCohostedTitle()
+            else
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [

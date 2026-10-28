@@ -905,6 +905,118 @@ void main() {
     });
   });
 
+  // An event this club co-hosts is in its list too (cohosts-contract.md §8),
+  // with `club` its host: it reads as the host's, and then this club.
+  group("a co-hosted event on the co-host's page", () {
+    late RouteAdapter api;
+
+    setUp(() {
+      api = useFakeApi();
+      api.on('GET', '/interests/list', const []);
+    });
+
+    Map<String, dynamic> row(int id, String name, Map<String, dynamic> club,
+            {List<Map<String, dynamic>>? cohosts}) =>
+        {
+          'id': id,
+          'name': name,
+          'slug': 'event-$id',
+          'poster': null,
+          'event_datetime': '2030-11-01T10:00:00+05:30',
+          'duration': 3,
+          'is_online': false,
+          'has_fee': false,
+          'category': {'id': 1, 'name': 'Hackathon'},
+          'club': club,
+          if (cohosts != null) 'cohosts': cohosts,
+        };
+
+    const design = {
+      'id': 1,
+      'name': 'Design Society',
+      'slug': 'design-society',
+      'logo': null,
+    };
+    const robotics = {
+      'club_id': 12,
+      'name': 'Robotics Club',
+      'slug': 'robotics-club',
+      'logo': null,
+    };
+
+    testWidgets('signed in: "Design Society and Robotics Club"',
+        (tester) async {
+      api.on('GET', '/clubs/12/events', {
+        'items': [
+          row(42, 'Hack the Campus', design, cohosts: [robotics]),
+          row(43, 'Bot Wars', {
+            'id': 12,
+            'name': 'Robotics Club',
+            'slug': 'robotics-club',
+            'logo': null,
+          }),
+        ],
+        'total': 2,
+      });
+      await _pump(
+        tester,
+        const ClubEventsPage(
+          clubId: 12,
+          clubSlug: 'robotics-club',
+          clubName: 'Robotics Club',
+          clubLogo: 'https://media.myotherapp.in/robotics.png',
+          isPastEvents: false,
+        ),
+        signedIn: true,
+        width: 900,
+      );
+
+      expect(find.text('Hack the Campus'), findsOneWidget);
+      expect(find.text('Design Society and Robotics Club'), findsOneWidget);
+      // This club's own event, as before.
+      expect(find.text('Bot Wars'), findsOneWidget);
+      expect(find.text('Robotics Club'), findsNWidgets(2),
+          reason: 'the page title and its own event');
+    });
+
+    testWidgets('signed out, from its public list', (tester) async {
+      api.on('GET', '/discover/clubs/robotics-club/events', {
+        'items': [
+          {
+            'id': 42,
+            'name': 'Hack the Campus',
+            'slug': 'hack-the-campus',
+            'starts_at': '2030-11-01T10:00:00+05:30',
+            'ends_at': '2030-11-01T13:00:00+05:30',
+            'is_online': false,
+            'has_fee': false,
+            'club': {...design, 'logo': null},
+            'cohosts': [
+              {...robotics, 'logo': 'https://media.myotherapp.in/r.png'},
+            ],
+            'going': 12,
+            'status': 'upcoming',
+          },
+        ],
+        'total': 1,
+      });
+      await _pump(
+        tester,
+        const ClubEventsPage(
+          clubId: 12,
+          clubSlug: 'robotics-club',
+          clubName: 'Robotics Club',
+          clubLogo: '',
+          isPastEvents: false,
+        ),
+        signedIn: false,
+        width: 900,
+      );
+
+      expect(find.text('Design Society and Robotics Club'), findsOneWidget);
+    });
+  });
+
   group('the Clubs tab', () {
     late RouteAdapter api;
 

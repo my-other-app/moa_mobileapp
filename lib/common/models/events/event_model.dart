@@ -1,3 +1,4 @@
+import 'package:finnet/common/models/events/cohost_model.dart';
 import 'package:finnet/common/models/events/event_page_model.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart'
@@ -26,6 +27,11 @@ class EventInfo {
   /// When registration closes; null when the event has no deadline.
   final DateTime? regEndDate;
   final Club club;
+
+  /// The clubs co-hosting the event with [club], its host, in the order
+  /// they accepted (`cohosts`); empty when it has none, and from a server
+  /// older than co-hosting.
+  final List<EventCohost> cohosts;
   final Category category;
   final List<Interest> interests;
 
@@ -103,6 +109,7 @@ class EventInfo {
     required this.regStartDate,
     this.regEndDate,
     required this.club,
+    this.cohosts = const [],
     required this.category,
     required this.interests,
     this.topics,
@@ -167,6 +174,8 @@ class EventInfo {
       // registration for every event without a deadline.
       regEndDate: DateTime.tryParse(jsonString(json['reg_enddate']) ?? ''),
       club: Club.fromJson(jsonObject(json['club']) ?? const <String, dynamic>{}),
+      cohosts: EventCohost.listFrom(json['cohosts'],
+          hostId: jsonInt(jsonObject(json['club'])?['id'])),
       category:
           Category.fromJson(jsonObject(json['category']) ?? const <String, dynamic>{}),
       interests: jsonObjects(json['interests']).map(Interest.fromJson).toList(),

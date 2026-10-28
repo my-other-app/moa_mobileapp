@@ -4,6 +4,7 @@ import 'package:finnet/features/events/presentation/pages/individual_event_page.
 import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_entries.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_venue.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/hosted_by.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/register_bar_parts.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
@@ -677,6 +678,110 @@ void main() {
       expect(find.byKey(const ValueKey('event-sponsors')), findsNothing);
       expect(find.byKey(const ValueKey('event-partners')), findsNothing);
       expect(find.text('Sponsors'), findsNothing);
+    });
+  });
+
+  // Co-hosted events (feature-register cohosts-contract.md §8, §11): the
+  // host stays the event's club; the clubs that accepted come as `cohosts`.
+  group('a co-hosted event', () {
+    const robotics = {
+      'club_id': 9,
+      'name': 'Robotics Club',
+      'slug': 'robotics-club',
+      'logo': {'thumbnail': null},
+    };
+    const quiz = {
+      'club_id': 12,
+      'name': 'Quiz Club',
+      'slug': 'quiz-club',
+      'logo': null,
+    };
+
+    String hostedBy(WidgetTester tester) => tester
+        .widget<Text>(find.byKey(HostedByLine.namesKey))
+        .textSpan!
+        .toPlainText();
+
+    testWidgets('"Hosted by Tinkerhub and Robotics Club" under the title, '
+        "each name opening that club's page", (tester) async {
+      api
+        ..on('GET', '/events/info/7',
+            eventInfo(extra: {'cohosts': [robotics], 'viewer_role': null}))
+        ..on('GET', '/discover/events/7', discoverEventPage());
+      final h = await _pump(tester);
+
+      expect(hostedBy(tester), 'Hosted by Tinkerhub and Robotics Club');
+      // The host's logo first, then the co-host's.
+      expect(find.byKey(ClubLogoStack.logoKey(0)), findsOneWidget);
+      expect(find.byKey(ClubLogoStack.logoKey(1)), findsOneWidget);
+      expect(find.byKey(ClubLogoStack.logoKey(2)), findsNothing);
+      final title = tester.getTopLeft(find.text('Hack Night').first).dy;
+      expect(tester.getTopLeft(find.byKey(HostedByLine.lineKey)).dy,
+          greaterThan(title));
+
+      await tester.tapOnText(find.textRange.ofSubstring('Robotics Club'));
+      await _settle(tester);
+      expect(h.went.single.$1, '/clubs/9');
+      expect((h.went.single.$2 as Map)['clubSlug'], 'robotics-club');
+    });
+
+    testWidgets("the host's name opens the host", (tester) async {
+      api
+        ..on('GET', '/events/info/7',
+            eventInfo(extra: {'cohosts': [robotics, quiz]}))
+        ..on('GET', '/discover/events/7', discoverEventPage());
+      final h = await _pump(tester);
+
+      expect(hostedBy(tester),
+          'Hosted by Tinkerhub, Robotics Club and Quiz Club');
+      await tester.tapOnText(find.textRange.ofSubstring('Tinkerhub',
+          descendentOf: find.byKey(HostedByLine.namesKey)));
+      await _settle(tester);
+      expect(h.went.single.$1, '/clubs/3');
+    });
+
+    testWidgets("the website page's co-hosts, when /events/info has none",
+        (tester) async {
+      api
+        ..on('GET', '/events/info/7', eventInfo())
+        ..on('GET', '/discover/events/7', {
+          ...discoverEventPage(),
+          'cohosts': [
+            {...quiz, 'logo': 'https://media.example/quiz.png'},
+          ],
+        });
+      await _pump(tester);
+
+      expect(hostedBy(tester), 'Hosted by Tinkerhub and Quiz Club');
+    });
+
+    testWidgets("the club's team is the host's, not a second \"Hosted by\"",
+        (tester) async {
+      api
+        ..on('GET', '/events/info/7',
+            eventInfo(extra: {'cohosts': [robotics]}))
+        ..on('GET', '/discover/events/7',
+            discoverEventPage(teamSource: 'club'));
+      await _pump(tester);
+
+      expect(find.text('The team at Tinkerhub'), findsOneWidget);
+      expect(find.text('Hosted by Tinkerhub'), findsNothing);
+    });
+
+    testWidgets('an older server: the club beside the title, as before',
+        (tester) async {
+      api
+        ..on('GET', '/events/info/7', eventInfo())
+        ..on('GET', '/discover/events/7',
+            discoverEventPage(teamSource: 'club'));
+      final h = await _pump(tester);
+
+      expect(find.byKey(HostedByLine.lineKey), findsNothing);
+      expect(find.byKey(const ValueKey('event-title-cohosted')), findsNothing);
+      expect(find.text('1.2K followers'), findsOneWidget);
+      expect(find.text('Hosted by Tinkerhub'), findsOneWidget);
+      await _tap(tester, find.text('Tinkerhub').first);
+      expect(h.went.single.$1, '/clubs/3');
     });
   });
 }
