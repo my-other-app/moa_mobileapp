@@ -47,6 +47,12 @@ class _Inbox implements NotificationRepository {
   }
 
   @override
+  Future<Result<String>> markOpened(String id) async {
+    read.add(id);
+    return Either.right(id);
+  }
+
+  @override
   Future<Result<void>> markAllAsRead() async => Either.right(null);
 }
 

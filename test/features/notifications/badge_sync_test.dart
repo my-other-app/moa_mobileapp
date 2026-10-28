@@ -60,14 +60,41 @@ class _Server implements NotificationRepository {
     return Either.right(count);
   }
 
+  final List<String> marked = [];
+
   @override
   Future<Result<void>> markAsRead(String notificationId) async {
+    marked.add(notificationId);
     if (markFails) return Either.left(const NetworkFailure());
     lines = [
       for (final n in lines)
         if (n.id == notificationId) n.copyWithStatus('read') else n,
     ];
     return Either.right(null);
+  }
+
+  /// The server's answer to a tapped push: [keys] maps a send's key to
+  /// the reader's own line; an id is the line itself.
+  final Map<String, String> keys = {};
+  final List<String> opened = [];
+  bool openFails = false;
+  Completer<void>? holdOpen;
+
+  @override
+  Future<Result<String>> markOpened(String id) async {
+    opened.add(id);
+    if (holdOpen != null) await holdOpen!.future;
+    if (openFails) return Either.left(const NetworkFailure());
+    final lineId = keys[id] ?? id;
+    if (!lines.any((n) => n.id == lineId)) {
+      return Either.left(
+          const ServerFailure(message: 'Not found', code: '404'));
+    }
+    lines = [
+      for (final n in lines)
+        if (n.id == lineId) n.copyWithStatus('read') else n,
+    ];
+    return Either.right(lineId);
   }
 
   @override
@@ -195,5 +222,96 @@ void main() {
 
     expect(icon.shown, 2);
     expect(inbox.state.unreadCount, 2);
+  });
+
+  group('a tapped push marks its line read', () {
+    test('by the line\'s id: shown read, and the icon follows', () async {
+      await inbox.loadNotifications();
+
+      await inbox.markOpened('a');
+
+      expect(server.opened, ['a']);
+      expect(inbox.state.notifications.firstWhere((n) => n.id == 'a').isUnread,
+          isFalse);
+      expect(inbox.state.unreadCount, 2);
+      expect(icon.shown, 2);
+    });
+
+    test('by its send\'s key: the reader\'s own line', () async {
+      server.keys['key-announce'] = 'b';
+      await inbox.loadNotifications();
+
+      await inbox.markOpened('key-announce');
+
+      expect(inbox.state.notifications.firstWhere((n) => n.id == 'b').isUnread,
+          isFalse);
+      expect(icon.shown, 2);
+    });
+
+    test(
+        'before the inbox was ever read (a cold start): the count still '
+        'follows', () async {
+      await inbox.markOpened('c');
+
+      expect(server.opened, ['c']);
+      expect(icon.counts, [2]);
+    });
+
+    test(
+        'once, however often it is asked -- the launch tap, then the inbox '
+        'opening on the same line', () async {
+      final hold = server.holdOpen = Completer<void>();
+      final first = inbox.markOpened('a');
+      final second = inbox.markOpened('a');
+      hold.complete();
+      await Future.wait([first, second]);
+      await inbox.markOpened('a');
+
+      // The inbox lists it read; a tap on it there sends nothing more.
+      await inbox.loadNotifications();
+      await inbox.markAsRead('a');
+
+      expect(server.opened, ['a']);
+      expect(server.marked, isEmpty);
+      expect(icon.shown, 2);
+    });
+
+    test('a page read before the server had the mark still shows it read',
+        () async {
+      await inbox.markOpened('a');
+      // The list's answer left the server before the mark landed.
+      server.lines = [
+        for (final n in server.lines)
+          if (n.id == 'a') n.copyWithStatus('unread') else n,
+      ];
+
+      await inbox.loadNotifications();
+
+      expect(inbox.state.notifications.firstWhere((n) => n.id == 'a').isUnread,
+          isFalse);
+    });
+
+    test('a mark that fails is let go: nothing thrown, the count read again',
+        () async {
+      await inbox.loadNotifications();
+      server.openFails = true;
+
+      await expectLater(inbox.markOpened('a'), completes);
+
+      expect(inbox.state.notifications.firstWhere((n) => n.id == 'a').isUnread,
+          isTrue);
+      expect(icon.shown, 3);
+    });
+
+    test(
+        'a line the server does not know (another account\'s) changes '
+        'nothing', () async {
+      await inbox.loadNotifications();
+
+      await inbox.markOpened('not-mine');
+
+      expect(inbox.state.notifications.where((n) => n.isUnread), hasLength(3));
+      expect(icon.shown, 3);
+    });
   });
 }

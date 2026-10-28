@@ -69,6 +69,22 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
   /// is stale, and sets neither the count nor the icon.
   int _countTicket = 0;
 
+  /// Lines marked read here (a tapped push's, or one opened in the inbox),
+  /// by id and by the key a push named them with: a page read before the
+  /// server had it still shows them read, and none is marked twice.
+  final Set<String> _read = {};
+
+  /// The tapped pushes' lines already being marked, by what the push named.
+  final Set<String> _opening = {};
+
+  List<NotificationModel> _withRead(List<NotificationModel> lines) => [
+        for (final n in lines)
+          if (n.isUnread && _read.contains(n.id))
+            n.copyWithStatus('read')
+          else
+            n,
+      ];
+
   static const int _pageSize = 20;
 
   Future<void>? _loading;
@@ -97,7 +113,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
       if (!mounted) return;
       if (saved != null && saved.items.isNotEmpty) {
         state = state.copyWith(
-          notifications: saved.items,
+          notifications: _withRead(saved.items),
           isLoading: false,
           hasMore: false,
           currentOffset: saved.items.length,
@@ -118,7 +134,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
       ),
       (page) {
         state = state.copyWith(
-          notifications: page.items,
+          notifications: _withRead(page.items),
           isLoading: false,
           hasMore: page.items.length >= _pageSize,
           currentOffset: page.items.length,
@@ -149,7 +165,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
       (_) => state = state.copyWith(isLoadingMore: false),
       (page) {
         state = state.copyWith(
-          notifications: [...state.notifications, ...page.items],
+          notifications: [...state.notifications, ..._withRead(page.items)],
           isLoadingMore: false,
           hasMore: page.items.length >= _pageSize,
           currentOffset: state.currentOffset + page.items.length,
@@ -182,8 +198,14 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
   /// server, which sets the icon: the line may have been one the count did
   /// not hold, or others may have been read elsewhere.
   Future<void> markAsRead(String notificationId) async {
+    // Already marked by a tap on its push: shown read, not marked again.
+    if (_read.contains(notificationId)) {
+      _showRead({notificationId});
+      return;
+    }
     final result = await _repository.markAsRead(notificationId);
     if (result.isLeft || !mounted) return;
+    _read.add(notificationId);
 
     state = state.copyWith(
       notifications: [
@@ -193,6 +215,35 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
       unreadCount: (state.unreadCount - 1).clamp(0, 9999),
     );
     await fetchUnreadCount();
+  }
+
+  /// A push was tapped: mark read the line it named ([id]: the line's id,
+  /// or the key of the send that wrote it -- OpenedPushLines), show it
+  /// read, and read the count again, which sets the icon.
+  ///
+  /// Each line once, however often it is asked (the launch tap and the
+  /// inbox opening on it). A mark that fails is let go: the line stays
+  /// unread, and the count -- read again either way -- says so.
+  Future<void> markOpened(String id) async {
+    if (_read.contains(id) || !_opening.add(id)) return;
+    final result = await _repository.markOpened(id);
+    if (!mounted) return;
+    result.fold((_) {}, (lineId) {
+      _read.addAll({id, lineId});
+      _showRead({id, lineId});
+    });
+    await fetchUnreadCount();
+  }
+
+  /// The lines [ids] shown read, where they are on screen.
+  void _showRead(Set<String> ids) {
+    if (!state.notifications.any((n) => n.isUnread && ids.contains(n.id))) {
+      return;
+    }
+    state = state.copyWith(notifications: [
+      for (final n in state.notifications)
+        if (n.isUnread && ids.contains(n.id)) n.copyWithStatus('read') else n,
+    ]);
   }
 
   /// Mark all notifications as read

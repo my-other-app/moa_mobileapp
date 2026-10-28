@@ -21,5 +21,9 @@ abstract class NotificationRepository {
 
   Future<Result<void>> markAsRead(String notificationId);
 
+  /// Mark read the line a tapped push named (its id, or its send's key).
+  /// Answers the line's own id.
+  Future<Result<String>> markOpened(String id);
+
   Future<Result<void>> markAllAsRead();
 }

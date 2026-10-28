@@ -7,6 +7,7 @@ import 'package:finnet/core/cache/document_cache.dart';
 import 'package:finnet/core/cache/image_caches.dart';
 import 'package:finnet/core/cache/session_caches.dart';
 import 'package:finnet/core/services/notification_service.dart';
+import 'package:finnet/core/services/opened_push_lines.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_pin_store.dart';
 import 'package:finnet/features/volunteer/data/scan_queue.dart';
@@ -126,5 +127,7 @@ final sessionCachesProvider = Provider<SessionCaches>((ref) {
     'certificate pins': pins.clear,
     // Door scans saved with no signal: this volunteer's to send.
     'door scan queue': ref.watch(scanQueueStoreProvider).clear,
+    // Lines of pushes tapped while signed out: the last person's.
+    'tapped push lines': () async => OpenedPushLines.clear(),
   });
 });

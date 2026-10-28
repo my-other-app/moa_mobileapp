@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/services/app_badge.dart';
+import 'package:finnet/core/services/opened_push_lines.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/data/registration_requests_api.dart';
 import 'package:finnet/features/events/domain/registration_request.dart';
@@ -91,6 +92,16 @@ class _Inbox implements NotificationRepository {
     return Either.right(fresh.length);
   }
 
+  /// The lines tapped pushes named, as marked; each leaves [fresh].
+  final List<String> opened = [];
+
+  @override
+  Future<Result<String>> markOpened(String id) async {
+    opened.add(id);
+    fresh = [for (final n in fresh) if (n.id != id) n];
+    return Either.right(id);
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw UnimplementedError('${invocation.memberName} not needed here');
@@ -116,6 +127,9 @@ const _signedIn = AuthState(accessToken: 'token', isInitialized: true);
 const _signedOut = AuthState(isInitialized: true);
 
 void main() {
+  setUp(OpenedPushLines.clear);
+  tearDown(OpenedPushLines.clear);
+
   late _FakeAuth auth;
   late _Switches switches;
   late _Inbox inbox;
@@ -125,10 +139,11 @@ void main() {
   late ProviderContainer container;
   late FakeBadgeChannel icon;
 
-  Future<void> pump(WidgetTester tester, AuthState start) async {
+  Future<void> pump(WidgetTester tester, AuthState start,
+      {List<NotificationModel> lines = const []}) async {
     auth = _FakeAuth(start);
     switches = _Switches();
-    inbox = _Inbox();
+    inbox = _Inbox()..fresh = lines;
     requests = _Requests();
     arrivals = ValueNotifier(0);
     now = DateTime(2026, 10, 22, 9);
@@ -298,6 +313,52 @@ void main() {
 
       expect(inbox.counts, 0);
       expect(icon.calls, isEmpty);
+    });
+  });
+
+  group('a tapped push', () {
+    testWidgets(
+        'cold start: the push that launched the app has its line marked read, '
+        'and the icon follows', (tester) async {
+      // Noted at launch, before any screen is up (holdLaunchMessage).
+      OpenedPushLines.opened({'type': 'club_thread', 'notification_id': 'n-1'});
+
+      await pump(tester, _signedIn,
+          lines: [_line('n-1', 'Code Club posted'), _line('n-2', 'Other')]);
+      await tester.pump();
+      await tester.pump();
+
+      expect(inbox.opened, ['n-1']);
+      expect(OpenedPushLines.waiting, isEmpty);
+      expect(icon.shown, 1, reason: 'one line left unread');
+    });
+
+    testWidgets('a tap while the app is open marks its line at once',
+        (tester) async {
+      await pump(tester, _signedIn);
+      inbox.fresh = [_line('n-3', 'Doors at 6')];
+
+      OpenedPushLines.opened({'notification_id': 'n-3'});
+      await tester.pump();
+      await tester.pump();
+
+      expect(inbox.opened, ['n-3']);
+      expect(icon.shown, 0);
+    });
+
+    testWidgets('signed out, the tap waits; signing in marks it',
+        (tester) async {
+      await pump(tester, _signedOut);
+
+      OpenedPushLines.opened({'notification_id': 'n-4'});
+      await tester.pump();
+      expect(inbox.opened, isEmpty);
+      expect(OpenedPushLines.waiting, ['n-4']);
+
+      auth.set(_signedIn);
+      await tester.pump();
+      await tester.pump();
+      expect(inbox.opened, ['n-4']);
     });
   });
 

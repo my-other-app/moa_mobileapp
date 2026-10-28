@@ -46,6 +46,13 @@ class _FakeDataSource implements NotificationRemoteDataSource {
   }
 
   @override
+  Future<String> markOpened(String id) async {
+    calls.add('markOpened($id)');
+    if (throws != null) throw throws!;
+    return 'line-of-$id';
+  }
+
+  @override
   Future<void> markAllAsRead() async {
     calls.add('markAllAsRead');
     if (throws != null) throw throws!;
