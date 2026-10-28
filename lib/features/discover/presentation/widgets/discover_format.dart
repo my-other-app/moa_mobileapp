@@ -61,6 +61,17 @@ String? formatDistance(double? km) {
 String plural(int n, String one, [String? many]) =>
     '${formatCount(n)} ${n == 1 ? one : (many ?? '${one}s')}';
 
+/// How many people, for a card: "108 applied" on an event whose club
+/// reviews every registration ([DiscoverEvent.appliedCount]), else "34
+/// going"; null when nobody has yet. From a server older than
+/// `applied_count`, "going" as before.
+String? peopleLine(DiscoverEvent event) {
+  final applied = event.appliedCount;
+  final n = applied ?? event.going;
+  if (n <= 0) return null;
+  return '${formatCount(n)} ${applied != null ? 'applied' : 'going'}';
+}
+
 /// Whether a card shows the club's "High demand" label (`high_demand`):
 /// while the event is still to come or on, never once it has ended.
 bool cardShowsHighDemand(DiscoverEvent event) =>

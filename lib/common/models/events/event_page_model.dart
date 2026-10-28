@@ -425,6 +425,12 @@ class EventPageDetails {
   final int? capacity;
   final int going;
 
+  /// On an event whose club reviews every registration, how many applied:
+  /// every registration ever made for it, whatever became of it, so it
+  /// never drops (`applied_count`). Null on any other event, and from a
+  /// server older than it: the page then reads as before (going, seats).
+  final int? appliedCount;
+
   /// Places still free, when the event has a limit and the API says.
   final int? seatsLeftReported;
   final double? lat;
@@ -470,6 +476,7 @@ class EventPageDetails {
     this.endsAt,
     this.capacity,
     this.going = 0,
+    this.appliedCount,
     this.seatsLeftReported,
     this.lat,
     this.lng,
@@ -492,10 +499,12 @@ class EventPageDetails {
   });
 
   /// Places still free: what the API said, or the capacity less those
-  /// going; null when the event has no limit.
+  /// going; null when the event has no limit, and where the club reviews
+  /// every registration ([appliedCount]): it decides who gets in, so the
+  /// page says how many applied, never what is left.
   int? get seatsLeft {
     final cap = capacity;
-    if (cap == null) return null;
+    if (cap == null || appliedCount != null) return null;
     final left = seatsLeftReported ?? cap - going;
     return left < 0 ? 0 : left;
   }
@@ -530,6 +539,12 @@ class EventPageDetails {
           for (final json in jsonObjects(rows))
             if (EventSummary.fromJson(json) case final e? when e.id != id) e,
         ];
+    // On the event, or on its `ticketing` (the event's, or the page's).
+    final requiresApproval = jsonBool(event['requires_approval']) ??
+        jsonBool(jsonObject(event['ticketing'])?['requires_approval']) ??
+        jsonBool(jsonObject(root['ticketing'])?['requires_approval']) ??
+        false;
+    final applied = jsonInt(event['applied_count']);
 
     return EventPageDetails(
       id: id,
@@ -538,11 +553,7 @@ class EventPageDetails {
       url: _text(event['url']),
       phase: eventPhaseFrom(event['status']),
       cancellation: EventCancellation.of(event),
-      // On the event, or on its `ticketing` (the event's, or the page's).
-      requiresApproval: jsonBool(event['requires_approval']) ??
-          jsonBool(jsonObject(event['ticketing'])?['requires_approval']) ??
-          jsonBool(jsonObject(root['ticketing'])?['requires_approval']) ??
-          false,
+      requiresApproval: requiresApproval,
       highDemand: jsonBool(event['high_demand']) ?? false,
       registrationOpen: jsonBool(event['registration_open']) ?? false,
       regOpensAt: jsonDate(event['reg_opens_at'])?.toLocal(),
@@ -551,6 +562,9 @@ class EventPageDetails {
       endsAt: jsonDate(event['ends_at'])?.toLocal(),
       capacity: capacity,
       going: _count(event['going']),
+      // Only where the club reviews every registration, and only a count.
+      appliedCount:
+          requiresApproval && applied != null && applied >= 0 ? applied : null,
       seatsLeftReported: capacity != null && seats != null && seats.isFinite
           ? (seats < 0 ? 0 : seats.floor())
           : null,

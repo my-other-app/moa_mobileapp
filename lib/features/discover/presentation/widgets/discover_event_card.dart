@@ -108,7 +108,7 @@ String discoverEventLabel(DiscoverEvent event) {
     if (price != null) price,
     if (status != null) status,
     if (cardShowsHighDemand(event)) HighDemandChip.label,
-    if (event.going > 0) '${formatCount(event.going)} going',
+    if (peopleLine(event) case final people?) people,
   ].join(', ');
 }
 
@@ -404,7 +404,8 @@ class _PlaceLine extends StatelessWidget {
 
 /// The bottom row: the one price (none for an event the iOS app doesn't
 /// sell; see [cardPrice]) on the left, and on the right the status when
-/// there is one, else how many are going.
+/// there is one, else how many are going -- or, where the club reviews
+/// every registration, how many applied ([peopleLine]).
 class _Foot extends StatelessWidget {
   const _Foot({required this.event});
 
@@ -414,6 +415,7 @@ class _Foot extends StatelessWidget {
   Widget build(BuildContext context) {
     final price = cardPrice(event);
     final status = statusLabel(event);
+    final people = peopleLine(event);
     final badge = status == null
         ? null
         : StatusBadge(label: status, tone: statusTone(event));
@@ -453,7 +455,7 @@ class _Foot extends StatelessWidget {
             alignment: AlignmentDirectional.centerEnd,
             child: demand ??
                 badge ??
-                (event.going > 0
+                (people != null
                     ? Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -462,7 +464,8 @@ class _Foot extends StatelessWidget {
                           const SizedBox(width: 3),
                           Flexible(
                             child: Text(
-                              '${formatCount(event.going)} going',
+                              people,
+                              key: const ValueKey('discover-event-people'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               strutStyle: EventCardSlots.smallStrut,

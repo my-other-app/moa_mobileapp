@@ -177,12 +177,22 @@ String reviewsEveryRegistrationNote(String? clubName) =>
 /// nobody going yet says so instead ("Tinkerhub reviews every registration
 /// · 38 seats left"): people may have registered already, and the page
 /// shows no numbers.
+///
+/// Where the server says how many applied to such an event ([applied],
+/// `applied_count`: every registration ever made for it), it says that
+/// ("108 applied", "1 applied"), and never the seats left: the club
+/// decides who gets in. Nobody yet: "{club} reviews every registration".
 String? seatsLine({
   required int going,
   int? seatsLeft,
   bool confirmsEach = false,
   String? clubName,
+  int? applied,
 }) {
+  if (applied != null) {
+    if (applied > 0) return '$applied applied';
+    return confirmsEach ? confirmsEachPlaceLine(clubName) : null;
+  }
   final parts = [
     if (going > 0)
       '$going going'
