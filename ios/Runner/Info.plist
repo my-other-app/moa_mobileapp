@@ -27,14 +27,14 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.497245325238-e5o64rt0gpkpmp4730hrs7be5l7qk8ml</string>
+				<string>com.googleusercontent.apps.497245325238-36lce0n03ducsp3orqhhf0hjassb1nf0</string>
 			</array>
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GIDClientID</key>
-	<string>497245325238-e5o64rt0gpkpmp4730hrs7be5l7qk8ml.apps.googleusercontent.com</string>
+	<string>497245325238-36lce0n03ducsp3orqhhf0hjassb1nf0.apps.googleusercontent.com</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>tez</string>
