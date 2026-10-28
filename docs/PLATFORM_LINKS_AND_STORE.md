@@ -15,7 +15,7 @@ Until this is set, `https://myotherapp.in/.well-known/assetlinks.json` is `[]`. 
 
 ### 1.2 iOS: Associated Domains on the App ID
 
-1. developer.apple.com → Certificates, Identifiers & Profiles → **Identifiers** → `app.myotherapp.com` → tick **Associated Domains** → Save.
+1. developer.apple.com → Certificates, Identifiers & Profiles → **Identifiers** → `app.myotherapp.in` → tick **Associated Domains** → Save. (The app's id moved from `app.myotherapp.com` to `app.myotherapp.in` before its first store release; if that App ID isn't registered yet, register it with this capability, see `docs/RELEASE_1.1.0.md` §6.)
 2. Profiles:
    - With Xcode's automatic signing, the next archive picks up the capability.
    - With manual profiles, regenerate the App Store distribution profile and the development profile, then download them again.
@@ -40,12 +40,12 @@ curl -s  https://myotherapp.in/.well-known/assetlinks.json | jq .
   2. With Developer Mode on: Settings → Developer → **Universal Links → Diagnostics** checks any URL against the installed app.
 
 **Google:**
-- Use the [Statement List Generator and Tester](https://developers.google.com/digital-asset-links/tools/generator): site `myotherapp.in`, package `app.myotherapp.com`, the SHA-256 → **Test statement**.
+- Use the [Statement List Generator and Tester](https://developers.google.com/digital-asset-links/tools/generator): site `myotherapp.in`, package `app.myotherapp.in`, the SHA-256 → **Test statement**.
 - Or ask the API directly:
   `curl -s "https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://myotherapp.in&relation=delegate_permission/common.handle_all_urls"`
 - On a phone with a Play-installed build:
-  - `adb shell pm get-app-links app.myotherapp.com` should list `myotherapp.in: verified`.
-  - `adb shell pm verify-app-links --re-verify app.myotherapp.com` re-checks.
+  - `adb shell pm get-app-links app.myotherapp.in` should list `myotherapp.in: verified`.
+  - `adb shell pm verify-app-links --re-verify app.myotherapp.in` re-checks.
   - Play Console → **Grow users → Deep links** shows the same.
 
 ### 1.4 Play Console declarations
