@@ -1380,6 +1380,7 @@ class QuizLeaderboard extends StatefulWidget {
     this.me,
     this.myRank,
     this.myScore,
+    this.showOwnRow = true,
   });
 
   final List<BoardEntry> board;
@@ -1391,6 +1392,11 @@ class QuizLeaderboard extends StatefulWidget {
   /// reach them.
   final int? myRank;
   final int? myScore;
+
+  /// Whether the board carries the player's own row itself. The quiz page
+  /// turns it off when it pins that row to the bottom of the screen
+  /// instead, so there is never two of it.
+  final bool showOwnRow;
 
   @override
   State<QuizLeaderboard> createState() => _QuizLeaderboardState();
@@ -1426,7 +1432,7 @@ class _QuizLeaderboardState extends State<QuizLeaderboard> {
   @override
   Widget build(BuildContext context) {
     final board = widget.board;
-    final myRank = widget.myRank;
+    final myRank = widget.showOwnRow ? widget.myRank : null;
     if (board.isEmpty) {
       return myRank == null
           ? const SizedBox.shrink()
@@ -1664,6 +1670,37 @@ class _BoardRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The player's own row, held at the bottom of the screen while a board is
+/// up: forty people above them and they can still see where they are
+/// without scrolling.
+class QuizOwnPlace extends StatelessWidget {
+  const QuizOwnPlace({
+    super.key,
+    required this.rank,
+    required this.name,
+    required this.score,
+  });
+
+  final int rank;
+  final String name;
+  final int score;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: LiveColors.line)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: _MyRow(rank: rank, name: name, score: score),
       ),
     );
   }

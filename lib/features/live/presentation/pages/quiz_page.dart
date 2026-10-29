@@ -324,10 +324,33 @@ class _QuizPageState extends ConsumerState<QuizPage>
         ),
       ));
     }
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-      children: children,
+    // The player's own row stays on the screen while a board is up, however
+    // far down they are: the board itself then leaves it out.
+    final pinned = _pinnedPlace(quiz);
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, pinned == null ? 32 : 12),
+            children: children,
+          ),
+        ),
+        if (pinned != null) pinned,
+      ],
     );
+  }
+
+  /// The strip at the bottom: the player's place, when a board is up and
+  /// they are not on the part of it that is shown.
+  Widget? _pinnedPlace(QuizState? quiz) {
+    if (quiz == null) return null;
+    final rank = quiz.rank;
+    final boardUp = quiz.ended ||
+        (quiz.question != null && _state.left <= 0) ||
+        (!quiz.live && quiz.question == null);
+    if (!boardUp || rank == null) return null;
+    if (quiz.leaderboard.any((e) => e.name == quiz.name)) return null;
+    return QuizOwnPlace(rank: rank, name: quiz.name, score: quiz.score);
   }
 
   Widget _finished(QuizState quiz) {
@@ -389,6 +412,8 @@ class _QuizPageState extends ConsumerState<QuizPage>
             me: quiz.name,
             myRank: quiz.rank,
             myScore: quiz.score,
+            // The page pins it to the bottom of the screen instead.
+            showOwnRow: _pinnedPlace(quiz) == null,
           ),
         ],
       ),

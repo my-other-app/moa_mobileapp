@@ -3,6 +3,7 @@ import 'package:finnet/features/live/data/live_identity.dart';
 import 'package:finnet/features/live/data/live_room_api.dart';
 import 'package:finnet/features/live/domain/live_quiz.dart';
 import 'package:finnet/features/live/presentation/pages/quiz_page.dart';
+import 'package:finnet/features/live/presentation/widgets/live_widgets.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -248,14 +249,17 @@ void main() {
     ));
     await pumpQuiz(tester);
     expect(find.text('You came 40th with 120 points.'), findsOneWidget);
-    final list = find
-        .descendant(of: find.byType(ListView), matching: find.byType(Scrollable))
-        .first;
-    await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('board-me')), 200,
-        scrollable: list);
+    // Pinned to the bottom of the screen, not somewhere down the list.
+    expect(find.byType(QuizOwnPlace), findsOneWidget);
+    expect(find.byKey(const ValueKey('board-me')), findsOneWidget,
+        reason: 'one row, not one pinned and one in the card');
     expect(find.bySemanticsLabel('40th, Asha Menon, 120 points, you'),
         findsOneWidget);
+    final screen = tester.getSize(find.byType(Scaffold).first);
+    final row = tester.getRect(find.byKey(const ValueKey('board-me')));
+    expect(row.bottom, lessThanOrEqualTo(screen.height),
+        reason: 'on the screen without scrolling');
+    expect(row.top, greaterThan(screen.height / 2));
     await leave(tester);
   });
 
