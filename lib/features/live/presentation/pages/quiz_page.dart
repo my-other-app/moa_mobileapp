@@ -340,14 +340,14 @@ class _QuizPageState extends ConsumerState<QuizPage>
     );
   }
 
-  /// The strip at the bottom: the player's place, when a board is up and
-  /// they are not on the part of it that is shown.
+  /// The strip at the bottom: the player's place, on the screen that is
+  /// the board, when they are not on the part of it that is shown. Between
+  /// questions the score strip under the answers already carries it, so
+  /// there is no strip then.
   Widget? _pinnedPlace(QuizState? quiz) {
-    if (quiz == null) return null;
+    if (quiz == null || quiz.question != null) return null;
     final rank = quiz.rank;
-    final boardUp = quiz.ended ||
-        (quiz.question != null && _state.left <= 0) ||
-        (!quiz.live && quiz.question == null);
+    final boardUp = quiz.ended || !quiz.live;
     if (!boardUp || rank == null) return null;
     if (quiz.leaderboard.any((e) => e.name == quiz.name)) return null;
     return QuizOwnPlace(rank: rank, name: quiz.name, score: quiz.score);
