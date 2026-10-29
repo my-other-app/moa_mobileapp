@@ -121,7 +121,7 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage>
     final room = _state.room;
     final name = room?.eventName ?? widget.eventName;
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: LiveColors.wash,
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
@@ -163,13 +163,11 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage>
     final room = _state.room;
     if (cubit == null || (room == null && _state.loading)) {
       return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 12),
-            Text('Opening the room…'),
-          ],
+        child: LiveWaiting(
+          icon: Icons.podcasts_rounded,
+          title: 'Opening the room…',
+          text: 'Picking up what the host has going on.',
+          spinner: true,
         ),
       );
     }
@@ -189,11 +187,13 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage>
       );
     }
 
+    // Loudest first: whatever needs an answer now, then what the host
+    // last said, then the floor, then the feed.
     final children = <Widget>[
-      _StatusLine(live: room.isEventLive, closed: room.isClosed),
-      if (room.banner != null) LiveBannerCard(update: room.banner!),
-      if (room.quizLive && !room.isClosed)
-        QuizEntryCard(title: room.quizTitle, onJoin: _openQuiz),
+      LiveStatusBar(room: room),
+      if (_state.connectionLost)
+        LiveConnectionBar(onRetry: cubit.refresh),
+      if (room.isClosed) const _ClosedLine(),
       if (room.poll != null)
         PollCard(
           key: ValueKey('poll-${room.poll!.id}'),
@@ -203,6 +203,9 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage>
           closed: room.isClosed,
           onAnswer: cubit.respond,
         ),
+      if (room.quizLive && !room.isClosed)
+        QuizEntryCard(title: room.quizTitle, onJoin: _openQuiz),
+      if (room.banner != null) LiveBannerCard(update: room.banner!),
       QuestionsSection(
         questions: room.questions,
         canAsk: _state.canAsk,
@@ -230,27 +233,19 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage>
   }
 }
 
-class _StatusLine extends StatelessWidget {
-  const _StatusLine({required this.live, required this.closed});
-  final bool live;
-  final bool closed;
+/// The event is over: why the room no longer moves.
+class _ClosedLine extends StatelessWidget {
+  const _ClosedLine();
 
   @override
   Widget build(BuildContext context) {
-    if (closed) {
-      return const Padding(
-        padding: EdgeInsets.only(bottom: 12),
-        child: Text(
-          'The event is over and the live room has closed. What was said '
-          'stays here to read.',
-          style: TextStyle(fontSize: 13, color: LiveColors.muted),
-        ),
-      );
-    }
-    if (!live) return const SizedBox(height: 4);
     return const Padding(
-      padding: EdgeInsets.only(bottom: 12),
-      child: LiveDot('Live now'),
+      padding: EdgeInsets.only(bottom: 14),
+      child: Text(
+        'The event is over and the live room has closed. What was said '
+        'stays here to read.',
+        style: TextStyle(fontSize: 13, height: 1.4, color: LiveColors.muted),
+      ),
     );
   }
 }
@@ -261,27 +256,16 @@ class _EmptyRoom extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
-      child: Column(
-        children: [
-          const Icon(Icons.forum_outlined, size: 40, color: LiveColors.muted),
-          const SizedBox(height: 12),
-          Text(
-            closed ? 'Nothing happened in this room' : 'Nothing in the room yet',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            closed
-                ? 'The organiser didn’t use the live room for this event.'
-                : 'Updates, polls, the quiz and questions from the floor show '
-                    'here as the organiser starts them.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: LiveColors.muted),
-          ),
-        ],
-      ),
+    return LiveWaiting(
+      icon: closed ? Icons.inbox_outlined : Icons.hourglass_empty_rounded,
+      title: closed
+          ? 'Nothing happened in this room'
+          : 'Nothing in the room yet',
+      text: closed
+          ? 'The organiser didn’t use the live room for this event.'
+          : 'Waiting for the host to start something. Updates, polls, the '
+              'quiz and questions from the floor show here as they do.',
+      spinner: !closed,
     );
   }
 }

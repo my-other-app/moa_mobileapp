@@ -142,7 +142,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
   Widget build(BuildContext context) {
     final title = _state.quiz?.title ?? widget.eventName;
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: LiveColors.wash,
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
@@ -210,21 +210,22 @@ class _QuizPageState extends ConsumerState<QuizPage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const LiveDot('Quiz'),
-              const SizedBox(height: 6),
+              const LiveDot('Quiz', beat: true),
+              const SizedBox(height: 8),
               Semantics(
                 header: true,
                 child: const Text('Join the quiz',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                    style: TextStyle(
+                        fontSize: 24, height: 1.2, fontWeight: FontWeight.w800)),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               const Text(
                 'Type the code on the screen and your name. Fast right '
                 'answers score most.',
-                style: TextStyle(fontSize: 13, color: LiveColors.muted),
+                style:
+                    TextStyle(fontSize: 13.5, height: 1.4, color: LiveColors.muted),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               TextField(
                 key: const ValueKey('quiz-code'),
                 controller: _code,
@@ -263,7 +264,9 @@ class _QuizPageState extends ConsumerState<QuizPage>
                       : () => cubit.join(_code.text, _name.text),
                   style: FilledButton.styleFrom(
                     backgroundColor: LiveColors.ink,
-                    minimumSize: const Size.fromHeight(52),
+                    minimumSize: const Size.fromHeight(56),
+                    textStyle: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                   child: _state.joining
                       ? const SizedBox(
@@ -295,16 +298,14 @@ class _QuizPageState extends ConsumerState<QuizPage>
     final quiz = _state.quiz;
     final children = <Widget>[];
     if (_state.connectionLost) {
-      children.add(const Padding(
-        padding: EdgeInsets.only(bottom: 10),
-        child: Text('Lost the room for a moment…',
-            style: TextStyle(color: LiveColors.wrong)),
-      ));
+      children.add(const LiveConnectionBar());
     }
     if (quiz == null) {
-      children.add(const Padding(
-        padding: EdgeInsets.only(top: 48),
-        child: Center(child: CircularProgressIndicator()),
+      children.add(const LiveWaiting(
+        icon: Icons.quiz_outlined,
+        title: 'Finding the quiz…',
+        text: 'One moment.',
+        spinner: true,
       ));
     } else if (quiz.ended || (!quiz.live && quiz.question == null)) {
       children.add(_finished(quiz));
@@ -316,39 +317,79 @@ class _QuizPageState extends ConsumerState<QuizPage>
     if (_state.answerError != null) {
       children.add(Padding(
         padding: const EdgeInsets.only(top: 8),
-        child: Text(_state.answerError!,
-            style: const TextStyle(color: LiveColors.wrong)),
+        child: Semantics(
+          liveRegion: true,
+          child: Text(_state.answerError!,
+              style: const TextStyle(color: LiveColors.wrong)),
+        ),
       ));
     }
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: children,
     );
   }
 
   Widget _finished(QuizState quiz) {
     final rank = quiz.rank;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LiveCard(
+          live: quiz.ended,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (quiz.ended) ...[
+                const LiveDot('Quiz over'),
+                const SizedBox(height: 8),
+              ],
+              Semantics(
+                header: true,
+                child: Text(
+                  quiz.ended
+                      ? 'That is the quiz'
+                      : 'The host has not started yet',
+                  style: const TextStyle(
+                      fontSize: 22, height: 1.2, fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (rank != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'You came ${ordinal(rank)} with ${quiz.score} points.',
+                  style: const TextStyle(
+                      fontSize: 16, height: 1.3, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (quiz.leaderboard.isNotEmpty || rank != null) _board(quiz),
+      ],
+    );
+  }
+
+  /// The board, in its own card: the podium, the rest, and this player's
+  /// row wherever they are.
+  Widget _board(QuizState quiz) {
     return LiveCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Semantics(
             header: true,
-            child: Text(
-              quiz.ended ? 'That is the quiz' : 'The host has not started yet',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-            ),
+            child: const Text('Leaderboard',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
           ),
-          if (rank != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                'You came ${ordinal(rank)} with ${quiz.score} points.',
-                style: const TextStyle(fontSize: 15),
-              ),
-            ),
-          const SizedBox(height: 8),
-          QuizLeaderboard(board: quiz.leaderboard, me: quiz.name),
+          const Text('Tied players share a place.',
+              style: TextStyle(fontSize: 12.5, color: LiveColors.muted)),
+          QuizLeaderboard(
+            board: quiz.leaderboard,
+            me: quiz.name,
+            myRank: quiz.rank,
+            myScore: quiz.score,
+          ),
         ],
       ),
     );
@@ -358,22 +399,30 @@ class _QuizPageState extends ConsumerState<QuizPage>
     return LiveCard(
       live: true,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const LiveDot('In the quiz', beat: true),
+          const SizedBox(height: 10),
           Semantics(
             header: true,
             liveRegion: true,
             child: Text(
               'You are in, ${quiz.name}',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                  fontSize: 22, height: 1.2, fontWeight: FontWeight.w800),
             ),
           ),
-          const SizedBox(height: 6),
-          const Text('Watch the screen — the first question is coming.'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
+          const LiveWaiting(
+            icon: Icons.hourglass_empty_rounded,
+            title: 'Waiting for the host to start',
+            text: 'Watch the screen — the first question lands here.',
+            spinner: true,
+          ),
           Text(
             '${quiz.total} ${quiz.total == 1 ? 'question' : 'questions'} '
             'tonight',
+            textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 13, color: LiveColors.muted),
           ),
         ],
@@ -396,23 +445,36 @@ class _QuizPageState extends ConsumerState<QuizPage>
     final timeUp = left <= 0;
     final right = q.wasRight;
     final reveal = q.revealed;
-    final String? verdict;
-    final Color verdictColour;
+    final points = q.myPoints ?? _state.flash?.points;
+    String? correct;
+    for (final o in q.options) {
+      if (q.correctKey != null && o.key == q.correctKey) correct = o.label;
+    }
+    Widget? verdict;
     if (q.answered && right != null) {
-      final points = q.myPoints ?? _state.flash?.points;
-      verdict = right
-          ? 'Right${points != null && points > 0 ? ' — +$points' : ''}'
-          : 'Not that one';
-      verdictColour = right ? LiveColors.right : LiveColors.wrong;
+      verdict = QuizVerdict(
+        text: right
+            ? 'Right${points != null && points > 0 ? ' — +$points' : ''}'
+            : 'Not that one',
+        tone: right ? LiveColors.right : LiveColors.wrong,
+        icon: right ? Icons.check_circle_rounded : Icons.cancel_rounded,
+        answer: right ? null : correct,
+      );
     } else if (q.answered) {
-      verdict = 'Answer locked in';
-      verdictColour = LiveColors.deep;
+      verdict = const QuizVerdict(
+        text: 'Answer locked in',
+        tone: LiveColors.deep,
+        icon: Icons.lock_outline_rounded,
+        note: 'You’ll see if you were right when time is up.',
+      );
     } else if (timeUp) {
-      verdict = 'Time is up';
-      verdictColour = LiveColors.wrong;
-    } else {
-      verdict = null;
-      verdictColour = LiveColors.ink;
+      verdict = QuizVerdict(
+        text: 'Time is up',
+        tone: LiveColors.wrong,
+        icon: Icons.timer_off_rounded,
+        answer: correct,
+        note: 'No answer from you this time.',
+      );
     }
     return [
       LiveCard(
@@ -421,45 +483,39 @@ class _QuizPageState extends ConsumerState<QuizPage>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Text(
-                    'Question ${quiz.currentIndex + 1} of ${quiz.total}',
-                    style:
-                        const TextStyle(fontSize: 13, color: LiveColors.muted),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Question ${quiz.currentIndex + 1} of ${quiz.total}',
+                        style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                            color: LiveColors.deep),
+                      ),
+                      const SizedBox(height: 10),
+                      Semantics(
+                        header: true,
+                        child: Text(
+                          q.prompt,
+                          style: const TextStyle(
+                              fontSize: 23,
+                              height: 1.22,
+                              fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Semantics(
-                  label: timeUp ? 'Time is up' : '$left seconds left',
-                  excludeSemantics: true,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: timeUp ? const Color(0xFFFEE2E2) : Colors.white,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: LiveColors.edge),
-                    ),
-                    child: Text(
-                      timeUp ? 'Time' : '${left}s',
-                      key: const ValueKey('quiz-clock'),
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
+                const SizedBox(width: 12),
+                QuizClock(left: left, seconds: q.seconds),
               ],
             ),
-            const SizedBox(height: 12),
-            Semantics(
-              header: true,
-              child: Text(
-                q.prompt,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-              ),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             for (var i = 0; i < q.options.length; i++)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -476,65 +532,95 @@ class _QuizPageState extends ConsumerState<QuizPage>
                   onTap: () => cubit.answer(q.options[i].key),
                 ),
               ),
-            if (verdict != null)
-              Semantics(
-                liveRegion: true,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    verdict,
-                    key: const ValueKey('quiz-verdict'),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: verdictColour,
-                    ),
-                  ),
-                ),
-              ),
-            if (q.answered && right == null)
-              const Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: Text(
-                  'You’ll see if you were right when time is up.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: LiveColors.muted),
-                ),
-              ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Text('${quiz.score} points',
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600)),
-                ),
-                if (quiz.rank != null)
-                  Text('${ordinal(quiz.rank!)} right now',
-                      style: const TextStyle(fontSize: 15)),
-              ],
+            if (verdict != null) verdict,
+            const SizedBox(height: 14),
+            _ScoreStrip(
+              score: quiz.score,
+              rank: quiz.rank,
+              gained: right == true ? points : null,
             ),
           ],
         ),
       ),
       // The board between questions: once this one's clock is out.
-      if (timeUp && quiz.leaderboard.isNotEmpty)
-        LiveCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      if (timeUp && (quiz.leaderboard.isNotEmpty || quiz.rank != null))
+        _board(quiz),
+    ];
+  }
+}
+
+/// Where the player stands under the question: the score, counting up to
+/// its new total, what the last answer added, and the place.
+class _ScoreStrip extends StatelessWidget {
+  const _ScoreStrip({required this.score, this.rank, this.gained});
+  final int score;
+  final int? rank;
+  final int? gained;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: [
+        '$score points',
+        if (gained != null && gained! > 0) 'up $gained',
+        if (rank != null) '${ordinal(rank!)} right now',
+      ].join(', '),
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: LiveColors.edge),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Semantics(
-                header: true,
-                child: const Text('Leaderboard',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LiveScore(
+                    score,
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(width: 5),
+                  const Flexible(
+                    child: Text('points',
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            TextStyle(fontSize: 14, color: LiveColors.muted)),
+                  ),
+                ],
               ),
-              QuizLeaderboard(board: quiz.leaderboard, me: quiz.name),
+              if (gained != null && gained! > 0)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: LiveColors.right,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '+$gained',
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white),
+                  ),
+                ),
+              if (rank != null)
+                Text('${ordinal(rank!)} right now',
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w600)),
             ],
           ),
         ),
-    ];
+      ),
+    );
   }
 }
 
@@ -589,8 +675,8 @@ class _AnswerButton extends StatelessWidget {
             key: ValueKey('answer-${option.key}'),
             onTap: enabled ? onTap : null,
             child: Container(
-              constraints: const BoxConstraints(minHeight: 64),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              constraints: const BoxConstraints(minHeight: 70),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               decoration: mine
                   ? BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
@@ -599,22 +685,48 @@ class _AnswerButton extends StatelessWidget {
                   : null,
               child: Row(
                 children: [
-                  Text(mark,
-                      style:
-                          const TextStyle(fontSize: 20, color: Colors.white)),
+                  Container(
+                    width: 34,
+                    height: 34,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Text(mark,
+                        style: const TextStyle(
+                            fontSize: 18, color: Colors.white)),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       option.label,
                       style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 17.5,
+                        height: 1.25,
+                        fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
                     ),
                   ),
-                  if (mine)
-                    const Icon(Icons.check_circle, color: Colors.white),
+                  if (right)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: Icon(Icons.check_circle_rounded,
+                          color: Colors.white, size: 26),
+                    )
+                  else if (wrong)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: Icon(Icons.cancel_rounded,
+                          color: Colors.white, size: 26),
+                    )
+                  else if (mine)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: Icon(Icons.check_circle,
+                          color: Colors.white, size: 26),
+                    ),
                 ],
               ),
             ),
