@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:finnet/core/services/opened_push_lines.dart';
 import 'package:finnet/core/services/push_arrivals.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/presentation/providers/registration_requests_provider.dart';
@@ -23,6 +24,11 @@ import 'package:finnet/features/notifications/presentation/providers/push_settin
 /// read with the inbox and on its own every time the app comes to the
 /// front, however recently it was read: a push that arrived meanwhile set
 /// the icon from the server, and a tap on one is how the app came back.
+///
+/// The inbox line of a push the person tapped (OpenedPushLines) is marked
+/// read as soon as someone is signed in -- the tap that launched the app
+/// when this first appears, any later one as it happens -- and the icon
+/// follows.
 ///
 /// The switches and the inbox each read their saved copy first and keep it
 /// on screen if the network cannot be reached, so on a weak signal this
@@ -61,6 +67,7 @@ class _PersonalDataSyncState extends ConsumerState<PersonalDataSync>
     super.initState();
     _arrivals = widget.arrivals ?? PushArrivals.count;
     _arrivals.addListener(_onPush);
+    OpenedPushLines.count.addListener(_markOpened);
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
   }
@@ -68,6 +75,7 @@ class _PersonalDataSyncState extends ConsumerState<PersonalDataSync>
   @override
   void dispose() {
     _arrivals.removeListener(_onPush);
+    OpenedPushLines.count.removeListener(_markOpened);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -99,8 +107,19 @@ class _PersonalDataSyncState extends ConsumerState<PersonalDataSync>
     }
   }
 
+  /// The tapped pushes' lines, marked read. Signed out they wait: they are
+  /// the next session's to drop (SessionCaches) or this one's to mark.
+  void _markOpened() {
+    if (!mounted || !_signedIn) return;
+    final inbox = ref.read(notificationsProvider.notifier);
+    for (final id in OpenedPushLines.take()) {
+      inbox.markOpened(id);
+    }
+  }
+
   void _sync() {
     if (!mounted || !_signedIn) return;
+    _markOpened();
     _lastSync = _now();
     // Reading the switches' notifier is what starts them, the first time:
     // the saved copy, then the server.

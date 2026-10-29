@@ -48,6 +48,10 @@ class NotificationRepositoryImpl implements NotificationRepository {
       _guard(() => remoteDataSource.markAsRead(notificationId), 'markAsRead');
 
   @override
+  Future<Result<String>> markOpened(String id) =>
+      _guard(() => remoteDataSource.markOpened(id), 'markOpened');
+
+  @override
   Future<Result<void>> markAllAsRead() =>
       _guard(remoteDataSource.markAllAsRead, 'markAllAsRead');
 

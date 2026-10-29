@@ -11,6 +11,7 @@ import 'package:dio/dio.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/network/interceptors/topic_change_interceptor.dart';
 import 'package:finnet/core/services/notification_routes.dart' as routes;
+import 'package:finnet/core/services/opened_push_lines.dart';
 import 'package:finnet/core/services/pending_notification_route.dart';
 import 'package:finnet/core/services/push_arrivals.dart';
 import 'package:finnet/core/services/push_dedupe.dart';
@@ -114,12 +115,9 @@ class NotificationService {
     // has routed home.
     try {
       final initialMessage = await _messaging.getInitialMessage();
-      if (initialMessage != null &&
-          // The launch tap counts as this push's one opening: a second copy
-          // tapped later (the same push_id) opens nothing again.
-          dedupe.firstOpen(initialMessage.data)) {
+      if (initialMessage != null) {
         debugPrint('App launched by notification: ${initialMessage.messageId}');
-        pendingLaunch.hold(initialMessage.data);
+        holdLaunchMessage(initialMessage.data);
       }
     } catch (e) {
       debugPrint('NotificationService: could not read the launch message: $e');
@@ -509,24 +507,44 @@ class NotificationService {
   static String liveJoinRoute(int eventId, Object? what) =>
       routes.liveJoinRoute(eventId, what);
 
+  /// The push that launched the app (a tap while it was closed): held to
+  /// open once the app is up, its inbox line noted to be marked read
+  /// ([OpenedPushLines]), and counted as that push's one opening -- a
+  /// second copy tapped later (the same push_id) opens nothing again.
+  @visibleForTesting
+  static void holdLaunchMessage(Map<String, dynamic> data) {
+    if (!dedupe.firstOpen(data)) return;
+    pendingLaunch.hold(data);
+    OpenedPushLines.opened(data);
+  }
+
   /// A local notification's payload that launched the app: held to open
-  /// once the app is up, and counted as that push's one opening.
+  /// once the app is up, its line noted, and counted as that push's one
+  /// opening.
   @visibleForTesting
   static void holdLaunchPayload(String? payload) {
     if (payload == null || payload.isEmpty) return;
     try {
       final data = jsonDecode(payload);
-      if (data is Map && dedupe.firstOpen(Map<String, dynamic>.from(data))) {
-        pendingLaunch.holdPayload(payload);
+      if (data is Map) {
+        final push = Map<String, dynamic>.from(data);
+        if (dedupe.firstOpen(push)) {
+          pendingLaunch.holdPayload(payload);
+          OpenedPushLines.opened(push);
+        }
       }
     } catch (_) {
       // Not ours: nothing to open.
     }
   }
 
+  /// A tap on a push while the app was in the background or open: its
+  /// inbox line is noted to be marked read ([OpenedPushLines] -- nothing is
+  /// waited on), then its screen opens.
   void openFromData(Map<String, dynamic> data) {
     // A tap on a second copy of a push already opened does nothing.
     if (!dedupe.firstOpen(data)) return;
+    OpenedPushLines.opened(data);
     final route = routeFor(data);
     if (route == null) {
       final url = webUrlFor(data);

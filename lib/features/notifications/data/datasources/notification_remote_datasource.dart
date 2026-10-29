@@ -52,6 +52,11 @@ abstract class NotificationRemoteDataSource {
   /// Mark one as read.
   Future<void> markAsRead(String notificationId);
 
+  /// Mark read the line a tapped push named: its id, or the key of the send
+  /// that wrote it. Answers the line's own id (the server's answer is the
+  /// line), or [id] when the answer does not say.
+  Future<String> markOpened(String id);
+
   /// Mark every notification as read.
   Future<void> markAllAsRead();
 }
@@ -131,6 +136,15 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
   @override
   Future<void> markAsRead(String notificationId) async {
     await _dio.post<dynamic>('/notifications/read/$notificationId');
+  }
+
+  @override
+  Future<String> markOpened(String id) async {
+    final response = await _dio
+        .post<dynamic>('/notifications/read/${Uri.encodeComponent(id)}');
+    final data = response.data;
+    final lineId = data is Map ? data['id']?.toString() : null;
+    return lineId == null || lineId.isEmpty ? id : lineId;
   }
 
   @override
