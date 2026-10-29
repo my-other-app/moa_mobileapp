@@ -406,12 +406,12 @@ void main() {
       expect(find.byKey(const ValueKey('settings-volunteer')), findsOneWidget);
     });
 
-    testWidgets('Help Centre opens how MyOtherApp works', (tester) async {
+    testWidgets('Help Centre opens the site\'s Support page', (tester) async {
       final opened = await _pump(tester);
 
       await _tap(tester, 'settings-help');
 
-      expect(opened, [Uri.parse('https://myotherapp.in/about')]);
+      expect(opened, [Uri.parse('https://myotherapp.in/support')]);
     });
 
     testWidgets('Log Out asks first', (tester) async {

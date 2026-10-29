@@ -11,10 +11,10 @@ final privacyPolicyUri = Uri.parse('${AppConfig.publicSiteUrl}/privacy');
 final termsUri = Uri.parse('${AppConfig.publicSiteUrl}/terms');
 final websiteUri = Uri.parse(AppConfig.publicSiteUrl);
 
-/// Help: how MyOtherApp works -- finding events, registering, tickets,
-/// certificates, live rooms -- on the site's About page, until there is a
-/// help centre of its own.
-final helpCentreUri = Uri.parse('${AppConfig.publicSiteUrl}/about');
+/// Help: the site's Support page -- common questions (registering,
+/// tickets, payments and refunds, reporting), how to reach us, and how to
+/// delete an account.
+final helpCentreUri = Uri.parse('${AppConfig.publicSiteUrl}/support');
 final supportEmailUri = Uri(
   scheme: 'mailto',
   path: supportEmail,
