@@ -57,13 +57,15 @@ void main() {
     expect(find.text('Live room'), findsOneWidget);
     expect(find.text('Hack Night'), findsOneWidget);
     expect(find.text('LIVE NOW'), findsOneWidget);
-    expect(find.text('Demos move to Lab 3B'), findsOneWidget);
+    expect(find.text('Pizza or dosa?'), findsOneWidget,
+        reason: 'what wants an answer now is at the top');
     expect(find.text('Warm-up'), findsOneWidget);
     expect(find.text('Join the quiz'), findsOneWidget);
-    expect(find.text('Pizza or dosa?'), findsOneWidget);
     final list = find
         .descendant(of: find.byType(ListView), matching: find.byType(Scrollable))
         .first;
+    await tester.scrollUntilVisible(find.text('Demos move to Lab 3B'), 200,
+        scrollable: list);
     await tester.scrollUntilVisible(find.text('Is there pizza?'), 200,
         scrollable: list);
     expect(find.text('Ask the room'), findsOneWidget);
@@ -98,7 +100,9 @@ void main() {
     expect(api.responses.single, ('p1', 'Pizza'));
     expect(find.text('67%'), findsOneWidget);
     expect(find.text('3 answers so far · you answered'), findsOneWidget);
-    expect(find.bySemanticsLabel('Pizza, 67 percent, your answer'),
+    expect(find.text('You voted Pizza'), findsOneWidget);
+    expect(find.text('2 votes'), findsOneWidget, reason: 'counts, not only %');
+    expect(find.bySemanticsLabel('Pizza, 67 percent, 2 votes, your answer'),
         findsOneWidget);
     await leave(tester);
   });
@@ -280,6 +284,80 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(QuizPage), findsOneWidget);
+    await leave(tester);
+  });
+
+  testWidgets('the state bar says what is on and what is not',
+      (tester) async {
+    api.rooms.add(roomJson(
+      poll: pollJson(),
+      quizLive: true,
+      quizTitle: 'Warm-up',
+      qaOpen: false,
+    ));
+    await pumpRoom(tester);
+    expect(find.text('LIVE NOW'), findsOneWidget);
+    expect(find.text('POLL'), findsWidgets);
+    expect(find.text('QUIZ'), findsWidgets);
+    expect(
+      find.bySemanticsLabel('The event is live, a poll is up, questions are '
+          'closed, a quiz is running'),
+      findsOneWidget,
+    );
+    await leave(tester);
+  });
+
+  testWidgets('reads that stop say so, and trying again clears it',
+      (tester) async {
+    api.rooms
+      ..add(roomJson(banner: {'id': 'u1', 'kind': 'room', 'text': 'Doors at 6'}))
+      ..add(apiError(500))
+      ..add(roomJson(banner: {'id': 'u1', 'kind': 'room', 'text': 'Doors at 6'}));
+    await pumpRoom(tester);
+    expect(find.textContaining('Connection lost'), findsNothing);
+    await tester.pump(const Duration(seconds: 5));
+    await settle(tester);
+    expect(find.textContaining('Connection lost'), findsOneWidget);
+    expect(find.text('Doors at 6'), findsOneWidget,
+        reason: 'what was read stays on the screen');
+    await tester.tap(find.text('Retry'));
+    await settle(tester);
+    expect(find.textContaining('Connection lost'), findsNothing);
+    await leave(tester);
+  });
+
+  testWidgets('the room holds at 320 points wide with the largest text',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    api.rooms.add(roomJson(
+      banner: {'id': 'u1', 'kind': 'room', 'text': 'Demos move to Lab 3B'},
+      poll: pollJson(
+        responses: 3,
+        choices: [
+          {'label': 'Pizza, with everything on it', 'count': 2, 'pct': 67},
+          {'label': 'Dosa', 'count': 1, 'pct': 33},
+        ],
+        myResponse: 'Dosa',
+      ),
+      quizLive: true,
+      quizTitle: 'Warm-up',
+    ));
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        liveRoomApiProvider.overrideWithValue(api),
+        liveIdentityProvider.overrideWithValue(LiveIdentity(MemoryLiveStore())),
+      ],
+      child: const MediaQuery(
+        data: MediaQueryData(
+            size: Size(320, 900), textScaler: TextScaler.linear(2)),
+        child: MaterialApp(home: LiveRoomPage(eventRef: '7')),
+      ),
+    ));
+    await settle(tester);
+    expect(tester.takeException(), isNull, reason: 'nothing clipped');
     await leave(tester);
   });
 

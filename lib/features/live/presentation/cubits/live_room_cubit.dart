@@ -22,6 +22,7 @@ class LiveRoomState {
     this.answering = false,
     this.pollError,
     this.voting = const {},
+    this.connectionLost = false,
   });
 
   /// The room, once read.
@@ -54,6 +55,10 @@ class LiveRoomState {
   /// Questions whose vote is on its way.
   final Set<String> voting;
 
+  /// Reads are failing while a room is already on the screen: what is
+  /// shown may be behind, and the room says so rather than looking live.
+  final bool connectionLost;
+
   /// Whether the ask box shows.
   bool get canAsk =>
       (room?.qaOpen ?? false) && !qaRefused && !(room?.isClosed ?? false);
@@ -70,6 +75,7 @@ class LiveRoomState {
     bool? answering,
     String? Function()? pollError,
     Set<String>? voting,
+    bool? connectionLost,
   }) =>
       LiveRoomState(
         room: room ?? this.room,
@@ -83,6 +89,7 @@ class LiveRoomState {
         answering: answering ?? this.answering,
         pollError: pollError != null ? pollError() : this.pollError,
         voting: voting ?? this.voting,
+        connectionLost: connectionLost ?? this.connectionLost,
       );
 }
 
@@ -190,11 +197,16 @@ class LiveRoomCubit {
       loading: false,
       loadError: () => null,
       notFound: false,
+      connectionLost: false,
     ));
   }
 
   void _onPollError(Object error) {
-    if (_state.room != null) return; // What is shown stands.
+    if (_state.room != null) {
+      // What is shown stands, but the room says it may be behind.
+      _emit(_state.copyWith(connectionLost: true));
+      return;
+    }
     final status = statusCodeOf(error);
     _emit(_state.copyWith(
       loading: false,
