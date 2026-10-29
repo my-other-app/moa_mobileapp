@@ -55,6 +55,7 @@ class DiscoverEvent extends Equatable {
     this.club,
     this.cohosts = const [],
     this.going = 0,
+    this.appliedCount,
     this.capacity,
     this.status = DiscoverEventStatus.upcoming,
     this.summary,
@@ -84,6 +85,13 @@ class DiscoverEvent extends Equatable {
   /// older than co-hosting.
   final List<DiscoverClubRef> cohosts;
   final int going;
+
+  /// On an event whose club reviews every registration, how many applied:
+  /// every registration ever made for it, whatever became of it, so it
+  /// never drops (`applied_count`). Null on any other event, and from a
+  /// server older than it: the card then says how many are going, as
+  /// before.
+  final int? appliedCount;
   final int? capacity;
   final DiscoverEventStatus status;
   final String? summary;
@@ -116,6 +124,7 @@ class DiscoverEvent extends Equatable {
         club,
         cohosts,
         going,
+        appliedCount,
         capacity,
         status,
         summary,

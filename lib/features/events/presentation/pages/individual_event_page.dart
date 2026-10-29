@@ -2776,6 +2776,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                 seatsLeft: page.seatsLeft,
                 confirmsEach: _requiresApproval,
                 clubName: page.club?.name ?? club?.name,
+                applied: page.appliedCount,
               ),
             SizedBox(
               width: double.infinity,

@@ -24,6 +24,14 @@ String? _str(Object? value) {
 
 int _count(Object? value) => math.max(0, jsonInt(value) ?? 0);
 
+/// `applied_count`, on an event whose club reviews every registration
+/// only; null on any other, and when the server doesn't say (an older one).
+int? _applied(Map<String, dynamic> o) {
+  if (jsonBool(o['requires_approval']) != true) return null;
+  final n = jsonInt(o['applied_count']);
+  return n == null || n < 0 ? null : n;
+}
+
 double? _finite(Object? value) {
   final d = jsonDouble(value);
   return d != null && d.isFinite ? d : null;
@@ -155,6 +163,7 @@ DiscoverEvent? parseEvent(Object? value) {
     club: club,
     cohosts: parseCohosts(o['cohosts'], host: club),
     going: _count(o['going']),
+    appliedCount: _applied(o),
     capacity: _positive(o['capacity'])?.round(),
     status: _statuses[o['status']] ?? DiscoverEventStatus.upcoming,
     summary: _str(o['summary']),

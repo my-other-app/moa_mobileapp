@@ -6,7 +6,9 @@ import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 /// seats left". Nothing for an event with no limit and nobody going.
 ///
 /// With nobody going yet, an event whose club reviews every registration
-/// ([confirmsEach]) says "{club} reviews every registration" instead.
+/// ([confirmsEach]) says "{club} reviews every registration" instead. When
+/// the server says how many applied to it ([applied]), it says "108
+/// applied", with no bar and no seats left: the club decides who gets in.
 class SeatsMeter extends StatelessWidget {
   final int going;
   final int? capacity;
@@ -16,6 +18,10 @@ class SeatsMeter extends StatelessWidget {
   final bool confirmsEach;
   final String? clubName;
 
+  /// How many applied, on an event whose club reviews every registration
+  /// (`applied_count`); null on any other, and from an older server.
+  final int? applied;
+
   const SeatsMeter({
     super.key,
     required this.going,
@@ -23,6 +29,7 @@ class SeatsMeter extends StatelessWidget {
     this.seatsLeft,
     this.confirmsEach = false,
     this.clubName,
+    this.applied,
   });
 
   static const meterKey = ValueKey('event-seats-meter');
@@ -35,13 +42,18 @@ class SeatsMeter extends StatelessWidget {
       seatsLeft: seatsLeft,
       confirmsEach: confirmsEach,
       clubName: clubName,
+      applied: applied,
     );
-    final taken = seatsTaken(capacity: capacity, seatsLeft: seatsLeft);
+    final taken = applied != null
+        ? null
+        : seatsTaken(capacity: capacity, seatsLeft: seatsLeft);
     if (line == null && taken == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        // As wide as the bar even without it ("108 applied"): the line
+        // stays at the start, never centred.
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (taken != null)
             Semantics(
