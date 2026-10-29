@@ -29,12 +29,11 @@ class AgendaItem {
   /// Read field by field (core/utils/json_read.dart): a numeric id or a
   /// missing title used to throw, and the whole agenda went with it.
   factory AgendaItem.fromJson(Map<String, dynamic> json) {
-    final ends = jsonString(json['ends_at']);
     return AgendaItem(
       id: jsonText(json['id']),
-      startsAt: DateTime.tryParse(jsonText(json['starts_at'])) ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-      endsAt: ends == null ? null : DateTime.tryParse(ends),
+      startsAt:
+          jsonDate(json['starts_at']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+      endsAt: jsonDate(json['ends_at']),
       title: jsonText(json['title']),
       description: _blank(jsonString(json['description'])),
       speaker: _blank(jsonString(json['speaker'])),

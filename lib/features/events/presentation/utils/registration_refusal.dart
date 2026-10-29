@@ -234,8 +234,7 @@ RegistrationRefusal describeRegistrationError(Object? error,
 DateTime? _notStartedUntil(Object? error) {
   final errors = apiExceptionOf(error)?.errors;
   if (errors == null || errors['closed_reason'] != 'not_started') return null;
-  final at = errors['opens_at'];
-  return at is String ? DateTime.tryParse(at) : null;
+  return jsonDate(errors['opens_at']);
 }
 
 const _full = RegistrationRefusal(

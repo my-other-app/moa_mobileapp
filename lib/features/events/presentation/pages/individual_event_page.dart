@@ -1366,15 +1366,6 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     super.dispose();
   }
 
-  String _formatTime(DateTime dt) {
-    int hour = dt.hour;
-    String period = hour >= 12 ? 'PM' : 'AM';
-    int hour12 = hour % 12;
-    if (hour12 == 0) hour12 = 12;
-    String minute = dt.minute.toString().padLeft(2, '0');
-    return "$hour12:$minute $period";
-  }
-
   /// Shows date of event popup
   void _showDatePopup(BuildContext context) {
     final List<String> months = [
@@ -1391,8 +1382,10 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       'NOV',
       'DEC'
     ];
-    String formattedDate = eventDateTime != null
-        ? "${_getOrdinal(eventDateTime!.day)} ${months[eventDateTime!.month - 1]} ${eventDateTime!.year}"
+    // The phone's calendar day.
+    final at = eventDateTime?.toLocal();
+    String formattedDate = at != null
+        ? "${_getOrdinal(at.day)} ${months[at.month - 1]} ${at.year}"
         : 'N/A';
 
     showDialog(
@@ -1602,7 +1595,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// Shows time of event popup
   void _showTimePopup(BuildContext context) {
     String formattedTime =
-        eventDateTime != null ? _formatTime(eventDateTime!) : 'N/A';
+        eventDateTime != null ? eventTimeLabel(eventDateTime!) : 'N/A';
 
     showDialog(
       context: context,
@@ -2135,7 +2128,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                       icon: AssetResources.eventdate,
                       title: 'Date of Event',
                       value: eventDateTime != null
-                          ? "${eventDateTime!.day}-${eventDateTime!.month}-${eventDateTime!.year}"
+                          ? eventDateLabel(eventDateTime!)
                           : 'N/A',
                     ),
                   ),
@@ -2176,7 +2169,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                       icon: AssetResources.eventtime,
                       title: 'Time of Event',
                       value: eventDateTime != null
-                          ? _formatTime(eventDateTime!)
+                          ? eventTimeLabel(eventDateTime!)
                           : 'N/A',
                     ),
                   ),

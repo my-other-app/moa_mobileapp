@@ -48,7 +48,8 @@ class VolunteerEvent {
       // The S3 dict, an older row's bare URL, or a club without a logo.
       clubLogoUrl: imageUrlFrom(club?['logo']),
       clubName: clubName is String ? clubName : '',
-      eventDatetime: DateTime.parse(json['event_datetime'] as String),
+      // In the phone's time: the card shows its day.
+      eventDatetime: DateTime.parse(json['event_datetime'] as String).toLocal(),
       hasFee: json['has_fee'] as bool? ?? false,
       regFee: (json['reg_fee'] as num?)?.toDouble() ?? 0.0,
       maxParticipants: json['max_participants'] as int?,

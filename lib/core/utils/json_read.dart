@@ -70,6 +70,13 @@ List<Map<String, dynamic>> jsonObjects(Object? value) {
   ];
 }
 
-/// A date from an ISO 8601 string; null for anything else.
+/// A date from an ISO 8601 string, in the phone's own time; null for
+/// anything else.
+///
+/// The server sends an offset (`2026-11-28T09:00:00+05:30`), and Dart reads
+/// text with one as a UTC time: its `hour` is 3, and a page that showed it
+/// said 3:30 AM for a 9 AM event. Local, `hour` and `day` are what the
+/// phone's clock says. Send one back as `.toUtc().toIso8601String()`: a
+/// local time's own ISO text has no offset.
 DateTime? jsonDate(Object? value) =>
-    value is String ? DateTime.tryParse(value) : null;
+    value is String ? DateTime.tryParse(value)?.toLocal() : null;
