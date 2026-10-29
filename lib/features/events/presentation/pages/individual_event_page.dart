@@ -2640,8 +2640,10 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     final showCountdown =
         state.canRegister && !registrationClosed && regEndDate != null;
     final showMeter = page != null &&
-        page.capacity != null &&
-        (state.kind == RegisterKind.open || state.kind == RegisterKind.full);
+        showsSeatsMeter(
+            kind: state.kind,
+            capacity: page.capacity,
+            applied: page.appliedCount);
     // The waiting list: the person's places in line, and whether one can
     // be joined (a sold-out type with its list open). Never on an event
     // whose club reviews every registration ([_tickets]).

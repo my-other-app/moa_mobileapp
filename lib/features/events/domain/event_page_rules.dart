@@ -222,6 +222,20 @@ String? seatsLine({
   return seatsLeft != null ? 'Be the first to register' : null;
 }
 
+/// Whether the register bar shows how full the event is (the seat meter
+/// and [seatsLine]): while it takes registrations, or is full, for an event
+/// with a limit. Where the club reviews every registration and people have
+/// applied ([applied]), with or without a limit: "127 applied", as the
+/// website's event page says it. Nobody yet and no limit: nothing, the note
+/// by the button already says the club reviews them.
+bool showsSeatsMeter({
+  required RegisterKind kind,
+  int? capacity,
+  int? applied,
+}) =>
+    (kind == RegisterKind.open || kind == RegisterKind.full) &&
+    (capacity != null || (applied ?? 0) > 0);
+
 /// Whether an event shows the club's "High demand" chip (`high_demand`,
 /// the club's own label, with no number behind it): while it is still to
 /// come or on, never once it has ended or was called off.
