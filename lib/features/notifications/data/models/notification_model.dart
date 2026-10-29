@@ -172,8 +172,9 @@ class NotificationModel {
         'from_club': fromClub?.toJson(),
         'event': event?.toJson(),
         'data': data,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
+        // UTC, with its "Z": a local time's ISO text has no offset.
+        'created_at': createdAt.toUtc().toIso8601String(),
+        'updated_at': updatedAt.toUtc().toIso8601String(),
       };
 
   /// Check if notification is unread

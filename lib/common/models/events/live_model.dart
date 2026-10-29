@@ -1,3 +1,5 @@
+import 'package:finnet/core/utils/json_read.dart';
+
 /// What the event's live room is doing right now, as the event page needs it:
 /// enough to draw a strip and open the room, nothing more. The room itself
 /// (voting, polls, the quiz) is its own screen (lib/features/live/).
@@ -49,12 +51,8 @@ class LiveFeed {
       eventStatus: event is Map && event['status'] is String
           ? event['status'] as String
           : null,
-      startsAt: event is Map && event['starts_at'] is String
-          ? DateTime.tryParse(event['starts_at'] as String)
-          : null,
-      endsAt: event is Map && event['ends_at'] is String
-          ? DateTime.tryParse(event['ends_at'] as String)
-          : null,
+      startsAt: event is Map ? jsonDate(event['starts_at']) : null,
+      endsAt: event is Map ? jsonDate(event['ends_at']) : null,
       bannerText: banner is Map ? banner['text'] as String? : null,
       bannerKind: banner is Map ? banner['kind'] as String? : null,
       pollPrompt: poll is Map ? poll['prompt'] as String? : null,

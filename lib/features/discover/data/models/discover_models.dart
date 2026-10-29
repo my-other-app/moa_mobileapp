@@ -50,9 +50,10 @@ Object? _image(Object? value) {
   return null;
 }
 
+/// In the phone's time, as jsonDate reads one.
 DateTime? _instant(Object? value) {
   final s = _str(value);
-  return s == null ? null : DateTime.tryParse(s);
+  return s == null ? null : DateTime.tryParse(s)?.toLocal();
 }
 
 const _statuses = {

@@ -73,6 +73,23 @@ void main() {
             'NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising')));
   });
 
+  test('declares the rough place of each sign-in, linked; never a precise one',
+      () {
+    final place = collected()['NSPrivacyCollectedDataTypeCoarseLocation'];
+    expect(place, isNotNull,
+        reason: 'the server keeps the city and region of each sign-in, from '
+            'its IP address (the Security page, new-sign-in emails)');
+    expect(place!.linked, isTrue);
+    expect(place.tracking, isFalse);
+    expect(
+        place.purposes, ['NSPrivacyCollectedDataTypePurposeAppFunctionality']);
+    // No GPS, and no permission asked for one.
+    expect(collected().keys,
+        isNot(contains('NSPrivacyCollectedDataTypePreciseLocation')));
+    expect(plist, isNot(contains('NSLocation')));
+    expect(android, isNot(contains('LOCATION')));
+  });
+
   test('declares product interaction as linked: the server keeps event views',
       () {
     expect(collected()['NSPrivacyCollectedDataTypeProductInteraction']?.linked,
@@ -103,6 +120,13 @@ void main() {
         contains(
             'User Content → Photos or Videos | Yes | Yes | No | App Functionality'));
     expect(release, contains('Photos and videos → Photos | Yes'));
+    expect(
+        release,
+        contains(
+            'Location → Coarse Location | Yes | Yes | No | App Functionality'));
+    expect(release, contains('Location → Approximate location | Yes'));
+    // Only precise location is "not collected" now.
+    expect(release, isNot(contains('\n- location')));
     expect(
         release, isNot(contains('advertising ID through Firebase Analytics')));
     expect(release, isNot(contains('avatars are picked from presets')));

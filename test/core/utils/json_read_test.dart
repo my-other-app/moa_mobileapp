@@ -27,7 +27,10 @@ void main() {
         {'a': 1}
       ]);
       expect(jsonObjects('x'), isEmpty);
-      expect(jsonDate('2026-10-19T10:00:00Z'), DateTime.utc(2026, 10, 19, 10));
+      // The same moment, on the phone's clock.
+      expect(jsonDate('2026-10-19T10:00:00Z')!.toUtc(),
+          DateTime.utc(2026, 10, 19, 10));
+      expect(jsonDate('2026-10-19T10:00:00Z')!.isUtc, isFalse);
       expect(jsonDate(42), isNull);
     });
   });

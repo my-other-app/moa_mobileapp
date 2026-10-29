@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/shared/motion.dart';
 
@@ -67,12 +68,9 @@ class _RegSuccessfullPageState extends State<RegSuccessfullPage>
   }
 
   void _navigateToTicket() {
-    DateTime? eventDateTime;
-    if (widget.eventDateTime != null) {
-      try {
-        eventDateTime = DateTime.parse(widget.eventDateTime!);
-      } catch (_) {}
-    }
+    // The registration's `event_datetime`, in the phone's time: the ticket
+    // shows its hour and day.
+    final eventDateTime = jsonDate(widget.eventDateTime);
 
     Navigator.pushReplacement(
       context,

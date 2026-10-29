@@ -123,6 +123,7 @@ void main() {
         'https://myotherapp.in/pricing',
         'https://myotherapp.in/privacy',
         'https://myotherapp.in/about',
+        'https://myotherapp.in/support',
         'https://myotherapp.in/events/rss.xml',
         'https://myotherapp.in/clubs/x/rss.xml',
         'https://myotherapp.in/events/x/y/z',

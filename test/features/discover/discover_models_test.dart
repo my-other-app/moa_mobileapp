@@ -10,7 +10,7 @@ void main() {
     final e = parseEvent(eventCard(7,
         hasFee: true, fee: 250, status: 'closing_soon', distanceKm: 4.4))!;
     expect(e.id, 7);
-    expect(e.startsAt, DateTime.utc(2030, 10, 24, 12, 30));
+    expect(e.startsAt!.toUtc(), DateTime.utc(2030, 10, 24, 12, 30));
     expect(e.hasFee, isTrue);
     expect(e.fee, 250);
     expect(e.status, DiscoverEventStatus.closingSoon);
@@ -130,8 +130,8 @@ void main() {
       'club': {'id': 1, 'name': 'IEEE'},
       'category': {'id': 2, 'name': 'Competition'},
     })!;
-    expect(e.startsAt, DateTime.utc(2030, 1, 1, 10));
-    expect(e.endsAt, DateTime.utc(2030, 1, 1, 12, 30));
+    expect(e.startsAt!.toUtc(), DateTime.utc(2030, 1, 1, 10));
+    expect(e.endsAt!.toUtc(), DateTime.utc(2030, 1, 1, 12, 30));
     expect(e.club!.name, 'IEEE');
   });
 

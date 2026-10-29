@@ -1,4 +1,4 @@
-# MyOtherApp 1.1.0 (build 3)
+# MyOtherApp 1.1.0 (build 6)
 
 Branch `app/release-1.1.0`. It is `main` with the three Phase 0 branches
 merged (`app/p0-core`, `app/p0-events` and `app/p0-platform`), plus the
@@ -289,7 +289,7 @@ Delete `build/` afterwards (disk is tight).
    keyPassword=...
    ```
    Without that file, a local release build is signed with the debug key, which Play rejects, and a CI build fails on purpose.
-2. **A new app, and Play App Signing.** Create a new app in Play Console for `app.myotherapp.in`. A Play app's package name is fixed, so any app made for `app.myotherapp.com` can't take this build. Let Google manage the app signing key (the default on first upload). Nothing has been uploaded under this id yet, so `versionCode` 3 is fine.
+2. **A new app, and Play App Signing.** Create a new app in Play Console for `app.myotherapp.in`. A Play app's package name is fixed, so any app made for `app.myotherapp.com` can't take this build. Let Google manage the app signing key (the default on first upload). Nothing has been uploaded under this id yet, so `versionCode` 6 is fine.
 3. **SHA-1 fingerprints, which Google sign-in needs.**
    1. In Play Console, go to *Test and release → Setup → App signing*.
    2. Copy the SHA-1 of both the **app signing key** and the **upload key**.
@@ -348,7 +348,7 @@ Photo and media permissions are removed on purpose: a profile photo is chosen wi
 4. **Google sign-in client.** In the Google Cloud project **"My Other App"** (497245325238), create an OAuth client ID of type **iOS** with bundle id `app.myotherapp.in`. In `ios/Runner/Info.plist`, set `GIDClientID` to its client id, and the URL scheme under `CFBundleURLTypes` to its reversed form (`com.googleusercontent.apps.<the part before .apps.googleusercontent.com>`). Done: both now use the iOS client `497245325238-36lce0n03ducsp3orqhhf0hjassb1nf0`, created for `app.myotherapp.in`.
 5. **Archive and upload.** Run `flutter build ipa --release` (section 4). Then open `build/ios/archive/Runner.xcarchive` in Xcode's Organizer and choose *Distribute App → App Store Connect → Upload*, or upload the `.ipa` with Transporter.
 6. **App Store Connect, version 1.1.0:**
-   - **Build:** pick build 3 once it has processed.
+   - **Build:** pick build 6 once it has processed.
    - **Screenshots:** **iPhone 6.9" only**, 1320×2868 or 1290×2796 (portrait). No iPad screenshots: the app is iPhone-only now.
    - **App Privacy:** section 9.
    - **Age rating:** answer **Yes** to user-generated content. Reporting and blocking are in place.
@@ -411,7 +411,7 @@ For Play's *App access* form, give the same credentials, with "Sign in with LOGI
 
 | | Android | iOS |
 | --- | --- | --- |
-| Version | 1.1.0 (versionCode 3) | 1.1.0 (build 3) |
+| Version | 1.1.0 (versionCode 6) | 1.1.0 (build 6) |
 | ID | `app.myotherapp.in` (`applicationId`) | `app.myotherapp.in` (bundle id) |
 | Firebase app | `1:677703780077:android:14695a029d68626d3daee4` | `1:677703780077:ios:82e5f762775b3a873daee4` |
 | Minimum OS | API 24 (Android 7.0) | iOS 13.0 |
@@ -442,12 +442,13 @@ These answers match `ios/Runner/PrivacyInfo.xcprivacy` (checked against the code
 | User Content → Photos or Videos | Yes | Yes | No | App Functionality | a profile photo the person takes with the camera or chooses from their library (`photo_picker.dart`), uploaded as their picture; sent without location or other metadata |
 | User Content → Other User Content | Yes | Yes | No | App Functionality | Threads comments, reports, registration answers, ratings |
 | Other Data | Yes | Yes | No | App Functionality | college, interests, chosen avatar, blocks |
+| Location → Coarse Location | Yes | Yes | No | App Functionality | the city and region worked out from the IP address at each sign-in, kept with the account for the Security page and new-sign-in emails; "near you" uses the same kind of lookup but doesn't keep it |
 | Usage Data → Product Interaction | Yes | Yes | No | Analytics | Firebase Analytics (not linked), and the events a signed-in person opened (linked, on the server) |
 | Diagnostics → Crash Data | Yes | No | No | App Functionality | Crashlytics |
 | Diagnostics → Other Diagnostic Data | Yes | No | No | App Functionality, Analytics | Crashlytics and Analytics |
 
 Not collected:
-- location: "near you" uses a city looked up from the connection's IP address for that request, which is not stored with the account; the app asks for no location permission;
+- precise location: no GPS, and the app asks for no location permission (the rough place above comes from the IP address, on the server);
 - contacts (the contacts purpose string is for Apple's own event editor, which the app opens; the app reads none);
 - advertising data: no IDFA, no ads;
 - health;
@@ -473,6 +474,7 @@ The camera is also used to scan ticket and certificate QR codes; those images st
 | Personal info → User IDs | Yes | Required | App functionality, Account management |
 | Personal info → Phone number | Yes | Optional | App functionality |
 | Personal info → Other info (college, interests, registration answers) | Yes | Optional | App functionality |
+| Location → Approximate location | Yes (the city and region worked out from the IP address at each sign-in, kept with the account for the Security page and new-sign-in emails; "near you" uses the same kind of lookup but doesn't keep it) | Required | App functionality, Fraud prevention, security, and compliance |
 | Financial info → User payment info | Yes (Razorpay checkout in the app) | Optional | App functionality |
 | Financial info → Purchase history | Yes | Optional | App functionality |
 | Photos and videos → Photos | Yes (a profile photo, from the camera or the system Photo Picker) | Optional | App functionality, Account management |
@@ -483,7 +485,7 @@ The camera is also used to scan ticket and certificate QR codes; those images st
 | Device or other IDs | Yes (FCM token, Firebase installation id; no advertising ID) | Required | App functionality, Analytics |
 
 Not collected:
-- location ("near you" uses a city looked up from the connection's IP address for that request; the app asks for no location permission);
+- precise location (no GPS, and the app asks for no location permission; the approximate location above comes from the IP address, on the server);
 - videos;
 - audio;
 - files and docs (the ticket PDF stays on the phone);

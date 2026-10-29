@@ -94,7 +94,9 @@ void main() {
     final ticket = tester.widget<TicketViewPage>(find.byType(TicketViewPage));
     expect(ticket.ticketId, 'T-1');
     expect(ticket.eventName, 'Hack Night');
-    expect(ticket.eventDateTime, DateTime.utc(2030, 12, 1, 10));
+    // In the phone's time: the ticket shows its hour and day.
+    expect(ticket.eventDateTime!.toUtc(), DateTime.utc(2030, 12, 1, 10));
+    expect(ticket.eventDateTime!.isUtc, isFalse);
     expect(ticket.ticketHolderName, 'Asha Menon');
     expect(find.text(_heading), findsNothing);
   });

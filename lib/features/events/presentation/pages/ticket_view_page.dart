@@ -171,13 +171,13 @@ class _TicketViewPageState extends State<TicketViewPage>
   String get _formattedDate {
     if (widget.eventDateTime == null) return 'TBA';
     return DateFormat('MMM d, yyyy')
-        .format(widget.eventDateTime!)
+        .format(widget.eventDateTime!.toLocal())
         .toUpperCase();
   }
 
   String get _formattedTime {
     if (widget.eventDateTime == null) return 'TBA';
-    return DateFormat('h:mm a').format(widget.eventDateTime!);
+    return DateFormat('h:mm a').format(widget.eventDateTime!.toLocal());
   }
 
   @override

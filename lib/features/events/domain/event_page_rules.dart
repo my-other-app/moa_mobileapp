@@ -66,6 +66,23 @@ String _shortDate(DateTime d) => DateFormat('d MMM').format(d.toLocal());
 String whenLine(DateTime d) =>
     DateFormat("EEE, d MMM '·' h:mm a").format(d.toLocal());
 
+/// "9:00 AM", the page's "Time of Event": on the phone's clock, whatever
+/// zone [d] was read in. (A UTC time's own hour put an event at 9 AM IST
+/// at 3:30 AM.)
+String eventTimeLabel(DateTime d) {
+  final local = d.toLocal();
+  final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '$hour:$minute ${local.hour >= 12 ? 'PM' : 'AM'}';
+}
+
+/// "28-11-2026", the page's "Date of Event": the phone's calendar day, so
+/// an event at 2 AM IST is not on the day before.
+String eventDateLabel(DateTime d) {
+  final local = d.toLocal();
+  return '${local.day}-${local.month}-${local.year}';
+}
+
 /// What the register button says and does, from the event as both APIs
 /// describe it. [phase], [registrationOpen] and [seatsLeft] are the website
 /// API's (`/discover/events/{ref}`); without them -- a non-public event, or
@@ -204,6 +221,20 @@ String? seatsLine({
   if (parts.isNotEmpty) return parts.join(' · ');
   return seatsLeft != null ? 'Be the first to register' : null;
 }
+
+/// Whether the register bar shows how full the event is (the seat meter
+/// and [seatsLine]): while it takes registrations, or is full, for an event
+/// with a limit. Where the club reviews every registration and people have
+/// applied ([applied]), with or without a limit: "127 applied", as the
+/// website's event page says it. Nobody yet and no limit: nothing, the note
+/// by the button already says the club reviews them.
+bool showsSeatsMeter({
+  required RegisterKind kind,
+  int? capacity,
+  int? applied,
+}) =>
+    (kind == RegisterKind.open || kind == RegisterKind.full) &&
+    (capacity != null || (applied ?? 0) > 0);
 
 /// Whether an event shows the club's "High demand" chip (`high_demand`,
 /// the club's own label, with no number behind it): while it is still to

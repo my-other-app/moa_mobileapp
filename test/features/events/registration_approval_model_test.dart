@@ -72,11 +72,11 @@ void main() {
       expect(r.event!.clubName, 'Tinkerhub');
       expect(r.clubName, 'Tinkerhub');
       expect(r.eventName, 'Hack Night');
-      expect(r.event!.eventDateTime, DateTime.utc(2030, 12, 1, 10));
+      expect(r.event!.eventDateTime!.toUtc(), DateTime.utc(2030, 12, 1, 10));
       expect(r.ticketTypeId, 3);
       expect(r.ticketTypeName, 'Student');
       expect(r.fullName, 'Asha Menon');
-      expect(r.submittedAt, DateTime.utc(2026, 10, 26, 9));
+      expect(r.submittedAt!.toUtc(), DateTime.utc(2026, 10, 26, 9));
       expect(r.decidedAt, isNull);
       expect(r.isPending, isTrue);
       expect(r.isOpen, isTrue);
@@ -103,7 +103,7 @@ void main() {
       expect(r.isOpen, isTrue);
       expect(r.hasTicket, isFalse);
       expect(r.pay!.amount, 199.5);
-      expect(r.pay!.payBy, DateTime.utc(2030, 11, 2, 12, 30));
+      expect(r.pay!.payBy!.toUtc(), DateTime.utc(2030, 11, 2, 12, 30));
       expect(r.pay!.claimToken, 'clm_1');
       expect(r.pay!.claimUrl, 'https://myotherapp.in/claim/clm_1');
       expect(claimRoute(r.pay!.claimToken), '/claim/clm_1');

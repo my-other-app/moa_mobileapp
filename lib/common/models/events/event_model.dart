@@ -157,9 +157,9 @@ class EventInfo {
           (jsonString(json['poster'])?.trim().isNotEmpty ?? false
               ? <String, dynamic>{'original': jsonString(json['poster'])!.trim()}
               : <String, dynamic>{}),
-      eventDateTime:
-          DateTime.tryParse(jsonString(json['event_datetime']) ?? '') ??
-              DateTime.now(),
+      // In the phone's time (jsonDate). Read as it came, it was UTC, and
+      // "Time of Event" said 3:30 AM for an event at 9 AM IST.
+      eventDateTime: jsonDate(json['event_datetime']) ?? DateTime.now(),
       duration: jsonDouble(json['duration']) ?? 0,
       locationName: jsonString(json['location_name']) ?? '',
       locationLink: jsonString(json['location_link']) ?? '',
@@ -168,11 +168,10 @@ class EventInfo {
       hasPrize: jsonBool(json['has_prize']) ?? false,
       prizeAmount: jsonInt(json['prize_amount']) ?? 0,
       isOnline: jsonBool(json['is_online']) ?? false,
-      regStartDate: DateTime.tryParse(jsonString(json['reg_startdate']) ?? '') ??
-          DateTime.now(),
+      regStartDate: jsonDate(json['reg_startdate']) ?? DateTime.now(),
       // Optional on the server. Read as "now" when missing, it closed
       // registration for every event without a deadline.
-      regEndDate: DateTime.tryParse(jsonString(json['reg_enddate']) ?? ''),
+      regEndDate: jsonDate(json['reg_enddate']),
       club: Club.fromJson(jsonObject(json['club']) ?? const <String, dynamic>{}),
       cohosts: EventCohost.listFrom(json['cohosts'],
           hostId: jsonInt(jsonObject(json['club'])?['id'])),

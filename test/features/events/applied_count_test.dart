@@ -23,14 +23,19 @@ import 'events_fakes.dart';
 // server older than `applied_count`, read exactly as before.
 
 /// `GET /discover/events/7`, its club reviewing registrations when
-/// [applied] is given (as the server sends it then).
+/// [applied] is given (as the server sends it then). No [capacity]: no
+/// limit, and so no seats left either.
 Map<String, dynamic> _page({
   int? applied,
   bool review = true,
   int going = 1,
   int seatsLeft = 119,
+  int? capacity = 120,
 }) {
-  final page = discoverEventPage(going: going, seatsLeft: seatsLeft);
+  final page = discoverEventPage(
+      going: going,
+      capacity: capacity,
+      seatsLeft: capacity == null ? null : seatsLeft);
   final event = page['event'] as Map<String, dynamic>;
   if (review) event['requires_approval'] = true;
   if (applied != null) event['applied_count'] = applied;
@@ -166,6 +171,31 @@ void main() {
           now: now, capacity: 120, seatsLeft: 3, registrationOpen: true);
       expect(older.note, 'Only 3 seats left');
     });
+
+    test('the bar says how many applied with or without a limit', () {
+      for (final kind in [RegisterKind.open, RegisterKind.full]) {
+        // A limit: as before, applied or not.
+        expect(showsSeatsMeter(kind: kind, capacity: 120), isTrue);
+        expect(
+            showsSeatsMeter(kind: kind, capacity: 120, applied: 127), isTrue);
+        // No limit (DevFest): "127 applied" all the same.
+        expect(showsSeatsMeter(kind: kind, applied: 127), isTrue);
+        // No limit and nobody yet, or a normal event: nothing, as before.
+        expect(showsSeatsMeter(kind: kind, applied: 0), isFalse);
+        expect(showsSeatsMeter(kind: kind), isFalse);
+      }
+      // Only while it takes registrations, or is full.
+      for (final kind in [
+        RegisterKind.soon,
+        RegisterKind.closed,
+        RegisterKind.live,
+        RegisterKind.ended,
+      ]) {
+        expect(
+            showsSeatsMeter(kind: kind, capacity: 120, applied: 127), isFalse);
+        expect(showsSeatsMeter(kind: kind, applied: 127), isFalse);
+      }
+    });
   });
 
   group('the seat meter', () {
@@ -255,6 +285,53 @@ void main() {
       expect(find.text('12 going · 108 seats left'), findsOneWidget);
       expect(find.byKey(SeatsMeter.meterKey), findsOneWidget);
       expect(find.textContaining('applied'), findsNothing);
+    });
+
+    // DevFest: reviews every registration, and has no limit. The website
+    // says "127 applied" on its page; the app's said nothing.
+    testWidgets('says how many applied on an event with no limit too',
+        (tester) async {
+      useFakeApi()
+        ..on('GET', '/events/info/7', eventInfo())
+        ..on('GET', '/discover/events/7', _page(applied: 127, capacity: null));
+      await _pumpPage(tester);
+
+      expect(find.byKey(SeatsMeter.lineKey), findsOneWidget);
+      expect(find.text('127 applied'), findsOneWidget);
+      expect(find.byKey(SeatsMeter.meterKey), findsNothing);
+      expect(find.textContaining('seat'), findsNothing);
+      expect(
+          find.text('Tinkerhub reviews every registration and emails tickets '
+              'to the people it confirms.'),
+          findsWidgets);
+    });
+
+    testWidgets('no limit and nobody yet: only the note by the button',
+        (tester) async {
+      useFakeApi()
+        ..on('GET', '/events/info/7', eventInfo())
+        ..on('GET', '/discover/events/7', _page(applied: 0, capacity: null));
+      await _pumpPage(tester);
+
+      expect(find.byKey(SeatsMeter.lineKey), findsNothing);
+      expect(find.textContaining('applied'), findsNothing);
+      expect(
+          find.text('Tinkerhub reviews every registration and emails tickets '
+              'to the people it confirms.'),
+          findsWidgets);
+    });
+
+    testWidgets('a normal event with no limit shows no count, as before',
+        (tester) async {
+      useFakeApi()
+        ..on('GET', '/events/info/7', eventInfo())
+        ..on('GET', '/discover/events/7',
+            _page(review: false, going: 12, capacity: null));
+      await _pumpPage(tester);
+
+      expect(find.byKey(SeatsMeter.lineKey), findsNothing);
+      expect(find.byKey(SeatsMeter.meterKey), findsNothing);
+      expect(find.textContaining('going'), findsNothing);
     });
   });
 }

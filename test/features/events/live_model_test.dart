@@ -62,8 +62,8 @@ void main() {
         },
         'banner': null,
       });
-      expect(feed.startsAt, DateTime.utc(2026, 10, 25, 12, 30));
-      expect(feed.endsAt, DateTime.utc(2026, 10, 25, 15, 30));
+      expect(feed.startsAt!.toUtc(), DateTime.utc(2026, 10, 25, 12, 30));
+      expect(feed.endsAt!.toUtc(), DateTime.utc(2026, 10, 25, 15, 30));
       expect(feed.isActive, isTrue);
       expect(feed.headline, contains('live room is open'));
       expect(feed.isClosed, isFalse);
