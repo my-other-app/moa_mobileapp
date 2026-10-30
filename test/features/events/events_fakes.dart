@@ -137,11 +137,16 @@ class FakePaymentRepository implements PaymentRepository {
 class MemoryTicketImages extends TicketImages {
   final kept = <String, Uint8List>{};
 
+  /// Thrown instead of asking the fake API: a connection that never opened,
+  /// which no routed answer can stand for.
+  Object? failWith;
+
   @override
   Future<Uint8List?> saved(String code) async => kept[code];
 
   @override
   Future<({Uint8List bytes, bool current})> fetch(String code) async {
+    if (failWith case final failure?) throw failure;
     try {
       final response = await APIService.instance.dio.get<List<int>>(
         TicketImages.pathFor(code),

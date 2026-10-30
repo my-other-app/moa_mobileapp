@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:finnet/core/cache/document_cache.dart';
@@ -9,11 +8,14 @@ import 'package:finnet/core/network/interceptors/error_interceptor.dart';
 import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
 import 'package:finnet/features/events/data/repositories/saved_tickets_repository.dart';
+import 'package:finnet/features/events/data/ticket_images.dart';
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
+import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/features/events/presentation/pages/upcoming_events_page.dart';
 import 'package:finnet/shared/widgets/event_card.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,6 +44,23 @@ Map<String, dynamic> _item(int id, {Object? revoked}) => {
     };
 
 const _absent = Object();
+
+/// What the server says when it refuses a revoked ticket's documents.
+const revokedSays = 'This ticket was revoked by the organiser.';
+
+DioException _refusal(int status, Map<String, dynamic> body) {
+  final options = RequestOptions(path: '/events/tickets/MOA-1/image');
+  return DioException(
+    requestOptions: options,
+    type: DioExceptionType.badResponse,
+    // As the documents arrive: bytes, so nothing parsed the envelope.
+    response: Response<List<int>>(
+      requestOptions: options,
+      statusCode: status,
+      data: utf8.encode(jsonEncode(body)),
+    ),
+  );
+}
 
 class _ListServer implements HttpClientAdapter {
   Object? body;
@@ -118,6 +137,52 @@ void main() {
     });
   });
 
+  group('a document refused as revoked', () {
+    test('410, or TICKET_REVOKED in a body nothing parsed', () {
+      expect(
+          isRevokedTicketRefusal(
+              _refusal(410, {'error_code': 'TICKET_REVOKED'})),
+          isTrue);
+      expect(isRevokedTicketRefusal(_refusal(410, {'message': 'Gone.'})),
+          isTrue,
+          reason: 'the status says it on its own');
+      expect(
+          isRevokedTicketRefusal(
+              _refusal(409, {'error_code': 'TICKET_REVOKED'})),
+          isTrue,
+          reason: 'and so does the code');
+    });
+
+    test('a 403, a 404 and no answer at all are not revocations', () {
+      expect(isRevokedTicketRefusal(_refusal(403, {'message': 'Not yours'})),
+          isFalse);
+      expect(isRevokedTicketRefusal(_refusal(404, {'message': 'No ticket'})),
+          isFalse);
+      expect(
+          isRevokedTicketRefusal(DioException(
+              requestOptions: RequestOptions(path: '/x'),
+              type: DioExceptionType.connectionError)),
+          isFalse);
+      expect(isRevokedTicketRefusal(null), isFalse);
+      expect(isRevokedTicketRefusal(const FormatException('empty')), isFalse);
+    });
+
+    test('a refusal whose body is not JSON says nothing either way', () {
+      final options = RequestOptions(path: '/x');
+      expect(
+          isRevokedTicketRefusal(DioException(
+            requestOptions: options,
+            type: DioExceptionType.badResponse,
+            response: Response<List<int>>(
+              requestOptions: options,
+              statusCode: 502,
+              data: utf8.encode('<html>bad gateway</html>'),
+            ),
+          )),
+          isFalse);
+    });
+  });
+
   group('the ticket screen, revoked', () {
     setUp(useFakeApi);
 
@@ -166,6 +231,185 @@ void main() {
 
       expect(find.text(TicketViewPage.revokedMessage), findsOneWidget);
       expect(find.byType(QrImageView), findsNothing);
+    });
+
+    testWidgets('the document refusal (410) is enough on its own',
+        (tester) async {
+      // Nobody told this screen: the ticket was opened from a push, a deep
+      // link or an email, so `revoked` is false and the only thing that can
+      // say so is the server refusing the picture.
+      final api = useFakeApi();
+      api.on('GET', '/events/tickets/MOA-AAAAA-BBBB7/image',
+          {'message': revokedSays, 'error_code': 'TICKET_REVOKED'},
+          status: 410);
+      final images = TicketImages.instance as MemoryTicketImages;
+      images.kept['MOA-AAAAA-BBBB7'] = Uint8List.fromList(const [1, 2, 3]);
+
+      await _pump(
+        tester,
+        const TicketViewPage(
+          ticketId: 'MOA-AAAAA-BBBB7',
+          eventName: 'Hack Night',
+        ),
+      );
+
+      expect(find.text(TicketViewPage.revokedMessage), findsOneWidget);
+      expect(find.textContaining('contact the organiser'), findsOneWidget);
+      expect(find.byType(QrImageView), findsNothing,
+          reason: 'not the drawn card it used to fall through to');
+      expect(find.byType(Image), findsNothing,
+          reason: 'nor the picture it was holding a moment ago');
+      expect(find.text('Download'), findsNothing);
+      expect(find.text('Calendar'), findsNothing);
+      expect(find.byIcon(Icons.share_outlined), findsNothing);
+      expect(images.kept, isNot(contains('MOA-AAAAA-BBBB7')),
+          reason: 'and the copy kept on the phone goes with it');
+    });
+
+    testWidgets('TICKET_REVOKED in the body is read even without the 410',
+        (tester) async {
+      // The code is the mark the contract names first; a proxy that rewrote
+      // the status must not turn a revoked ticket back into a working one.
+      useFakeApi().on('GET', '/events/tickets/MOA-AAAAA-BBBB8/image',
+          {'message': revokedSays, 'error_code': 'TICKET_REVOKED'},
+          status: 409);
+
+      await _pump(
+        tester,
+        const TicketViewPage(
+          ticketId: 'MOA-AAAAA-BBBB8',
+          eventName: 'Hack Night',
+        ),
+      );
+
+      expect(find.text(TicketViewPage.revokedMessage), findsOneWidget);
+      expect(find.byType(QrImageView), findsNothing);
+    });
+
+    testWidgets('Add to Wallet goes with the rest of it', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+      useFakeApi().on('GET', '/events/tickets/MOA-AAAAA-BBBB9/image',
+          {'message': revokedSays, 'error_code': 'TICKET_REVOKED'},
+          status: 410);
+
+      await _pump(
+        tester,
+        const TicketViewPage(
+          ticketId: 'MOA-AAAAA-BBBB9',
+          eventName: 'Hack Night',
+        ),
+      );
+      expect(find.text('Add to Wallet'), findsNothing);
+      // Put back inside the body: the framework checks the foundation's
+      // debug variables before any tear-down runs.
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('a ticket the server does not refuse keeps Add to Wallet',
+        (tester) async {
+      // The comparison for the test above: the same screen on iOS, so that
+      // the button's absence there is the revocation and not the platform.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+      useFakeApi().on('GET', '/events/tickets/MOA-AAAAA-BBBBA/image',
+          {'message': 'No render'}, status: 404);
+
+      await _pump(
+        tester,
+        const TicketViewPage(
+          ticketId: 'MOA-AAAAA-BBBBA',
+          eventName: 'Hack Night',
+        ),
+      );
+
+      expect(find.text('Add to Wallet'), findsOneWidget);
+      expect(find.text('Download'), findsOneWidget);
+      expect(find.byType(QrImageView), findsOneWidget);
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    for (final (name, answer) in [
+      ('403 -- not this person\'s ticket', 403),
+      ('404 -- the server cannot render it', 404),
+    ]) {
+      testWidgets('$name still falls back to the drawn card', (tester) async {
+        useFakeApi().on('GET', '/events/tickets/MOA-AAAAA-BBBBB/image',
+            {'message': 'No.'}, status: answer);
+
+        await _pump(
+          tester,
+          const TicketViewPage(
+            ticketId: 'MOA-AAAAA-BBBBB',
+            eventName: 'Hack Night',
+          ),
+        );
+
+        expect(find.text(TicketViewPage.revokedMessage), findsNothing);
+        expect(find.byType(QrImageView), findsOneWidget);
+        expect(find.text('Download'), findsOneWidget);
+      });
+    }
+
+    testWidgets('no answer at all still falls back to the drawn card',
+        (tester) async {
+      useFakeApi();
+      final status = NetworkStatus(probe: () async => false);
+      addTearDown(status.dispose);
+      final images = TicketImages.instance as MemoryTicketImages;
+      images.failWith = DioException(
+        requestOptions: RequestOptions(path: '/events/tickets/x/image'),
+        type: DioExceptionType.connectionError,
+      );
+
+      await _pump(
+        tester,
+        TicketViewPage(
+          ticketId: 'MOA-AAAAA-BBBBC',
+          eventName: 'Hack Night',
+          networkStatus: status,
+        ),
+      );
+
+      expect(find.text(TicketViewPage.revokedMessage), findsNothing);
+      expect(find.byType(QrImageView), findsOneWidget);
+    });
+
+    testWidgets('/tickets/{code} reads ticket_revoked from the details',
+        (tester) async {
+      // The route a push, a deep link and the emailed link all land on, for
+      // a ticket this phone has never saved: the list was never read, so the
+      // ticket's own details are the only thing that can say it.
+      useFakeApi().on(
+          'GET', '/events/tickets/MOA-AAAAA-BBBB6', {'ticket_revoked': true});
+      final local = SavedTicketsLocalDataSource(MemoryStorage());
+      final repo = SavedTicketsRepository(dio: Dio(), local: local);
+
+      await _pump(
+        tester,
+        const SavedTicketPage(code: 'MOA-AAAAA-BBBB6'),
+        overrides: [savedTicketsRepositoryProvider.overrideWithValue(repo)],
+      );
+
+      expect(find.text(TicketViewPage.revokedMessage), findsOneWidget);
+      expect(find.byType(QrImageView), findsNothing);
+    });
+
+    testWidgets('a ticket whose details say it is fine keeps its QR',
+        (tester) async {
+      useFakeApi().on(
+          'GET', '/events/tickets/MOA-AAAAA-BBBBD', {'ticket_revoked': false});
+      final local = SavedTicketsLocalDataSource(MemoryStorage());
+      final repo = SavedTicketsRepository(dio: Dio(), local: local);
+
+      await _pump(
+        tester,
+        const SavedTicketPage(code: 'MOA-AAAAA-BBBBD'),
+        overrides: [savedTicketsRepositoryProvider.overrideWithValue(repo)],
+      );
+
+      expect(find.text(TicketViewPage.revokedMessage), findsNothing);
+      expect(find.byType(QrImageView), findsOneWidget);
     });
 
     testWidgets('a usable saved ticket still shows its QR', (tester) async {
