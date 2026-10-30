@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -122,9 +124,45 @@ class CertificateDocuments {
 
   /// Whether [error] is the server refusing the certificate, rather than
   /// failing to answer.
-  static bool isRefusal(Object error) {
-    final status = error is DioException ? error.response?.statusCode : null;
-    return status == 403 || status == 404 || status == 410;
+  static bool isRefusal(Object error) => refusalIn(error) != null;
+
+  /// Why the server refused the certificate, or null when it did not
+  /// refuse (it answered, or could not be reached).
+  ///
+  /// The reason is read from the error envelope's `error_code`, never from
+  /// its prose: `CERTIFICATE_NOT_ISSUED` where the organiser has issued
+  /// nobody one, `CERTIFICATE_REVOKED` where this one was taken back. A
+  /// refusal with no code -- an older server, or a certificate that is not
+  /// this person's -- is [CertificateRefusal.gone].
+  static CertificateRefusal? refusalIn(Object error) {
+    final response = error is DioException ? error.response : null;
+    final status = response?.statusCode;
+    if (status != 403 && status != 404 && status != 410) return null;
+    switch (_errorCodeIn(response?.data)) {
+      case 'CERTIFICATE_NOT_ISSUED':
+        return CertificateRefusal.notIssued;
+      case 'CERTIFICATE_REVOKED':
+        return CertificateRefusal.revoked;
+      default:
+        return CertificateRefusal.gone;
+    }
+  }
+
+  /// The `error_code` in an error body. A render is asked for as bytes, so
+  /// a refusal arrives as the envelope's bytes rather than as a map.
+  static String? _errorCodeIn(Object? body) {
+    Object? decoded = body;
+    if (decoded is List<int> || decoded is String) {
+      try {
+        decoded = jsonDecode(
+            decoded is String ? decoded : utf8.decode(decoded as List<int>));
+      } catch (_) {
+        return null;
+      }
+    }
+    if (decoded is! Map) return null;
+    final code = decoded['error_code'];
+    return code is String && code.trim().isNotEmpty ? code.trim() : null;
   }
 
   Future<bool> _fresh(String name, DateTime now) async {
@@ -175,6 +213,20 @@ class CertificateDocuments {
       }
     }
   }
+}
+
+/// Why the server will not hand over a certificate.
+enum CertificateRefusal {
+  /// The organiser has issued no certificate for this event, or none to
+  /// this person: there is nothing yet, and there may never be.
+  notIssued,
+
+  /// One was issued and the organiser took it back.
+  revoked,
+
+  /// Refused for some other reason -- it is not this person's, or the
+  /// server is older than the codes.
+  gone,
 }
 
 /// The app's [CertificateDocuments]; overridden in tests.

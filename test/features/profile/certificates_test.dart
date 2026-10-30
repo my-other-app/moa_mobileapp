@@ -20,12 +20,13 @@ Certificate cert({
 
 void main() {
   group('building a certificate from an event', () {
-    test('an attended registration becomes one', () {
+    test('a registration the organiser issued one to becomes one', () {
       final result = Certificate.fromEventJson(const {
         'id': 7,
         'name': 'Oasis Hackathon',
         'ticket_id': 'MOA-4KD9W-22XQZ',
         'is_attended': true,
+        'has_certificate': true,
         'event_datetime': '2024-01-04T10:00:00+00:00',
         'club': {'name': 'Tinkerhub', 'logo': {'thumbnail': 'logo.png'}},
         'category': {'name': 'Hackathon'},
@@ -43,6 +44,7 @@ void main() {
             'name': 'Oasis Hackathon',
             'ticket_id': 'MOA-1',
             'is_attended': true,
+            'has_certificate': true,
             'club': {'name': 'Tinkerhub', 'logo': logo},
             'poster': 'https://img/poster.png',
           };
@@ -64,6 +66,22 @@ void main() {
         'name': 'Oasis Hackathon',
         'ticket_id': 'MOA-1',
         'is_attended': false,
+        'event_datetime': '2024-01-04T10:00:00+00:00',
+      });
+
+      expect(result, isNull);
+    });
+
+    test('a check-in at an event that issued nothing does not', () {
+      // The whole of the bug: being at the event is not a certificate.
+      // The club issued none, so there is nothing to list, nothing to
+      // render and nothing to download.
+      final result = Certificate.fromEventJson(const {
+        'id': 7,
+        'name': 'Oasis Hackathon',
+        'ticket_id': 'MOA-1',
+        'is_attended': true,
+        'has_certificate': false,
         'event_datetime': '2024-01-04T10:00:00+00:00',
       });
 

@@ -72,6 +72,17 @@ import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/events/presentation/widgets/ticketing/cancelled_notice.dart';
 import 'package:finnet/features/events/presentation/widgets/ticketing/ticket_type_picker.dart';
 import 'package:finnet/features/events/presentation/widgets/ticketing/waitlist_widgets.dart';
+import 'package:finnet/shared/widgets/event_card.dart'
+    show EventCard, EventCardStatus;
+
+/// The `status` a card sends in its extras for an event that has already
+/// happened and that this person attended -- whether or not a certificate
+/// came with it (EventCardStatus).
+final _attendedStatuses = {
+  EventCardStatus.attended.name,
+  EventCardStatus.attendedNoCertificate.name,
+  EventCardStatus.certificateRevoked.name,
+};
 
 class IndividualEventPage extends ConsumerStatefulWidget {
   /// The event's id, when it was opened by id.
@@ -245,6 +256,15 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   bool _finishPaymentOnLoad = false;
   String? ticketUrl;
   String? certificateUrl;
+
+  /// The organiser issued this person a certificate for the event and has
+  /// not revoked it (the event's own `has_certificate`). Checking in is
+  /// not one: an event whose club issued nothing has nothing to open.
+  bool hasCertificate = false;
+
+  /// The organiser issued one and took it back (`certificate_revoked`).
+  bool certificateRevoked = false;
+
   double? userRating;
   int? userPosition;
   String? positionLabel;
@@ -360,9 +380,15 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       if (widget.initialStatus == 'registered') {
         isRegistered = true;
         ticketUrl = widget.initialTicketUrl;
-      } else if (widget.initialStatus == 'attended') {
+      } else if (_attendedStatuses.contains(widget.initialStatus)) {
         isAttended = true;
         certificateUrl = widget.initialCertificateUrl;
+        // A card hands over `certificate_url` only when the server sent
+        // one, and the server sends it only for a certificate it will hand
+        // over. Replaced by the event's own `has_certificate` on load.
+        hasCertificate = certificateIdFromUrl(certificateUrl) != null;
+        certificateRevoked =
+            widget.initialStatus == EventCardStatus.certificateRevoked.name;
       } else if (widget.initialStatus == finishPaymentStatus ||
           widget.initialStatus == RegistrationStatus.awaitingPayment.name) {
         isRegistered = true;
@@ -546,6 +572,10 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           eventInfo.certificateUrl!.isNotEmpty) {
         certificateUrl = eventInfo.certificateUrl;
       }
+      // The server's word on the certificate, which replaces whatever the
+      // card guessed: issued and not revoked, or nothing.
+      hasCertificate = eventInfo.hasCertificate;
+      certificateRevoked = eventInfo.certificateRevoked;
       userRating = eventInfo.userRating;
       userPosition = eventInfo.userPosition;
       positionLabel = eventInfo.positionLabel;
@@ -2473,8 +2503,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     // Called off: nothing to register, pay or show at the door.
     if (_cancellation != null) return _buildCancelledBottomSheet(context);
 
-    // Priority 1: Check if user has attended (past event they attended)
-    if (isAttended) {
+    // Priority 1: they attended, or hold a certificate without having
+    // checked in (a speaker the organiser issued one to).
+    if (isAttended || hasCertificate) {
       return _buildCertificateBottomSheet(context);
     }
 
@@ -2985,53 +3016,72 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     );
   }
 
-  /// Bottom sheet for certificate state (attended)
+  /// The bottom sheet for an event this person attended.
+  ///
+  /// The certificate decides what it offers, and only the certificate
+  /// does: the organiser issues one, to whoever they choose, and most
+  /// events issue none at all. Attending is the news either way, so all
+  /// three read as "Attended"; what differs is what can be done about the
+  /// certificate -- open it, or be told plainly who it waits on.
+  ///
+  /// This sheet used to be chosen by `is_attended` alone. A guest who
+  /// checked in at an event that issued nothing was told their certificate
+  /// was generated and handed a VIEW CERTIFICATE button, which answered
+  /// "Certificate is being generated. Please check back later." for ever.
   Widget _buildCertificateBottomSheet(BuildContext context) {
+    // Issued, not revoked, and its id is in hand: there is a certificate
+    // to open. Without an id there is nothing to open, so it reads as a
+    // certificate still to come rather than a button that goes nowhere.
+    final id = certificateIdFromUrl(certificateUrl);
+    final open = hasCertificate && id != null;
+    final revoked = certificateRevoked && !hasCertificate;
     return Container(
+      key: const ValueKey('event-certificate-sheet'),
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Green banner - same style as countdown
           Container(
             width: double.infinity,
-            height: 25,
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: const Color(0xFFE8F5E9),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text(
-              'Attended and Certificate Generated',
+            child: Text(
+              open ? 'Attended and Certificate Issued' : 'Attended',
               textAlign: TextAlign.left,
-              style: TextStyle(
+              style: const TextStyle(
                 fontWeight: FontWeight.normal,
                 fontSize: 12,
                 color: Color(0xFF2E7D32),
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: Pressable(
+          if (!open) ...[
+            const SizedBox(height: 10),
+            Text(
+              revoked
+                  ? EventCard.revokedCertificateNote
+                  : EventCard.pendingCertificateNote,
+              key: revoked
+                  ? EventCard.revokedCertificateNoteKey
+                  : EventCard.pendingCertificateNoteKey,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF5F6368)),
+            ),
+          ],
+          if (open) ...[
+            const SizedBox(height: 16),
+            Pressable(
               child: FilledButton(
                 onPressed: () {
                   // The certificate inside the app, as the club designed it
                   // and saved for offline -- not the website's page, which
                   // draws one stand-in design for every club.
-                  final id = certificateIdFromUrl(certificateUrl);
-                  if (id != null) {
-                    context.push(certificateRoute(id));
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Certificate is being generated. Please check back later.'),
-                      ),
-                    );
-                  }
+                  context.push(certificateRoute(id));
                 },
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF2C333D),
@@ -3040,7 +3090,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                 child: const Text('VIEW CERTIFICATE'),
               ),
             ),
-          ),
+          ],
           if (_liveRoomOpen) _liveRoomButton(),
           const SizedBox(height: 10),
         ],

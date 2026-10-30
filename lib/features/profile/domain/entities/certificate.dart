@@ -28,10 +28,9 @@ String certificateRoute(String ticketId) =>
 /// A certificate the user holds for an event.
 ///
 /// There is no certificate table: a certificate is a registration the
-/// organiser issued one to (or that checked in before any were issued),
-/// and the server marks those `has_certificate` and attaches
-/// `certificate_url`. So this is built from the event list filtered to the
-/// user's registrations ([holdsCertificate]).
+/// organiser issued one to, and the server marks those `has_certificate`
+/// and attaches `certificate_url`. So this is built from the event list
+/// filtered to the user's registrations ([holdsCertificate]).
 class Certificate {
   /// The registration's ticket id, which is also the certificate's id --
   /// it is what the PDF and web views are keyed by.
@@ -76,7 +75,8 @@ class Certificate {
       '${AppConfig.publicSiteUrl}/certificates/${Uri.encodeComponent(ticketId)}';
 
   /// Where the PDF lives. The endpoint takes no auth, so this can be opened
-  /// directly; it refuses for a registration that never checked in.
+  /// directly; it refuses (403) for a registration the organiser has not
+  /// issued a certificate to, and for one they revoked.
   String pdfUrl(String apiBaseUrl) =>
       '$apiBaseUrl/events/certificates/$ticketId/pdf';
 
@@ -90,18 +90,23 @@ class Certificate {
       '$apiBaseUrl/events/certificates/$ticketId/image';
 
   /// Whether the registration [json] carries a certificate the server
-  /// will hand over. The server says so itself (`has_certificate`): issued
-  /// by the organiser and not revoked, or checked in before any were
-  /// issued -- so a speaker issued one without checking in has one, and a
-  /// revoked one is gone. An older server sends only `is_attended`.
+  /// will hand over. The server says so itself (`has_certificate`): the
+  /// organiser issued one and has not revoked it. A speaker issued one
+  /// without checking in has one; someone who checked in at an event that
+  /// issued nothing does not.
   ///
-  /// Listing one the server refuses offered a render that never came, and
-  /// the app's own drawing stood in for the club's design.
-  static bool holdsCertificate(Map<String, dynamic> json) {
-    final held = json['has_certificate'];
-    if (held is bool) return held;
-    return json['is_attended'] == true;
-  }
+  /// This is the app's only answer to "is there a certificate". Checking
+  /// in is attendance, not a certificate: reading `is_attended` instead
+  /// promised a certificate no club had issued, and the screens offered a
+  /// render that never came.
+  static bool holdsCertificate(Map<String, dynamic> json) =>
+      json['has_certificate'] == true;
+
+  /// Whether the organiser issued this person a certificate and then took
+  /// it back (`certificate_revoked`). Said differently from one that was
+  /// never issued: there was something, and it is gone.
+  static bool wasRevoked(Map<String, dynamic> json) =>
+      json['certificate_revoked'] == true;
 
   /// The title shown on the card and the detail screen.
   ///

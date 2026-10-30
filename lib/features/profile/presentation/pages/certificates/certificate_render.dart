@@ -46,6 +46,28 @@ class CertificateRender extends ConsumerStatefulWidget {
   static const refusedKey = ValueKey('certificate-refused');
   static const refusedMessage = 'This certificate is no longer available';
 
+  /// Nothing was ever issued for this event, so nothing is on its way
+  /// unless the organiser sends it.
+  static const notIssuedMessage =
+      'Your certificate will appear here once the organiser issues it';
+
+  /// One was issued and taken back -- which is not the same as never
+  /// having had one, and must not read as if it were still coming.
+  static const revokedMessage = 'The organiser has withdrawn this certificate';
+
+  /// What to say for each way the server can refuse it
+  /// (CertificateDocuments.refusalIn, from the 403's `error_code`).
+  static String messageFor(CertificateRefusal refusal) {
+    switch (refusal) {
+      case CertificateRefusal.notIssued:
+        return notIssuedMessage;
+      case CertificateRefusal.revoked:
+        return revokedMessage;
+      case CertificateRefusal.gone:
+        return refusedMessage;
+    }
+  }
+
   @override
   ConsumerState<CertificateRender> createState() => _CertificateRenderState();
 }
@@ -63,8 +85,9 @@ class _CertificateRenderState extends ConsumerState<CertificateRender> {
   /// No render to show: the drawn preview, with a note.
   bool _failed = false;
 
-  /// The server refused it (revoked, or not this person's).
-  bool _refused = false;
+  /// Why the server refused it (never issued, revoked, or not this
+  /// person's); null while it has not refused.
+  CertificateRefusal? _refusal;
 
   String get _id => widget.certificate.ticketId;
 
@@ -101,16 +124,16 @@ class _CertificateRenderState extends ConsumerState<CertificateRender> {
       unawaited(documents.keepPdf(_id));
     } catch (e) {
       debugPrint('Certificate render unavailable: $e');
-      final refused = CertificateDocuments.isRefusal(e);
-      if (refused) {
+      final refused = CertificateDocuments.refusalIn(e);
+      if (refused != null) {
         await documents.forget(_id);
         ref.invalidate(keptCertificateImageProvider(_id));
       }
       if (!mounted) return;
       setState(() {
         _refreshing = false;
-        _refused = refused;
-        if (refused) _image = null;
+        _refusal = refused;
+        if (refused != null) _image = null;
         _failed = _image == null;
         _offline = e is DioException && DocumentCache.noAnswer(e);
       });
@@ -119,7 +142,8 @@ class _CertificateRenderState extends ConsumerState<CertificateRender> {
 
   @override
   Widget build(BuildContext context) {
-    if (_refused) return const _Refused();
+    final refusal = _refusal;
+    if (refusal != null) return _Refused(refusal);
     final image = _image;
     if (image != null) {
       final rendered = RenderedDocumentImage(
@@ -210,8 +234,14 @@ class _Refreshing extends StatelessWidget {
   }
 }
 
+/// The server will not hand the certificate over, and says why: one still
+/// to be issued waits on the organiser, one withdrawn is gone. Nothing
+/// that was never issued is drawn as a preview -- there is no certificate
+/// to preview.
 class _Refused extends StatelessWidget {
-  const _Refused();
+  const _Refused(this.refusal);
+
+  final CertificateRefusal refusal;
 
   @override
   Widget build(BuildContext context) {
@@ -220,18 +250,25 @@ class _Refused extends StatelessWidget {
       aspectRatio: 800 / 519,
       child: ColoredBox(
         color: Colors.white.withAlpha(170),
-        child: const Center(
+        child: Center(
           child: Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.block, size: 32, color: Color(0xFF1E1E1E)),
-                SizedBox(height: 10),
+                Icon(
+                  refusal == CertificateRefusal.notIssued
+                      ? Icons.hourglass_empty
+                      : Icons.block,
+                  size: 32,
+                  color: const Color(0xFF1E1E1E),
+                ),
+                const SizedBox(height: 10),
                 Text(
-                  CertificateRender.refusedMessage,
+                  CertificateRender.messageFor(refusal),
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15, color: Color(0xFF1E1E1E)),
+                  style: const TextStyle(
+                      fontSize: 15, color: Color(0xFF1E1E1E)),
                 ),
               ],
             ),

@@ -24,10 +24,28 @@ import 'package:share_plus/share_plus.dart';
 enum EventCardStatus {
   none, // Default - show "TAKE A CLOSER LOOK"
   registered, // Registered but event not over - show "VIEW TICKET"
-  attended, // Event over and attended - show "VIEW CERTIFICATE"
+  attended, // Attended, and holds a certificate - "VIEW CERTIFICATE"
+  attendedNoCertificate, // Attended; the club has issued no certificate
+  certificateRevoked, // Attended; the certificate was taken back
   notAttended, // Event over but not attended - show "Not Attended" badge
   awaitingPayment, // Registered for a paid event, not paid - "FINISH PAYMENT"
   ticketRevoked, // The organiser revoked the ticket - "TICKET REVOKED"
+}
+
+/// The card status for an event that has ended.
+///
+/// A certificate exists only where the server says one does
+/// ([Certificate.holdsCertificate]): the organiser issued it, and has not
+/// revoked it. Checking in decides whether the person attended, and
+/// nothing else -- so an event whose club issued nothing shows "Attended"
+/// and says the certificate will appear once it is issued, rather than a
+/// VIEW CERTIFICATE button with nothing behind it.
+EventCardStatus endedCardStatus(Map<String, dynamic> item) {
+  if (Certificate.holdsCertificate(item)) return EventCardStatus.attended;
+  if (Certificate.wasRevoked(item)) return EventCardStatus.certificateRevoked;
+  return item['is_attended'] == true
+      ? EventCardStatus.attendedNoCertificate
+      : EventCardStatus.notAttended;
 }
 
 /// The card status for an event this person is registered for:
@@ -135,6 +153,20 @@ class EventCard extends StatelessWidget {
 
   static const cancelledBadgeKey = ValueKey('event-cancelled-badge');
 
+  /// What an attended card says where a certificate would be, when the
+  /// club has issued none. The person did attend, and that is the news;
+  /// the certificate is the club's to give, so this says who it waits on.
+  static const pendingCertificateNote =
+      'Your certificate will appear here once the organiser issues it.';
+  static const pendingCertificateNoteKey =
+      ValueKey('event-certificate-pending');
+
+  /// And when the organiser issued one and took it back.
+  static const revokedCertificateNote =
+      'The organiser has withdrawn your certificate for this event.';
+  static const revokedCertificateNoteKey =
+      ValueKey('event-certificate-revoked');
+
   const EventCard({
     super.key,
     required this.title,
@@ -165,10 +197,14 @@ class EventCard extends StatelessWidget {
 
   /// [highDemand], while the event is still to come or on.
   bool get _showsHighDemand =>
-      highDemand &&
-      cancellation == null &&
-      status != EventCardStatus.attended &&
-      status != EventCardStatus.notAttended;
+      highDemand && cancellation == null && !_ended;
+
+  /// The card is for an event that has already happened.
+  bool get _ended =>
+      status == EventCardStatus.attended ||
+      status == EventCardStatus.attendedNoCertificate ||
+      status == EventCardStatus.certificateRevoked ||
+      status == EventCardStatus.notAttended;
 
   /// The event's public page, or null with neither a slug nor an id to
   /// link to (the share button is then left out).
@@ -486,6 +522,40 @@ class EventCard extends StatelessWidget {
           ),
           child: const Text('VIEW CERTIFICATE'),
         );
+      // Attended, and there is no certificate to open: the club issued
+      // none, or took this one back. Both say so in a line and offer the
+      // event -- never a button to a certificate that isn't there.
+      case EventCardStatus.attendedNoCertificate:
+      case EventCardStatus.certificateRevoked:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                status == EventCardStatus.certificateRevoked
+                    ? revokedCertificateNote
+                    : pendingCertificateNote,
+                key: status == EventCardStatus.certificateRevoked
+                    ? revokedCertificateNoteKey
+                    : pendingCertificateNoteKey,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF5F6368)),
+              ),
+            ),
+            Pressable(
+              child: FilledButton(
+                onPressed: () {
+                  context.push('/events/$eventId',
+                      extra: _getNavigationExtras());
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2C333D),
+                ),
+                child: const Text('VIEW EVENT'),
+              ),
+            ),
+          ],
+        );
       case EventCardStatus.notAttended:
         return FilledButton(
           onPressed: () {
@@ -560,7 +630,11 @@ class EventCard extends StatelessWidget {
   /// Get color for status badge
   Color _getStatusColor(EventCardStatus status) {
     switch (status) {
+      // All three attended states wear the same green "Attended" badge:
+      // the person did attend, whatever became of the certificate.
       case EventCardStatus.attended:
+      case EventCardStatus.attendedNoCertificate:
+      case EventCardStatus.certificateRevoked:
         return const Color(0xFF4CAF50); // Green
       case EventCardStatus.registered:
         return const Color(0xFFFFD600); // Yellow
@@ -579,6 +653,8 @@ class EventCard extends StatelessWidget {
   IconData _getStatusIcon(EventCardStatus status) {
     switch (status) {
       case EventCardStatus.attended:
+      case EventCardStatus.attendedNoCertificate:
+      case EventCardStatus.certificateRevoked:
         return Icons.verified;
       case EventCardStatus.registered:
         return Icons.confirmation_number;
@@ -597,6 +673,8 @@ class EventCard extends StatelessWidget {
   Color _getStatusTextColor(EventCardStatus status) {
     switch (status) {
       case EventCardStatus.attended:
+      case EventCardStatus.attendedNoCertificate:
+      case EventCardStatus.certificateRevoked:
       case EventCardStatus.notAttended:
       case EventCardStatus.awaitingPayment:
       case EventCardStatus.ticketRevoked:
@@ -612,6 +690,8 @@ class EventCard extends StatelessWidget {
   String _getStatusText(EventCardStatus status) {
     switch (status) {
       case EventCardStatus.attended:
+      case EventCardStatus.attendedNoCertificate:
+      case EventCardStatus.certificateRevoked:
         return 'Attended';
       case EventCardStatus.registered:
         return 'Registered';

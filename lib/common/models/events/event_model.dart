@@ -1,6 +1,7 @@
 import 'package:finnet/common/models/events/cohost_model.dart';
 import 'package:finnet/common/models/events/event_page_model.dart';
 import 'package:finnet/core/utils/hours.dart';
+import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart'
     as entity;
 import 'package:finnet/features/topics/data/models/topic_model.dart';
@@ -51,6 +52,16 @@ class EventInfo {
   final bool isAttended;
   final String? ticketUrl;
   final String? certificateUrl;
+
+  /// The organiser issued this person a certificate for the event and has
+  /// not revoked it (`has_certificate`). Checking in is not enough: an
+  /// event whose club issued none has none to show.
+  final bool hasCertificate;
+
+  /// The organiser issued one and then took it back
+  /// (`certificate_revoked`): said differently from never having one.
+  final bool certificateRevoked;
+
   final double? userRating;
   final int? userPosition;
   final String? positionLabel;
@@ -124,6 +135,8 @@ class EventInfo {
     this.isAttended = false,
     this.ticketUrl,
     this.certificateUrl,
+    this.hasCertificate = false,
+    this.certificateRevoked = false,
     this.userRating,
     this.userPosition,
     this.positionLabel,
@@ -196,6 +209,10 @@ class EventInfo {
       isAttended: jsonBool(json['is_attended']) ?? false,
       ticketUrl: jsonString(json['ticket_url']),
       certificateUrl: jsonString(json['certificate_url']),
+      // The one answer to "is there a certificate", shared with My
+      // certificates and the lists' cards.
+      hasCertificate: Certificate.holdsCertificate(json),
+      certificateRevoked: Certificate.wasRevoked(json),
       userRating: jsonDouble(json['user_rating']),
       userPosition: jsonInt(json['user_position']),
       positionLabel: jsonString(json['position_label']),
