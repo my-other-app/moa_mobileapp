@@ -18,6 +18,7 @@ import 'package:finnet/features/events/data/ticket_images.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/events/presentation/widgets/ticketing/cancelled_notice.dart';
 import 'package:finnet/features/events/domain/event_page_rules.dart';
+import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/presentation/providers/event_page_provider.dart';
 import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
@@ -52,6 +53,13 @@ class TicketViewPage extends StatefulWidget {
   /// The organiser revoked this ticket. The screen says so instead of
   /// showing a QR -- online or offline -- and offers nothing to download,
   /// share or add to a wallet: the door would refuse it.
+  ///
+  /// Known in advance from the list of registrations (`ticket_revoked`), from
+  /// the ticket's own details, or from the card that opened this. Not knowing
+  /// it is not the same as knowing it is fine: the server refusing the
+  /// ticket's picture as revoked (410, `TICKET_REVOKED`) turns the screen to
+  /// the same state, which is the only way a ticket opened from a push, a
+  /// deep link or an email ever learns of it.
   final bool revoked;
 
   /// The event's id, when known: an event that runs a competition gets
@@ -107,9 +115,6 @@ class TicketViewPage extends StatefulWidget {
     this.paid = false,
   });
 
-  /// No QR of any kind: revoked, or the event called off.
-  bool get _void => revoked || cancellation != null;
-
   @override
   State<TicketViewPage> createState() => _TicketViewPageState();
 }
@@ -137,6 +142,23 @@ class _TicketViewPageState extends State<TicketViewPage>
 
   /// No server to ask: the kept design (or the drawn card), and a note.
   bool _offline = false;
+
+  /// The server refused this ticket's picture because it is revoked (410,
+  /// `TICKET_REVOKED`), though whoever built this screen did not know.
+  ///
+  /// This is the only way a ticket opened from a push, a deep link or an
+  /// email finds out: `revoked` reaches the screen from the list of
+  /// registrations or the ticket's details, and neither was read on those
+  /// routes. Without it the screen fell through to the card it draws itself,
+  /// whose QR looks exactly like a working one.
+  bool _revokedByServer = false;
+
+  /// Revoked, however the screen came to know it.
+  bool get _revoked => widget.revoked || _revokedByServer;
+
+  /// No QR of any kind, and nothing to download, share or add to a wallet:
+  /// revoked, or the event called off.
+  bool get _void => _revoked || widget.cancellation != null;
 
   TicketImages get _images => widget.images ?? TicketImages.instance;
   late AnimationController _glowController;
@@ -208,6 +230,19 @@ class _TicketViewPageState extends State<TicketViewPage>
   }
 
   @override
+  void didUpdateWidget(TicketViewPage old) {
+    super.didUpdateWidget(old);
+    // The screen was built before its ticket was known to be revoked -- the
+    // details of a ticket opened from a link arrive after the first frame --
+    // so the kept picture and PDF are dropped now, as initState would have.
+    if (widget.revoked && !old.revoked) {
+      _ticketImage = null;
+      _ticketImageFailed = true;
+      unawaited(_images.forget(widget.ticketId));
+    }
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // The glow breathes -- unless the phone asks for less motion, when it
@@ -263,13 +298,20 @@ class _TicketViewPageState extends State<TicketViewPage>
       debugPrint('Ticket image unavailable: $e');
       final status = e is DioException ? e.response?.statusCode : null;
       final refused = status == 403 || status == 404 || status == 410;
+      // Revoked: the server says so in as many words (410, TICKET_REVOKED).
+      // The screen turns to the revoked state rather than to the drawn card,
+      // whose QR the door would refuse. A plain 403 or 404 is not this.
+      final revoked = isRevokedTicketRefusal(e);
       if (refused) await _images.forget(widget.ticketId);
       if (!mounted) return;
       setState(() {
         _refreshing = false;
         if (refused) _ticketImage = null;
+        _revokedByServer = _revokedByServer || revoked;
         _ticketImageFailed = _ticketImage == null;
-        _offline = e is DioException && ApiCacheInterceptor.gotNoAnswer(e);
+        _offline = !revoked &&
+            e is DioException &&
+            ApiCacheInterceptor.gotNoAnswer(e);
       });
     }
   }
@@ -283,7 +325,41 @@ class _TicketViewPageState extends State<TicketViewPage>
     );
   }
 
+  /// Nothing that carries the code leaves this screen once the ticket is
+  /// void: the PDF, the share sheet and the Wallet pass all print the QR the
+  /// door refuses. The buttons are off the screen then, so this is the guard
+  /// for a tap already in flight when the server's refusal arrived -- and
+  /// for the wallet sheet, which offers Share and Copy of its own.
+  bool _refuseWhenVoid() {
+    if (!_void) return false;
+    _showErrorSnackBar(_revoked
+        ? 'This ticket was revoked, so there is nothing to hand out.'
+        : 'This event was called off, so there is nothing to hand out.');
+    return true;
+  }
+
+  /// [error] was the server refusing a document because the ticket is
+  /// revoked: turn the screen to the revoked state and drop what is kept on
+  /// the phone. True when it was, so the caller says nothing else.
+  ///
+  /// The picture is asked for when the screen opens, but the PDF and the
+  /// Wallet pass are asked for on a tap, which can be minutes later -- long
+  /// enough for the organiser to have taken the ticket back in between.
+  bool _noteRevoked(Object error) {
+    if (!isRevokedTicketRefusal(error)) return false;
+    unawaited(_images.forget(widget.ticketId));
+    if (mounted) {
+      setState(() {
+        _revokedByServer = true;
+        _ticketImage = null;
+        _ticketImageFailed = true;
+      });
+    }
+    return true;
+  }
+
   Future<void> _downloadTicket() async {
+    if (_refuseWhenVoid()) return;
     setState(() => _isDownloading = true);
     HapticFeedback.mediumImpact();
 
@@ -298,6 +374,7 @@ class _TicketViewPageState extends State<TicketViewPage>
       }
     } catch (e) {
       debugPrint('Download error: $e');
+      if (_noteRevoked(e)) return;
       if (mounted) _showErrorSnackBar('Download failed');
     } finally {
       if (mounted) setState(() => _isDownloading = false);
@@ -335,6 +412,7 @@ class _TicketViewPageState extends State<TicketViewPage>
 
   Future<void> _shareTicket() async {
     HapticFeedback.lightImpact();
+    if (_refuseWhenVoid()) return;
 
     setState(() => _isDownloading = true);
 
@@ -366,6 +444,10 @@ class _TicketViewPageState extends State<TicketViewPage>
     } catch (e, stack) {
       debugPrint('Share error: $e');
       debugPrint('Stack trace: $stack');
+
+      // Revoked between opening the screen and the tap: say so, and share
+      // nothing -- not even the link, which is this same ticket.
+      if (_noteRevoked(e)) return;
 
       // Only show error if it's NOT that weird rect error (which might actually be a success/dismiss on some versions)
       // or if we really failed.
@@ -399,6 +481,7 @@ class _TicketViewPageState extends State<TicketViewPage>
   }
 
   Future<void> _addToWallet() async {
+    if (_refuseWhenVoid()) return;
     setState(() => _isAddingToWallet = true);
     HapticFeedback.mediumImpact();
 
@@ -466,6 +549,9 @@ class _TicketViewPageState extends State<TicketViewPage>
     } catch (e, stackTrace) {
       debugPrint('🎫 [Wallet] Error: $e');
       debugPrint('🎫 [Wallet] Stack trace: $stackTrace');
+      // The pass endpoint refuses a revoked ticket the same way the picture
+      // does: no pass, and the screen says why.
+      if (_noteRevoked(e)) return;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -641,7 +727,7 @@ class _TicketViewPageState extends State<TicketViewPage>
                 child: Column(
                   children: [
                     const SizedBox(height: 8),
-                    if (widget.revoked)
+                    if (_revoked)
                       _buildRevokedCard()
                     else if (widget.cancellation case final cancelled?)
                       _buildCancelledCard(cancelled)
@@ -816,8 +902,7 @@ class _TicketViewPageState extends State<TicketViewPage>
         ],
       ),
       actions: [
-        if (!widget._void)
-          _buildAppBarButton(Icons.share_outlined, _shareTicket),
+        if (!_void) _buildAppBarButton(Icons.share_outlined, _shareTicket),
         const SizedBox(width: 8),
       ],
     );

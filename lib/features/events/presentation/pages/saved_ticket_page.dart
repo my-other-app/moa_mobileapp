@@ -7,6 +7,7 @@ import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/features/events/presentation/providers/event_cancellation_provider.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
+import 'package:finnet/features/events/presentation/providers/ticket_details_provider.dart';
 
 /// The address of a ticket inside the app: `/tickets/{code}`.
 String ticketRoute(String code) => '/tickets/${Uri.encodeComponent(code)}';
@@ -16,6 +17,12 @@ String ticketRoute(String code) => '/tickets/${Uri.encodeComponent(code)}';
 /// Opens with no network: the event's name, date and place come from the
 /// saved ticket, and the QR is drawn from the code. A code the phone knows
 /// nothing more about still shows its QR.
+///
+/// This is the screen a push, a deep link and the link in a ticket's email
+/// all land on, and a ticket the phone has never saved has nothing here to
+/// say it was revoked. With a network the ticket's own details are asked for
+/// ([ticketDetailsProvider]), which carry `ticket_revoked`; the picture's own
+/// refusal (410, `TICKET_REVOKED`) is the backstop inside the ticket screen.
 class SavedTicketPage extends ConsumerWidget {
   const SavedTicketPage({super.key, required this.code, this.revoked = false});
 
@@ -40,6 +47,11 @@ class SavedTicketPage extends ConsumerWidget {
             : ref
                 .watch(eventCancellationProvider('${ticket.eventId}'))
                 .valueOrNull);
+    // The ticket's own word on being revoked, for a code the phone has not
+    // saved -- or saved before the organiser took it back. Not yet answered,
+    // or refused, leaves the saved ticket's word as it was: this only ever
+    // adds a revocation, never takes one away.
+    final details = ref.watch(ticketDetailsProvider(code)).valueOrNull;
     return TicketViewPage(
       ticketId: code,
       eventName: ticket?.eventName ?? 'Your ticket',
@@ -48,7 +60,9 @@ class SavedTicketPage extends ConsumerWidget {
       durationHours: ticket?.durationHours,
       ticketUrl: ticket?.ticketUrl,
       posterUrl: ticket?.posterUrl,
-      revoked: revoked || (ticket?.revoked ?? false),
+      revoked: revoked ||
+          (ticket?.revoked ?? false) ||
+          (details?.revoked ?? false),
       eventId: ticket?.eventId,
       ticketType: ticket?.ticketType,
       cancellation: cancellation,
