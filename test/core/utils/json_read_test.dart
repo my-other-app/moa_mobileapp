@@ -104,7 +104,7 @@ void main() {
         'id': '3',
         'name': 'Talk',
         'ticket_id': 'MOA-1',
-        'is_attended': true,
+        'has_certificate': true,
         'club': {'name': 42},
         'category': 'odd',
       });

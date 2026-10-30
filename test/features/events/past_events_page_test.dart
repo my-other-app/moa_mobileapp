@@ -103,6 +103,7 @@ void main() {
           _event(1,
               name: 'Hack Night',
               attended: true,
+              hasCertificate: true,
               certificateUrl: 'https://myotherapp.in/certificates/T-1'),
           _event(2, name: 'Design Jam'),
         ],
@@ -126,6 +127,7 @@ void main() {
         'items': [
           _event(1,
               attended: true,
+              hasCertificate: true,
               certificateUrl: 'https://myotherapp.in/certificates/T-1'),
         ],
       });

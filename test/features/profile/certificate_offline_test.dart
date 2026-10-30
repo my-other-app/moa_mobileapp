@@ -153,12 +153,19 @@ class _Documents extends CertificateDocuments {
   }
 }
 
-DioException _refusal(int status) {
+/// The server refusing the render, carrying the `error_code` it sends when
+/// it has one (CERTIFICATE_NOT_ISSUED, CERTIFICATE_REVOKED).
+DioException _refusal(int status, {String? code}) {
   final options = RequestOptions(path: CertificateDocuments.imagePathFor(_id));
   return DioException.badResponse(
     statusCode: status,
     requestOptions: options,
-    response: Response(requestOptions: options, statusCode: status),
+    response: Response(
+      requestOptions: options,
+      statusCode: status,
+      // A render is asked for as bytes, so its refusal arrives as bytes.
+      data: code == null ? null : '{"error_code":"$code"}'.codeUnits,
+    ),
   );
 }
 
@@ -426,6 +433,30 @@ void main() {
       expect(shownBytes(tester), isNull);
       expect(find.byType(CertificatePreview), findsNothing);
       expect(documents.forgotten, [_id]);
+    });
+
+    testWidgets('revoked (CERTIFICATE_REVOKED): says the organiser withdrew '
+        'it, not that it is on its way', (tester) async {
+      await pump(
+          tester,
+          _Documents(
+              answer: () async =>
+                  throw _refusal(403, code: 'CERTIFICATE_REVOKED')));
+
+      expect(find.text(CertificateRender.revokedMessage), findsOneWidget);
+      expect(find.text(CertificateRender.notIssuedMessage), findsNothing);
+    });
+
+    testWidgets('never issued (CERTIFICATE_NOT_ISSUED): says it waits on the '
+        'organiser, which reads differently', (tester) async {
+      await pump(
+          tester,
+          _Documents(
+              answer: () async =>
+                  throw _refusal(403, code: 'CERTIFICATE_NOT_ISSUED')));
+
+      expect(find.text(CertificateRender.notIssuedMessage), findsOneWidget);
+      expect(find.text(CertificateRender.revokedMessage), findsNothing);
     });
   });
 

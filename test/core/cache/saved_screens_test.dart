@@ -202,6 +202,9 @@ void main() {
             ..._event(1, name),
             'ticket_id': ticket,
             'is_attended': true,
+            // A certificate is one the organiser issued; a check-in alone
+            // is not one, so the list would be empty without this.
+            'has_certificate': true,
           };
       await _save(cache, dio, '/events/list', {
         'items': [attended('MOA-OLD', 'Saved Talk')]

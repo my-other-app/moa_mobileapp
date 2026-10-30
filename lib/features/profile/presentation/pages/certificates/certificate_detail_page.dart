@@ -232,7 +232,11 @@ class CertificateDetailPage extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Text(
-                      'Attended and Certificate Generated',
+                      // Nothing is "generated": the organiser issues a
+                      // certificate, and this screen only ever opens on one
+                      // they issued -- to a guest who attended, or to a
+                      // speaker who never checked in.
+                      'Issued by the organiser',
                       style: TextStyle(fontSize: 13, color: _ink),
                     ),
                   ),

@@ -9,7 +9,8 @@ final certificatePinStoreProvider = Provider<CertificatePinStore>((ref) {
 /// Which certificates the user has pinned.
 ///
 /// Device-local. The server has no concept of a pinned certificate -- there
-/// is no certificates table at all, only attended registrations -- so
+/// is no certificates table at all, only registrations the organiser has
+/// issued one to -- so
 /// pinning cannot sync across devices or survive a reinstall. The design
 /// calls for the feature and this is the honest extent of it without a
 /// schema change; the alternative was a tab that did nothing.

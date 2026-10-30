@@ -21,6 +21,10 @@ Map<String, dynamic> _info({
   Object? isPaid = _absent,
   bool registered = true,
   bool attended = false,
+  // The organiser issued this person a certificate, and has not revoked it
+  // (`has_certificate`). Checking in is not that, so the two are apart.
+  bool hasCertificate = false,
+  bool certificateRevoked = false,
   bool hasFee = true,
   String? regEnd,
   String start = '2030-12-01T10:00:00Z',
@@ -49,6 +53,10 @@ Map<String, dynamic> _info({
       'total_rating': rating > 0 ? 4 : 0,
       'is_registered': registered,
       'is_attended': attended,
+      'has_certificate': hasCertificate,
+      'certificate_revoked': certificateRevoked,
+      if (hasCertificate)
+        'certificate_url': 'https://myotherapp.in/certificates/MOA-4KD9W',
       'ticket_url': registered ? 'https://myotherapp.in/tickets/T-1' : null,
       if (isPaid != _absent) 'is_paid': isPaid,
       if (registrationId != null) 'registration_id': registrationId,
@@ -550,7 +558,8 @@ void main() {
     testWidgets('checked in: beside the certificate, while the room is open',
         (tester) async {
       api
-        ..on('GET', '/events/info/7', _info(attended: true))
+        ..on('GET', '/events/info/7',
+            _info(attended: true, hasCertificate: true))
         ..on('GET', '/events/7/live/banner', stripView('live'));
       await _pump(tester);
       expect(find.text('VIEW CERTIFICATE'), findsOneWidget);
@@ -559,7 +568,8 @@ void main() {
 
     testWidgets('not once the room has closed', (tester) async {
       api
-        ..on('GET', '/events/info/7', _info(attended: true))
+        ..on('GET', '/events/info/7',
+            _info(attended: true, hasCertificate: true))
         ..on('GET', '/events/7/live/banner', stripView('closed'));
       await _pump(tester);
       expect(find.text('VIEW CERTIFICATE'), findsOneWidget);

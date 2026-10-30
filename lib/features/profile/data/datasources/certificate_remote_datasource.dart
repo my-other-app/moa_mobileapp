@@ -43,13 +43,14 @@ class CertificateRemoteDataSourceImpl implements CertificateRemoteDataSource {
     'offset': 0,
   };
 
-  /// There is no certificates endpoint; a certificate is a registration the
-  /// user attended. So this reads the event list filtered to the user's own
-  /// registrations and keeps the ones with attendance recorded.
+  /// There is no certificates endpoint; a certificate is a registration
+  /// the organiser issued one to. So this reads the event list filtered to
+  /// the user's own registrations and keeps the ones the server marks
+  /// `has_certificate` ([Certificate.fromEventJson]).
   ///
-  /// `is_ended` is not sent: an event can be over and attended before its
-  /// end time passes -- a volunteer checks people in while it is running --
-  /// and filtering on it would hide today's certificate until tomorrow.
+  /// `is_ended` is not sent: a certificate can be issued while the event
+  /// is still running, and filtering on it would hide today's until
+  /// tomorrow.
   @override
   Future<List<Certificate>> getMyCertificates() async {
     final response = await _dio.get<dynamic>(
