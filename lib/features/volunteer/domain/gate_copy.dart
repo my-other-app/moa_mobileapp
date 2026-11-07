@@ -7,8 +7,9 @@ import 'package:intl/intl.dart';
 import 'package:finnet/features/volunteer/data/gate_models.dart';
 
 /// How an answer reads at a glance: let in, look again, turned away, or
-/// saved on the phone.
-enum GateTone { admit, caution, refuse, queued }
+/// saved on the phone unchecked (no signal: the volunteer checks the person
+/// themselves).
+enum GateTone { admit, caution, refuse, unverified }
 
 /// The card a scan answers with.
 class OutcomeCard {
@@ -48,6 +49,8 @@ String _ago(DateTime at, DateTime now) {
 }
 
 String _day(DateTime at) => DateFormat('d MMM').format(at.toLocal());
+
+String _clock(DateTime at) => DateFormat('HH:mm').format(at.toLocal());
 
 /// The card for a scan's answer at [door] ("Main door", or the event's).
 OutcomeCard outcomeCard(GateScanResult r,
@@ -145,17 +148,56 @@ OutcomeCard outcomeCard(GateScanResult r,
   }
 }
 
-/// A scan saved on the phone: the guest goes in, and the server decides
-/// when the phone is back online.
-const queuedCard = OutcomeCard(
-  tone: GateTone.queued,
-  tag: 'Saved',
-  title: 'No signal — saved on this phone.',
-  sub: 'SAVED ON THIS PHONE · WILL SYNC',
-  note: 'Let them in. It is sent when the signal is back, and the server '
-      'still catches a ticket used twice; anything it refuses is listed '
-      'here by name.',
+/// A ticket code saved on the phone with no signal: nothing has checked it
+/// yet, so the volunteer looks at the person before letting them in. The
+/// server decides when the phone is back online.
+const unverifiedCard = OutcomeCard(
+  tone: GateTone.unverified,
+  tag: 'Unverified',
+  title: "No signal — this ticket can't be checked right now.",
+  sub: 'NOT CHECKED · SAVED ON THIS PHONE · WILL SYNC',
+  note: 'Check their name or ID before letting them in. The scan is sent '
+      'when the signal is back; anything the server refuses is listed here '
+      'by name.',
 );
+
+/// No signal, and what was scanned or typed is not a ticket code: refused
+/// on the phone, as the server would, and not saved.
+const offlineNotATicketCard = OutcomeCard(
+  tone: GateTone.refuse,
+  tag: 'Not recognised',
+  title: "That isn't a ticket code.",
+  sub: 'NOT A TICKET CODE · NOT SAVED',
+  note: 'Type the ticket code printed under the QR (MOA-XXXXX-XXXXX), '
+      'or try the scan again.',
+);
+
+/// No signal, and an admission number: it never lets anyone in, and
+/// finding whose it is needs the server.
+const offlineAdmissionNumberCard = OutcomeCard(
+  tone: GateTone.refuse,
+  tag: 'Admission number',
+  title: "That's an admission number, not a ticket code.",
+  sub: 'NOT A TICKET CODE · NOT SAVED',
+  note: 'An admission number does not let anyone in by itself, and finding '
+      'whose it is needs the signal. Ask for the ticket code under the QR '
+      '(MOA-XXXXX-XXXXX).',
+);
+
+/// No signal, and this phone has had the ticket already: saved here at
+/// [at] and not yet sent, or seen through this phone to be checked in at
+/// [at] ([checkedIn]). Refused, and not saved again.
+OutcomeCard offlineRepeatCard(DateTime at, {bool checkedIn = false}) =>
+    OutcomeCard(
+      tone: GateTone.refuse,
+      tag: checkedIn ? 'Already in' : 'Already scanned',
+      title: checkedIn
+          ? 'Already checked in at ${_clock(at)}.'
+          : 'Already scanned on this phone at ${_clock(at)}.',
+      sub: 'NO SIGNAL · NOT SAVED AGAIN',
+      note: 'A ticket lets one person in. Unless this is the person who came '
+          "through at ${_clock(at)}, don't let them in on it.",
+    );
 
 /// A saved scan the server did not admit: who or which ticket, and why.
 class ReplayProblem {
@@ -184,9 +226,9 @@ class ReplayProblem {
   final DateTime? scannedAt;
 }
 
-/// What became of the scans saved while the phone had no signal. Every
-/// guest behind them was let in at the time, so the ones the server did not
-/// admit are listed by name, each with why, until the volunteer has read
+/// What became of the scans saved while the phone had no signal. The guests
+/// behind them may have been let in at the time, so the ones the server did
+/// not admit are listed by name, each with why, until the volunteer has read
 /// them; the admissions are only counted.
 class ReplayReport {
   const ReplayReport({

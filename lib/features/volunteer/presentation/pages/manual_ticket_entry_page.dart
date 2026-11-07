@@ -9,7 +9,8 @@ import 'package:finnet/features/volunteer/presentation/widgets/gate_outcome_card
 /// Check someone in by typing their ticket code, when the QR won't scan.
 ///
 /// The same door as the camera's (the gate console, [GateController]): the
-/// code is checked in at once, saved on the phone when there is no signal,
+/// code is checked in at once -- with no signal, refused on the phone when
+/// it is not a ticket code or was had already, else saved as unverified --
 /// and the answer shows under the field. Only the ticket code
 /// (MOA-7K3QF-X9PWM) checks anyone in; an admission number printed beside
 /// the QR finds whose it is, to check them in by hand.
@@ -48,9 +49,10 @@ class _ManualTicketEntryPageState extends ConsumerState<ManualTicketEntryPage> {
     await _gate.scan(_ticketController.text.trim());
     if (!mounted) return;
     final card = ref.read(gateControllerProvider(widget.eventId)).card;
-    // Let in (or saved to send): the field is ready for the next one.
+    // Let in (or saved to send, unverified): the field is ready for the
+    // next one.
     final tone = card?.card.tone;
-    if (tone == GateTone.admit || tone == GateTone.queued) {
+    if (tone == GateTone.admit || tone == GateTone.unverified) {
       _ticketController.clear();
     }
   }

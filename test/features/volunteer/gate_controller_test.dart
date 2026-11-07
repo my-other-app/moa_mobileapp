@@ -5,6 +5,7 @@ import 'package:finnet/features/volunteer/domain/gate_copy.dart';
 import 'package:finnet/features/volunteer/presentation/providers/gate_controller.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 
 import 'volunteer_fakes.dart';
 
@@ -102,7 +103,7 @@ void main() {
   });
 
   group('no signal', () {
-    test('the scan is saved on the phone and shown as saved, not admitted',
+    test('a ticket code is saved on the phone and shown as unverified',
         () async {
       await door.start();
       api.scanAnswers.add(noSignal('/scan'));
@@ -111,8 +112,11 @@ void main() {
 
       final card = door.state.card!;
       expect(card.queued, isTrue);
-      expect(card.card.tone, GateTone.queued);
+      expect(card.card.tone, GateTone.unverified);
+      expect(card.card.tag, 'Unverified');
       expect(card.card.title, isNot(contains('welcome')));
+      expect(card.card.note, isNot(contains('Let them in')));
+      expect(card.card.note, contains('Check their name or ID'));
       expect(door.state.queued, 1);
       final saved = (await queue.all(7)).single;
       expect(saved.code, 'MOA-4KD9W-22XQZ');
@@ -134,6 +138,157 @@ void main() {
       await door.scan('MOA-4KD9W-22XQZ');
 
       expect(door.state.queued, 1);
+    });
+
+    test('typed text that is not a ticket code is refused, not saved',
+        () async {
+      await door.start();
+      api.scanAnswers.add(noSignal('/scan'));
+
+      for (final junk in ['hello', 'https://example.com/x', 'MOA-HELLO']) {
+        await door.scan(junk);
+        final card = door.state.card!;
+        expect(card.queued, isFalse, reason: junk);
+        expect(card.card.tone, GateTone.refuse, reason: junk);
+        expect(card.card.title, "That isn't a ticket code.", reason: junk);
+      }
+      expect(await queue.all(7), isEmpty);
+      expect(door.state.queued, 0);
+    });
+
+    test('an admission number is refused, not saved', () async {
+      await door.start();
+      api.scanAnswers.add(noSignal('/scan'));
+
+      await door.scan('MOA-0042-E7');
+
+      expect(door.state.card!.card.tone, GateTone.refuse);
+      expect(door.state.card!.card.tag, 'Admission number');
+      expect(await queue.all(7), isEmpty);
+    });
+
+    test('a 502 refuses a non-ticket as well', () async {
+      await door.start();
+      api.scanAnswers.add(DioException(
+        requestOptions: RequestOptions(path: '/scan'),
+        type: DioExceptionType.badResponse,
+        response: Response(
+            requestOptions: RequestOptions(path: '/scan'), statusCode: 503),
+      ));
+
+      await door.scan('not a ticket');
+
+      expect(door.state.card!.card.tone, GateTone.refuse);
+      expect(await queue.all(7), isEmpty);
+    });
+
+    test('a registration id is a ticket: saved, unverified', () async {
+      await door.start();
+      api.scanAnswers.add(noSignal('/scan'));
+
+      await door.scan('3f2a9c1e-0b4d-4e5f-8a6b-7c8d9e0f1a2b');
+
+      expect(door.state.card!.card.tone, GateTone.unverified);
+      expect(door.state.queued, 1);
+    });
+
+    test('the same ticket twice is refused the second time, with when',
+        () async {
+      await door.start();
+      api.scanAnswers.add(noSignal('/scan'));
+
+      await door.scan('MOA-4KD9W-22XQZ');
+      expect(door.state.card!.card.tone, GateTone.unverified);
+      // Typed in lower case, it is the same ticket.
+      await door.scan(' moa-4kd9w-22xqz ');
+
+      final card = door.state.card!;
+      expect(card.queued, isFalse);
+      expect(card.card.tone, GateTone.refuse);
+      expect(card.card.tag, 'Already scanned');
+      final at = DateFormat('HH:mm')
+          .format(DateTime.utc(2026, 10, 25, 9, 30).toLocal());
+      expect(card.card.title, 'Already scanned on this phone at $at.');
+      expect(door.state.queued, 1);
+      expect((await queue.all(7)).single.code, 'MOA-4KD9W-22XQZ');
+      // Asked about each time: the server still has the last word.
+      expect(api.scans, hasLength(2));
+    });
+
+    test('a saved scan from before a restart still counts', () async {
+      await queue.add(QueuedScan(
+          eventId: 7,
+          code: 'MOA-4KD9W-22XQZ',
+          clientRef: 'old-ref-xxxxxxxx',
+          scannedAt: DateTime.utc(2026, 10, 25, 9)));
+      api.batchError = noSignal('/scan-batch');
+      await door.start();
+      api.scanAnswers.add(noSignal('/scan'));
+
+      await door.scan('MOA-4KD9W-22XQZ');
+
+      expect(door.state.card!.card.tag, 'Already scanned');
+      expect(door.state.queued, 1);
+    });
+
+    test('another event\'s saved scan is not this one\'s', () async {
+      await queue.add(QueuedScan(
+          eventId: 8,
+          code: 'MOA-4KD9W-22XQZ',
+          clientRef: 'other-ref-xxxxxxx',
+          scannedAt: DateTime.utc(2026, 10, 25, 9)));
+      await door.start();
+      api.scanAnswers.add(noSignal('/scan'));
+
+      await door.scan('MOA-4KD9W-22XQZ');
+
+      expect(door.state.card!.card.tone, GateTone.unverified);
+    });
+
+    test('a ticket checked in through this phone is refused offline later',
+        () async {
+      await door.start();
+      api.scanAnswers
+        ..add(scanned(ScanOutcome.checkedIn, who: guest()))
+        ..add(noSignal('/scan'));
+
+      await door.scan('MOA-4KD9W-22XQZ');
+      expect(door.state.card!.card.tone, GateTone.admit);
+      await door.scan('MOA-4KD9W-22XQZ');
+
+      expect(door.state.card!.card.tone, GateTone.refuse);
+      expect(door.state.card!.card.tag, 'Already in');
+      expect(await queue.all(7), isEmpty);
+    });
+
+    test('so is one checked in by hand, or sent from the queue', () async {
+      await door.start();
+      api.handAnswer = scanned(ScanOutcome.checkedIn,
+          who: guest(id: 'reg-2', ticket: 'MOA-HHHHH-HHHHH'));
+      await door.checkInByHand(guest(id: 'reg-2', ticket: 'MOA-HHHHH-HHHHH'));
+
+      api.scanAnswers.add(noSignal('/scan'));
+      await door.scan('MOA-QQQQQ-QQQQQ');
+      await door.drain();
+      expect(door.state.queued, 0);
+
+      await door.scan('MOA-HHHHH-HHHHH');
+      expect(door.state.card!.card.tag, 'Already in');
+      await door.scan('MOA-QQQQQ-QQQQQ');
+      expect(door.state.card!.card.tag, 'Already in');
+      expect(await queue.all(7), isEmpty);
+    });
+
+    test('a ticket the server refused is not remembered as in', () async {
+      await door.start();
+      api.scanAnswers
+        ..add(scanned(ScanOutcome.unpaid, who: guest()))
+        ..add(noSignal('/scan'));
+
+      await door.scan('MOA-4KD9W-22XQZ');
+      await door.scan('MOA-4KD9W-22XQZ');
+
+      expect(door.state.card!.card.tone, GateTone.unverified);
     });
 
     test('the console opens without signal: scans are still saved', () async {
