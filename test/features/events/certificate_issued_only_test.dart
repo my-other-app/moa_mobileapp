@@ -30,7 +30,9 @@ import 'events_fakes.dart';
 
 const _past = '/events/list?is_registered=true&is_ended=true&offset=0&limit=10';
 
-const _certificateUrl = 'https://myotherapp.in/certificates/MOA-4KD9W';
+/// The certificate's public page, by its public id, as the server sends it.
+const _publicId = 'q7Lk2Vb9_xR4mT0aZ-c8NwPe';
+const _certificateUrl = 'https://myotherapp.in/certificates/$_publicId';
 
 Map<String, dynamic> _row(
   int id, {
@@ -54,6 +56,7 @@ Map<String, dynamic> _row(
       'has_certificate': hasCertificate,
       'certificate_revoked': revoked,
       if (hasCertificate) 'certificate_url': _certificateUrl,
+      if (hasCertificate) 'certificate_no': 'CERT-7K3QF-X9PWM',
     };
 
 /// The event page's own payload (`/events/info/{id}`) for the same event.
@@ -163,7 +166,7 @@ void main() {
       await tester.tap(find.text('VIEW CERTIFICATE'));
       await _settle(tester);
 
-      expect(went, ['/certificates/MOA-4KD9W']);
+      expect(went, ['/certificates/$_publicId']);
     });
 
     testWidgets('and the organiser took it back: said as withdrawn, not as '
@@ -201,7 +204,7 @@ void main() {
       await tester.tap(find.text('VIEW CERTIFICATE'));
       await _settle(tester);
 
-      expect(went, ['/certificates/MOA-4KD9W']);
+      expect(went, ['/certificates/$_publicId']);
     });
 
     testWidgets('whose certificate was revoked: reads as withdrawn',

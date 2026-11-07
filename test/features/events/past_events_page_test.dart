@@ -77,6 +77,7 @@ Future<List<(String, Object?)>> _pump(WidgetTester tester, Widget page) async {
     GoRoute(path: '/', builder: (_, __) => Scaffold(body: page)),
     GoRoute(path: '/events/:id', builder: (_, s) => stub(s)),
     GoRoute(path: '/certificates/:id', builder: (_, s) => stub(s)),
+    GoRoute(path: '/profile/certificates/:id', builder: (_, s) => stub(s)),
   ]);
   await tester.pumpWidget(ProviderScope(
     overrides: [
@@ -88,6 +89,10 @@ Future<List<(String, Object?)>> _pump(WidgetTester tester, Widget page) async {
   await _settle(tester);
   return went;
 }
+
+/// A certificate's public page, by its public id, as the server sends it.
+const _publicId = 'q7Lk2Vb9_xR4mT0aZ-c8NwPe';
+const _certificateUrl = 'https://myotherapp.in/certificates/$_publicId';
 
 void main() {
   late RouteAdapter api;
@@ -104,7 +109,7 @@ void main() {
               name: 'Hack Night',
               attended: true,
               hasCertificate: true,
-              certificateUrl: 'https://myotherapp.in/certificates/T-1'),
+              certificateUrl: _certificateUrl),
           _event(2, name: 'Design Jam'),
         ],
       });
@@ -128,7 +133,7 @@ void main() {
           _event(1,
               attended: true,
               hasCertificate: true,
-              certificateUrl: 'https://myotherapp.in/certificates/T-1'),
+              certificateUrl: _certificateUrl),
         ],
       });
       final went = await _pump(tester, const PastEventsPage());
@@ -136,7 +141,26 @@ void main() {
       await tester.tap(find.text('VIEW CERTIFICATE'));
       await _settle(tester);
 
-      expect(went.single.$1, '/certificates/T-1');
+      expect(went.single.$1, '/certificates/$_publicId');
+    });
+
+    testWidgets(
+        'an older saved address by ticket id opens the person\'s own '
+        'certificate screen, never the public route', (tester) async {
+      api.on('GET', _past, {
+        'items': [
+          _event(1,
+              attended: true,
+              hasCertificate: true,
+              certificateUrl: 'https://myotherapp.in/certificates/MOA-1'),
+        ],
+      });
+      final went = await _pump(tester, const PastEventsPage());
+
+      await tester.tap(find.text('VIEW CERTIFICATE'));
+      await _settle(tester);
+
+      expect(went.single.$1, '/profile/certificates/MOA-1');
     });
 
     testWidgets('VIEW EVENT opens the event, saying it was missed',
@@ -160,7 +184,7 @@ void main() {
         'items': [
           _event(3,
               hasCertificate: true,
-              certificateUrl: 'https://myotherapp.in/certificates/S-3'),
+              certificateUrl: _certificateUrl),
         ],
       });
       await _pump(tester, const PastEventsPage());

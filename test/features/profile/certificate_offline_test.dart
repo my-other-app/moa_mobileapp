@@ -44,8 +44,13 @@ final _render = File('test/fixtures/certificate_render.png').readAsBytesSync();
 
 const _id = 'MOA-9ARSE-J4TEG';
 
+/// The certificate's public id, the end of its page's address.
+const _publicId = 'q7Lk2Vb9_xR4mT0aZ-c8NwPe';
+
 final _certificate = Certificate(
   ticketId: _id,
+  number: 'CERT-4TQ8B-ZKM2R',
+  shareUrl: 'https://myotherapp.in/certificates/$_publicId',
   eventId: 29,
   eventName: 'Rapid Chess Open and Board Game Night',
   clubName: 'Respawn Room',
@@ -214,6 +219,12 @@ void main() {
       final online = await documents.fetchImage(_id);
       expect(online.current, isTrue);
       expect(online.bytes, _render);
+      // By the ticket id, which the server answers only for its holder:
+      // always asked signed in.
+      final asked = server.requests.single;
+      expect(asked.path, endsWith(CertificateDocuments.imagePathFor(_id)));
+      expect(asked.headers['Authorization'], 'Bearer a');
+      expect(asked.extra['skipAuth'], isNot(true));
 
       server.offline = true;
       expect(await documents.savedImage(_id), _render);
@@ -267,6 +278,12 @@ void main() {
             CertificateDocuments.imagePathFor(_id),
             CertificateDocuments.pdfPathFor(_id),
           ]));
+
+      // Both asked signed in: they are the holder's by ticket id.
+      for (final asked in server.requests) {
+        expect(asked.headers['Authorization'], 'Bearer a',
+            reason: asked.path);
+      }
 
       // Never opened, and now offline: both open.
       server.offline = true;
@@ -333,6 +350,12 @@ void main() {
       expect(find.byKey(CertificateRender.fallbackNoticeKey), findsNothing);
       // The PDF too, for Download and Share later with no network.
       expect(documents.pdfsKept, [_id]);
+      // Shown from the bytes fetched signed in; the picture is never
+      // fetched by an address, which would go without the session.
+      final shown =
+          tester.widget<RenderedDocumentImage>(find.byType(RenderedDocumentImage));
+      expect(shown.image, isA<MemoryImage>());
+      expect(Uri.parse(shown.url).hasScheme, isFalse);
 
       // And it is drawn: at the render's own shape.
       await tester.runAsync(() async {
@@ -418,7 +441,11 @@ void main() {
       }
 
       expect(shared.single.$2, '/kept/certificate_$_id.pdf');
-      expect(shared.single.$1, contains('CERT-9ARSE-J4TEG'));
+      expect(shared.single.$1,
+          contains('https://myotherapp.in/certificates/$_publicId'));
+      expect(shared.single.$1, contains('CERT-4TQ8B-ZKM2R'));
+      // Nothing of the ticket goes with it.
+      expect(shared.single.$1, isNot(contains('9ARSE-J4TEG')));
       await tester.pumpWidget(const SizedBox());
       status.reportOnline();
     });
@@ -512,7 +539,7 @@ void main() {
               clubSlug: 'respawn-room',
               eventSlug: 'rapid-chess-open',
               status: EventCardStatus.attended,
-              certificateUrl: 'https://myotherapp.in/certificates/$_id',
+              certificateUrl: 'https://myotherapp.in/certificates/$_publicId',
             ),
           ),
         ),
@@ -534,19 +561,27 @@ void main() {
     await tester.tap(find.text('VIEW CERTIFICATE'));
     await tester.pumpAndSettle();
 
-    expect(opened, [_id]);
+    expect(opened, [_publicId]);
     expect(find.text('the certificate, in the app'), findsOneWidget);
   });
 
   test("a certificate's address gives its id; anything else none", () {
-    expect(certificateIdFromUrl('https://myotherapp.in/certificates/$_id'), _id);
-    expect(certificateIdFromUrl('/api/v1/events/certificates/$_id'), _id);
-    expect(certificateIdFromUrl('/api/v1/events/certificates/$_id/pdf'), _id);
-    expect(
-        certificateIdFromUrl('https://myotherapp.in/certificates/$_id?x=1'), _id);
+    const page = 'https://myotherapp.in/certificates/$_publicId';
+    expect(certificateIdFromUrl(page), _publicId);
+    expect(certificateIdFromUrl('/api/v1/events/certificates/$_publicId'),
+        _publicId);
+    expect(certificateIdFromUrl('/api/v1/events/certificates/$_publicId/pdf'),
+        _publicId);
+    expect(certificateIdFromUrl('$page?x=1'), _publicId);
     expect(certificateIdFromUrl('https://myotherapp.in/tickets/$_id'), isNull);
     expect(certificateIdFromUrl(null), isNull);
-    expect(certificateRoute(_id), '/certificates/$_id');
+    expect(certificatePublicIdFromUrl(page), _publicId);
+    // An older address by ticket id names a certificate, but no public id.
+    expect(certificateIdFromUrl('https://myotherapp.in/certificates/$_id'), _id);
+    expect(certificatePublicIdFromUrl('https://myotherapp.in/certificates/$_id'),
+        isNull);
+    expect(certificateRoute(_publicId), '/certificates/$_publicId');
+    expect(ownCertificateRoute(_id), '/profile/certificates/$_id');
   });
 
   test("signing out deletes the kept certificates and the pins: they are the "

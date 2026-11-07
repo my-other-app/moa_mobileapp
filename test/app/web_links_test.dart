@@ -49,6 +49,15 @@ void main() {
       expect(at('https://myotherapp.in/play/123'), '/events/123/live/quiz');
     });
 
+    test("a certificate's QR (the verifier) opens the app's verifier", () {
+      expect(at('https://myotherapp.in/verify/CERT-7K3QF-X9PWM'),
+          '/verify/certificates/CERT-7K3QF-X9PWM');
+      expect(at('https://myotherapp.in/verify/certificates/CERT-7K3QF-X9PWM'),
+          '/verify/certificates/CERT-7K3QF-X9PWM');
+      expect(at('https://myotherapp.in/verify'), '/verify/certificates');
+      expect(at('https://myotherapp.in/verify/a/b'), isNull);
+    });
+
     test('registration, the competition and the survey open as they are', () {
       expect(at('https://myotherapp.in/events/hack-night-04/register'),
           '/events/hack-night-04/register');

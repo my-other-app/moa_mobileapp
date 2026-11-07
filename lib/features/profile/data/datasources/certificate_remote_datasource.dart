@@ -21,11 +21,13 @@ abstract class CertificateRemoteDataSource {
   /// The list as last saved on this phone, or null. No network.
   Future<List<Certificate>?> savedCertificates();
 
-  /// How this certificate should look.
+  /// How this certificate should look. By its ticket id, signed in: the
+  /// server answers only the holder.
   Future<CertificateStyle> getStyle(String ticketId);
 
   /// `GET /verify/certificates/{code}`: public, no session. [code] is
-  /// already in the server's terms ([certificateCodeFrom]).
+  /// already in the server's terms ([certificateCodeFrom]): a printed
+  /// number or a certificate's public id, never a ticket id.
   Future<CertificateVerification> verify(String code);
 }
 

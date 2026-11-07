@@ -234,6 +234,70 @@ void main() {
       ]);
     });
 
+    test(
+        'certificates: a list saved by an older server -- no number, a page '
+        'by ticket id -- still opens, with no number and nothing to share; '
+        "the fresh one has the server's", () async {
+      final server = _Server();
+      final cache = _memoryCache();
+      final dio = _dio(server, cache);
+      Map<String, dynamic> issued(Map<String, dynamic> extra) => {
+            ..._event(1, 'Talk'),
+            'ticket_id': 'MOA-9ARSE-J4TEG',
+            'is_attended': true,
+            'has_certificate': true,
+            ...extra,
+          };
+      await _save(cache, dio, '/events/list', {
+        'items': [
+          issued({
+            'certificate_url':
+                'https://myotherapp.in/certificates/MOA-9ARSE-J4TEG',
+          })
+        ]
+      }, query: {
+        'is_registered': true,
+        'limit': 100,
+        'offset': 0,
+      }, scope: CacheScope.personal);
+      server.routes['/api/v1/events/list'] = {
+        'items': [
+          issued({
+            'certificate_url':
+                'https://myotherapp.in/certificates/q7Lk2Vb9_xR4mT0aZ-c8NwPe',
+            'certificate_no': 'CERT-4TQ8B-ZKM2R',
+          })
+        ]
+      };
+      final container = ProviderContainer(overrides: [
+        certificateRemoteDataSourceProvider.overrideWithValue(
+            CertificateRemoteDataSourceImpl(dio, cache: cache)),
+      ]);
+      addTearDown(container.dispose);
+
+      final seen = <List<(String, String?, String?)>>[];
+      container.listen(certificatesProvider, (_, next) {
+        if (next.hasValue) {
+          seen.add([
+            for (final c in next.value!) (c.ticketId, c.number, c.shareUrl)
+          ]);
+        }
+      }, fireImmediately: true);
+      await _until(() => seen.length >= 2);
+
+      expect(seen, [
+        // Still filed under the ticket id, for the holder's own copies.
+        [('MOA-9ARSE-J4TEG', null, null)],
+        [
+          (
+            'MOA-9ARSE-J4TEG',
+            'CERT-4TQ8B-ZKM2R',
+            'https://myotherapp.in/certificates/q7Lk2Vb9_xR4mT0aZ-c8NwPe',
+          )
+        ],
+      ]);
+    });
+
     test('topics: a 304 confirms the saved catalogue', () async {
       final server = _Server()
         ..etags['/api/v1/interests/list'] = '"t1"';

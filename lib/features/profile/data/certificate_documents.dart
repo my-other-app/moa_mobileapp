@@ -63,6 +63,11 @@ class CertificateDocuments {
   static String pdfNameFor(String ticketId) =>
       'certificate_${DocumentCache.safeName(ticketId)}.pdf';
 
+  /// The render's API path by ticket id. Asked only through the app's
+  /// Dio, signed in: by ticket id the server answers only the holder (or
+  /// their club, or an admin), so this is never an address for a browser,
+  /// a share sheet or a picture fetched by URL. The public equivalent goes
+  /// by the certificate's public id (Certificate.publicPdfUrl).
   static String imagePathFor(String ticketId) =>
       '/events/certificates/$ticketId/image';
 

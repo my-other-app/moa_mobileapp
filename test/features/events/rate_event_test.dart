@@ -38,7 +38,8 @@ Map<String, dynamic> _attended({
       'is_attended': true,
       'is_paid': true,
       'ticket_url': 'https://myotherapp.in/tickets/T-1',
-      'certificate_url': 'https://myotherapp.in/certificates/T-1',
+      'certificate_url':
+          'https://myotherapp.in/certificates/q7Lk2Vb9_xR4mT0aZ-c8NwPe',
       if (userRating != null) 'user_rating': userRating,
     };
 

@@ -3032,8 +3032,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     // Issued, not revoked, and its id is in hand: there is a certificate
     // to open. Without an id there is nothing to open, so it reads as a
     // certificate still to come rather than a button that goes nowhere.
-    final id = certificateIdFromUrl(certificateUrl);
-    final open = hasCertificate && id != null;
+    final location = certificateLocationFor(certificateUrl);
+    final open = hasCertificate && location != null;
     final revoked = certificateRevoked && !hasCertificate;
     return Container(
       key: const ValueKey('event-certificate-sheet'),
@@ -3081,7 +3081,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                   // The certificate inside the app, as the club designed it
                   // and saved for offline -- not the website's page, which
                   // draws one stand-in design for every club.
-                  context.push(certificateRoute(id));
+                  context.push(location);
                 },
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF2C333D),

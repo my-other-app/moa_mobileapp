@@ -51,7 +51,16 @@ class EventInfo {
   final bool isRegistered;
   final bool isAttended;
   final String? ticketUrl;
+
+  /// The certificate's public page (`certificate_url`), by its public id,
+  /// once it is issued and not revoked; null otherwise. An event saved on
+  /// the phone by an older build can hold an address by ticket id instead
+  /// (see `certificateLocationFor`).
   final String? certificateUrl;
+
+  /// The number printed on the certificate (`certificate_no`), with the
+  /// same condition; null otherwise.
+  final String? certificateNo;
 
   /// The organiser issued this person a certificate for the event and has
   /// not revoked it (`has_certificate`). Checking in is not enough: an
@@ -135,6 +144,7 @@ class EventInfo {
     this.isAttended = false,
     this.ticketUrl,
     this.certificateUrl,
+    this.certificateNo,
     this.hasCertificate = false,
     this.certificateRevoked = false,
     this.userRating,
@@ -209,6 +219,7 @@ class EventInfo {
       isAttended: jsonBool(json['is_attended']) ?? false,
       ticketUrl: jsonString(json['ticket_url']),
       certificateUrl: jsonString(json['certificate_url']),
+      certificateNo: Certificate.numberFrom(json),
       // The one answer to "is there a certificate", shared with My
       // certificates and the lists' cards.
       hasCertificate: Certificate.holdsCertificate(json),
