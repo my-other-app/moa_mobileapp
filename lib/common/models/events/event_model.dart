@@ -375,12 +375,55 @@ class Interest {
       );
 }
 
+/// When a question is shown: the answer to an earlier choice question
+/// ([key]) is one of [anyOf] -- for a checkbox question, any one of the
+/// boxes ticked is (conditional-questions-contract.md §2).
+class QuestionCondition {
+  /// The parent question's `key`.
+  final String key;
+
+  /// The parent's answers that reveal the question.
+  final List<String> anyOf;
+
+  const QuestionCondition({required this.key, required this.anyOf});
+
+  /// `show_if`, or null when there is none (the question is always shown)
+  /// or it names no question.
+  static QuestionCondition? fromJson(Object? json) {
+    final map = jsonObject(json);
+    if (map == null) return null;
+    final key = jsonText(map['key']).trim();
+    if (key.isEmpty) return null;
+    final values = map['any_of'];
+    return QuestionCondition(
+      key: key,
+      anyOf: values is List
+          ? [
+              for (final value in values)
+                if (value != null) '$value'
+            ]
+          : const <String>[],
+    );
+  }
+}
+
 class AdditionalDetail {
   final String key;
   final String label;
   final String fieldType;
+
+  /// `required` as the server sends it. For a conditional question the
+  /// server always sends false -- an app older than conditions shows every
+  /// question, and must never be stopped by one that doesn't apply -- and
+  /// what the club set is in [requiredWhenShown]. Ask [requiredIfShown].
   final bool requiredField;
   final List<String> options;
+
+  /// `show_if`: when the question is shown. Null: always.
+  final QuestionCondition? showIf;
+
+  /// `required_when_shown`: what the club set, sent only with [showIf].
+  final bool? requiredWhenShown;
 
   AdditionalDetail({
     required this.key,
@@ -388,7 +431,14 @@ class AdditionalDetail {
     required this.fieldType,
     required this.requiredField,
     required this.options,
+    this.showIf,
+    this.requiredWhenShown,
   });
+
+  /// Whether the question must be answered while it is shown: for a
+  /// conditional question `required_when_shown`, otherwise `required`.
+  bool get requiredIfShown =>
+      showIf != null ? (requiredWhenShown ?? requiredField) : requiredField;
 
   factory AdditionalDetail.fromJson(Map<String, dynamic> json) {
     return AdditionalDetail(
@@ -401,6 +451,8 @@ class AdditionalDetail {
       options: json['options'] is List
           ? [for (final option in json['options'] as List) '$option']
           : const <String>[],
+      showIf: QuestionCondition.fromJson(json['show_if']),
+      requiredWhenShown: jsonBool(json['required_when_shown']),
     );
   }
 }

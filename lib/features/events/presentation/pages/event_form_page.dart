@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,7 @@ import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:finnet/features/events/presentation/utils/question_answers.dart';
 import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
 import 'package:finnet/features/events/presentation/widgets/merch_picker.dart';
+import 'package:finnet/features/events/presentation/widgets/revealed_question.dart';
 import 'package:finnet/features/events/presentation/widgets/registration_feedback.dart';
 import 'package:finnet/features/events/data/ticketing_api.dart';
 import 'package:finnet/features/events/domain/registration_request.dart';
@@ -26,6 +28,7 @@ import 'package:finnet/features/events/presentation/widgets/ticketing/discount_c
 import 'package:finnet/features/events/presentation/widgets/ticketing/ticket_type_picker.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/domain/event_page_rules.dart';
+import 'package:finnet/features/events/domain/question_visibility.dart';
 import 'package:finnet/features/events/presentation/utils/event_sign_in.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/register_bar_parts.dart';
 import 'package:finnet/features/payments/checkout.dart';
@@ -384,6 +387,53 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     }
   }
 
+  /// Every answer given so far, by question key, as it would be sent: a
+  /// picked date or time as picked, a choice as chosen, typed text as typed.
+  Map<String, Object?> _answers() => {
+        for (final entry in _additionalTextControllers.entries)
+          if (!_pickedMoments.containsKey(entry.key))
+            entry.key: entry.value.text,
+        ..._pickedAnswers,
+        ..._additionalSelectValues,
+      };
+
+  /// The questions shown for the answers so far
+  /// (conditional-questions-contract.md §3).
+  List<AdditionalDetail> get _shownQuestions =>
+      visibleQuestions(_questions, _answers());
+
+  /// [value] chosen for [detail] (a dropdown, radio buttons or tick boxes).
+  /// A choice can show or hide later questions: one that no longer applies
+  /// loses its answer at once, so what is on screen is what is sent, and a
+  /// screen reader hears what came and went. Focus stays where it is.
+  void _choose(AdditionalDetail detail, String? value) {
+    final before = _shownQuestions;
+    setState(() {
+      _additionalSelectValues[detail.key] = value;
+      _answerErrors.remove(detail.key);
+      _forgetHiddenAnswers();
+    });
+    final message = visibilityChangeAnnouncement(before, _shownQuestions);
+    if (message != null && mounted) {
+      SemanticsService.sendAnnouncement(
+          View.of(context), message, Directionality.of(context));
+    }
+  }
+
+  /// Clears the answer to every question the answers now hide -- and so to
+  /// its own follow-ups, which are hidden with it.
+  void _forgetHiddenAnswers() {
+    final shown = visibleQuestionKeys(_questions, _answers());
+    for (final detail in _questions) {
+      if (shown.contains(detail.key)) continue;
+      _additionalTextControllers[detail.key]?.clear();
+      _pickedAnswers.remove(detail.key);
+      _pickedMoments.remove(detail.key);
+      _additionalSelectValues.remove(detail.key);
+      _answerErrors.remove(detail.key);
+    }
+  }
+
   /// Pre-fill form data from user profile.
   ///
   /// The profile now arrives asynchronously, which it did not before -- the
@@ -429,29 +479,26 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  overflow: TextOverflow.ellipsis,
-                  color: Color(0xFF2C333D),
-                  fontSize: 12,
-                  fontFamily: 'DMSans',
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              if (isRequired)
-                Text(
-                  ' *',
-                  style: TextStyle(
-                    color: Color(0xFFCC0000),
-                    fontSize: 12,
-                    fontFamily: 'DMSans',
-                    fontWeight: FontWeight.w400,
+          // Wraps rather than running off the side: a long question at a
+          // large text size used to overflow the row.
+          Text.rich(
+            TextSpan(
+              text: label,
+              children: [
+                if (isRequired)
+                  const TextSpan(
+                    text: ' *',
+                    style: TextStyle(color: Color(0xFFCC0000)),
                   ),
-                ),
-            ],
+              ],
+            ),
+            semanticsLabel: isRequired ? '$label, required' : label,
+            style: const TextStyle(
+              color: Color(0xFF2C333D),
+              fontSize: 12,
+              fontFamily: 'DMSans',
+              fontWeight: FontWeight.w400,
+            ),
           ),
           const SizedBox(height: 4),
           child,
@@ -555,7 +602,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     };
     return _buildInputField(
       label: detail.label,
-      isRequired: detail.requiredField,
+      isRequired: detail.requiredIfShown,
       errorText: _answerErrors[detail.key],
       child: TextFormField(
         controller: _additionalTextControllers[detail.key],
@@ -593,7 +640,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         ),
         validator: (_) {
           final picked = _pickedAnswers[detail.key];
-          if (detail.requiredField && (picked == null || picked.isEmpty)) {
+          if (detail.requiredIfShown && (picked == null || picked.isEmpty)) {
             return 'Please pick ${detail.label.toLowerCase()}';
           }
           return null;
@@ -614,7 +661,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     return FormField<String>(
       validator: (_) {
         final picked = _additionalSelectValues[detail.key];
-        if (detail.requiredField && (picked == null || picked.isEmpty)) {
+        if (detail.requiredIfShown && (picked == null || picked.isEmpty)) {
           return single
               ? 'Please tick this box'
               : 'Please choose ${detail.label.toLowerCase()}';
@@ -624,10 +671,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       builder: (field) {
         final selected = _additionalSelectValues[detail.key];
         void choose(String? value) {
-          setState(() {
-            _additionalSelectValues[detail.key] = value;
-            _answerErrors.remove(detail.key);
-          });
+          _choose(detail, value);
           field.didChange(value);
         }
 
@@ -667,7 +711,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         }
         return _buildInputField(
           label: detail.label,
-          isRequired: detail.requiredField,
+          isRequired: detail.requiredIfShown,
           errorText: field.errorText ?? _answerErrors[detail.key],
           child: options,
         );
@@ -687,7 +731,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     if (control == QuestionControl.text) {
       return _buildInputField(
         label: detail.label,
-        isRequired: detail.requiredField,
+        isRequired: detail.requiredIfShown,
         errorText: _answerErrors[detail.key],
         child: TextFormField(
           controller: _additionalTextControllers[detail.key],
@@ -731,7 +775,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             ),
           ),
           validator: (value) {
-            if (detail.requiredField &&
+            if (detail.requiredIfShown &&
                 (value == null || value.trim().isEmpty)) {
               return 'Please enter ${detail.label.toLowerCase()}';
             }
@@ -744,7 +788,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     } else if (control == QuestionControl.select) {
       return _buildInputField(
         label: detail.label,
-        isRequired: detail.requiredField,
+        isRequired: detail.requiredIfShown,
         errorText: _answerErrors[detail.key],
         child: DropdownButtonFormField2<String>(
           value: _additionalSelectValues[detail.key],
@@ -832,14 +876,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               ),
             );
           }).toList(),
-          onChanged: (String? newValue) {
-            setState(() {
-              _additionalSelectValues[detail.key] = newValue;
-              _answerErrors.remove(detail.key);
-            });
-          },
+          onChanged: (String? newValue) => _choose(detail, newValue),
           validator: (value) {
-            if (detail.requiredField && value == null) {
+            if (detail.requiredIfShown && value == null) {
               return 'Please select ${detail.label.toLowerCase()}';
             }
             return null;
@@ -1036,7 +1075,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       });
     }
     final refused = invalidAnswersOf(
-        error, _questions.map((detail) => detail.key));
+        error, _shownQuestions.map((detail) => detail.key));
     if (refused != null) {
       _showAnswerErrors(refused, serverMessageOf(error));
       return;
@@ -1152,6 +1191,11 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             additionalDetailsMap[key] = value;
           }
         });
+
+        // Never an answer to a question that doesn't apply: they are
+        // cleared as they hide, and this makes sure of it.
+        additionalDetailsMap =
+            withoutHiddenAnswers(_questions, additionalDetailsMap);
 
         // Determine organization name to send
         String? organizationName;
@@ -1385,6 +1429,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     if (profileState.profile != null) {
       _prefillFromProfile(profileState.profile!);
     }
+
+    final shown = visibleQuestionKeys(_questions, _answers());
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -1765,14 +1811,19 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                         ),
                       ),
 
-                      // Additional dynamic fields
-                      for (final (i, detail)
-                          in _questions.indexed)
-                        Padding(
-                          key: _questionKeys[i],
-                          padding: const EdgeInsets.only(top: 24),
-                          child: _buildAdditionalField(detail),
-                        ),
+                      // The event's own questions, in order: those the
+                      // answers so far show. A follow-up appears as its
+                      // answer is chosen.
+                      for (final (i, detail) in _questions.indexed)
+                        if (shown.contains(detail.key))
+                          Padding(
+                            key: _questionKeys[i],
+                            padding: const EdgeInsets.only(top: 24),
+                            child: detail.showIf == null
+                                ? _buildAdditionalField(detail)
+                                : RevealedQuestion(
+                                    child: _buildAdditionalField(detail)),
+                          ),
 
                       // The shelf: what the event sells with its ticket.
                       // Not for a request: it carries no add-ons.

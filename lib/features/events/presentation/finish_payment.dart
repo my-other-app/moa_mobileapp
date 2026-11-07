@@ -1,4 +1,5 @@
 import 'package:finnet/common/models/events/event_model.dart';
+import 'package:finnet/features/events/domain/question_visibility.dart';
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/error/failures.dart';
 import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
@@ -103,7 +104,9 @@ class FinishPayment {
     required String name,
     required String email,
   }) =>
-      questions.any((q) => q.requiredField) ||
+      // Nothing answered yet, so a follow-up question is hidden: only what
+      // the form asks of everyone counts.
+      anyRequiredUnanswered(questions, const {}) ||
       name.trim().length < 3 ||
       email.trim().isEmpty;
 

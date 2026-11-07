@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/config/env/env.dart';
+import 'package:finnet/core/network/interceptors/app_version_interceptor.dart';
 import 'package:finnet/core/network/interceptors/auth_interceptor.dart';
 import 'package:finnet/core/network/interceptors/error_interceptor.dart';
 import 'package:finnet/core/network/interceptors/logging_interceptor.dart';
@@ -13,7 +14,7 @@ import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 
 /// Builds the single Dio instance used app-wide, with the full interceptor
-/// stack: one retry for a GET that never reached the server, the offline
+/// stack: the build's version on every request (`X-App-Version`), one retry for a GET that never reached the server, the offline
 /// state, saved answers revalidated by ETag (for GETs that ask), auth token
 /// injection + refresh-on-401, error handling, and debug
 /// logging.
@@ -52,6 +53,8 @@ Dio buildAppDio({NetworkStatus? status, String? baseUrl}) {
   // that survives the retry tells the app it is offline, and is then
   // answered from the saved copy if the request asked for one.
   dio.interceptors.addAll([
+    // First, so every request -- a retry too -- says which build sent it.
+    AppVersionInterceptor(),
     RetryInterceptor(dio),
     NetworkStatusInterceptor(network),
     ApiCacheInterceptor(),
