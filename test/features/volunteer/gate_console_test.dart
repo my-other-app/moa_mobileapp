@@ -4,6 +4,7 @@ import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/volunteer/data/gate_api.dart';
 import 'package:finnet/features/volunteer/data/gate_models.dart';
 import 'package:finnet/features/volunteer/data/scan_queue.dart';
+import 'package:finnet/features/volunteer/domain/gate_copy.dart';
 import 'package:finnet/features/volunteer/presentation/pages/manual_ticket_entry_page.dart';
 import 'package:finnet/features/volunteer/presentation/pages/volunteer_scanner_page.dart';
 import 'package:finnet/features/volunteer/presentation/providers/gate_controller.dart';
@@ -205,7 +206,10 @@ void main() {
 
       await show(tester, _code);
 
-      expect(find.text('No signal — saved on this phone.'), findsOneWidget);
+      expect(find.text("No signal — this ticket can't be checked right now."),
+          findsOneWidget);
+      expect(find.text('UNVERIFIED'), findsOneWidget);
+      expect(find.textContaining('Let them in'), findsNothing);
       expect(find.textContaining('1 scan saved on this phone'), findsOneWidget);
       expect(await queue.all(7), hasLength(1));
 
@@ -245,6 +249,55 @@ void main() {
       expect(find.text('Diya Nair'), findsOneWidget);
       expect(find.text('Revoked'), findsOneWidget);
       expect(find.textContaining('cancelled or refunded'), findsOneWidget);
+    });
+
+    testWidgets('an unverified scan stays until the volunteer closes it',
+        (tester) async {
+      api.scanAnswers.add(noSignal('/scan'));
+      await pump(tester);
+
+      await show(tester, _code);
+      await tester.pump(const Duration(seconds: 10));
+
+      expect(find.text('UNVERIFIED'), findsOneWidget);
+      final card = tester.widget<Icon>(find.descendant(
+          of: find.byType(GateOutcomeCard), matching: find.byType(Icon)).first);
+      expect(card.icon, isNot(gateToneStyle(GateTone.admit).icon));
+      expect(gateToneStyle(GateTone.unverified).border,
+          isNot(gateToneStyle(GateTone.admit).border));
+      await tester.tap(find.byKey(GateOutcomeCard.closeKey));
+      await tester.pump();
+      expect(find.text('UNVERIFIED'), findsNothing);
+    });
+
+    testWidgets('a QR that is not a ticket is refused, and not saved',
+        (tester) async {
+      api.scanAnswers.add(noSignal('/scan'));
+      await pump(tester);
+
+      await show(tester, 'https://example.com/free-entry');
+
+      expect(find.text("That isn't a ticket code."), findsOneWidget);
+      expect(find.text('UNVERIFIED'), findsNothing);
+      expect(await queue.all(7), isEmpty);
+      expect(find.textContaining('saved on this phone'), findsNothing);
+    });
+
+    testWidgets('the same ticket again is refused, with when it was scanned',
+        (tester) async {
+      api.scanAnswers.add(noSignal('/scan'));
+      await pump(tester);
+
+      await show(tester, _code);
+      // Another ticket in between, so the camera takes this one again.
+      await show(tester, 'MOA-AAAAA-AAAAA');
+      await show(tester, _code);
+
+      expect(find.textContaining('Already scanned on this phone at'),
+          findsOneWidget);
+      expect(find.text('UNVERIFIED'), findsNothing);
+      expect((await queue.all(7)).map((s) => s.code),
+          [_code, 'MOA-AAAAA-AAAAA']);
     });
 
     testWidgets('the console opens without signal and still saves scans',
@@ -422,6 +475,46 @@ void main() {
 
       expect(find.text('Enter the ticket code'), findsOneWidget);
       expect(api.scans, isEmpty);
+    });
+
+    testWidgets('no signal: typed text that is not a ticket is refused',
+        (tester) async {
+      api.scanAnswers.add(noSignal('/scan'));
+      await pump(tester);
+      await tester.tap(find.byKey(VolunteerScannerPage.typeCodeKey));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), 'let me in');
+      await tester.tap(find.text('CONTINUE'));
+      await tester.pumpAndSettle();
+
+      expect(find.text("That isn't a ticket code."), findsOneWidget);
+      expect(await queue.all(7), isEmpty);
+      // Left in the field, to correct.
+      expect(
+          tester.widget<TextFormField>(find.byType(TextFormField)).controller!.text,
+          'let me in');
+    });
+
+    testWidgets('no signal: a typed ticket code is saved as unverified',
+        (tester) async {
+      api.scanAnswers.add(noSignal('/scan'));
+      await pump(tester);
+      await tester.tap(find.byKey(VolunteerScannerPage.typeCodeKey));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), _code);
+      await tester.tap(find.text('CONTINUE'));
+      await tester.pumpAndSettle();
+      expect(find.text('UNVERIFIED'), findsOneWidget);
+      expect(await queue.all(7), hasLength(1));
+
+      await tester.enterText(find.byType(TextFormField), _code);
+      await tester.tap(find.text('CONTINUE'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Already scanned on this phone at'),
+          findsOneWidget);
+      expect(await queue.all(7), hasLength(1));
     });
 
     testWidgets('an admission number offers the by-hand check-in',

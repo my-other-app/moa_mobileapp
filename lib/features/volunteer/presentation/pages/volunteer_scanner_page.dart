@@ -19,9 +19,11 @@ import 'package:finnet/features/volunteer/presentation/widgets/merch_handover.da
 /// them.
 ///
 ///   * Scan: the camera, or a typed code. A ticket is checked in at once
-///     and the answer says why when it is not. With no signal the scan is
-///     saved on the phone and sent when the signal is back; the scans the
-///     server then refuses are listed by name, with why.
+///     and the answer says why when it is not. With no signal, what is not
+///     a ticket code, or a ticket this phone already has, is refused on the
+///     phone; any other ticket is saved, shown as unverified (check the
+///     person), and sent when the signal is back; the scans the server then
+///     refuses are listed by name, with why.
 ///   * Find: a guest by name, email or ticket, checked in by hand.
 ///   * Merch: what a guest is owed -- swag and their orders from the shelf
 ///     -- handed over. Only with the merch switch, and something to hand
@@ -123,8 +125,9 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
       HapticFeedback.heavyImpact();
     }
     // Admissions clear themselves, so the card never blocks the next scan;
-    // anything needing a decision stays.
-    if (tone == GateTone.admit || tone == GateTone.queued) {
+    // anything needing a decision stays -- an unverified scan too, until the
+    // volunteer has checked the person (the next scan replaces it).
+    if (tone == GateTone.admit) {
       _cardTimer = Timer(VolunteerScannerPage.admitCardFor, () {
         if (mounted) _controller.dismissCard();
       });

@@ -26,12 +26,14 @@ import 'package:finnet/features/volunteer/domain/gate_copy.dart';
         ink: const Color(0xFF7F1D1D),
         icon: Icons.block,
       );
-    case GateTone.queued:
+    // Nothing has checked the ticket: orange, never the admit's green, and
+    // an ID to look at.
+    case GateTone.unverified:
       return (
-        background: const Color(0xFFE8F0FE),
-        border: const Color(0xFF1A73E8),
-        ink: const Color(0xFF1E3A8A),
-        icon: Icons.cloud_off,
+        background: const Color(0xFFFFEFE3),
+        border: const Color(0xFFE8710A),
+        ink: const Color(0xFF7C2D12),
+        icon: Icons.badge,
       );
   }
 }

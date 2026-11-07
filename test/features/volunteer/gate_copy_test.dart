@@ -60,9 +60,26 @@ void main() {
           'Aarav Menon, admission no. MOA-0042-E7: check in by hand?');
     });
 
-    test('a saved scan is never "welcome in"', () {
-      expect(queuedCard.tone, GateTone.queued);
-      expect(queuedCard.title.toLowerCase(), isNot(contains('welcome')));
+    test('a saved scan is never "welcome in": it is unverified', () {
+      expect(unverifiedCard.tone, GateTone.unverified);
+      expect(unverifiedCard.tag, 'Unverified');
+      expect(unverifiedCard.title.toLowerCase(), isNot(contains('welcome')));
+      expect(unverifiedCard.note, isNot(contains('Let them in')));
+      expect(unverifiedCard.note, startsWith('Check their name or ID'));
+    });
+
+    test('offline refusals: not a ticket, an admission number, a repeat', () {
+      expect(offlineNotATicketCard.tone, GateTone.refuse);
+      expect(offlineNotATicketCard.tag,
+          outcomeCard(scanned(ScanOutcome.invalid)).tag);
+      expect(offlineAdmissionNumberCard.tone, GateTone.refuse);
+      final at = DateTime(2026, 11, 28, 10, 42);
+      final saved = offlineRepeatCard(at);
+      expect(saved.tone, GateTone.refuse);
+      expect(saved.title, 'Already scanned on this phone at 10:42.');
+      final seen = offlineRepeatCard(at, checkedIn: true);
+      expect(seen.tag, 'Already in');
+      expect(seen.title, 'Already checked in at 10:42.');
     });
   });
 

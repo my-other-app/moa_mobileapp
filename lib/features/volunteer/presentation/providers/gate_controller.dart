@@ -9,6 +9,7 @@ import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/volunteer/data/gate_api.dart';
 import 'package:finnet/features/volunteer/data/gate_models.dart';
 import 'package:finnet/features/volunteer/data/scan_queue.dart';
+import 'package:finnet/features/volunteer/data/ticket_code.dart';
 import 'package:finnet/features/volunteer/domain/gate_copy.dart';
 
 /// The last answer at the door, with the scan's result when there was one.
@@ -94,9 +95,12 @@ class GateState {
 /// door console (moa_web `gate/queries.ts`).
 ///
 /// A scan goes to `/gate/scan` and is answered at once. When no answer
-/// comes -- no signal at the door -- it is saved on the phone
-/// ([ScanQueueStore]) and shown as saved, honestly: "welcome in" is never
-/// said before the server has committed. The saved scans are sent through
+/// comes -- no signal at the door -- the phone checks what it can: a value
+/// that is not a ticket code, or a ticket this phone has already had, is
+/// refused there and then. Anything else is saved on the phone
+/// ([ScanQueueStore]) and shown as unverified, honestly: the volunteer is
+/// asked to check the person, and "welcome in" is never said before the
+/// server has committed. The saved scans are sent through
 /// `/gate/scan-batch` when the app is back online, every [drainEvery], and
 /// when the console opens; the server admits each once, by its client ref,
 /// whichever phones come back first. Those it does not admit are listed by
@@ -131,6 +135,14 @@ class GateController extends StateNotifier<GateState> {
   Timer? _timer;
   bool _draining = false;
   int _seq = 0;
+
+  /// The tickets this phone has seen checked in since the console opened,
+  /// by [_key], with when: so one used again in a dead spot is caught here
+  /// too, not only those still in the queue.
+  final Map<String, DateTime> _seenIn = {};
+
+  /// A code as the server reads it: trimmed, upper case.
+  static String _key(String code) => code.trim().toUpperCase();
 
   static final _random = Random.secure();
 
@@ -192,16 +204,23 @@ class GateController extends StateNotifier<GateState> {
       if (!mounted) return;
       _show(GateCard(outcomeCard(result, door: _doorLabel, now: _now()),
           result: result));
+      _noteIn([trimmed], result, scan.scannedAt);
       if (result.admitted && !result.replayed) _bumpCount();
       // Something got through: anything saved can go too.
       if (state.queued > 0) unawaited(drain());
     } catch (e) {
       if (!mounted) return;
       if (_keepForLater(e)) {
+        final refused = await _offlineRefusal(trimmed);
+        if (!mounted) return;
+        if (refused != null) {
+          _show(GateCard(refused));
+          return;
+        }
         await _queue.add(scan);
         await _refreshCount();
         if (!mounted) return;
-        _show(const GateCard(queuedCard, queued: true));
+        _show(const GateCard(unverifiedCard, queued: true));
       } else {
         _show(GateCard(OutcomeCard(
           tone: GateTone.refuse,
@@ -219,6 +238,47 @@ class GateController extends StateNotifier<GateState> {
   static bool _keepForLater(Object e) {
     if (gotNoAnswer(e)) return true;
     return e is DioException && ApiCacheInterceptor.serverDown(e);
+  }
+
+  /// With no signal, what the phone can refuse by itself: anything not
+  /// shaped like a ticket code (as the server would), and a ticket this
+  /// phone already has -- saved and not yet sent, or seen checked in. Null
+  /// when it may be saved, unverified.
+  Future<OutcomeCard?> _offlineRefusal(String code) async {
+    if (!looksLikeTicketCode(code)) {
+      return looksLikeAdmissionNumber(code)
+          ? offlineAdmissionNumberCard
+          : offlineNotATicketCard;
+    }
+    final key = _key(code);
+    try {
+      final saved = (await _queue.all(eventId))
+          .where((s) => _key(s.code) == key)
+          .map((s) => s.scannedAt)
+          .toList()
+        ..sort();
+      if (saved.isNotEmpty) return offlineRepeatCard(saved.first);
+    } catch (e) {
+      // The queue could not be read: what was seen this session still is.
+      debugPrint('GateController: could not read the queue: $e');
+    }
+    final seen = _seenIn[key];
+    if (seen != null) return offlineRepeatCard(seen, checkedIn: true);
+    return null;
+  }
+
+  /// [result] says the ticket behind [codes] is in: remember it, by every
+  /// code it goes by (as scanned, and as printed).
+  void _noteIn(Iterable<String?> codes, GateScanResult result, DateTime at) {
+    if (result.outcome != ScanOutcome.checkedIn &&
+        result.outcome != ScanOutcome.alreadyCheckedIn) {
+      return;
+    }
+    final when = result.checkedInAt ?? at;
+    for (final code in [...codes, result.attendee?.ticketId]) {
+      if (code == null || code.trim().isEmpty) continue;
+      _seenIn.putIfAbsent(_key(code), () => when);
+    }
   }
 
   String get _doorLabel => _door ?? 'Door';
@@ -244,6 +304,7 @@ class GateController extends StateNotifier<GateState> {
     try {
       final result = await _api.checkInByHand(eventId, guest.id, door: _door);
       if (!mounted) return result;
+      _noteIn([guest.id, guest.ticketId], result, _now());
       _show(GateCard(outcomeCard(result, door: _doorLabel, now: _now()),
           result: result));
       if (result.admitted && !result.replayed) _bumpCount();
@@ -275,6 +336,10 @@ class GateController extends StateNotifier<GateState> {
         final slice =
             pending.sublist(i, min(i + GateApi.batchSize, pending.length));
         final results = await _api.scanBatch(eventId, slice);
+        for (final r in results) {
+          final s = r.scan;
+          if (s != null) _noteIn([s.code], r.result, s.scannedAt);
+        }
         await _queue.remove(eventId, results.map((r) => r.clientRef));
         if (!mounted) return;
         state = state.copyWith(
