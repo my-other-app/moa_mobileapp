@@ -8,6 +8,7 @@ import 'package:finnet/app/session_scope.dart';
 import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/cache/document_cache.dart';
 import 'package:finnet/core/cache/image_caches.dart';
+import 'package:finnet/core/network/interceptors/app_version_interceptor.dart';
 import 'package:finnet/core/services/analytics_service.dart';
 import 'package:finnet/core/services/notification_service.dart';
 import 'package:finnet/features/discover/data/datasources/discover_place_store.dart';
@@ -21,6 +22,11 @@ void main() async {
   // AnalyticsService.initialize, and this zone for whatever runs in it.
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // This build's version, for X-App-Version on every request. Started
+    // first and never waited on here; a request made before it is read
+    // waits for it (the platform answers at once).
+    unawaited(AppVersion.load());
 
     // Firebase and Crashlytics come first, so errors from the very first
     // frame are reported. Neither waits on the network or on the person.
