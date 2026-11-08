@@ -6,14 +6,23 @@ import 'package:intl/intl.dart';
 import 'package:finnet/features/events/domain/registration_request.dart';
 import 'package:finnet/features/events/domain/ticketing.dart'
     show claimRoute, formatRupees;
+import 'package:finnet/features/events/presentation/widgets/answers_needed_note.dart';
 
 /// My events' "Under review": the person's registrations at events whose
 /// club reviews every registration, still under review or waiting for the
-/// payment. Each opens its registration's screen.
+/// payment. Each opens its registration's screen; one the club asked more
+/// details for has "2 details needed · Add them" under it.
 class WaitingRequestsSection extends StatelessWidget {
-  const WaitingRequestsSection({super.key, required this.requests});
+  const WaitingRequestsSection({
+    super.key,
+    required this.requests,
+    this.onAnswersReturn,
+  });
 
   final List<RegistrationRequest> requests;
+
+  /// Called once the details screen a note opened is closed.
+  final VoidCallback? onAnswersReturn;
 
   static const sectionKey = ValueKey('waiting-for-confirmation');
   static const title = 'UNDER REVIEW';
@@ -31,6 +40,14 @@ class WaitingRequestsSection extends StatelessWidget {
         const SizedBox(height: 8),
         for (final request in requests) ...[
           RequestTile(request: request),
+          if (request.answersNeeded case final needed?) ...[
+            const SizedBox(height: 6),
+            AnswersNeededNote(
+              key: ValueKey('request-answers-${request.id}'),
+              needed: needed,
+              onReturn: onAnswersReturn,
+            ),
+          ],
           const SizedBox(height: 10),
         ],
       ],

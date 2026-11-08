@@ -67,6 +67,20 @@ void main() {
           '/feedback/12/34?k=abc');
     });
 
+    test("a club's ask for missing details opens its screen, key and all", () {
+      expect(at('https://myotherapp.in/answers/12/reg-1?k=abc.def'),
+          '/answers/12/reg-1?k=abc.def');
+      // A registration under review is named `q` + its id.
+      expect(at('https://myotherapp.in/answers/12/qabc-123?k=s'),
+          '/answers/12/qabc-123?k=s');
+      // Signed in, the link works without its key too.
+      expect(at('https://myotherapp.in/answers/12/reg-1'), '/answers/12/reg-1');
+      // Not an event's id, or not two parts: not this page.
+      expect(at('https://myotherapp.in/answers/hack-night/reg-1'), isNull);
+      expect(at('https://myotherapp.in/answers/12'), isNull);
+      expect(at('https://myotherapp.in/answers/12/reg-1/x'), isNull);
+    });
+
     test('the directories are batch A\'s Discover screens, filters and all',
         () {
       // The app's own /events and /clubs are the person's (the tabs).
@@ -224,6 +238,7 @@ void main() {
       'https://myotherapp.in/topics',
       'https://myotherapp.in/topics/development',
       'https://myotherapp.in/feedback/12/34?k=abc',
+      'https://myotherapp.in/answers/12/34?k=abc',
     ];
 
     testWidgets(
@@ -308,6 +323,7 @@ void main() {
           namesAt(router, '/topics/development'), ['home', 'topics', 'topic']);
       expect(namesAt(router, '/discover/clubs'), ['home', 'clubsDirectory']);
       expect(namesAt(router, '/feedback/12/34'), ['home', 'eventFeedback']);
+      expect(namesAt(router, '/answers/12/34'), ['home', 'eventAnswers']);
       expect(namesAt(router, '/following/posts').first, 'home');
       expect(namesAt(router, '/verify/certificates/CERT-1').first, 'home');
       expect(namesAt(router, '/events/hack-night-04'), ['home', 'eventDetail']);
@@ -390,6 +406,7 @@ void main() {
     for (final prefix in prefixes) {
       final sample = switch (prefix) {
         '/feedback/' => '${prefix}12/34',
+        '/answers/' => '${prefix}12/34',
         // The quiz's QR names the event by its id.
         '/play/' => '${prefix}12',
         _ => '${prefix}x',

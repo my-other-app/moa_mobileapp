@@ -5,6 +5,7 @@
 /// one odd value must not lose the answer at the door.
 library;
 
+import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/core/utils/json_read.dart';
 
 /// What this person may do at the door: from the club (everything), or the
@@ -50,6 +51,7 @@ class GateContext {
     this.expectedDoorId,
     this.hasMerch = false,
     this.hasStore = false,
+    this.guestFields = const [],
   });
 
   factory GateContext.fromJson(Map<String, dynamic> json) {
@@ -70,6 +72,11 @@ class GateContext {
       expectedDoorId: jsonString(json['expected_door_id']),
       hasMerch: jsonBool(json['has_merch']) ?? false,
       hasStore: jsonBool(json['has_store']) ?? false,
+      guestFields: [
+        for (final q in jsonObjects(json['guest_fields']))
+          if (jsonText(q['key']).trim().isNotEmpty)
+            AdditionalDetail.fromJson(q),
+      ],
     );
   }
 
@@ -90,6 +97,10 @@ class GateContext {
   /// Whether there is anything to hand out: swag, or orders from the shelf.
   final bool hasMerch;
   final bool hasStore;
+
+  /// The event's sign-up questions (`guest_fields`), as every read sends
+  /// them: what a missing answer is filled in with at the door.
+  final List<AdditionalDetail> guestFields;
 
   /// The door's name every admission here is recorded at, or null for the
   /// event's default door.
@@ -120,8 +131,46 @@ class GateContext {
         expectedDoorId: expectedDoorId,
         hasMerch: hasMerch,
         hasStore: hasStore,
+        guestFields: guestFields,
       );
 }
+
+/// A sign-up question this guest has not answered and must
+/// (`missing_answers`, missing-answers-contract.md §2.5): the club changed
+/// its form after they signed up. The door only sees it -- it never stops
+/// a check-in.
+class MissingAnswer {
+  const MissingAnswer({required this.key, required this.label});
+
+  final String key;
+  final String label;
+
+  /// The list, in the form's order; a bare key is read as its own label.
+  static List<MissingAnswer> listFrom(Object? json) => [
+        if (json is List)
+          for (final item in json)
+            if (item is String && item.trim().isNotEmpty)
+              MissingAnswer(key: item.trim(), label: item.trim())
+            else if (jsonObject(item) case final o?)
+              if (jsonText(o['key']).trim() case final key when key.isNotEmpty)
+                MissingAnswer(
+                    key: key,
+                    label: jsonText(o['label']).trim().isEmpty
+                        ? key
+                        : jsonText(o['label']).trim()),
+      ];
+
+  @override
+  bool operator ==(Object other) =>
+      other is MissingAnswer && other.key == key && other.label == label;
+
+  @override
+  int get hashCode => Object.hash(key, label);
+}
+
+/// "T-shirt size, College": the labels of [missing], for a line.
+String missingLabels(List<MissingAnswer> missing) =>
+    missing.map((m) => m.label).join(', ');
 
 /// A guest, as a scan, a search or a check-in answers with them.
 class GateAttendee {
@@ -135,6 +184,7 @@ class GateAttendee {
     this.isPaid = true,
     this.checkedInAt,
     this.admissionNo,
+    this.missingAnswers = const [],
   });
 
   static GateAttendee? fromJson(Object? json) {
@@ -152,6 +202,7 @@ class GateAttendee {
       isPaid: jsonBool(o['is_paid']) ?? true,
       checkedInAt: jsonDate(o['checked_in_at']),
       admissionNo: jsonString(o['admission_no']),
+      missingAnswers: MissingAnswer.listFrom(o['missing_answers']),
     );
   }
 
@@ -166,7 +217,25 @@ class GateAttendee {
   final DateTime? checkedInAt;
   final String? admissionNo;
 
+  /// The sign-up questions they still have to answer; none from an older
+  /// server.
+  final List<MissingAnswer> missingAnswers;
+
   bool get checkedIn => checkedInAt != null;
+
+  /// The same guest, with [missing] the answers still missing.
+  GateAttendee withMissingAnswers(List<MissingAnswer> missing) => GateAttendee(
+        id: id,
+        name: name,
+        ticketId: ticketId,
+        role: role,
+        email: email,
+        phone: phone,
+        isPaid: isPaid,
+        checkedInAt: checkedInAt,
+        admissionNo: admissionNo,
+        missingAnswers: missing,
+      );
 }
 
 /// The seven answers to a scan, all 200.
@@ -241,6 +310,20 @@ class GateScanResult {
   final String? error;
 
   bool get admitted => outcome == ScanOutcome.checkedIn;
+
+  /// The same answer, about [who].
+  GateScanResult withAttendee(GateAttendee who) => GateScanResult(
+        outcome: outcome,
+        attendee: who,
+        checkedInAt: checkedInAt,
+        checkedInByName: checkedInByName,
+        checkedInAtDoor: checkedInAtDoor,
+        otherEventName: otherEventName,
+        revokedAt: revokedAt,
+        replayed: replayed,
+        hint: hint,
+        error: error,
+      );
 
   /// An admission number, not a ticket: who holds it, to check in by hand.
   bool get needsHandCheckIn =>

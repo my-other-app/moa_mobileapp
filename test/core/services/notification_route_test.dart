@@ -150,4 +150,89 @@ void main() {
       expect(model(null).opensPeople, isFalse);
     });
   });
+
+  group("a club's ask for missing details (answers_needed)", () {
+    const url = 'https://myotherapp.in/answers/12/reg-1?k=abc.def';
+
+    test('opens the details screen by its personal link, key and all', () {
+      expect(
+        NotificationService.routeFor(const {
+          'type': 'answers_needed',
+          'event_id': '12',
+          'url': url,
+        }),
+        '/answers/12/reg-1?k=abc.def',
+      );
+      // A registration under review: its ref starts with q.
+      expect(
+        NotificationService.routeFor(const {
+          'type': 'answers_needed',
+          'event_id': '12',
+          'url': 'https://myotherapp.in/answers/12/qabc?k=s',
+        }),
+        '/answers/12/qabc?k=s',
+      );
+    });
+
+    test('without a link it opens the event; without either, nothing', () {
+      expect(
+        NotificationService.routeFor(
+            const {'type': 'answers_needed', 'event_id': '12'}),
+        '/events/12',
+      );
+      expect(
+        NotificationService.routeFor(const {'type': 'answers_needed'}),
+        isNull,
+      );
+    });
+
+    test('its inbox line opens the same screen as the push', () {
+      final line = NotificationModel.fromJson({
+        'id': 'n-1',
+        'user_id': 1,
+        'title': 'Hack Night needs 2 more details',
+        'description': 'We need 2 more details for your ticket.',
+        'type': 'answers_needed',
+        'status': 'unread',
+        'event': {'id': 12, 'name': 'Hack Night'},
+        'data': {'event_id': '12', 'url': url},
+        'created_at': '2026-11-08T10:00:00Z',
+      });
+      expect(line.route, '/answers/12/reg-1?k=abc.def');
+      expect(line.iconEmoji, '📝');
+    });
+
+    test('an app build without the screen still opens the link: the push '
+        'is routed in the app, never to the browser', () {
+      expect(
+          NotificationService.webUrlFor(const {
+            'type': 'answers_needed',
+            'event_id': '12',
+            'url': url,
+          }),
+          isNull);
+    });
+  });
+
+  group('an unknown push with a url', () {
+    test('a page the app has opens in the app', () {
+      expect(
+        NotificationService.routeFor(const {
+          'type': 'something_new',
+          'url': 'https://myotherapp.in/answers/12/reg-1?k=abc',
+        }),
+        '/answers/12/reg-1?k=abc',
+      );
+    });
+
+    test('a page it lacks falls back to the browser', () {
+      const data = {
+        'type': 'something_new',
+        'url': 'https://myotherapp.in/some/page',
+      };
+      expect(NotificationService.routeFor(data), isNull);
+      expect(NotificationService.webUrlFor(data),
+          Uri.parse('https://myotherapp.in/some/page'));
+    });
+  });
 }

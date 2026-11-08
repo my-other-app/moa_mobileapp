@@ -28,6 +28,7 @@ import 'package:finnet/core/config/app_config.dart';
 /// | `/verify`, `/verify/{number}`    | the verifier (a certificate's QR)     |
 /// | `/topics`, `/topics/{slug}`      | the topics, a topic                   |
 /// | `/feedback/{event}/{reg}?k=`     | the feedback survey                   |
+/// | `/answers/{event}/{ref}?k=`      | the details a club asked for          |
 /// | `/play/{event}`                  | the quiz, to join (its QR)            |
 ///
 /// The app's own `/events` and `/clubs` are the person's events and clubs
@@ -135,6 +136,12 @@ String? webLocation(Uri uri) {
     case 'feedback':
       return rest.length == 2
           ? at('/feedback/${one(rest[0])}/${one(rest[1])}')
+          : null;
+    case 'answers':
+      // The personal link a club's ask for missing details sends (email,
+      // push, WhatsApp): the event's id, then who it is for.
+      return rest.length == 2 && int.tryParse(rest[0]) != null
+          ? at('/answers/${one(rest[0])}/${one(rest[1])}')
           : null;
     case 'me':
       if (rest.length != 1) return null;

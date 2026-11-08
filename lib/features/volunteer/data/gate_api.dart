@@ -22,6 +22,7 @@ import 'package:finnet/features/volunteer/data/gate_models.dart';
 ///   * `POST /events/{id}/gate/merch/{item}/collect` hand it over
 ///   * `GET  /events/{id}/gate/store/{reg}`          their paid orders
 ///   * `POST /events/{id}/gate/store/{order}/handover`
+///   * `POST /events/{id}/gate/answers/{reg}`        fill missing answers
 class GateApi {
   GateApi(this._dio);
 
@@ -119,6 +120,22 @@ class GateApi {
         .toList();
   }
 
+  /// Missing sign-up answers filled in at the door
+  /// (missing-answers-contract.md §2.5): the types are checked, "required"
+  /// is not. What is still missing after them. Never saved for later: it
+  /// needs a connection.
+  Future<List<MissingAnswer>> saveAnswers(
+    int eventId,
+    String registrationId,
+    Map<String, Object?> answers,
+  ) async {
+    final r = await _dio.post<dynamic>(
+      '${_gate(eventId)}/answers/$registrationId',
+      data: {'answers': answers},
+    );
+    return MissingAnswer.listFrom(_map(r.data)['missing_answers']);
+  }
+
   Future<StoreOrder?> handOver(int eventId, String orderId) async {
     final r = await _dio.post<dynamic>(
         '${_gate(eventId)}/store/$orderId/handover',
@@ -144,14 +161,23 @@ bool _noAnswer(ApiException e) =>
     e.statusCode == null &&
     (e.type == ApiExceptionType.network || e.type == ApiExceptionType.timeout);
 
+ApiException? _apiOf(Object error) => error is ApiException
+    ? error
+    : (error is DioException && error.error is ApiException
+        ? error.error as ApiException
+        : null);
+
+/// The field errors the server answered with (a 422's `errors`, by field),
+/// or null.
+Map<String, dynamic>? gateFieldErrors(Object error) {
+  final api = _apiOf(error);
+  return api?.fieldErrors ?? api?.errors;
+}
+
 /// What the server said, in its words, for an error it answered; else
 /// [fallback].
 String gateErrorMessage(Object error, String fallback) {
-  final api = error is ApiException
-      ? error
-      : (error is DioException && error.error is ApiException
-          ? error.error as ApiException
-          : null);
+  final api = _apiOf(error);
   final said = api?.serverMessage?.trim();
   if (said != null && said.isNotEmpty) return said;
   if (gotNoAnswer(error)) {

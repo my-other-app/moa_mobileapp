@@ -59,6 +59,7 @@ NotificationModel _line(
   String status = 'unread',
   Map<String, dynamic>? event,
   Map<String, dynamic>? club,
+  Map<String, dynamic>? data,
 }) =>
     NotificationModel.fromJson({
       'id': id,
@@ -69,6 +70,7 @@ NotificationModel _line(
       'status': status,
       'event': event,
       'from_club': club,
+      'data': data,
       'created_at': DateTime.now().toIso8601String(),
     });
 
@@ -125,6 +127,10 @@ void main() {
         GoRoute(
           path: '/events/:eventId',
           builder: (_, state) => record(state, 'the event'),
+        ),
+        GoRoute(
+          path: '/answers/:eventId/:ref',
+          builder: (_, state) => record(state, 'the details screen'),
         ),
       ]);
       await tester.pumpWidget(ProviderScope(
@@ -183,6 +189,41 @@ void main() {
         expect(inbox.read, ['n-$type']);
       });
     }
+
+    testWidgets("'needs 2 more details' opens the details screen, by its link",
+        (tester) async {
+      final line = _line(
+        'n-answers',
+        'answers_needed',
+        'Hack Night 04 needs 2 more details',
+        event: {'id': 12, 'name': 'Hack Night 04'},
+        data: {
+          'event_id': '12',
+          'url': 'https://myotherapp.in/answers/12/reg-1?k=abc.def',
+        },
+      );
+      final inbox = await pump(tester, [line]);
+
+      expect(find.text('📝'), findsOneWidget);
+      await tester.tap(find.text(line.title));
+      await tester.pumpAndSettle();
+
+      expect(find.text('the details screen'), findsOneWidget);
+      expect(opened.single.$1, '/answers/12/reg-1?k=abc.def');
+      expect(inbox.read, ['n-answers']);
+    });
+
+    testWidgets("'needs more details' without its link opens the event",
+        (tester) async {
+      final line = _line('n-answers-2', 'answers_needed', 'Needs details',
+          event: {'id': 12, 'name': 'Hack Night 04'});
+      await pump(tester, [line]);
+
+      await tester.tap(find.text('Needs details'));
+      await tester.pumpAndSettle();
+
+      expect(opened.single.$1, '/events/12');
+    });
 
     testWidgets('a volunteer line without its event opens nothing',
         (tester) async {

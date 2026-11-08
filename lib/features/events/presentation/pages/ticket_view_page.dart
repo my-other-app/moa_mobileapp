@@ -15,7 +15,9 @@ import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/cache/document_cache.dart';
 import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/events/data/ticket_images.dart';
+import 'package:finnet/features/events/domain/missing_answers.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
+import 'package:finnet/features/events/presentation/widgets/answers_needed_note.dart';
 import 'package:finnet/features/events/presentation/widgets/ticketing/cancelled_notice.dart';
 import 'package:finnet/features/events/domain/event_page_rules.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
@@ -73,6 +75,10 @@ class TicketViewPage extends StatefulWidget {
   /// It was paid for: a cancelled event's refund is under way.
   final bool paid;
 
+  /// The club asked for details its sign-up form didn't have: "2 details
+  /// needed · Add them", above the ticket, which is valid either way.
+  final AnswersNeeded? answersNeeded;
+
   /// "Early bird": [ticketType] under the club's design, which may not
   /// print it.
   static const ticketTypeKey = ValueKey('ticket-type');
@@ -113,6 +119,7 @@ class TicketViewPage extends StatefulWidget {
     this.eventId,
     this.cancellation,
     this.paid = false,
+    this.answersNeeded,
   });
 
   @override
@@ -733,6 +740,10 @@ class _TicketViewPageState extends State<TicketViewPage>
                       _buildCancelledCard(cancelled)
                     else ...[
                       if (_offline) _buildOfflineNotice(),
+                      if (widget.answersNeeded case final needed?) ...[
+                        AnswersNeededNote(needed: needed, dark: true),
+                        const SizedBox(height: 16),
+                      ],
                       _buildTicketCard(),
                       if (_ticketImage != null && widget.ticketType != null)
                         _buildTicketTypeLine(widget.ticketType!),

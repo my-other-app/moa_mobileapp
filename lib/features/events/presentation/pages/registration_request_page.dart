@@ -17,6 +17,7 @@ import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart
 import 'package:finnet/features/events/presentation/providers/registration_requests_provider.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
+import 'package:finnet/features/events/presentation/widgets/answers_needed_note.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/register_bar_parts.dart';
 import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 
@@ -637,6 +638,14 @@ class _RegistrationRequestPageState
             ),
             child: Text('${request.clubName} said: $note',
                 style: const TextStyle(fontSize: 14, color: Color(0xFF374151))),
+          ),
+        ],
+        // The club asked for details its sign-up form didn't have.
+        if (request.answersNeeded case final needed?) ...[
+          const SizedBox(height: 16),
+          AnswersNeededNote(
+            needed: needed,
+            onReturn: () => _load(quiet: true),
           ),
         ],
         const SizedBox(height: 20),

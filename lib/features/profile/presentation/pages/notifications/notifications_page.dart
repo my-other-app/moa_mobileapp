@@ -288,6 +288,8 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
         return const Color(0xFFEF9A9A); // Red
       case 'club_thread':
         return const Color(0xFFB8DFF2); // Blue, from the club page's palette
+      case 'answers_needed':
+        return const Color(0xFFFDE68A); // Amber, as the "details needed" note
       case 'event_live_join':
       case 'event_live_started':
       case 'event_live_qa':

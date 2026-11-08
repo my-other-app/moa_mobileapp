@@ -24,6 +24,10 @@ void main() {
       '/events/hack-night-04/register',
       '/events/hack-night-04/compete',
       '/feedback/12/34',
+      // The personal link of a club's ask for missing details: the link's
+      // key is the proof.
+      '/answers/12/6f1c2d4e-0000-4000-8000-000000000001',
+      '/answers/12/q6f1c2d4e-0000-4000-8000-000000000001',
       // Batch C's pages.
       '/following/posts',
       '/verify/certificates',

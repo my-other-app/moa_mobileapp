@@ -7,11 +7,13 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/volunteer/data/gate_models.dart';
+import 'package:finnet/features/volunteer/domain/door_answers.dart';
 import 'package:finnet/features/volunteer/domain/gate_copy.dart';
 import 'package:finnet/features/volunteer/presentation/providers/gate_controller.dart';
 import 'package:finnet/features/volunteer/presentation/widgets/gate_outcome_card.dart';
 import 'package:finnet/features/volunteer/presentation/widgets/gate_sync_panel.dart';
 import 'package:finnet/features/volunteer/presentation/widgets/guest_search.dart';
+import 'package:finnet/features/volunteer/presentation/widgets/door_answers.dart';
 import 'package:finnet/features/volunteer/presentation/widgets/merch_handover.dart';
 
 /// The door, on a volunteer's phone: the club dashboard's door console for
@@ -28,6 +30,11 @@ import 'package:finnet/features/volunteer/presentation/widgets/merch_handover.da
 ///   * Merch: what a guest is owed -- swag and their orders from the shelf
 ///     -- handed over. Only with the merch switch, and something to hand
 ///     out.
+///
+/// A guest the club still needs sign-up answers from (it changed its form
+/// after they signed up) has them listed on their sheet and their scan's
+/// card, to fill in with them there -- online only, and never in the way
+/// of checking them in.
 class VolunteerScannerPage extends ConsumerStatefulWidget {
   final int eventId;
   final String eventName;
@@ -42,9 +49,11 @@ class VolunteerScannerPage extends ConsumerStatefulWidget {
 
   static const typeCodeKey = ValueKey('gate-type-code');
 
-  /// A found guest's sheet: check in, and their merch.
+  /// A found guest's sheet: check in, their merch, their missing answers.
   static const guestCheckInKey = ValueKey('guest-check-in');
   static const guestMerchKey = ValueKey('guest-merch');
+  static const guestMissingKey = ValueKey('guest-missing');
+  static const guestAnswersKey = ValueKey('guest-answers');
 
   /// The same code seen again this soon is the same ticket still in front
   /// of the camera, not a second scan.
@@ -166,8 +175,34 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
                 _openMerch(guest, ctx);
               }
             : null,
+        onAnswers: (who) => _openAnswers(who, ctx),
       ),
     );
+  }
+
+  /// The guest's missing sign-up answers, to fill in with them. What is
+  /// still missing after.
+  Future<List<MissingAnswer>?> _openAnswers(
+      GateAttendee guest, GateContext? ctx) async {
+    List<MissingAnswer>? still;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.85,
+        child: DoorAnswers(
+          eventId: widget.eventId,
+          guest: guest,
+          form: ctx?.guestFields ?? const [],
+          onSaved: (missing) {
+            still = missing;
+            _controller.answersSaved(guest.id, missing);
+          },
+        ),
+      ),
+    );
+    return still;
   }
 
   Future<void> _openMerch(GateAttendee guest, GateContext ctx) =>
@@ -305,6 +340,7 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
   Widget _scanTab(GateState state) {
     final card = state.card;
     final result = card?.result;
+    final who = result?.attendee;
     return Stack(
       children: [
         Positioned.fill(
@@ -346,6 +382,14 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
                     onClose: _controller.dismissCard,
                     onCheckInByHand: result != null && result.needsHandCheckIn
                         ? () => _controller.checkInByHand(result.attendee!)
+                        : null,
+                    missing: who?.missingAnswers ?? const [],
+                    onAddAnswers: who != null && who.missingAnswers.isNotEmpty
+                        ? () {
+                            // Kept on screen while they are filled in.
+                            _cardTimer?.cancel();
+                            _openAnswers(who, state.context);
+                          }
                         : null,
                   ),
                   const SizedBox(height: 10),
@@ -420,14 +464,16 @@ class _NothingToDo extends StatelessWidget {
       );
 }
 
-/// A guest found by name: who they are, and what can be done for them.
-class _GuestSheet extends StatelessWidget {
+/// A guest found by name: who they are, and what can be done for them --
+/// check them in, their merch, the sign-up answers they are missing.
+class _GuestSheet extends StatefulWidget {
   const _GuestSheet({
     required this.eventId,
     required this.guest,
     required this.context,
     required this.onCheckIn,
     this.onMerch,
+    this.onAnswers,
   });
 
   final int eventId;
@@ -436,9 +482,30 @@ class _GuestSheet extends StatelessWidget {
   final VoidCallback onCheckIn;
   final VoidCallback? onMerch;
 
+  /// Opens the missing answers to fill in; what is still missing after.
+  final Future<List<MissingAnswer>?> Function(GateAttendee guest)? onAnswers;
+
+  @override
+  State<_GuestSheet> createState() => _GuestSheetState();
+}
+
+class _GuestSheetState extends State<_GuestSheet> {
+  late GateAttendee _guest = widget.guest;
+
+  Future<void> _fill() async {
+    final still = await widget.onAnswers?.call(_guest);
+    if (still != null && mounted) {
+      setState(() => _guest = _guest.withMissingAnswers(still));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final g = guest;
+    final g = _guest;
+    final perms = widget.context?.permissions;
+    // Filling them in is the check-in switch's (the server's rule too).
+    final canFill =
+        widget.onAnswers != null && (perms == null || perms.checkIn);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -458,6 +525,47 @@ class _GuestSheet extends StatelessWidget {
               ].join(' · '),
               style: const TextStyle(color: Color(0xFF4B5563)),
             ),
+            if (g.missingAnswers.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                key: VolunteerScannerPage.guestMissingKey,
+                padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFCD34D)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit_note, color: Color(0xFFD97706)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            missingCount(g.missingAnswers.length),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF92400E)),
+                          ),
+                          Text(
+                            missingLabels(g.missingAnswers),
+                            style: const TextStyle(color: Color(0xFF92400E)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (canFill)
+                      TextButton(
+                        key: VolunteerScannerPage.guestAnswersKey,
+                        onPressed: _fill,
+                        child: const Text('Add'),
+                      ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             if (g.checkedIn)
               const Text('Already checked in.',
@@ -474,7 +582,7 @@ class _GuestSheet extends StatelessWidget {
                 ),
               FilledButton.icon(
                 key: VolunteerScannerPage.guestCheckInKey,
-                onPressed: onCheckIn,
+                onPressed: widget.onCheckIn,
                 icon: const Icon(Icons.how_to_reg),
                 label: const Text('Check in'),
                 style: FilledButton.styleFrom(
@@ -483,11 +591,11 @@ class _GuestSheet extends StatelessWidget {
                 ),
               ),
             ],
-            if (onMerch != null) ...[
+            if (widget.onMerch != null) ...[
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 key: VolunteerScannerPage.guestMerchKey,
-                onPressed: onMerch,
+                onPressed: widget.onMerch,
                 icon: const Icon(Icons.inventory_2_outlined),
                 label: const Text('Merch and orders'),
                 style: OutlinedButton.styleFrom(
