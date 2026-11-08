@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/features/volunteer/data/gate_api.dart';
 import 'package:finnet/features/volunteer/data/gate_models.dart';
@@ -82,6 +83,7 @@ GateAttendee guest({
   String ticket = 'MOA-4KD9W-22XQZ',
   DateTime? checkedInAt,
   String? admissionNo,
+  List<MissingAnswer> missing = const [],
 }) =>
     GateAttendee(
       id: id,
@@ -89,6 +91,7 @@ GateAttendee guest({
       ticketId: ticket,
       checkedInAt: checkedInAt,
       admissionNo: admissionNo,
+      missingAnswers: missing,
     );
 
 GateScanResult scanned(ScanOutcome outcome,
@@ -116,6 +119,7 @@ GateContext gateContext({
   bool hasStore = false,
   int checkedIn = 10,
   String? door,
+  List<AdditionalDetail> guestFields = const [],
 }) =>
     GateContext(
       eventId: 7,
@@ -128,6 +132,7 @@ GateContext gateContext({
       expectedDoorId: door == null ? null : 'd-1',
       hasMerch: hasMerch,
       hasStore: hasStore,
+      guestFields: guestFields,
     );
 
 /// The door console's routes, scripted. Each answer list is used in order,
@@ -155,6 +160,11 @@ class FakeGateApi extends GateApi {
   final collects = <(String, String, String?)>[];
   List<StoreOrder> orders = const [];
   final handovers = <String>[];
+
+  /// Missing answers filled in at the door, by registration; and what the
+  /// server says is still missing (or an error, thrown).
+  final answersSaved = <(String, Map<String, Object?>)>[];
+  Object answersAnswer = const <MissingAnswer>[];
 
   T _answer<T>(Object answer) {
     if (answer is T) return answer as T;
@@ -217,6 +227,13 @@ class FakeGateApi extends GateApi {
   @override
   Future<List<StoreOrder>> ordersFor(int eventId, String registrationId) async =>
       orders;
+
+  @override
+  Future<List<MissingAnswer>> saveAnswers(int eventId, String registrationId,
+      Map<String, Object?> answers) async {
+    answersSaved.add((registrationId, answers));
+    return _answer<List<MissingAnswer>>(answersAnswer);
+  }
 
   @override
   Future<StoreOrder?> handOver(int eventId, String orderId) async {

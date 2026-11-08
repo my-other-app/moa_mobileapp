@@ -11,6 +11,7 @@ import 'package:finnet/features/volunteer/presentation/providers/gate_controller
 import 'package:finnet/features/volunteer/presentation/widgets/gate_outcome_card.dart';
 import 'package:finnet/features/volunteer/presentation/widgets/gate_sync_panel.dart';
 import 'package:finnet/features/volunteer/presentation/widgets/guest_search.dart';
+import 'package:finnet/features/volunteer/presentation/widgets/door_answers.dart';
 import 'package:finnet/features/volunteer/presentation/widgets/merch_handover.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../events/conditional_form_fixture.dart';
 import 'volunteer_fakes.dart';
 
 /// The camera, without one: the console starts it as on a phone, and a
@@ -352,6 +354,160 @@ void main() {
 
       expect(find.text('Already checked in.'), findsOneWidget);
       expect(find.byKey(VolunteerScannerPage.guestCheckInKey), findsNothing);
+    });
+  });
+
+  group('missing sign-up answers', () {
+    const missing = [
+      MissingAnswer(key: 'tshirt', label: 'T-shirt size'),
+      MissingAnswer(key: 'degree_type', label: 'Degree type'),
+    ];
+
+    setUp(() {
+      api.context_ = gateContext(door: 'Main gate', guestFields: sharedForm());
+    });
+
+    Future<void> findGuest(WidgetTester tester, GateAttendee who) async {
+      api.found = [who];
+      await pump(tester);
+      await tester.tap(find.text('Find'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(GuestSearch.fieldKey), 'diya');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GuestSearch.rowKey(who.id)));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> closeSheet(WidgetTester tester) async {
+      // The barrier above the sheet.
+      await tester.tapAt(const Offset(450, 40));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+        'are on the guest\'s sheet, and filled in with them: none required, '
+        'follow-ups by what is chosen', (tester) async {
+      await findGuest(
+          tester, guest(id: 'reg-3', name: 'Diya Nair', missing: missing));
+
+      expect(find.byKey(VolunteerScannerPage.guestMissingKey), findsOneWidget);
+      expect(find.text('2 details missing'), findsOneWidget);
+      expect(find.text('T-shirt size, Degree type'), findsOneWidget);
+      // Never in the way of checking in.
+      expect(find.byKey(VolunteerScannerPage.guestCheckInKey), findsOneWidget);
+
+      await tester.tap(find.byKey(VolunteerScannerPage.guestAnswersKey));
+      await tester.pumpAndSettle();
+      expect(find.byType(DoorAnswers), findsOneWidget);
+      // The door is relaxed: nothing marked required.
+      expect(find.text('T-shirt size *'), findsNothing);
+      expect(find.text('Degree type *'), findsNothing);
+
+      // Nothing filled in: nothing sent.
+      await tester.tap(find.byKey(DoorAnswers.saveKey));
+      await tester.pumpAndSettle();
+      expect(api.answersSaved, isEmpty);
+
+      await tester.tap(find.text('Select t-shirt size'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('M').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('PG'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Enter pg specialisation'),
+          'Data science');
+      await tester.tap(find.byKey(DoorAnswers.saveKey));
+      await tester.pumpAndSettle();
+
+      expect(api.answersSaved.single.$1, 'reg-3');
+      expect(api.answersSaved.single.$2,
+          {'tshirt': 'M', 'degree_type': 'PG', 'pg_spec': 'Data science'});
+      expect(find.byKey(DoorAnswers.doneKey), findsOneWidget);
+
+      // Back on their sheet: nothing missing now.
+      await closeSheet(tester);
+      expect(find.byKey(VolunteerScannerPage.guestMissingKey), findsNothing);
+      expect(find.byKey(VolunteerScannerPage.guestCheckInKey), findsOneWidget);
+    });
+
+    testWidgets('what is still missing after saving is asked next',
+        (tester) async {
+      api.answersAnswer = const [
+        MissingAnswer(key: 'degree_type', label: 'Degree type'),
+      ];
+      await findGuest(tester, guest(id: 'reg-3', missing: missing));
+      await tester.tap(find.byKey(VolunteerScannerPage.guestAnswersKey));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Select t-shirt size'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('L').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(DoorAnswers.saveKey));
+      await tester.pumpAndSettle();
+
+      expect(api.answersSaved.single.$2, {'tshirt': 'L'});
+      expect(find.text('Degree type'), findsOneWidget);
+      expect(find.text('T-shirt size'), findsNothing);
+
+      await closeSheet(tester);
+      expect(find.text('1 detail missing'), findsOneWidget);
+    });
+
+    testWidgets('with no signal it says they need a connection, and waits',
+        (tester) async {
+      await findGuest(tester, guest(id: 'reg-3', missing: missing));
+      network.reportOffline();
+      await tester.tap(find.byKey(VolunteerScannerPage.guestAnswersKey));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(DoorAnswers.offlineKey), findsOneWidget);
+      expect(find.text(DoorAnswers.offlineNote), findsOneWidget);
+      final save =
+          tester.widget<FilledButton>(find.byKey(DoorAnswers.saveKey));
+      expect(save.onPressed, isNull);
+      expect(api.answersSaved, isEmpty);
+
+      // Back online: the note goes and they can be saved.
+      network.reportOnline();
+      await tester.pumpAndSettle();
+      expect(find.byKey(DoorAnswers.offlineKey), findsNothing);
+    });
+
+    testWidgets('an older server: nothing said, nothing to fill',
+        (tester) async {
+      await findGuest(tester, guest(id: 'reg-3'));
+      expect(find.byKey(VolunteerScannerPage.guestMissingKey), findsNothing);
+      expect(find.byKey(VolunteerScannerPage.guestAnswersKey), findsNothing);
+    });
+
+    testWidgets('a scan says what is missing, and they are filled in there',
+        (tester) async {
+      api.scanAnswers.add(scanned(ScanOutcome.checkedIn,
+          who: guest(id: 'reg-1', missing: missing.take(1).toList())));
+      await pump(tester);
+
+      await show(tester, _code);
+      expect(find.text('Aarav Menon — welcome in.'), findsOneWidget);
+      expect(find.text('1 detail missing: T-shirt size'), findsOneWidget);
+
+      await tester.tap(find.byKey(GateOutcomeCard.addAnswersKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Select t-shirt size'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('S').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(DoorAnswers.saveKey));
+      await tester.pumpAndSettle();
+      expect(api.answersSaved.single.$1, 'reg-1');
+      expect(api.answersSaved.single.$2, {'tshirt': 'S'});
+
+      await closeSheet(tester);
+      // The card is still there (it waited), and says nothing is missing.
+      expect(find.text('Aarav Menon — welcome in.'), findsOneWidget);
+      expect(find.byKey(GateOutcomeCard.missingKey), findsNothing);
     });
   });
 

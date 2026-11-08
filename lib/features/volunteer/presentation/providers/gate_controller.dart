@@ -368,6 +368,23 @@ class GateController extends StateNotifier<GateState> {
 
   void dismissCard() => state = state.copyWith(clearCard: true);
 
+  /// A guest's missing answers were filled in at the door: the answer on
+  /// show, when it is about them, says what is [missing] now. The same
+  /// answer, not a new one (no second buzz).
+  void answersSaved(String registrationId, List<MissingAnswer> missing) {
+    final card = state.card;
+    final result = card?.result;
+    final who = result?.attendee;
+    if (card == null || result == null || who == null) return;
+    if (who.id != registrationId) return;
+    state = state.copyWith(
+      card: GateCard(card.card,
+          result: result.withAttendee(who.withMissingAnswers(missing)),
+          queued: card.queued,
+          seq: card.seq),
+    );
+  }
+
   void dismissReport() => state = state.copyWith(clearReport: true);
 
   @override

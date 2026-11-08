@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:finnet/features/volunteer/data/gate_models.dart';
+import 'package:finnet/features/volunteer/domain/door_answers.dart';
 import 'package:finnet/features/volunteer/domain/gate_copy.dart';
 
 /// The colours of an answer at the door.
@@ -40,21 +42,28 @@ import 'package:finnet/features/volunteer/domain/gate_copy.dart';
 
 /// A scan's answer: what happened, and what to do next. It never blocks
 /// the next scan; [onClose] puts it away, [onCheckInByHand] (an admission
-/// number) checks its holder in.
+/// number) checks its holder in. The sign-up answers the guest is
+/// [missing] are said under it, with [onAddAnswers] to fill them in.
 class GateOutcomeCard extends StatelessWidget {
   const GateOutcomeCard({
     super.key,
     required this.card,
     this.onClose,
     this.onCheckInByHand,
+    this.missing = const [],
+    this.onAddAnswers,
   });
 
   static const closeKey = ValueKey('gate-card-close');
   static const byHandKey = ValueKey('gate-card-by-hand');
+  static const missingKey = ValueKey('gate-card-missing');
+  static const addAnswersKey = ValueKey('gate-card-add-answers');
 
   final OutcomeCard card;
   final VoidCallback? onClose;
   final VoidCallback? onCheckInByHand;
+  final List<MissingAnswer> missing;
+  final VoidCallback? onAddAnswers;
 
   @override
   Widget build(BuildContext context) {
@@ -132,6 +141,32 @@ class GateOutcomeCard extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 8),
                 child: Text(card.note!,
                     style: TextStyle(color: style.ink, fontSize: 13)),
+              ),
+            ],
+            if (missing.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                key: missingKey,
+                children: [
+                  Icon(Icons.edit_note, size: 18, color: style.ink),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${missingCount(missing.length)}: '
+                      '${missingLabels(missing)}',
+                      style: TextStyle(
+                          color: style.ink,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  if (onAddAnswers != null)
+                    TextButton(
+                      key: addAnswersKey,
+                      onPressed: onAddAnswers,
+                      child: const Text('Add'),
+                    ),
+                ],
               ),
             ],
             if (onCheckInByHand != null) ...[
