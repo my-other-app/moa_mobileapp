@@ -56,7 +56,8 @@ Map<String, dynamic> _info({
       'has_certificate': hasCertificate,
       'certificate_revoked': certificateRevoked,
       if (hasCertificate)
-        'certificate_url': 'https://myotherapp.in/certificates/MOA-4KD9W',
+        'certificate_url':
+            'https://myotherapp.in/certificates/q7Lk2Vb9_xR4mT0aZ-c8NwPe',
       'ticket_url': registered ? 'https://myotherapp.in/tickets/T-1' : null,
       if (isPaid != _absent) 'is_paid': isPaid,
       if (registrationId != null) 'registration_id': registrationId,

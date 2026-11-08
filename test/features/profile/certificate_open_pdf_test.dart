@@ -1,7 +1,10 @@
 // A certificate's DOWNLOAD CERTIFICATE (and the toolbar's Open the PDF):
-// the PDF kept on the phone, opened in the phone's own viewer -- which can
-// save and share it -- offline from the kept copy; the browser only when
-// there is no viewer or no PDF, and a plain note when nothing can open it.
+// the PDF kept on the phone, fetched signed in, opened in the phone's own
+// viewer -- which can save and share it -- offline from the kept copy; the
+// browser only when there is no viewer or no PDF, at the PDF's public
+// address by the certificate's public id (the browser is not signed in,
+// and the ticket-id address answers only the holder), and a plain note
+// when nothing can open it.
 
 import 'dart:io';
 
@@ -21,14 +24,25 @@ import 'package:flutter_test/flutter_test.dart';
 import '../events/events_fakes.dart';
 
 const _id = 'MOA-9ARSE-J4TEG';
+const _publicId = 'q7Lk2Vb9_xR4mT0aZ-c8NwPe';
 const _keptPath = '/kept/documents/certificate_$_id.pdf';
 const _browser = MethodChannel('plugins.flutter.io/url_launcher');
 
 final _certificate = Certificate(
   ticketId: _id,
+  number: 'CERT-4TQ8B-ZKM2R',
+  shareUrl: 'https://myotherapp.in/certificates/$_publicId',
   eventId: 29,
   eventName: 'Rapid Chess Open and Board Game Night',
   clubName: 'Respawn Room',
+  issuedOn: DateTime(2026, 10, 2),
+);
+
+/// The same, from a list that came without the certificate's page.
+final _withoutPage = Certificate(
+  ticketId: _id,
+  eventId: 29,
+  eventName: 'Rapid Chess Open and Board Game Night',
   issuedOn: DateTime(2026, 10, 2),
 );
 
@@ -86,6 +100,7 @@ Future<List<String>> _pump(
   WidgetTester tester,
   _Documents documents, {
   bool viewer = true,
+  Certificate? certificate,
 }) async {
   tester.view
     ..physicalSize = const Size(800, 2400)
@@ -103,7 +118,8 @@ Future<List<String>> _pump(
         return viewer;
       }),
     ],
-    child: MaterialApp(home: CertificateDetailPage(certificate: _certificate)),
+    child: MaterialApp(
+        home: CertificateDetailPage(certificate: certificate ?? _certificate)),
   ));
   for (var i = 0; i < 6; i++) {
     await tester.pump(const Duration(milliseconds: 50));
@@ -171,7 +187,8 @@ void main() {
         findsOneWidget);
   });
 
-  testWidgets("a phone with no PDF viewer: the PDF's address in the browser",
+  testWidgets(
+      "a phone with no PDF viewer: the PDF's public address in the browser",
       (tester) async {
     final browser = _browserCalls(tester);
     final opened = await _pump(tester, _Documents(_kept), viewer: false);
@@ -179,8 +196,25 @@ void main() {
     await _tap(tester, _download);
 
     expect(opened, [_keptPath]);
-    expect(browser, [_certificate.pdfUrl(Env.apiBaseUrl)]);
+    expect(browser,
+        ['${Env.apiBaseUrl}/events/certificates/$_publicId/pdf']);
+    expect(browser.single, isNot(contains(_id)),
+        reason: 'the browser is not signed in');
     expect(find.text('Could not open the certificate'), findsNothing);
+  });
+
+  testWidgets(
+      'no viewer and no public page: says so, and hands the browser nothing',
+      (tester) async {
+    final browser = _browserCalls(tester);
+    final opened = await _pump(tester, _Documents(_kept),
+        viewer: false, certificate: _withoutPage);
+
+    await _tap(tester, _download);
+
+    expect(opened, [_keptPath]);
+    expect(browser, isEmpty);
+    expect(find.text('Could not open the certificate'), findsOneWidget);
   });
 
   testWidgets('a PDF the server would not give: the browser instead',
@@ -192,7 +226,8 @@ void main() {
     await _tap(tester, _download);
 
     expect(opened, isEmpty);
-    expect(browser, [_certificate.pdfUrl(Env.apiBaseUrl)]);
+    expect(browser,
+        ['${Env.apiBaseUrl}/events/certificates/$_publicId/pdf']);
   });
 
   testWidgets('nothing on the phone can open it: says so', (tester) async {

@@ -44,11 +44,12 @@ class CompetitionRequirement {
   });
 }
 
+/// Someone on the person's team, as the server shows them to a guest: a
+/// name, and nothing that identifies their registration.
 class CompetitionMember {
-  final String registrationId;
   final String name;
 
-  const CompetitionMember({required this.registrationId, required this.name});
+  const CompetitionMember({required this.name});
 }
 
 enum SubmissionStatus { nothing, inProgress, complete }
@@ -110,15 +111,14 @@ class OpenTeam {
   });
 }
 
-/// Someone looking for a team, and what they bring.
+/// Someone looking for a team, and what they bring: a name, skills and a
+/// note, and nothing that identifies their registration.
 class TeamSeeker {
-  final String registrationId;
   final String name;
   final List<String> skills;
   final String? note;
 
   const TeamSeeker({
-    required this.registrationId,
     required this.name,
     this.skills = const [],
     this.note,
@@ -176,6 +176,9 @@ class BoardRow {
 class MyCompetition {
   final int eventId;
   final bool enabled;
+
+  /// The person's own registration (`registration_id`); the server sends
+  /// no one else's.
   final String registrationId;
 
   /// The person's name, as registered.

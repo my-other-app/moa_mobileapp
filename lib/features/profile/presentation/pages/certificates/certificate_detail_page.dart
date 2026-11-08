@@ -39,10 +39,14 @@ class CertificateDetailPage extends ConsumerWidget {
   /// The PDF, kept on the phone and fetched again only when the server's
   /// ETag says it changed (a new design, a corrected name, a revocation),
   /// opened in the system's viewer -- which can save and share it, and
-  /// works offline from the kept copy. Without a viewer, or without the
-  /// PDF, the browser as before; with no network and nothing kept, a note
-  /// rather than a browser that cannot load it either.
-  Future<void> _open(BuildContext context, WidgetRef ref, String url) async {
+  /// works offline from the kept copy. It is fetched signed in, by the
+  /// ticket id.
+  ///
+  /// Without a viewer, or without the PDF, the browser -- at the PDF's
+  /// public address, by the certificate's public id, since the browser is
+  /// not signed in. With no public id, or no network and nothing kept, a
+  /// note rather than a browser that cannot load it either.
+  Future<void> _open(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     final openPdf = ref.read(certificatePdfOpenerProvider);
     try {
@@ -65,11 +69,14 @@ class CertificateDetailPage extends ConsumerWidget {
     }
     // externalApplication: a PDF belongs in the browser or a viewer, not an
     // in-app webview that cannot save it.
+    final url = certificate.publicPdfUrl(Env.apiBaseUrl);
     var launched = false;
-    try {
-      launched = await launchUrl(Uri.parse(url),
-          mode: LaunchMode.externalApplication);
-    } catch (_) {}
+    if (url != null) {
+      try {
+        launched = await launchUrl(Uri.parse(url),
+            mode: LaunchMode.externalApplication);
+      } catch (_) {}
+    }
     if (!launched) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Could not open the certificate')),
@@ -92,7 +99,8 @@ class CertificateDetailPage extends ConsumerWidget {
       recipientName: recipient,
     );
     final isPinned = pinned.contains(certificate.ticketId);
-    final pdfUrl = certificate.pdfUrl(Env.apiBaseUrl);
+    final number = certificate.number;
+    final verifyCode = certificate.verifyCode;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -115,20 +123,23 @@ class CertificateDetailPage extends ConsumerWidget {
           ),
         ),
         actions: [
-          // A Builder, so the share sheet can point at this button.
-          Builder(
-            builder: (buttonContext) => IconButton(
-              key: const ValueKey('certificate-share'),
-              tooltip: 'Share certificate',
-              icon: const Icon(Icons.ios_share, color: _ink),
-              onPressed: () =>
-                  shareCertificate(buttonContext, ref, certificate),
+          // Only with the page the server gave it: without one there is
+          // nothing to share, and no address is made up for it.
+          if (canShareCertificate(certificate))
+            // A Builder, so the share sheet can point at this button.
+            Builder(
+              builder: (buttonContext) => IconButton(
+                key: const ValueKey('certificate-share'),
+                tooltip: 'Share certificate',
+                icon: const Icon(Icons.ios_share, color: _ink),
+                onPressed: () =>
+                    shareCertificate(buttonContext, ref, certificate),
+              ),
             ),
-          ),
           IconButton(
             tooltip: 'Open the PDF',
             icon: const Icon(Icons.open_in_new, color: _ink),
-            onPressed: () => _open(context, ref, pdfUrl),
+            onPressed: () => _open(context, ref),
           ),
         ],
       ),
@@ -163,13 +174,16 @@ class CertificateDetailPage extends ConsumerWidget {
                       color: _ink,
                     ),
                   ),
-                  const SizedBox(height: 6),
                   // The number printed beside the QR, which is what anyone
-                  // checks it by -- not the ticket's id.
-                  SelectableText(
-                    'Certificate number: ${certificate.number}',
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                  ),
+                  // checks it by, as the server sent it; none when it sent
+                  // none.
+                  if (number != null) ...[
+                    const SizedBox(height: 6),
+                    SelectableText(
+                      'Certificate number: $number',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    ),
+                  ],
                   if (certificate.clubName != null) ...[
                     const SizedBox(height: 16),
                     _ClubRow(
@@ -205,16 +219,18 @@ class CertificateDetailPage extends ConsumerWidget {
                         .read(pinnedCertificatesProvider.notifier)
                         .toggle(certificate.ticketId),
                   ),
-                  const SizedBox(height: 12),
-                  _ActionRow(
-                    key: const ValueKey('certificate-verify'),
-                    emoji: '✅',
-                    label: 'Check it is genuine',
-                    onTap: () => context.push(
-                      '/verify/certificates/'
-                      '${Uri.encodeComponent(certificate.number)}',
+                  if (verifyCode != null) ...[
+                    const SizedBox(height: 12),
+                    _ActionRow(
+                      key: const ValueKey('certificate-verify'),
+                      emoji: '✅',
+                      label: 'Check it is genuine',
+                      onTap: () => context.push(
+                        '/verify/certificates/'
+                        '${Uri.encodeComponent(verifyCode)}',
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -244,7 +260,7 @@ class CertificateDetailPage extends ConsumerWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => _open(context, ref, pdfUrl),
+                      onPressed: () => _open(context, ref),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2C333D),
                         foregroundColor: Colors.white,

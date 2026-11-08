@@ -142,12 +142,97 @@ void main() {
     });
   });
 
-  group('the pdf url', () {
-    test('points at the certificate endpoint for this ticket', () {
+  group("the number and the page come from the server", () {
+    const publicId = 'q7Lk2Vb9_xR4mT0aZ-c8NwPe';
+    Map<String, dynamic> row({Object? url, Object? number}) => {
+          'id': 7,
+          'name': 'Oasis Hackathon',
+          'ticket_id': 'MOA-4KD9W-22XQZ',
+          'has_certificate': true,
+          'event_datetime': '2024-01-04T10:00:00+00:00',
+          if (url != null) 'certificate_url': url,
+          if (number != null) 'certificate_no': number,
+        };
+
+    test('certificate_no and certificate_url, as sent', () {
+      final c = Certificate.fromEventJson(row(
+        url: 'https://myotherapp.in/certificates/$publicId',
+        number: 'CERT-4TQ8B-ZKM2R',
+      ))!;
+      expect(c.number, 'CERT-4TQ8B-ZKM2R');
+      expect(c.shareUrl, 'https://myotherapp.in/certificates/$publicId');
+      expect(c.publicId, publicId);
+      expect(c.verifyCode, 'CERT-4TQ8B-ZKM2R');
+      // Kept for the signed-in fetches only.
+      expect(c.ticketId, 'MOA-4KD9W-22XQZ');
+    });
+
+    test('never made from the ticket id: none sent is none shown', () {
+      final c = Certificate.fromEventJson(row())!;
+      expect(c.number, isNull);
+      expect(c.shareUrl, isNull);
+      expect(c.publicId, isNull);
+      expect(c.verifyCode, isNull);
+      expect(c.publicPdfUrl('https://api.example.test/api/v1'), isNull);
+    });
+
+    test('an older address by ticket id is not a page to share', () {
+      // A list saved on the phone before the server changed.
+      final c = Certificate.fromEventJson(row(
+        url: 'https://myotherapp.in/certificates/MOA-4KD9W-22XQZ',
+      ))!;
+      expect(c.shareUrl, isNull);
+      expect(c.publicId, isNull);
+      expect(c.number, isNull);
+    });
+
+    test('a number but no page: checked by its number, shared by nothing',
+        () {
+      final c = Certificate.fromEventJson(row(number: 'CERT-4TQ8B-ZKM2R'))!;
+      expect(c.shareUrl, isNull);
+      expect(c.verifyCode, 'CERT-4TQ8B-ZKM2R');
+    });
+
+    test('a blank or non-string field reads as none', () {
+      final c = Certificate.fromEventJson(row(url: 42, number: '  '))!;
+      expect(c.number, isNull);
+      expect(c.shareUrl, isNull);
+    });
+
+    test("the PDF the browser may open is the public one, by public id", () {
+      final c = Certificate.fromEventJson(row(
+        url: 'https://myotherapp.in/certificates/$publicId',
+      ))!;
       expect(
-        cert(ticketId: 'MOA-9').pdfUrl('https://api.example.test/api/v1'),
-        'https://api.example.test/api/v1/events/certificates/MOA-9/pdf',
+        c.publicPdfUrl('https://api.example.test/api/v1'),
+        'https://api.example.test/api/v1/events/certificates/$publicId/pdf',
       );
+    });
+  });
+
+  group('where VIEW CERTIFICATE goes', () {
+    const publicId = 'q7Lk2Vb9_xR4mT0aZ-c8NwPe';
+
+    test('a public id is 24 URL-safe characters; a ticket id is not one', () {
+      expect(isCertificatePublicId(publicId), isTrue);
+      expect(isCertificatePublicId('MOA-4KD9W-22XQZ'), isFalse);
+      expect(isCertificatePublicId('CERT-4TQ8B-ZKM2R'), isFalse);
+      expect(isCertificatePublicId('${publicId}x'), isFalse);
+      expect(isCertificatePublicId(null), isFalse);
+    });
+
+    test('by public id, the public route; by an older ticket id, the '
+        "person's own screen", () {
+      expect(
+          certificateLocationFor('https://myotherapp.in/certificates/$publicId'),
+          '/certificates/$publicId');
+      expect(
+          certificateLocationFor(
+              'https://myotherapp.in/certificates/MOA-4KD9W-22XQZ'),
+          '/profile/certificates/MOA-4KD9W-22XQZ');
+      expect(certificateLocationFor(null), isNull);
+      expect(certificateLocationFor('https://myotherapp.in/tickets/MOA-1'),
+          isNull);
     });
   });
 

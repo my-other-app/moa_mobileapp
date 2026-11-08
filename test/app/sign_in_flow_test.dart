@@ -355,13 +355,31 @@ void main() {
       await tester.pumpWidget(UncontrolledProviderScope(
         container: app.container,
         child: const MaterialApp(
-          home: CertificateLinkPage(ticketId: 'abc-123'),
+          home: CertificateLinkPage(id: 'q7Lk2Vb9_xR4mT0aZ-c8NwPe'),
         ),
       ));
 
       await tester.tap(find.text('View certificate'));
       expect(app.opened.single.toString(),
-          'https://myotherapp.in/certificates/abc-123');
+          'https://myotherapp.in/certificates/q7Lk2Vb9_xR4mT0aZ-c8NwPe');
+    });
+
+    testWidgets(
+        'an older certificate link by ticket id, signed out: says it no '
+        'longer works, and opens no website page for it', (tester) async {
+      final app = _App(_signedOut);
+      await app.pump(tester);
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: app.container,
+        child: const MaterialApp(
+          home: CertificateLinkPage(id: 'MOA-7K3QF-X9PWM'),
+        ),
+      ));
+
+      expect(find.byKey(CertificateLinkPage.outdatedKey), findsOneWidget);
+      expect(find.text('View certificate'), findsNothing);
+      expect(find.textContaining('MOA-7K3QF-X9PWM'), findsNothing);
+      expect(app.opened, isEmpty);
     });
   });
 }

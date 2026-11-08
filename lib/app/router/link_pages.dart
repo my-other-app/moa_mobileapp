@@ -88,22 +88,29 @@ class LinkNotFoundPage extends ConsumerWidget {
   }
 }
 
-/// `/certificates/{ticketId}`: a certificate from its link (the website's
-/// address, which people share and which the certificate's QR names).
+/// `/certificates/{id}`: a certificate from its link (the website's
+/// address, which its holder shares), and `/profile/certificates/{id}`
+/// without the certificate in hand.
 ///
-/// The person's own certificate opens the app's certificate screen. Anyone
-/// else's -- or anyone's while signed out -- is the website's public page,
-/// opened inside the app.
+/// [id] is the certificate's public id, as its link has it now, or the
+/// ticket id an older link or an older saved list carries. The person's
+/// own certificate -- by either -- opens the app's certificate screen.
+/// Anyone else's, or anyone's while signed out, is the website's public
+/// page, opened inside the app; that page goes by the public id only, so
+/// an older link that is not the person's own opens nothing, and says so.
 class CertificateLinkPage extends ConsumerWidget {
-  const CertificateLinkPage({super.key, required this.ticketId});
+  const CertificateLinkPage({super.key, required this.id});
 
-  final String ticketId;
+  final String id;
+
+  /// The page for an older link that is not the person's own.
+  static const outdatedKey = ValueKey('certificate-link-outdated');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final signedIn =
         ref.watch(authStateProvider.select((auth) => auth.isAuthenticated));
-    if (!signedIn) return _CertificateOnWeb(ticketId: ticketId);
+    if (!signedIn) return _elsewhere();
     final mine = ref.watch(certificatesProvider);
     // Opened from an event's VIEW CERTIFICATE: the person's other
     // certificates are kept for offline too, as the list keeps them.
@@ -112,7 +119,7 @@ class CertificateLinkPage extends ConsumerWidget {
       data: (certificates) {
         final certificate = _find(certificates);
         return certificate == null
-            ? _CertificateOnWeb(ticketId: ticketId)
+            ? _elsewhere()
             : CertificateDetailPage(certificate: certificate);
       },
       loading: () => Scaffold(
@@ -121,28 +128,36 @@ class CertificateLinkPage extends ConsumerWidget {
         body: const Center(child: CircularProgressIndicator()),
       ),
       // The list could not be loaded: the public page still can.
-      error: (_, __) => _CertificateOnWeb(ticketId: ticketId),
+      error: (_, __) => _elsewhere(),
     );
   }
 
+  /// Not one of the person's own: its public page, by its public id; for
+  /// anything else, a plain word that the link no longer opens.
+  Widget _elsewhere() => isCertificatePublicId(id)
+      ? _CertificateOnWeb(publicId: id)
+      : const _CertificateLinkOutdated();
+
   Certificate? _find(List<Certificate> certificates) {
     for (final certificate in certificates) {
-      if (certificate.ticketId == ticketId) return certificate;
+      if (certificate.ticketId == id) return certificate;
+      if (isCertificatePublicId(id) && certificate.publicId == id) {
+        return certificate;
+      }
     }
     return null;
   }
 }
 
 class _CertificateOnWeb extends ConsumerWidget {
-  const _CertificateOnWeb({required this.ticketId});
+  const _CertificateOnWeb({required this.publicId});
 
-  final String ticketId;
+  final String publicId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final page =
-        websiteUriFor('/certificates/${Uri.encodeComponent(ticketId)}');
+    final page = websiteUriFor(certificateRoute(publicId));
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: _bar(context, title: 'Certificate'),
@@ -174,6 +189,58 @@ class _CertificateOnWeb extends ConsumerWidget {
                 onPressed: () => ref.read(linkLauncherProvider)(page),
                 icon: const Icon(Icons.open_in_new),
                 label: const Text('View certificate'),
+                style: FilledButton.styleFrom(backgroundColor: _ink),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// An older certificate link that is not the person's own: it opens no
+/// page any more. Says so, and offers the verifier, which checks the
+/// number printed on the certificate.
+class _CertificateLinkOutdated extends StatelessWidget {
+  const _CertificateLinkOutdated();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      key: CertificateLinkPage.outdatedKey,
+      backgroundColor: Colors.white,
+      appBar: _bar(context, title: 'Certificate'),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.link_off, size: 64, color: Colors.grey[600]),
+              const SizedBox(height: 20),
+              Text(
+                'This certificate link no longer works',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Ask whoever shared it for a new link, or check the number '
+                'printed on the certificate. If it is yours, sign in and '
+                'find it under My certificates.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 28),
+              FilledButton.icon(
+                onPressed: () =>
+                    GoRouter.maybeOf(context)?.push('/verify/certificates'),
+                icon: const Icon(Icons.verified_outlined),
+                label: const Text('Verify a certificate'),
                 style: FilledButton.styleFrom(backgroundColor: _ink),
               ),
             ],

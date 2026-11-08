@@ -401,8 +401,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                             // public page).
                             if (certificate == null) {
                               return CertificateLinkPage(
-                                  ticketId:
-                                      state.pathParameters['ticketId'] ?? '');
+                                  id: state.pathParameters['ticketId'] ?? '');
                             }
                             return CertificateDetailPage(
                                 certificate: certificate);
@@ -529,14 +528,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                                   as Map<String, dynamic>?)?['revoked'] ==
                               true,
                         )),
-                // A certificate from its link: the person's own in the app,
-                // anyone else's on its public page.
+                // A certificate from its link, by its public id: the
+                // person's own in the app, anyone else's on its public page.
                 GoRoute(
-                    path: 'certificates/:ticketId',
+                    path: 'certificates/:id',
                     name: 'certificateLink',
                     parentNavigatorKey: rootKey,
                     builder: (context, state) => CertificateLinkPage(
-                          ticketId: state.pathParameters['ticketId'] ?? '',
+                          id: state.pathParameters['id'] ?? '',
                         )),
               ]),
         ],

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:finnet/core/cache/document_cache.dart';
-import 'package:finnet/core/config/env/env.dart';
 import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/profile/data/certificate_documents.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
@@ -147,7 +146,10 @@ class _CertificateRenderState extends ConsumerState<CertificateRender> {
     final image = _image;
     if (image != null) {
       final rendered = RenderedDocumentImage(
-        url: widget.certificate.imageUrl(Env.apiBaseUrl),
+        // Shown from the bytes fetched signed in (CertificateDocuments),
+        // never fetched by this address: the render by ticket id answers
+        // only its holder, and a picture fetch carries no session.
+        url: CertificateDocuments.imagePathFor(_id),
         image: image,
         placeholder: const _Loading(),
       );

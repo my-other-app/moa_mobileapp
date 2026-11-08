@@ -510,9 +510,9 @@ class EventCard extends StatelessWidget {
             // saved for offline. It used to open the website's certificate
             // page, which draws one stand-in design for every club and
             // keeps nothing without a network.
-            final id = certificateIdFromUrl(certificateUrl);
-            if (id != null) {
-              context.push(certificateRoute(id));
+            final location = certificateLocationFor(certificateUrl);
+            if (location != null) {
+              context.push(location);
             } else {
               context.push('/events/$eventId', extra: _getNavigationExtras());
             }

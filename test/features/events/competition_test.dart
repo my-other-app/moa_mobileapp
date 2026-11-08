@@ -58,15 +58,10 @@ Map<String, dynamic> myState({
               'track_id': 1,
               'track': 'AI for Bharat',
               'stage': 'shortlisted',
+              // Teammates as the server shows them to a guest: names only.
               'members': [
-                {
-                  'registration_id': '6f1c2d4e-0000-4000-8000-000000000001',
-                  'name': 'Asha Menon',
-                },
-                {
-                  'registration_id': '6f1c2d4e-0000-4000-8000-000000000002',
-                  'name': 'Ravi Kumar',
-                },
+                {'name': 'Asha Menon'},
+                {'name': 'Ravi Kumar'},
               ],
               'open_spots': 2,
               'submission': {
@@ -92,9 +87,9 @@ Map<String, dynamic> myState({
                 'open_spots': 2,
               },
             ],
+      // Others looking for a team: name, skills and note, no ids.
       'seeking': seeking
           ? {
-              'registration_id': '6f1c2d4e-0000-4000-8000-000000000001',
               'name': 'Asha Menon',
               'skills': ['ML', 'pitching'],
               'note': null,
@@ -102,10 +97,9 @@ Map<String, dynamic> myState({
           : null,
       'seekers': [
         {
-          'registration_id': '6f1c2d4e-0000-4000-8000-000000000003',
           'name': 'Neha',
           'skills': ['PCB'],
-          'note': null,
+          'note': 'Can solder',
         },
       ],
       'mentors': [
@@ -202,6 +196,37 @@ void main() {
       expect(me.mentors.single.slots.map((s) => s.teamId), [null, 12, 99]);
       expect(me.board!.single.score, 8.25);
       expect(me.seekers.single.skills, ['PCB']);
+      expect(me.seekers.single.note, 'Can solder');
+      // The person's own registration is still theirs.
+      expect(me.registrationId, '6f1c2d4e-0000-4000-8000-000000000001');
+    });
+
+    test("teammates and others looking for a team need no registration id",
+        () {
+      final me = myCompetitionFromJson({
+        'event_id': 7,
+        'registration_id': 'mine',
+        'team': {
+          'id': 12,
+          'name': 'Byte Me',
+          'members': [
+            {'name': 'Asha Menon'},
+            {'name': 'Ravi Kumar'},
+            {'name': ''},
+          ],
+        },
+        'seeking': {'name': 'Asha Menon', 'skills': []},
+        'seekers': [
+          {'name': 'Neha', 'skills': ['PCB'], 'note': null},
+          {'name': 'Kiran'},
+          {'skills': ['no name']},
+        ],
+      })!;
+      expect(me.registrationId, 'mine');
+      expect(me.team!.members.map((m) => m.name), ['Asha Menon', 'Ravi Kumar']);
+      expect(me.seeking!.name, 'Asha Menon');
+      expect(me.seekers.map((s) => s.name), ['Neha', 'Kiran']);
+      expect(me.seekers.last.skills, isEmpty);
     });
 
     test('tolerates missing fields and bad rows', () {

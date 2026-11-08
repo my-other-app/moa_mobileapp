@@ -4,14 +4,26 @@ import 'package:finnet/features/profile/data/certificate_documents.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:share_plus/share_plus.dart';
 
+/// Whether [certificate] can be shared: only with the page the server
+/// gave it (`certificate_url`). Without one there is no share action.
+bool canShareCertificate(Certificate certificate) =>
+    certificate.shareUrl != null;
+
 /// What sharing a certificate says beside the file: its page on the
-/// website, and the number anyone can check it by.
-String certificateShareText(Certificate certificate) {
+/// website, and the number anyone can check it by, both as the server sent
+/// them. Null without the page ([canShareCertificate]); the number line is
+/// left out when the server sent no number.
+String? certificateShareText(Certificate certificate) {
+  final url = certificate.shareUrl;
+  if (url == null) return null;
   final club = certificate.clubName?.trim() ?? '';
   final event = certificate.eventName.trim();
   final what = club.isEmpty ? event : '$event, from $club';
-  return 'My certificate for $what: ${certificate.shareUrl}\n'
-      'Certificate number: ${certificate.number}';
+  final number = certificate.number;
+  return [
+    'My certificate for $what: $url',
+    if (number != null) 'Certificate number: $number',
+  ].join('\n');
 }
 
 /// Hands the certificate's PDF ([pdfPath]) and [text] -- or the text
@@ -40,7 +52,8 @@ final certificateSharerProvider = Provider<CertificateSharer>(
 );
 
 /// Share [certificate] from the button at [buttonContext] (the sheet points
-/// at it on an iPad).
+/// at it on an iPad). Nothing happens for one without its page
+/// ([canShareCertificate]); the screens offer no button for it.
 ///
 /// The certificate itself goes: the PDF the club's email attaches, kept on
 /// the phone (so it shares offline once saved), with the link and number
@@ -52,6 +65,8 @@ Future<void> shareCertificate(
   WidgetRef ref,
   Certificate certificate,
 ) async {
+  final text = certificateShareText(certificate);
+  if (text == null) return;
   final box = buttonContext.findRenderObject();
   final origin = box is RenderBox && box.hasSize
       ? box.localToGlobal(Offset.zero) & box.size
@@ -68,7 +83,7 @@ Future<void> shareCertificate(
   }
   try {
     await ref.read(certificateSharerProvider)(
-      certificateShareText(certificate),
+      text,
       subject: certificate.title,
       origin: origin,
       pdfPath: pdfPath,

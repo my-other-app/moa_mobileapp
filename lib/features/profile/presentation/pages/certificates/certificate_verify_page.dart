@@ -11,13 +11,19 @@ import 'package:finnet/features/profile/presentation/providers/certificates_prov
 /// check one straight away.
 ///
 /// The number printed on it (`CERT-XXXXX-XXXXX`) is typed, or its QR code
-/// scanned (`certificate:MOA-...`), or a link to it pasted. Public: works
+/// scanned (a link to the verifier with that number), or a link to its
+/// page pasted (`https://myotherapp.in/certificates/{id}`). Public: works
 /// with no account, as anyone handed a certificate needs it to.
 class CertificateVerifyPage extends ConsumerStatefulWidget {
   /// A code to check on opening.
   final String initialCode;
 
   const CertificateVerifyPage({super.key, this.initialCode = ''});
+
+  /// Said under the box for something that is neither a certificate's
+  /// number nor a link to one. Nothing is sent for it.
+  static const notACode = 'Type the number printed on the certificate, '
+      'like CERT-7K3QF-X9PWM, or paste a link to it.';
 
   @override
   ConsumerState<CertificateVerifyPage> createState() =>
@@ -38,6 +44,9 @@ class _CertificateVerifyPageState extends ConsumerState<CertificateVerifyPage> {
     super.initState();
     _input = TextEditingController(text: widget.initialCode);
     _code = certificateCodeFrom(widget.initialCode);
+    if (_code == null && widget.initialCode.trim().isNotEmpty) {
+      _inputError = CertificateVerifyPage.notACode;
+    }
   }
 
   @override
@@ -50,10 +59,7 @@ class _CertificateVerifyPageState extends ConsumerState<CertificateVerifyPage> {
     final code = certificateCodeFrom(raw ?? _input.text);
     FocusScope.of(context).unfocus();
     setState(() {
-      _inputError = code == null
-          ? 'Type the number printed on the certificate, like '
-              'CERT-7K3QF-X9PWM.'
-          : null;
+      _inputError = code == null ? CertificateVerifyPage.notACode : null;
       _code = code;
     });
     // Checked again even when it is the same code: the answer may have
@@ -90,19 +96,22 @@ class _CertificateVerifyPageState extends ConsumerState<CertificateVerifyPage> {
         children: [
           const Text(
             'Check that a MyOtherApp certificate is genuine and still valid. '
-            'Type the number printed on it, or scan its QR code.',
+            'Type the number printed on it, scan its QR code, or paste a '
+            'link to it.',
             style: TextStyle(fontSize: 15, color: _ink, height: 1.4),
           ),
           const SizedBox(height: 20),
           TextField(
             key: const ValueKey('verify-code'),
             controller: _input,
-            textCapitalization: TextCapitalization.characters,
+            // A pasted link's id is read as it is: its case matters. The
+            // printed number is upper-cased whatever was typed.
+            textCapitalization: TextCapitalization.none,
             autocorrect: false,
             textInputAction: TextInputAction.search,
             onSubmitted: _check,
             decoration: InputDecoration(
-              labelText: 'Certificate number',
+              labelText: 'Certificate number or link',
               hintText: 'CERT-XXXXX-XXXXX',
               errorText: _inputError,
               prefixIcon: const Icon(Icons.workspace_premium_outlined),
@@ -206,27 +215,39 @@ class _Result extends ConsumerWidget {
               ],
             );
           case CertificateCheck.revoked:
-            return const _Panel(
-              key: ValueKey('verify-result-revoked'),
-              color: Color(0xFFFFF1E6),
+            return _Panel(
+              key: const ValueKey('verify-result-revoked'),
+              color: const Color(0xFFFFF1E6),
               icon: Icons.block,
-              iconColor: Color(0xFFC2410C),
+              iconColor: const Color(0xFFC2410C),
               title: 'This certificate was revoked',
-              lines: [
+              lines: const [
                 'It was issued on MyOtherApp, but the club that issued it '
                     'has withdrawn it. It is no longer valid.',
               ],
+              // Which event and club took it back; never whose it was.
+              facts: [
+                ('For', check.eventName),
+                ('Issued by', check.issuer),
+                ('Number', check.number),
+              ],
             );
           case CertificateCheck.notFound:
+            final number = isCertificateNumber(code);
             return _Panel(
               key: const ValueKey('verify-result-not-found'),
               color: const Color(0xFFFDECEC),
               icon: Icons.help_outline,
               iconColor: const Color(0xFFB91C1C),
-              title: 'No certificate has this number',
+              title: number
+                  ? 'No certificate has this number'
+                  : 'No certificate has this link',
               lines: [
-                'We looked for $code. Check the number and try again: it '
-                    'looks like CERT-7K3QF-X9PWM.',
+                number
+                    ? 'We looked for $code. Check the number and try again: '
+                        'it looks like CERT-7K3QF-X9PWM.'
+                    : 'Check the link and try again, or type the number '
+                        'printed on the certificate, like CERT-7K3QF-X9PWM.',
               ],
             );
         }

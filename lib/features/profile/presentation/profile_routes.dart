@@ -5,8 +5,8 @@ import 'package:finnet/features/profile/presentation/pages/certificates/certific
 final List<RouteBase> profileRoutes = [
   // Is this certificate genuine? Public: anyone handed a certificate may
   // check it, with or without an account. `/verify/certificates/{code}`
-  // checks one at once: the printed number (CERT-...), the QR's text or a
-  // ticket id.
+  // checks one at once: the printed number (CERT-...) or the certificate's
+  // public id (the end of its link).
   GoRoute(
     path: '/verify/certificates',
     name: 'verifyCertificate',

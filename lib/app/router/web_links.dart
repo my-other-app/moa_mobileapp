@@ -25,6 +25,7 @@ import 'package:finnet/core/config/app_config.dart';
 /// | `/claim/{token}`                 | a place offered from a waiting list   |
 /// | `/requests/{token}`              | a registration under review           |
 /// | `/certificates/{id}`             | the certificate                       |
+/// | `/verify`, `/verify/{number}`    | the verifier (a certificate's QR)     |
 /// | `/topics`, `/topics/{slug}`      | the topics, a topic                   |
 /// | `/feedback/{event}/{reg}?k=`     | the feedback survey                   |
 /// | `/play/{event}`                  | the quiz, to join (its QR)            |
@@ -109,6 +110,16 @@ String? webLocation(Uri uri) {
     case 'tickets':
     case 'certificates':
       return rest.length == 1 ? at('/$head/${one(rest.first)}') : null;
+    case 'verify':
+      // The public verifier: a certificate's QR holds /verify/{number}.
+      // The app's own is /verify/certificates[/{code}].
+      final code = rest.isNotEmpty && rest.first.toLowerCase() == 'certificates'
+          ? rest.skip(1).toList()
+          : rest;
+      if (code.isEmpty) return at('/verify/certificates');
+      return code.length == 1
+          ? at('/verify/certificates/${one(code.first)}')
+          : null;
     case 'claim':
       // A waiting list's offer: its link in the email, WhatsApp and push.
       return rest.length == 1 ? at('/claim/${one(rest.first)}') : null;

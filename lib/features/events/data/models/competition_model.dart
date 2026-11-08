@@ -3,7 +3,9 @@ import 'package:finnet/features/events/domain/entities/competition.dart';
 
 // Reading `MyState` (moa_backend `app/api/competitions/schemas.py`) without
 // trusting any field: a row without an id or a name is skipped, anything
-// else missing takes its default.
+// else missing takes its default. Teammates come as `{name}` and others
+// looking for a team as `{name, skills, note}`: no registration ids, and
+// nothing here needs one.
 
 String? _text(Object? v) {
   final s = jsonString(v)?.trim();
@@ -79,10 +81,7 @@ CompetitionTeam? _team(Object? value) {
     members: [
       for (final m in jsonObjects(j['members']))
         if (_text(m['name']) case final name?)
-          CompetitionMember(
-            registrationId: jsonText(m['registration_id']),
-            name: name,
-          ),
+          CompetitionMember(name: name),
     ],
     openSpots: _count(j['open_spots']),
     submission: _submission(j['submission']),
@@ -95,7 +94,6 @@ TeamSeeker? _seeker(Object? value) {
   final name = _text(j['name']);
   if (name == null) return null;
   return TeamSeeker(
-    registrationId: jsonText(j['registration_id']),
     name: name,
     skills: [
       if (j['skills'] is List)
