@@ -26,11 +26,14 @@
 /// |                                      | the request's screen         |
 /// | `request_approved_pay` (`token`)     | the claim screen, to pay     |
 /// | `request_declined` (`token`)         | the request's screen         |
+/// | `answers_needed` (`url`)             | the missing-answers screen,  |
+/// |                                      | by the personal link         |
 ///
 /// A push carries its event as the string `event_id`; an inbox line as its
 /// `event` (and the push's data beside it).
 library;
 
+import 'package:finnet/features/events/domain/missing_answers.dart';
 import 'package:finnet/features/events/domain/registration_request.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/live/live_locations.dart';
@@ -83,6 +86,12 @@ const requestTypes = {
   requestApprovedPayType,
   requestDeclinedType,
 };
+
+/// "Hack Night needs 2 more details": a club's ask for the answers its
+/// changed sign-up form is missing (feature-register
+/// `missing-answers-contract.md` §2.1), with the person's own link (`url`,
+/// `https://myotherapp.in/answers/{event}/{ref}?k=…`).
+const answersNeededType = 'answers_needed';
 
 /// Where a request push (or its inbox line) opens; [requestTypes] only.
 ///
@@ -161,6 +170,12 @@ String? notificationRoute(
   }
   if (type != null && requestTypes.contains(type)) {
     return requestRouteFor(type, eventId, data);
+  }
+  if (type == answersNeededType) {
+    // The missing-answers screen, by the push's personal link; without one,
+    // the event.
+    return answersRouteFrom(data['url']?.toString()) ??
+        (eventId == null ? null : '/events/$eventId');
   }
   if (eventId == null) {
     final clubId = int.tryParse(data['club_id']?.toString().trim() ?? '');

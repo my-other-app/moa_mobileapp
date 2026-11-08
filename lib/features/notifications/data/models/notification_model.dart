@@ -250,6 +250,8 @@ class NotificationModel {
         return '💳';
       case 'request_declined':
         return '📭';
+      case answersNeededType:
+        return '📝';
       default:
         return '🔔';
     }
