@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/json_read.dart';
+import 'package:finnet/features/events/domain/missing_answers.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
 
 /// What the ticket's own endpoint says about one ticket.
@@ -11,20 +12,27 @@ import 'package:finnet/features/events/domain/registration_status.dart';
 /// a push, a deep link or the link in their email can ask: those routes
 /// never read the list of registrations, which is where `ticket_revoked` has
 /// always been, so the ticket screen was told nothing about a ticket the
-/// organiser had taken back. Only that one field is read here, under the
-/// name the list already uses for it.
+/// organiser had taken back. That field is read here, under the name the
+/// list already uses for it, and the club's ask for missing details.
 class TicketDetails {
-  const TicketDetails({required this.revoked});
+  const TicketDetails({required this.revoked, this.answersNeeded});
 
   /// The organiser revoked it: the door refuses it, and so do its picture,
   /// its PDF and its Wallet pass.
   final bool revoked;
 
+  /// The club asked for details its sign-up form didn't have
+  /// (`answers_needed`); null when it asks nothing, or the server is older.
+  final AnswersNeeded? answersNeeded;
+
   /// The endpoint's body; null when it carried nothing to read.
   static TicketDetails? of(Object? body) {
     final json = jsonObject(body);
     if (json == null) return null;
-    return TicketDetails(revoked: isTicketRevoked(json));
+    return TicketDetails(
+      revoked: isTicketRevoked(json),
+      answersNeeded: AnswersNeeded.fromJson(json['answers_needed']),
+    );
   }
 }
 

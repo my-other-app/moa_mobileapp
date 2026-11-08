@@ -3,8 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/cohost_model.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
+import 'package:finnet/features/events/domain/missing_answers.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
+import 'package:finnet/features/events/presentation/widgets/answers_needed_note.dart';
 import 'package:finnet/features/events/presentation/widgets/ticketing/cancelled_notice.dart';
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart'
     show ticketRoute;
@@ -151,6 +153,15 @@ class EventCard extends StatelessWidget {
   /// the poster's top-left corner -- not once the event is over or off.
   final bool highDemand;
 
+  /// The club asked this person for details its sign-up form didn't have
+  /// (the row's `answers_needed`): "2 details needed · Add them" above the
+  /// card's button, while the event is still to come.
+  final AnswersNeeded? answersNeeded;
+
+  /// Called once the details screen the note opened is closed, to read the
+  /// list again.
+  final VoidCallback? onAnswersReturn;
+
   static const cancelledBadgeKey = ValueKey('event-cancelled-badge');
 
   /// What an attended card says where a certificate would be, when the
@@ -193,7 +204,18 @@ class EventCard extends StatelessWidget {
     this.cancellation,
     this.paidTicket = false,
     this.highDemand = false,
+    this.answersNeeded,
+    this.onAnswersReturn,
   });
+
+  /// [answersNeeded], on a registration whose event is still on: never on
+  /// one called off, a revoked ticket, or an event that has happened.
+  bool get _showsAnswersNeeded =>
+      answersNeeded != null &&
+      cancellation == null &&
+      !_ended &&
+      status != EventCardStatus.none &&
+      status != EventCardStatus.ticketRevoked;
 
   /// [highDemand], while the event is still to come or on.
   bool get _showsHighDemand =>
@@ -426,6 +448,12 @@ class EventCard extends StatelessWidget {
             );
           }).toList(),
         ),
+
+        if (_showsAnswersNeeded)
+          AnswersNeededNote(
+            needed: answersNeeded!,
+            onReturn: onAnswersReturn,
+          ),
 
         // Action button based on status; the buttons sink under a finger.
         switch (_buildActionButton(context)) {

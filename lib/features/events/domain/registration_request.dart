@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 
 import 'package:finnet/core/utils/json_read.dart';
+import 'package:finnet/features/events/domain/missing_answers.dart';
 
 // "Review registrations": a club that turns it on for an event reviews
 // every registration, and confirms or declines each one (feature-register
@@ -159,6 +160,11 @@ class RegistrationRequest {
   /// Confirmed for a paid ticket and not paid yet, inside the hold.
   final RequestPay? pay;
 
+  /// The club asked for details its sign-up form didn't have
+  /// (`answers_needed`, missing-answers-contract.md §2.4); null when it asks
+  /// nothing, or the server is older.
+  final AnswersNeeded? answersNeeded;
+
   const RegistrationRequest({
     required this.id,
     required this.status,
@@ -174,6 +180,7 @@ class RegistrationRequest {
     this.closedReason,
     this.ticketId,
     this.pay,
+    this.answersNeeded,
   });
 
   bool get isPending => status == RequestStatus.pending;
@@ -258,6 +265,7 @@ class RegistrationRequest {
         closedReason: fresh.closedReason,
         ticketId: fresh.ticketId,
         pay: fresh.pay,
+        answersNeeded: fresh.answersNeeded,
       );
 
   /// The request, or null when [value] is not one: no object, or neither
@@ -285,6 +293,7 @@ class RegistrationRequest {
       closedReason: _text(json['closed_reason'])?.toLowerCase(),
       ticketId: _text(json['ticket_id']),
       pay: RequestPay.fromJson(json['pay']),
+      answersNeeded: AnswersNeeded.fromJson(json['answers_needed']),
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:finnet/common/models/events/cohost_model.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/core/utils/hours.dart';
+import 'package:finnet/features/events/domain/missing_answers.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 import 'package:finnet/shared/utils/image_url.dart';
@@ -85,6 +86,7 @@ EventCard eventCardFromJson(
   bool showShareIcon = true,
   VoidCallback? onFinishPayment,
   EventCancellation? cancellation,
+  VoidCallback? onAnswersReturn,
 }) {
   final club = _map(event['club']);
   final category = _map(event['category']);
@@ -120,5 +122,9 @@ EventCard eventCardFromJson(
     // The club's "High demand" label, where the row says it (never on one
     // that has ended).
     highDemand: event['high_demand'] == true && event['status'] != 'ended',
+    // The club's ask for missing details, on a registration's row
+    // (`answers_needed`); an older server sends none.
+    answersNeeded: AnswersNeeded.fromJson(event['answers_needed']),
+    onAnswersReturn: onAnswersReturn,
   );
 }

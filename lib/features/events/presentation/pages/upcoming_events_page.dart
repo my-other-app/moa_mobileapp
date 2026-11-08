@@ -132,7 +132,12 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
             primary: true,
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
-            children: [WaitingRequestsSection(requests: waiting)],
+            children: [
+              WaitingRequestsSection(
+                requests: waiting,
+                onAnswersReturn: _requests.refresh,
+              ),
+            ],
           ),
         ),
       );
@@ -158,7 +163,12 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
             ),
           ),
           itemBuilder: (context, at) {
-            if (at < header) return WaitingRequestsSection(requests: waiting);
+            if (at < header) {
+              return WaitingRequestsSection(
+                requests: waiting,
+                onAnswersReturn: _requests.refresh,
+              );
+            }
             final index = at - header;
             if (index == events.length) {
               return const Center(
@@ -178,6 +188,9 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
             return _RegistrationCard(
               event: event,
               onFinishPayment: () => _finishPayment(event),
+              // Back from adding the details the club asked for: the list
+              // again, which no longer asks.
+              onAnswersReturn: fetchFirstPage,
             );
           },
         ),
@@ -191,10 +204,15 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
 /// list doesn't say today). Only the cards drawn ask, each once in a while
 /// ([EventCancellationLookups]).
 class _RegistrationCard extends StatefulWidget {
-  const _RegistrationCard({required this.event, required this.onFinishPayment});
+  const _RegistrationCard({
+    required this.event,
+    required this.onFinishPayment,
+    this.onAnswersReturn,
+  });
 
   final Map<String, dynamic> event;
   final VoidCallback onFinishPayment;
+  final VoidCallback? onAnswersReturn;
 
   @override
   State<_RegistrationCard> createState() => _RegistrationCardState();
@@ -243,6 +261,7 @@ class _RegistrationCardState extends State<_RegistrationCard> {
           event['ticket_url'] is String ? event['ticket_url'] as String : null,
       onFinishPayment: widget.onFinishPayment,
       cancellation: EventCancellation.of(event) ?? _looked,
+      onAnswersReturn: widget.onAnswersReturn,
     );
   }
 }

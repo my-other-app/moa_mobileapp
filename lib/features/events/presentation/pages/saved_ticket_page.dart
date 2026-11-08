@@ -67,6 +67,9 @@ class SavedTicketPage extends ConsumerWidget {
       ticketType: ticket?.ticketType,
       cancellation: cancellation,
       paid: ticket?.paid ?? false,
+      // The club's ask for details, by the ticket's own word (it is not
+      // saved: it is only there while the ask is open).
+      answersNeeded: details?.answersNeeded,
     );
   }
 }
