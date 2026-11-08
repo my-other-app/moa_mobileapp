@@ -2,6 +2,7 @@ import 'package:finnet/app/router/app_router.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/presentation/events_routes.dart';
+import 'package:finnet/features/events/presentation/pages/answers_page.dart';
 import 'package:finnet/features/events/presentation/pages/competition_page.dart';
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
 import 'package:finnet/features/events/presentation/pages/feedback_survey_page.dart';
@@ -171,6 +172,16 @@ void main() {
     expect(page.surveyKey, 'abc.def');
   });
 
+  testWidgets('/answers/{event}/{ref}?k= is the missing-details screen',
+      (tester) async {
+    await _open(tester, '/answers/7/q6f1c2d4e?k=abc.def');
+
+    final page = tester.widget<AnswersPage>(find.byType(AnswersPage));
+    expect(page.eventId, 7);
+    expect(page.personRef, 'q6f1c2d4e');
+    expect(page.linkKey, 'abc.def');
+  });
+
   group("in the app's router", () {
     GoRouter appRouter() {
       final container = ProviderContainer(overrides: [
@@ -191,6 +202,7 @@ void main() {
           EventRouteNames.competition);
       expect(nameAt(router, '/events/42/compete'), EventRouteNames.competition);
       expect(nameAt(router, '/feedback/7/abc'), EventRouteNames.feedback);
+      expect(nameAt(router, '/answers/7/abc'), EventRouteNames.answers);
       expect(nameAt(router, '/events/hack-night'), 'eventDetail');
       expect(nameAt(router, '/events/hack-night/register'), 'eventRegister');
       expect(nameAt(router, '/events/explore'), 'exploreEvents');

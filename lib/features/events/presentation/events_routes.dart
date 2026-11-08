@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/features/events/domain/event_page_rules.dart';
 import 'package:finnet/features/events/domain/registration_request.dart';
+import 'package:finnet/features/events/presentation/pages/answers_page.dart';
 import 'package:finnet/features/events/presentation/pages/claim_offer_page.dart';
 import 'package:finnet/features/events/presentation/pages/competition_page.dart';
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
@@ -138,6 +139,7 @@ String? requestSentRedirect(BuildContext context, GoRouterState state) =>
 abstract final class EventRouteNames {
   static const competition = 'eventCompetition';
   static const feedback = 'eventFeedback';
+  static const answers = 'eventAnswers';
   static const people = 'eventPeople';
   static const claim = 'waitlistClaim';
   static const request = 'registrationRequest';
@@ -160,6 +162,11 @@ abstract final class EventRouteNames {
 /// - `/requests/:token` -- a registration at an event whose club reviews
 ///   every registration (the website's address too: its emails and pushes
 ///   link to it); needs no account, the token is the proof.
+/// - `/answers/:eventId/:ref?k=…` -- the details a club asked for after
+///   changing its sign-up questions, from the personal link in its email,
+///   push and WhatsApp (the website's address too); needs no account, the
+///   link's key is the proof -- or, signed in without one, the person's own
+///   token.
 final List<RouteBase> eventsRoutes = [
   GoRoute(
     path: '/requests/:token',
@@ -196,6 +203,22 @@ final List<RouteBase> eventsRoutes = [
         eventId: eventIdOf(ref) ?? 0,
         eventRef: ref,
         eventName: extra['eventName'] as String? ?? '',
+      );
+    },
+  ),
+  GoRoute(
+    path: '/answers/:eventId/:ref',
+    name: EventRouteNames.answers,
+    builder: (context, state) {
+      final eventId = state.pathParameters['eventId'] ?? '';
+      final ref = state.pathParameters['ref'] ?? '';
+      final key = state.uri.queryParameters['k'] ?? '';
+      return AnswersPage(
+        // Another person's link is another page.
+        key: ValueKey('answers-$eventId-$ref-$key'),
+        eventId: eventIdOf(eventId) ?? 0,
+        personRef: ref,
+        linkKey: key,
       );
     },
   ),

@@ -66,6 +66,7 @@ void main() {
         '/events/hack-night-04/register',
         '/events/hack-night-04/compete',
         '/feedback/12/34?k=abc',
+        '/answers/12/abc?k=sig',
         // Batch C's pages.
         '/following/posts',
         '/verify/certificates',
