@@ -69,7 +69,8 @@ class OnboardingAvatarPickerPage extends ConsumerWidget {
                 "Time to flex with your profile pic",
                 style: textTheme.headlineSmall,
               ),
-              Text("Choose your profile pic", style: textTheme.bodyMedium),
+              Text("Optional: you can add or change it any time in Settings.",
+                  style: textTheme.bodyMedium),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -111,6 +112,11 @@ class OnboardingAvatarPickerPage extends ConsumerWidget {
                     Icon(Icons.arrow_forward, size: 28),
                   ],
                 ),
+              ),
+              TextButton(
+                onPressed: () => context.go(withSignInFrom(
+                    '/onboarding/complete', signInFromOf(context))),
+                child: const Text("Skip for now"),
               ),
             ],
           ),

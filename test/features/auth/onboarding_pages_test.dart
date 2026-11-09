@@ -6,6 +6,7 @@ import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/features/auth/data/services/profile_service.dart';
 import 'package:finnet/features/auth/data/services/session_services.dart';
 import 'package:finnet/features/auth/presentation/pages/onboarding_details_page.dart';
+import 'package:finnet/features/auth/presentation/pages/onboarding_avatar_picker_page.dart';
 import 'package:finnet/features/auth/presentation/pages/onboarding_final_page.dart';
 import 'package:finnet/features/auth/presentation/pages/profile_check_page.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
@@ -75,6 +76,7 @@ Future<List<_Landed>> _pumpStep(
       for (final path in [
         '/onboarding/details',
         '/onboarding/interests',
+        '/onboarding/complete',
         '/clubs/tinkerhub',
         '/auth/onboarding',
       ])
@@ -381,14 +383,33 @@ void main() {
       expect(landed.single.location, '/clubs/tinkerhub');
     });
 
-    testWidgets('without a picture it asks for one first', (tester) async {
+    testWidgets('the picture step can be skipped (App Store 5.1.1(v))',
+        (tester) async {
+      final landed = await _pumpStep(
+        tester,
+        start: '/onboarding/avatar',
+        page: (_) => const OnboardingAvatarPickerPage(),
+        overrides: [
+          profileRepositoryProvider.overrideWithValue(_Profiles()),
+        ],
+      );
+      await _settle(tester);
+      expect(find.textContaining('Optional'), findsOneWidget);
+      await tester.tap(find.text('Skip for now'));
+      await _settle(tester);
+
+      expect(landed.single.location, '/onboarding/complete');
+    });
+
+    testWidgets('without a picture it still goes home (photo is optional)',
+        (tester) async {
       final landed = await pumpFinal(tester);
       await _settle(tester);
       await tester.tap(find.text('START THE JOURNEY'));
       await _settle(tester);
 
-      expect(find.text('select profile pic to proceed'), findsOneWidget);
-      expect(landed, isEmpty);
+      expect(find.text('select profile pic to proceed'), findsNothing);
+      expect(landed.single.location, '/');
     });
   });
 }
