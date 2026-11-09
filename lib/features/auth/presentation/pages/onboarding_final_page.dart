@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/features/auth/presentation/sign_in_gate.dart';
-import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/widgets/my_picture.dart';
 
 /// Onboarding Final Page - migrated to Riverpod.
@@ -10,9 +9,6 @@ class OnboardingFinalPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profileState = ref.watch(profileProvider);
-    final profile = profileState.profile;
-
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFA0),
       body: Stack(
@@ -43,21 +39,10 @@ class OnboardingFinalPage extends ConsumerWidget {
                         Spacer(),
                         Spacer(),
                         FilledButton(
-                          onPressed: () {
-                            // An avatar or an uploaded photo.
-                            if (profile?.pictureUrl() != null) {
-                              // A new account made from "sign in to follow"
-                              // (say) goes back to that club, else home.
-                              goAfterSignIn(
-                                  context, signInFromOf(context));
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content:
-                                        Text('select profile pic to proceed')),
-                              );
-                            }
-                          },
+                          // A picture is optional (App Store guideline
+                          // 5.1.1(v)): never hold anyone here without one.
+                          onPressed: () =>
+                              goAfterSignIn(context, signInFromOf(context)),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
