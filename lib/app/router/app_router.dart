@@ -419,6 +419,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                     name: 'badges',
                     parentNavigatorKey: rootKey,
                     builder: (context, state) => const MyBadgesPage()),
+                // Speakers I Follow (Profile): each opens the speaker's page.
+                ...followedSpeakersRoutes(rootKey),
                 // Share kits (Settings, for a club's team members): each
                 // event's words and posters -- what a share_kit push opens.
                 ...socialRoutes(rootKey),

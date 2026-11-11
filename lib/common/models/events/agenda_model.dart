@@ -1,4 +1,41 @@
+import 'package:finnet/common/models/events/event_page_model.dart';
 import 'package:finnet/core/utils/json_read.dart';
+import 'package:finnet/shared/utils/image_url.dart';
+
+/// One of a session's speakers, picked by the club from the event's
+/// speakers (`speakers: [{event_speaker_id, name, photo_thumbnail,
+/// profile_slug}]`, the speakers directory). With a [profileSlug] a tap
+/// opens their page; without one (a hidden profile) they are only named.
+class AgendaSpeaker {
+  final int? eventSpeakerId;
+  final String name;
+  final String? photo;
+  final String? profileSlug;
+
+  const AgendaSpeaker({
+    this.eventSpeakerId,
+    required this.name,
+    this.photo,
+    this.profileSlug,
+  });
+
+  /// Null without a name.
+  static AgendaSpeaker? fromJson(Map<String, dynamic> json) {
+    final name = AgendaItem._blank(jsonString(json['name']))?.trim();
+    if (name == null) return null;
+    return AgendaSpeaker(
+      eventSpeakerId: jsonInt(json['event_speaker_id']),
+      name: name,
+      photo: imageUrlFrom(json['photo_thumbnail']),
+      profileSlug: profileSlugFrom(json['profile_slug']),
+    );
+  }
+
+  static List<AgendaSpeaker> listFrom(Object? value) => [
+        for (final json in jsonObjects(value))
+          if (fromJson(json) case final speaker?) speaker,
+      ];
+}
 
 /// One block of an event's run of show, as `GET /events/{id}/agenda` returns it.
 class AgendaItem {
@@ -7,8 +44,15 @@ class AgendaItem {
   final DateTime? endsAt;
   final String title;
   final String? description;
+  /// The free text the club typed (older sessions), or -- for one with
+  /// [speakers] and no text of its own -- their names, which the server
+  /// fills in for older apps.
   final String? speaker;
   final String? speakerPhotoUrl;
+
+  /// The session's speakers from the event's speakers, in order; empty for
+  /// a session with only the free text (or on an older server).
+  final List<AgendaSpeaker> speakers;
   final String? location;
 
   /// Two blocks are parallel when their times overlap.
@@ -22,6 +66,7 @@ class AgendaItem {
     this.description,
     this.speaker,
     this.speakerPhotoUrl,
+    this.speakers = const [],
     this.location,
     this.parallel = false,
   });
@@ -38,13 +83,26 @@ class AgendaItem {
       description: _blank(jsonString(json['description'])),
       speaker: _blank(jsonString(json['speaker'])),
       speakerPhotoUrl: _blank(jsonString(json['speaker_photo_url'])),
+      speakers: AgendaSpeaker.listFrom(json['speakers']),
       location: _blank(jsonString(json['location'])),
       parallel: jsonBool(json['parallel']) ?? false,
     );
   }
 
-  /// Speaker and room on one line, as the programme prints them.
-  String get detail => [speaker, location]
+  /// The free text, when it says something [speakers] do not: text naming
+  /// any of them -- their names as the server fills them in, or the old
+  /// text they were matched from -- is shown by them instead.
+  String? get speakerText {
+    final text = speaker;
+    if (text == null || speakers.isEmpty) return text;
+    final lower = text.toLowerCase();
+    final named = speakers.any((s) => lower.contains(s.name.toLowerCase()));
+    return named ? null : text;
+  }
+
+  /// Speaker and room on one line, as the programme prints them. Linked
+  /// [speakers] show on their own, so only [speakerText] is here.
+  String get detail => [speakerText, location]
       .whereType<String>()
       .where((s) => s.isNotEmpty)
       .join(' · ');

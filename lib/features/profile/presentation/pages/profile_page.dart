@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/sign_out.dart';
 import 'package:finnet/features/profile/presentation/widgets/my_picture.dart';
+import 'package:finnet/features/speakers/data/speakers_api.dart';
+import 'package:finnet/features/speakers/domain/speaker.dart';
 import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
@@ -24,6 +26,9 @@ class ProfilePage extends ConsumerStatefulWidget {
   /// The picture in the header. It is changed on Edit Profile.
   static const pictureKey = ValueKey('profile-picture');
 
+  /// Speakers I Follow, in the menu.
+  static const followedSpeakersKey = ValueKey('profile-followed-speakers');
+
   @override
   ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
@@ -43,6 +48,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     // Watch profile state from Riverpod
     final profileState = ref.watch(profileProvider);
     final profile = profileState.profile;
+    // Hidden only once the server says it has no speakers directory (404):
+    // there while the list loads, and when it fails (the page says so).
+    final followed = ref.watch(followedSpeakersProvider);
+    final speakersShown = !(followed.hasValue && followed.value == null);
 
     // The menu: rows of the Settings design, as on Settings itself.
     final menu = dividedRows([
@@ -68,6 +77,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         label: 'My Badges',
         onTap: () => context.push('/profile/badges'),
       ),
+      // The speakers they follow, each opening the speaker's page.
+      if (speakersShown)
+        SettingsRow(
+          key: ProfilePage.followedSpeakersKey,
+          emoji: '🎤',
+          label: 'Speakers I Follow',
+          onTap: () => context.push(followedSpeakersLocation),
+        ),
       SettingsRow(
         asset: AssetResources.notifications,
         label: 'Notifications',

@@ -174,6 +174,69 @@ void main() {
       expect(tops, orderedEquals([...tops]..sort()));
     });
 
+    testWidgets("an agenda session's speaker with a page opens it; one "
+        'without, and old free text, stay as they were', (tester) async {
+      api
+        ..on('GET', '/events/info/7', eventInfo())
+        ..on('GET', '/discover/events/7', discoverEventPage())
+        ..on('GET', '/events/7/agenda', {
+          'timezone': 'Asia/Kolkata',
+          'items': [
+            {
+              'id': 1,
+              'starts_at': '2030-12-01T10:00:00Z',
+              'title': 'Keynote',
+              'speaker': 'Ananya Iyer, Ravi K',
+              'location': 'Main hall',
+              'event_speaker_ids': [11, 12],
+              'speakers': [
+                {
+                  'event_speaker_id': 11,
+                  'name': 'Ananya Iyer',
+                  'photo_thumbnail': null,
+                  'profile_slug': 'ananya-iyer',
+                },
+                {
+                  'event_speaker_id': 12,
+                  'name': 'Ravi K',
+                  'photo_thumbnail': null,
+                  'profile_slug': null,
+                },
+              ],
+            },
+            {
+              'id': 2,
+              'starts_at': '2030-12-01T11:00:00Z',
+              'title': 'Lightning talks',
+              'speaker': 'Meera S',
+              'location': 'Room 2',
+            },
+          ],
+        });
+      final h = await _pump(tester);
+
+      // The linked speakers stand alone; the names are not repeated.
+      expect(find.text('Main hall'), findsOneWidget);
+      expect(find.text('Ananya Iyer, Ravi K · Main hall'), findsNothing);
+      // An older session: its free text, as before, and nothing to tap.
+      expect(find.text('Meera S · Room 2'), findsOneWidget);
+
+      // A hidden profile is named but opens nothing.
+      final ravi = find.descendant(
+          of: find.byKey(const ValueKey('agenda-speaker-12')),
+          matching: find.text('Ravi K'));
+      await _tap(tester, ravi);
+      expect(h.went.where((w) => w.$1.startsWith('/speakers/')), isEmpty);
+
+      final ananya = find.descendant(
+          of: find.byKey(const ValueKey('agenda-speaker-11')),
+          matching: find.text('Ananya Iyer'));
+      await _tap(tester, ananya);
+      await tester.pumpAndSettle();
+      expect(find.text('the speaker'), findsOneWidget);
+      expect(h.went.last.$1, '/speakers/ananya-iyer');
+    });
+
     testWidgets("a speaker's sheet has their bio and their link",
         (tester) async {
       api

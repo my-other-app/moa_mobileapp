@@ -60,6 +60,14 @@ Uri? safeWebLink(Object? value) {
   return uri;
 }
 
+/// A speaker's page in the speakers directory (`profile_slug`, `slug`)
+/// that the app can put in an address: one path segment. Null for none --
+/// a hidden profile -- or anything else.
+String? profileSlugFrom(Object? value) {
+  final slug = _text(value);
+  return slug == null || slug.contains('/') ? null : slug;
+}
+
 /// What a person's link is to.
 enum PersonLinkKind { linkedin, instagram, x, youtube, github, website }
 
@@ -161,15 +169,9 @@ class EventPerson {
           prefer: const ['medium', 'large', 'thumbnail', 'original']),
       bio: _text(json['bio']),
       links: [if (link != null) PersonLink(personLinkKindOf(link), link)],
-      profileSlug: _slug(json['profile_slug']),
+      profileSlug: profileSlugFrom(json['profile_slug']),
       talkTitle: _text(json['talk_title']),
     );
-  }
-
-  /// A slug the app can put in an address: one path segment.
-  static String? _slug(Object? value) {
-    final slug = _text(value);
-    return slug == null || slug.contains('/') ? null : slug;
   }
 
   /// One of the team (`/discover/events/{ref}` `team`): their role, and

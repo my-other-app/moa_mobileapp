@@ -79,6 +79,8 @@ class _SpeakerPageState extends ConsumerState<SpeakerPage> {
           ? await api.unfollow(profile.slug)
           : await api.follow(profile.slug);
       if (!mounted) return;
+      // Profile > Speakers I Follow, should it be open beneath this page.
+      ref.invalidate(followedSpeakersProvider);
       // The server's count, when it gives one: others follow too.
       setState(() {
         _busy = false;

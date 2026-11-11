@@ -20,6 +20,7 @@ import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/presentation/providers/event_page_provider.dart';
 import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
 import 'package:finnet/features/events/presentation/utils/event_sign_in.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/agenda_speakers.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_contact.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_backers.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/hosted_by.dart';
@@ -1125,6 +1126,14 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                                     ),
                                 ],
                               ),
+                              // Its speakers from the event's speakers,
+                              // each opening their page when they have one.
+                              if (entry.value[i].speakers.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: AgendaSpeakers(
+                                      speakers: entry.value[i].speakers),
+                                ),
                               if (entry.value[i].detail.isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 2),
