@@ -44,6 +44,7 @@ import 'package:finnet/features/discover/presentation/discover_routes.dart';
 import 'package:finnet/features/auth/presentation/auth_routes.dart';
 import 'package:finnet/features/threads/presentation/threads_routes.dart';
 import 'package:finnet/features/profile/presentation/profile_routes.dart';
+import 'package:finnet/features/support/presentation/support_routes.dart';
 
 // Volunteer pages
 import 'package:finnet/features/volunteer/presentation/pages/volunteer_events_page.dart';
@@ -381,6 +382,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                     name: 'settings',
                     parentNavigatorKey: rootKey,
                     builder: (context, state) => const SettingsPage()),
+                // Help and support (Settings): the answers, Contact us, My
+                // requests and a request's thread -- what a support_reply
+                // push opens.
+                ...supportRoutes(rootKey),
                 GoRoute(
                     path: 'certificates',
                     name: 'certificates',

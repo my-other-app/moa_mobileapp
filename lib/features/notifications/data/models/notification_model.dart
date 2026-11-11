@@ -252,6 +252,8 @@ class NotificationModel {
         return '📭';
       case answersNeededType:
         return '📝';
+      case supportReplyType:
+        return '🛟';
       default:
         return '🔔';
     }
