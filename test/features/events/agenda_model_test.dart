@@ -41,6 +41,58 @@ void main() {
       expect(agenda.byDay.keys, hasLength(2));
     });
 
+    test("a session's linked speakers: their pages, and no repeat of names",
+        () {
+      final agenda = Agenda.fromJson({
+        'items': [
+          {
+            'id': 'a',
+            'starts_at': '2026-11-20T04:00:00+00:00',
+            'title': 'Keynote',
+            // The server's fill-in for older apps: the speakers' names.
+            'speaker': 'Ananya Iyer, Ravi K',
+            'location': 'Main hall',
+            'event_speaker_ids': [11, 12],
+            'speakers': [
+              {
+                'event_speaker_id': 11,
+                'name': 'Ananya Iyer',
+                'photo_thumbnail': 'https://media.myotherapp.in/a.jpg',
+                'profile_slug': 'ananya-iyer',
+              },
+              // A hidden profile: named, with no page.
+              {'event_speaker_id': 12, 'name': 'Ravi K', 'profile_slug': null},
+              {'event_speaker_id': 13, 'name': '  '},
+              {'event_speaker_id': 14, 'name': 'Odd', 'profile_slug': 'a/b'},
+            ],
+          },
+          {
+            'id': 'b',
+            'starts_at': '2026-11-20T05:00:00+00:00',
+            'title': 'Panel',
+            'speaker': 'Moderated by the club',
+            'speakers': [
+              {'event_speaker_id': 11, 'name': 'Ananya Iyer'},
+            ],
+          },
+        ],
+      });
+      final keynote = agenda.items.first;
+      expect(keynote.speakers.map((s) => s.name),
+          ['Ananya Iyer', 'Ravi K', 'Odd']);
+      expect(keynote.speakers.first.profileSlug, 'ananya-iyer');
+      expect(keynote.speakers.first.photo, 'https://media.myotherapp.in/a.jpg');
+      expect(keynote.speakers.first.eventSpeakerId, 11);
+      expect(keynote.speakers[1].profileSlug, isNull);
+      expect(keynote.speakers.last.profileSlug, isNull);
+      // The names are shown by the speakers, not again as text.
+      expect(keynote.speakerText, isNull);
+      expect(keynote.detail, 'Main hall');
+      // Text of the club's own that names none of them stays.
+      expect(agenda.items.last.speakerText, 'Moderated by the club');
+      expect(agenda.items.last.detail, 'Moderated by the club');
+    });
+
     test('an empty or odd payload is an empty agenda, not a crash', () {
       expect(Agenda.fromJson({}).items, isEmpty);
       expect(
