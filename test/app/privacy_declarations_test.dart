@@ -59,6 +59,18 @@ void main() {
     expect(plist, contains('<key>NSPhotoLibraryUsageDescription</key>'));
   });
 
+  test('declares help requests, linked, for the app itself; and says why '
+      'the camera and photos are asked for', () {
+    final support = collected()['NSPrivacyCollectedDataTypeCustomerSupport'];
+    expect(support, isNotNull,
+        reason: 'Settings > Help and support sends requests and screenshots');
+    expect(support!.linked, isTrue);
+    expect(support.tracking, isFalse);
+    expect(support.purposes,
+        ['NSPrivacyCollectedDataTypePurposeAppFunctionality']);
+    expect(plist, contains('to attach to a help request'));
+  });
+
   test('tracks nobody and declares no advertising data', () {
     expect(
         RegExp(r'<key>NSPrivacyTracking</key>\s*<false/>').hasMatch(manifest),

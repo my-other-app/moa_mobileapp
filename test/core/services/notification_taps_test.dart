@@ -210,6 +210,10 @@ void main() {
       (_certificate, AppRoutes.certificates),
       (const {'type': 'new_event', 'club_id': '5'}, AppRoutes.clubDetail),
       (_volunteer, 'volunteerScanner'),
+      (
+        const {'type': 'support_reply', 'case_id': '77', 'number': '1042'},
+        'helpRequest'
+      ),
     ]) {
       test('${data['type']} -> $name', () {
         final route = NotificationService.routeFor(data)!;

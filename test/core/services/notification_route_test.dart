@@ -1,3 +1,4 @@
+import 'package:finnet/app/router/route_access.dart';
 import 'package:finnet/core/services/notification_service.dart';
 import 'package:finnet/features/notifications/data/models/notification_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -211,6 +212,55 @@ void main() {
             'url': url,
           }),
           isNull);
+    });
+  });
+
+  group('the support team replied (support_reply)', () {
+    test('opens the request, by its case id', () {
+      expect(
+        NotificationService.routeFor(
+            const {'type': 'support_reply', 'case_id': '77', 'number': '1042'}),
+        '/profile/help/requests/77',
+      );
+      // A number, as JSON may carry it.
+      expect(
+        NotificationService.routeFor(
+            const {'type': 'support_reply', 'case_id': 77}),
+        '/profile/help/requests/77',
+      );
+    });
+
+    test('never the event, even with one named; My requests without a case',
+        () {
+      expect(
+        NotificationService.routeFor(const {
+          'type': 'support_reply',
+          'case_id': '77',
+          'event_id': '12',
+        }),
+        '/profile/help/requests/77',
+      );
+      expect(NotificationService.routeFor(const {'type': 'support_reply'}),
+          '/profile/help/requests');
+    });
+
+    test('signed out, it asks for sign-in first', () {
+      expect(needsAccount('/profile/help/requests/77'), isTrue);
+    });
+
+    test('its inbox line opens the same request', () {
+      final line = NotificationModel.fromJson({
+        'id': 'n-1',
+        'user_id': 1,
+        'title': 'We replied to your request #1042',
+        'description': 'Found it, check My events.',
+        'type': 'support_reply',
+        'status': 'unread',
+        'data': {'case_id': '77', 'number': '1042'},
+        'created_at': '2026-11-11T10:00:00Z',
+      });
+      expect(line.route, '/profile/help/requests/77');
+      expect(line.iconEmoji, '🛟');
     });
   });
 
