@@ -214,6 +214,31 @@ void main() {
     });
   });
 
+  group('a followed speaker is speaking (speaker_event)', () {
+    test('the push and its inbox line open the event', () {
+      expect(
+        NotificationService.routeFor(const {
+          'type': 'speaker_event',
+          'event_id': '12',
+          'slug': 'ananya-iyer',
+        }),
+        '/events/12',
+      );
+      final line = NotificationModel.fromJson({
+        'id': 'n-1',
+        'user_id': 1,
+        'title': 'Ananya Iyer is speaking at Hack Night',
+        'description': '',
+        'type': 'speaker_event',
+        'status': 'unread',
+        'data': {'event_id': '12', 'slug': 'ananya-iyer'},
+        'created_at': '2026-11-11T10:00:00Z',
+      });
+      expect(line.route, '/events/12');
+      expect(line.iconEmoji, '🎤');
+    });
+  });
+
   group('an unknown push with a url', () {
     test('a page the app has opens in the app', () {
       expect(
