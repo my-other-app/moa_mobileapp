@@ -152,6 +152,21 @@ void main() {
       expect(line.iconEmoji, '📣');
     });
 
+    test("an admin's posting alert opens the dashboard page it names, "
+        "outside the app's screens", () {
+      // social-posting-contract.md Changes: {type: social_alert, kind, url,
+      // club_id}, the url a page of the club dashboard.
+      const alert = {
+        'type': 'social_alert',
+        'kind': 'social_failed',
+        'url': 'https://club-dashboard.myotherapp.in/events/7/promote',
+        'club_id': '3',
+      };
+      expect(NotificationService.routeFor(alert), isNull);
+      expect(NotificationService.webUrlFor(alert).toString(),
+          'https://club-dashboard.myotherapp.in/events/7/promote');
+    });
+
     test('signed out, it asks for sign-in first', () {
       expect(needsAccount('/profile/share-kits/7'), isTrue);
       expect(needsAccount('/profile/share-kits'), isTrue);
