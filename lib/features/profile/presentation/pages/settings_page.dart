@@ -14,6 +14,8 @@ import 'package:finnet/features/profile/presentation/pages/settings/privacy_swit
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/sign_out.dart';
 import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
+import 'package:finnet/features/social/data/share_kit_api.dart';
+import 'package:finnet/features/social/domain/share_kit.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/confirmation_dialog.dart';
 import 'package:finnet/shared/widgets/settings_row.dart';
@@ -42,6 +44,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget build(BuildContext context) {
     final volunteerState = ref.watch(volunteerProvider);
     final hasVolunteerEvents = volunteerState.events.isNotEmpty;
+    // Only for someone on a club's team with a recent event to share; a
+    // server without share kits answers 404 and the row never shows.
+    final hasShareKits =
+        ref.watch(shareKitsProvider).valueOrNull?.isNotEmpty ?? false;
     final profile = ref.watch(profileProvider).profile;
 
     return Scaffold(
@@ -109,6 +115,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 emoji: '🎟️',
                 label: 'Volunteer Check-in',
                 onTap: () => context.push('/volunteer/events'),
+              ),
+
+            // Only for a club's team member with a recent event: its words
+            // and posters, ready to share from their own accounts.
+            if (hasShareKits)
+              SettingsRow(
+                key: const ValueKey('settings-share-kits'),
+                emoji: '📣',
+                label: 'Share Kits',
+                onTap: () => context.push(shareKitsLocation),
               ),
 
             // People whose comments are hidden.

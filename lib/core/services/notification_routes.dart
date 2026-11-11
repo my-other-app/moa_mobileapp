@@ -21,6 +21,8 @@
 /// | `volunteer_assigned` (push) /        | the event's door scanner     |
 /// | `volunteer_added` (its inbox line)   |                              |
 /// | `certificate_generated`              | My Certificates              |
+/// | `share_kit` (`event_id`, to a club's | the event's share kit        |
+/// | team when it publishes)              |                              |
 /// | `waitlist_offer` (`token`, `url`)    | the claim screen             |
 /// | `request_approved` (`token`)         | the ticket (`ticket_id`), or |
 /// |                                      | the request's screen         |
@@ -33,10 +35,14 @@
 /// `event` (and the push's data beside it).
 library;
 
+import 'package:finnet/features/social/domain/share_kit.dart';
 import 'package:finnet/features/events/domain/missing_answers.dart';
 import 'package:finnet/features/events/domain/registration_request.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/live/live_locations.dart';
+
+export 'package:finnet/features/social/domain/share_kit.dart'
+    show shareKitType;
 
 /// The pushes (and inbox lines) that open an event's live room.
 const liveRoomTypes = {
@@ -160,6 +166,11 @@ String? notificationRoute(
     return '/threads/${Uri.encodeComponent(threadId)}';
   }
   if (certificateTypes.contains(type)) return '/profile/certificates';
+  if (type == shareKitType) {
+    // "<Event> is live — share it", to the host club's team: the event's
+    // share kit (social-posting-contract.md); the list without an event.
+    return eventId == null ? shareKitsLocation : shareKitRoute(eventId);
+  }
   if (type == waitlistOfferType) {
     // A place held from the waiting list: its claim screen, by the push's
     // `token`, or the one in its `url` (`https://myotherapp.in/claim/...`).
