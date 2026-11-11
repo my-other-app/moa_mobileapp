@@ -515,6 +515,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => ThreadDetailPage(
                           threadId: state.pathParameters['threadId'] ?? '',
                         )),
+                // "Give your ticket back" (the email's /tickets/cancel?t=):
+                // the website's page, opened in the browser. Before the
+                // ticket, so it is never read as a ticket called "cancel".
+                GoRoute(
+                    path: 'tickets/cancel',
+                    name: 'ticketCancelLink',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) =>
+                        WebsiteHandoffPage(location: state.uri.toString())),
                 // A ticket, from what the phone has saved: opens with no
                 // network, and from its link with no account (its QR is
                 // the ticket, as on the website's page).
