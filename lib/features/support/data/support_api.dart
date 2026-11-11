@@ -96,12 +96,12 @@ class SupportApi {
 
   /// A reply from the person. A request solved within the week reopens; an
   /// older one becomes a new request, linked to it, on the server's side.
-  Future<void> reply(
+  Future<SupportReplySent> reply(
     String id, {
     required String message,
     List<String> attachments = const [],
   }) async {
-    await _client.request(
+    final res = await _client.request(
       '/support/requests/${Uri.encodeComponent(id)}/replies',
       DioMethod.post,
       param: {
@@ -109,6 +109,13 @@ class SupportApi {
         if (attachments.isNotEmpty) 'attachments': attachments,
       },
     );
+    return SupportReplySent.fromJson(res.data, caseId: id);
+  }
+
+  /// A file on a request, from the desk's own address (signed in), saved
+  /// to [savePath].
+  Future<void> download(String apiPath, String savePath) async {
+    await _client.dio.download(apiPath, savePath);
   }
 
   /// "Did we solve it?"

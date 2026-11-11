@@ -33,6 +33,7 @@ SupportRequestDetail _detail({
       status: status,
       canReply: canReply,
       surveyAnswered: surveyAnswered,
+      canSurvey: status == SupportStatus.resolved && !surveyAnswered,
       messages: const [
         SupportMessage(id: 'm1', fromUs: false, body: 'My ticket is missing'),
         SupportMessage(
@@ -384,6 +385,63 @@ void main() {
       expect((id, message), ('77', 'Thanks, got it'));
       expect(attachments, isEmpty);
       expect(find.text('Reply sent.'), findsOneWidget);
+    });
+
+    testWidgets('a reply to a closed request goes on in the new one it '
+        'opened', (tester) async {
+      final api = FakeSupportApi(details: {'77': _detail(), '80': _detail()})
+        ..replyAnswer =
+            const SupportReplySent(caseId: '80', number: 1050, newCase: true);
+      await pumpSupport(tester,
+          api: api, location: SupportLocations.request('77'));
+
+      await tester.enterText(
+          find.byKey(SupportRequestPage.replyKey), 'Still broken');
+      await tester.pump();
+      await tester.tap(find.byKey(SupportRequestPage.sendKey));
+      await tester.pumpAndSettle();
+
+      // The new request in place of the old one.
+      expect(
+          tester
+              .widget<SupportRequestPage>(find.byType(SupportRequestPage))
+              .caseId,
+          '80');
+      expect(find.text('Sent as a new request #1050.'), findsOneWidget);
+    });
+
+    testWidgets("a file on a message opens through the desk's own address",
+        (tester) async {
+      final files = <SupportAttachment>[];
+      final api = FakeSupportApi(details: {
+        '77': SupportRequestDetail(
+          id: '77',
+          status: SupportStatus.open,
+          messages: [
+            SupportMessage(
+              id: 'm1',
+              fromUs: false,
+              body: 'See the screenshot',
+              attachments: [
+                SupportAttachment.fromJson({
+                  'id': 4,
+                  'name': 'shot.png',
+                  'url': '/api/v1/support/requests/77/attachments/4',
+                })!,
+              ],
+            ),
+          ],
+        ),
+      });
+      await pumpSupport(tester,
+          api: api,
+          location: SupportLocations.request('77'),
+          openedFiles: files);
+
+      await tester.tap(find.byKey(const ValueKey('attachment-4')));
+      await tester.pump();
+
+      expect(files.single.apiPath, '/support/requests/77/attachments/4');
     });
 
     testWidgets('a closed request takes no reply', (tester) async {

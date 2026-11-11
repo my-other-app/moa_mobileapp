@@ -188,18 +188,56 @@ String supportNumber(int? number) => number == null ? '' : '#$number';
 
 /// A file on a message.
 class SupportAttachment {
-  const SupportAttachment({required this.name, this.url});
+  const SupportAttachment({
+    required this.name,
+    this.id,
+    this.url,
+    this.apiPath,
+    this.contentType,
+  });
 
+  final String? id;
   final String name;
+
+  /// A web address anyone with it can open.
   final Uri? url;
 
+  /// The desk's own address for it (`/api/v1/support/requests/{id}/
+  /// attachments/{file}`), relative to the app's API base: read with the
+  /// session, so only the person who asked can.
+  final String? apiPath;
+  final String? contentType;
+
+  bool get canOpen => url != null || apiPath != null;
+
+  /// A name safe to keep the file under on the phone.
+  String get fileName {
+    final safe = name.replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_');
+    final prefix = id == null ? '' : '$id-';
+    return '$prefix${safe.isEmpty ? 'attachment' : safe}';
+  }
+
   static SupportAttachment? fromJson(Map<String, dynamic> json) {
-    final url = Uri.tryParse(jsonText(json['url']).trim());
-    final usable =
-        url != null && (url.isScheme('https') || url.isScheme('http'));
-    final name = _text(json['name']) ?? (usable ? 'Attachment' : null);
+    final raw = jsonText(json['url']).trim();
+    final url = Uri.tryParse(raw);
+    final web = url != null && (url.isScheme('https') || url.isScheme('http'));
+    // Only the desk's own files: a path under /api/v1/support/ (or the
+    // same without the prefix), never one that climbs out of it.
+    String? apiPath;
+    if (!web && raw.startsWith('/') && !raw.contains('..')) {
+      final path = raw.startsWith('/api/v1/') ? raw.substring(7) : raw;
+      if (path.startsWith('/support/')) apiPath = path;
+    }
+    final name =
+        _text(json['name']) ?? (web || apiPath != null ? 'Attachment' : null);
     if (name == null) return null;
-    return SupportAttachment(name: name, url: usable ? url : null);
+    return SupportAttachment(
+      id: _text(json['id']),
+      name: name,
+      url: web ? url : null,
+      apiPath: apiPath,
+      contentType: _text(json['content_type']),
+    );
   }
 }
 
@@ -257,6 +295,7 @@ class SupportRequestDetail {
     this.messages = const [],
     this.canReply = true,
     this.surveyAnswered = false,
+    this.canSurvey = false,
   });
 
   final String id;
@@ -271,9 +310,14 @@ class SupportRequestDetail {
   /// "Did we solve it?" has its answer.
   final bool surveyAnswered;
 
+  /// "Did we solve it?" may be asked: the server's `can_survey`, else a
+  /// solved request without an answer.
+  final bool canSurvey;
+
   static SupportRequestDetail fromJson(Object? value, {required String id}) {
     final json = jsonObject(value) ?? const <String, dynamic>{};
     final status = supportStatusFrom(json['status']);
+    final answered = jsonObject(json['survey']) != null;
     return SupportRequestDetail(
       id: _text(json['id']) ?? id,
       number: jsonInt(json['number']),
@@ -286,7 +330,9 @@ class SupportRequestDetail {
           if (SupportMessage.fromJson(m) case final message?) message,
       ],
       canReply: jsonBool(json['can_reply']) ?? status != SupportStatus.closed,
-      surveyAnswered: jsonObject(json['survey']) != null,
+      surveyAnswered: answered,
+      canSurvey: jsonBool(json['can_survey']) ??
+          (status == SupportStatus.resolved && !answered),
     );
   }
 
@@ -300,6 +346,7 @@ class SupportRequestDetail {
         messages: messages,
         canReply: canReply,
         surveyAnswered: surveyAnswered ?? this.surveyAnswered,
+        canSurvey: canSurvey,
       );
 }
 
@@ -342,6 +389,30 @@ class SupportRequestSent {
     return SupportRequestSent(
       id: _text(json['id']) ?? '',
       number: jsonInt(json['number']),
+    );
+  }
+}
+
+/// A reply just sent (`POST /support/requests/{id}/replies`): the request
+/// it went to -- a new one ([newCase]) when the old one was closed, or
+/// solved more than a week ago.
+class SupportReplySent {
+  const SupportReplySent({
+    required this.caseId,
+    this.number,
+    this.newCase = false,
+  });
+
+  final String caseId;
+  final int? number;
+  final bool newCase;
+
+  static SupportReplySent fromJson(Object? value, {required String caseId}) {
+    final json = jsonObject(value) ?? const <String, dynamic>{};
+    return SupportReplySent(
+      caseId: _text(json['case_id']) ?? caseId,
+      number: jsonInt(json['number']),
+      newCase: jsonBool(json['new_case']) == true,
     );
   }
 }

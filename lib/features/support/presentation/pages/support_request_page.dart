@@ -11,7 +11,6 @@ import 'package:finnet/features/support/domain/support.dart';
 import 'package:finnet/features/support/presentation/providers/support_providers.dart';
 import 'package:finnet/features/support/presentation/support_routes.dart';
 import 'package:finnet/features/support/presentation/widgets/support_widgets.dart';
-import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/toast.dart';
 
@@ -71,7 +70,7 @@ class _SupportRequestPageState extends ConsumerState<SupportRequestPage> {
     if (!_ready(tray)) return;
     setState(() => _sending = true);
     try {
-      await ref.read(supportApiProvider).reply(
+      final sent = await ref.read(supportApiProvider).reply(
             widget.caseId,
             message: _reply.text.trim(),
             attachments: tray.keys,
@@ -80,8 +79,17 @@ class _SupportRequestPageState extends ConsumerState<SupportRequestPage> {
       _reply.clear();
       tray.clear();
       setState(() => _sending = false);
-      ref.invalidate(supportRequestProvider(widget.caseId));
       ref.invalidate(myRequestsProvider);
+      if (sent.newCase && sent.caseId != widget.caseId) {
+        // The old request was closed: the reply opened a new one, linked
+        // to it. That is where the conversation goes on.
+        final number = supportNumber(sent.number);
+        showToast(context,
+            'Sent as a new request${number.isEmpty ? '' : ' $number'}.');
+        context.pushReplacement(SupportLocations.request(sent.caseId));
+        return;
+      }
+      ref.invalidate(supportRequestProvider(widget.caseId));
       showToast(context, 'Reply sent.');
     } catch (e) {
       if (!mounted) return;
@@ -137,9 +145,7 @@ class _SupportRequestPageState extends ConsumerState<SupportRequestPage> {
 
   Widget _thread(BuildContext context, SupportRequestDetail detail) {
     final topics = ref.watch(supportTopicsProvider).valueOrNull ?? const [];
-    final askSurvey = detail.status == SupportStatus.resolved &&
-        !detail.surveyAnswered &&
-        !_surveySent;
+    final askSurvey = detail.canSurvey && !_surveySent;
     return Column(
       children: [
         Expanded(
@@ -244,9 +250,22 @@ class _Bubble extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: InkWell(
-                    onTap: file.url == null
+                    key: ValueKey('attachment-${file.id ?? file.name}'),
+                    onTap: !file.canOpen
                         ? null
-                        : () => ref.read(linkLauncherProvider)(file.url!),
+                        : () async {
+                            var opened = false;
+                            try {
+                              opened = await ref.read(
+                                  supportAttachmentOpenerProvider)(file);
+                            } catch (_) {
+                              opened = false;
+                            }
+                            if (!opened && context.mounted) {
+                              showToast(context, "Couldn't open ${file.name}.",
+                                  icon: Icons.error_outline);
+                            }
+                          },
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -260,9 +279,9 @@ class _Bubble extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 13,
-                              decoration: file.url == null
-                                  ? null
-                                  : TextDecoration.underline,
+                              decoration: file.canOpen
+                                  ? TextDecoration.underline
+                                  : null,
                               color: mine ? Colors.white : AppColors.ink,
                             ),
                           ),

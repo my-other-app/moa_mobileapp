@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'package:finnet/core/network/interceptors/app_version_interceptor.dart';
 import 'package:finnet/core/utils/error_utils.dart';
@@ -8,6 +10,7 @@ import 'package:finnet/features/events/presentation/providers/saved_tickets_prov
 import 'package:finnet/features/profile/data/photo_picker.dart';
 import 'package:finnet/features/support/data/support_api.dart';
 import 'package:finnet/features/support/domain/support.dart';
+import 'package:finnet/shared/utils/external_links.dart';
 
 /// The help page's answers; null when the server has no help desk yet (a
 /// 404), and the page offers the support email instead.
@@ -69,6 +72,24 @@ final supportEventChoicesProvider = Provider<List<SupportEventChoice>>((ref) {
           when: ticket.startsAt,
         ),
   ];
+});
+
+/// Opens a file on a request; answers whether anything opened. A web
+/// address opens as any link does; the desk's own file is fetched with
+/// the session into the phone's temporary folder and handed to the app
+/// for its kind.
+final supportAttachmentOpenerProvider =
+    Provider<Future<bool> Function(SupportAttachment file)>((ref) {
+  return (file) async {
+    final url = file.url;
+    if (url != null) return ref.read(linkLauncherProvider)(url);
+    final path = file.apiPath;
+    if (path == null) return false;
+    final dir = await getTemporaryDirectory();
+    final save = '${dir.path}/support-${file.fileName}';
+    await ref.read(supportApiProvider).download(path, save);
+    return (await OpenFilex.open(save)).type == ResultType.done;
+  };
 });
 
 /// Where a screenshot comes from: the photo picker, or the camera at the

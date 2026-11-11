@@ -105,11 +105,15 @@ class FakeSupportApi extends SupportApi {
     return detail;
   }
 
+  /// What a reply answers with: by default the same request.
+  SupportReplySent? replyAnswer;
+
   @override
-  Future<void> reply(String id,
+  Future<SupportReplySent> reply(String id,
       {required String message, List<String> attachments = const []}) async {
     _desk();
     replies.add((id, message, attachments));
+    return replyAnswer ?? SupportReplySent(caseId: id);
   }
 
   @override
@@ -142,6 +146,7 @@ Future<({GoRouter router, List<Uri> opened})> pumpSupport(
   FakeScreenshotPicker? picker,
   Map<String, int> sizes = const {},
   bool launches = true,
+  List<SupportAttachment>? openedFiles,
 }) async {
   final opened = <Uri>[];
   final rootKey = GlobalKey<NavigatorState>();
@@ -176,6 +181,11 @@ Future<({GoRouter router, List<Uri> opened})> pumpSupport(
         opened.add(uri);
         return launches;
       }),
+      if (openedFiles != null)
+        supportAttachmentOpenerProvider.overrideWithValue((file) async {
+          openedFiles.add(file);
+          return true;
+        }),
     ],
     child: MaterialApp.router(routerConfig: router),
   ));

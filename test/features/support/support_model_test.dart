@@ -100,6 +100,55 @@ void main() {
       expect(detail.surveyAnswered, isFalse);
     });
 
+    test("the desk's own files open with the session; nothing else does",
+        () {
+      SupportAttachment? read(Object url) => SupportAttachment.fromJson(
+          {'id': 4, 'name': 'shot one.png', 'url': url});
+      final own = read('/api/v1/support/requests/7/attachments/4')!;
+      expect(own.url, isNull);
+      expect(own.apiPath, '/support/requests/7/attachments/4');
+      expect(own.canOpen, isTrue);
+      expect(own.fileName, '4-shot_one.png');
+      expect(read('/support/requests/7/attachments/4')!.apiPath,
+          '/support/requests/7/attachments/4');
+      // Climbing out of the desk, or another part of the API: not opened.
+      expect(read('/api/v1/support/../user/delete')!.canOpen, isFalse);
+      expect(read('/api/v1/user/profile/me')!.canOpen, isFalse);
+      expect(read('https://files.example.com/x.png')!.url, isNotNull);
+    });
+
+    test('the survey is asked when the server says so, else once solved', () {
+      expect(
+          SupportRequestDetail.fromJson(
+              {'status': 'resolved', 'can_survey': false},
+              id: '1').canSurvey,
+          isFalse);
+      expect(
+          SupportRequestDetail.fromJson(
+              {'status': 'closed', 'can_survey': true},
+              id: '1').canSurvey,
+          isTrue);
+      expect(
+          SupportRequestDetail.fromJson({'status': 'resolved'}, id: '1')
+              .canSurvey,
+          isTrue);
+      expect(
+          SupportRequestDetail.fromJson({
+            'status': 'resolved',
+            'survey': {'solved': true}
+          }, id: '1').canSurvey,
+          isFalse);
+    });
+
+    test('a reply that opened a new request says which', () {
+      final sent = SupportReplySent.fromJson(
+          {'id': 3, 'case_id': 80, 'number': 1050, 'new_case': true},
+          caseId: '77');
+      expect(sent.caseId, '80');
+      expect(sent.newCase, isTrue);
+      expect(SupportReplySent.fromJson({'id': 3}, caseId: '77').caseId, '77');
+    });
+
     test('a closed request without can_reply takes none; an answered survey '
         'is not asked again', () {
       final detail = SupportRequestDetail.fromJson(
@@ -200,7 +249,9 @@ void main() {
       final api = useFakeApi();
       api.on('POST', '/support/requests/7/replies', {'id': 3});
       api.on('POST', '/support/requests/7/survey', {'ok': true});
-      await SupportApi().reply('7', message: 'Thanks');
+      final sent = await SupportApi().reply('7', message: 'Thanks');
+      expect(sent.caseId, '7');
+      expect(sent.newCase, isFalse);
       await SupportApi().survey('7', solved: true);
       expect(api.sent('POST', '/support/requests/7/replies').single.data,
           {'message': 'Thanks'});
