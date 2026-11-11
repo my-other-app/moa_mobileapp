@@ -44,6 +44,7 @@ import 'package:finnet/features/discover/presentation/discover_routes.dart';
 import 'package:finnet/features/auth/presentation/auth_routes.dart';
 import 'package:finnet/features/threads/presentation/threads_routes.dart';
 import 'package:finnet/features/profile/presentation/profile_routes.dart';
+import 'package:finnet/features/speakers/presentation/speakers_routes.dart';
 
 // Volunteer pages
 import 'package:finnet/features/volunteer/presentation/pages/volunteer_events_page.dart';
@@ -437,6 +438,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ...overHome(rootKey, eventsRoutes),
                 ...overHome(rootKey, threadsRoutes),
                 ...overHome(rootKey, profileRoutes),
+                // A speaker's page (the speakers directory), from their card
+                // on an event page and from the website's link.
+                ...overHome(rootKey, speakersRoutes),
                 GoRoute(
                     path: 'events/explore',
                     name: 'exploreEvents',

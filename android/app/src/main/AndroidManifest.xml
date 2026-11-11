@@ -103,7 +103,8 @@
                waiting list's offer; /requests/{token} is a request for a
                place at an event whose club confirms each one;
                /answers/{event}/{ref} is the personal link a club's ask
-               for missing sign-up details sends. An intent
+               for missing sign-up details sends; /speakers/{slug} is a
+               speaker's page. An intent
                filter cannot
                leave a path out: the router sends what it can't show to
                the browser. -->
@@ -128,6 +129,7 @@
               <data android:pathPrefix="/feedback/"/>
               <data android:pathPrefix="/answers/"/>
               <data android:pathPrefix="/play/"/>
+              <data android:pathPrefix="/speakers/"/>
           </intent-filter>
       </activity>
 

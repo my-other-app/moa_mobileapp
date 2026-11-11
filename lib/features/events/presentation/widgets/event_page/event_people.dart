@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/event_page_model.dart';
+import 'package:finnet/features/speakers/domain/speaker.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/event_section.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/detail_sheet.dart';
@@ -42,7 +44,8 @@ class PersonAvatar extends StatelessWidget {
 }
 
 /// Speakers, the organising team, or the club's team: one row each, and a
-/// sheet with the bio and links on a tap.
+/// sheet with the bio and links on a tap -- or, for a speaker with a page
+/// in the speakers directory (`profile_slug`), their page.
 class EventPeopleSection extends StatelessWidget {
   final String title;
   final List<EventPerson> people;
@@ -89,9 +92,13 @@ class _PersonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bio = person.bio;
+    final slug = person.profileSlug;
+    final talk = speaker ? person.talkTitle : null;
     return InkWell(
       borderRadius: BorderRadius.circular(10),
-      onTap: () => showPersonSheet(context, person),
+      onTap: slug == null
+          ? () => showPersonSheet(context, person)
+          : () => context.push(speakerRoute(slug)),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
@@ -115,6 +122,19 @@ class _PersonRow extends StatelessWidget {
                         person.role!,
                         style: const TextStyle(
                             fontSize: 13, color: Color(0xFF6B7280)),
+                      ),
+                    ),
+                  if (talk != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '“$talk”',
+                        key: ValueKey('person-talk-${person.name}'),
+                        style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            fontStyle: FontStyle.italic,
+                            color: Color(0xFF1F2937)),
                       ),
                     ),
                   if (speaker && bio != null)

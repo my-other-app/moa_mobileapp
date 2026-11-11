@@ -28,6 +28,8 @@
 /// | `request_declined` (`token`)         | the request's screen         |
 /// | `answers_needed` (`url`)             | the missing-answers screen,  |
 /// |                                      | by the personal link         |
+/// | `speaker_event` (a followed          | the event                    |
+/// | speaker's new talk)                  |                              |
 ///
 /// A push carries its event as the string `event_id`; an inbox line as its
 /// `event` (and the push's data beside it).
@@ -61,6 +63,9 @@ const eventPageTypes = {
   'nearby_event',
   // The organiser's message to an event's registrants.
   'club_announcement',
+  // A speaker the person follows is speaking at a newly published event
+  // (speakers-contract.md: `speaker_event`, `{event_id, slug}`).
+  'speaker_event',
 };
 
 /// "You're now a volunteer": the push says `volunteer_assigned`, its line in
