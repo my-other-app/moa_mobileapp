@@ -15,6 +15,8 @@
 /// | `interest_match` (push) /            | the event                    |
 /// | `nearby_event` (its inbox line)      |                              |
 /// | `club_announcement` (to registrants) | the event                    |
+/// | `speaker_event` (a followed          | the event                    |
+/// | speaker's new talk)                  |                              |
 /// | `event_reminder`, `event_started`,   | the event                    |
 /// | `event_checkin`, `event_registered`, |                              |
 /// | `event_invited`                      |                              |
@@ -28,8 +30,6 @@
 /// | `request_declined` (`token`)         | the request's screen         |
 /// | `answers_needed` (`url`)             | the missing-answers screen,  |
 /// |                                      | by the personal link         |
-/// | `speaker_event` (a followed          | the event                    |
-/// | speaker's new talk)                  |                              |
 ///
 /// A push carries its event as the string `event_id`; an inbox line as its
 /// `event` (and the push's data beside it).

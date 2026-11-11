@@ -189,6 +189,26 @@ class SpeakerProfile {
   }
 }
 
+/// What following (or unfollowing) a speaker left: `{slug, following,
+/// followers_count}`.
+class SpeakerFollow {
+  const SpeakerFollow({required this.following, this.followersCount});
+
+  final bool following;
+  final int? followersCount;
+
+  static SpeakerFollow? fromJson(Object? value) {
+    final json = jsonObject(value);
+    final following = jsonBool(json?['following']);
+    if (following == null) return null;
+    final count = jsonInt(json?['followers_count']);
+    return SpeakerFollow(
+      following: following,
+      followersCount: count == null || count < 0 ? null : count,
+    );
+  }
+}
+
 /// What `GET /speakers/{slug}` answered.
 sealed class SpeakerLookup {
   const SpeakerLookup();

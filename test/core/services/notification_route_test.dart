@@ -151,6 +151,31 @@ void main() {
     });
   });
 
+  group('a followed speaker is speaking (speaker_event)', () {
+    test('the push and its inbox line open the event', () {
+      expect(
+        NotificationService.routeFor(const {
+          'type': 'speaker_event',
+          'event_id': '12',
+          'slug': 'ananya-iyer',
+        }),
+        '/events/12',
+      );
+      final line = NotificationModel.fromJson({
+        'id': 'n-1',
+        'user_id': 1,
+        'title': 'Ananya Iyer is speaking at Hack Night',
+        'description': '',
+        'type': 'speaker_event',
+        'status': 'unread',
+        'data': {'event_id': '12', 'slug': 'ananya-iyer'},
+        'created_at': '2026-11-11T10:00:00Z',
+      });
+      expect(line.route, '/events/12');
+      expect(line.iconEmoji, '🎤');
+    });
+  });
+
   group("a club's ask for missing details (answers_needed)", () {
     const url = 'https://myotherapp.in/answers/12/reg-1?k=abc.def';
 
@@ -211,31 +236,6 @@ void main() {
             'url': url,
           }),
           isNull);
-    });
-  });
-
-  group('a followed speaker is speaking (speaker_event)', () {
-    test('the push and its inbox line open the event', () {
-      expect(
-        NotificationService.routeFor(const {
-          'type': 'speaker_event',
-          'event_id': '12',
-          'slug': 'ananya-iyer',
-        }),
-        '/events/12',
-      );
-      final line = NotificationModel.fromJson({
-        'id': 'n-1',
-        'user_id': 1,
-        'title': 'Ananya Iyer is speaking at Hack Night',
-        'description': '',
-        'type': 'speaker_event',
-        'status': 'unread',
-        'data': {'event_id': '12', 'slug': 'ananya-iyer'},
-        'created_at': '2026-11-11T10:00:00Z',
-      });
-      expect(line.route, '/events/12');
-      expect(line.iconEmoji, '🎤');
     });
   });
 

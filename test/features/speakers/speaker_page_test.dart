@@ -43,6 +43,7 @@ Map<String, dynamic> _speaker({
       'claimed': true,
       'followers_count': followers,
       'following': following,
+      'updated_at': '2026-11-11T09:00:00Z',
       'talks': {
         'upcoming': upcoming ??
             [
@@ -237,6 +238,20 @@ void main() {
       expect(api.sent('DELETE', '/speakers/ananya-iyer/follow'), hasLength(1));
       expect(find.text('FOLLOW'), findsOneWidget);
       expect(find.text('Bengaluru · 41 followers'), findsOneWidget);
+    });
+
+    testWidgets("the server's count wins once it answers", (tester) async {
+      api
+        ..on('GET', '/speakers/ananya-iyer', _speaker())
+        ..on('POST', '/speakers/ananya-iyer/follow',
+            {'slug': 'ananya-iyer', 'following': true, 'followers_count': 57});
+      await pump(tester);
+
+      await tester.tap(find.byKey(SpeakerPage.followKey));
+      await tester.pumpAndSettle();
+
+      expect(find.text('UNFOLLOW'), findsOneWidget);
+      expect(find.text('Bengaluru · 57 followers'), findsOneWidget);
     });
 
     testWidgets('a refused follow takes itself back', (tester) async {

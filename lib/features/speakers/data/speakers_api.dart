@@ -46,11 +46,16 @@ class SpeakersApi {
     return dio is DioException ? dio.response?.data : null;
   }
 
-  Future<void> follow(String slug) async {
-    await _client.request('${path(slug)}/follow', DioMethod.post);
+  /// Follow: the server's word on it (`{slug, following,
+  /// followers_count}`), or null when it says nothing usable.
+  Future<SpeakerFollow?> follow(String slug) async {
+    final res = await _client.request('${path(slug)}/follow', DioMethod.post);
+    return SpeakerFollow.fromJson(res.data);
   }
 
-  Future<void> unfollow(String slug) async {
-    await _client.request('${path(slug)}/follow', DioMethod.delete);
+  Future<SpeakerFollow?> unfollow(String slug) async {
+    final res =
+        await _client.request('${path(slug)}/follow', DioMethod.delete);
+    return SpeakerFollow.fromJson(res.data);
   }
 }

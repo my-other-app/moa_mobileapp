@@ -75,13 +75,18 @@ class _SpeakerPageState extends ConsumerState<SpeakerPage> {
     });
     try {
       final api = ref.read(speakersApiProvider);
-      if (was) {
-        await api.unfollow(profile.slug);
-      } else {
-        await api.follow(profile.slug);
-      }
+      final answer = was
+          ? await api.unfollow(profile.slug)
+          : await api.follow(profile.slug);
       if (!mounted) return;
-      setState(() => _busy = false);
+      // The server's count, when it gives one: others follow too.
+      setState(() {
+        _busy = false;
+        if (answer != null) {
+          _following = answer.following;
+          _followers = answer.followersCount ?? _followers;
+        }
+      });
       if (!was) {
         showToast(context,
             "You're following ${profile.name}. We'll tell you when they speak.");
