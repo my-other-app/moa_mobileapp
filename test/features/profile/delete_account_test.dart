@@ -24,6 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../auth/auth_fakes.dart';
 import '../events/events_fakes.dart' show RouteAdapter, useFakeApi;
 import '../threads/moderation_fakes.dart';
+import 'package:finnet/features/social/data/share_kit_api.dart';
 
 const _profile = UserProfile(
   id: '42',
@@ -118,6 +119,8 @@ void main() {
         volunteerRepositoryProvider.overrideWithValue(_NoVolunteering()),
         moderationRepositoryProvider
             .overrideWithValue(FakeModerationRepository()),
+        // Not on a club's team: Settings asks for no share kits.
+        shareKitsProvider.overrideWith((ref) async => const []),
         linkLauncherProvider.overrideWithValue((uri) async => true),
       ],
       child: const MaterialApp(home: SettingsPage()),

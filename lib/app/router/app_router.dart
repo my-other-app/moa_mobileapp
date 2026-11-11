@@ -51,6 +51,7 @@ import 'package:finnet/features/support/presentation/support_routes.dart';
 import 'package:finnet/features/volunteer/presentation/pages/volunteer_events_page.dart';
 import 'package:finnet/features/volunteer/presentation/pages/volunteer_scanner_page.dart';
 import 'package:finnet/features/volunteer/presentation/pages/manual_ticket_entry_page.dart';
+import 'package:finnet/features/social/presentation/social_routes.dart';
 
 // Signed-out browsing and the website's links
 import 'package:finnet/app/router/link_pages.dart';
@@ -418,6 +419,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                     name: 'badges',
                     parentNavigatorKey: rootKey,
                     builder: (context, state) => const MyBadgesPage()),
+                // Share kits (Settings, for a club's team members): each
+                // event's words and posters -- what a share_kit push opens.
+                ...socialRoutes(rootKey),
                 GoRoute(
                     path: 'notifications',
                     name: 'notifications',

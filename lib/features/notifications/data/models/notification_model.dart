@@ -244,6 +244,8 @@ class NotificationModel {
         return '📣';
       case 'club_thread':
         return '💬';
+      case shareKitType:
+        return '📣';
       case 'event_reminder':
         return '⏰';
       case 'request_approved':

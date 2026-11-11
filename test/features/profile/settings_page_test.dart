@@ -11,6 +11,8 @@ import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/profile/domain/repositories/profile_repository.dart';
 import 'package:finnet/features/profile/presentation/pages/settings/blocked_users_page.dart';
 import 'package:finnet/features/profile/presentation/pages/settings_page.dart';
+import 'package:finnet/features/social/data/share_kit_api.dart';
+import 'package:finnet/features/social/domain/share_kit.dart';
 import 'package:finnet/features/threads/data/repositories/moderation_repository_impl.dart';
 import 'package:finnet/features/volunteer/data/repositories/volunteer_repository_impl.dart';
 import 'package:finnet/features/volunteer/domain/entities/volunteer_event.dart';
@@ -127,7 +129,8 @@ Future<List<Uri>> _pump(WidgetTester tester,
     PrivacyChoicesStore? privacy,
     CollectionControl? control,
     UserProfile profile = _profile,
-    List<VolunteerEvent> volunteering = const []}) async {
+    List<VolunteerEvent> volunteering = const [],
+    List<ShareKitEvent> shareKits = const []}) async {
   final opened = <Uri>[];
   await tester.pumpWidget(ProviderScope(
     overrides: [
@@ -142,6 +145,7 @@ Future<List<Uri>> _pump(WidgetTester tester,
           .overrideWithValue(_FakeVolunteering(volunteering)),
       moderationRepositoryProvider
           .overrideWithValue(FakeModerationRepository()),
+      shareKitsProvider.overrideWith((ref) async => shareKits),
       isAuthenticatedProvider.overrideWithValue(true),
       linkLauncherProvider.overrideWithValue((uri) async {
         opened.add(uri);
@@ -336,7 +340,8 @@ void main() {
           pushSettings: _FakePushSettings(
               const PushSwitches(clubs: true, topics: true, platform: true)),
           profile: _profile.copyWith(emailVerified: false),
-          volunteering: [_volunteerEvent]);
+          volunteering: [_volunteerEvent],
+          shareKits: const [ShareKitEvent(id: 7, name: 'DevFest')]);
 
       final rows = find.byType(SettingsRow);
       expect(
@@ -351,6 +356,7 @@ void main() {
           'Crash Reports',
           'Verify Email',
           'Volunteer Check-in',
+          'Share Kits',
           'Blocked Users',
           'Help and Support',
           'Terms and Conditions',
@@ -413,6 +419,19 @@ void main() {
         (tester) async {
       await _pump(tester);
       expect(find.byKey(const ValueKey('settings-volunteer')), findsNothing);
+    });
+
+    testWidgets('no Share Kits without a kit (a server without them too)',
+        (tester) async {
+      await _pump(tester);
+      expect(find.byKey(const ValueKey('settings-share-kits')), findsNothing);
+    });
+
+    testWidgets("Share Kits for a club's team member with an event to share",
+        (tester) async {
+      await _pump(tester,
+          shareKits: const [ShareKitEvent(id: 7, name: 'DevFest')]);
+      expect(find.byKey(const ValueKey('settings-share-kits')), findsOneWidget);
     });
 
     testWidgets('Volunteer Check-in for a volunteer', (tester) async {
