@@ -61,7 +61,7 @@ Uri? safeWebLink(Object? value) {
 }
 
 /// What a person's link is to.
-enum PersonLinkKind { linkedin, instagram, x, youtube, website }
+enum PersonLinkKind { linkedin, instagram, x, youtube, github, website }
 
 /// The kind of site [uri] is on.
 PersonLinkKind personLinkKindOf(Uri uri) {
@@ -71,6 +71,7 @@ PersonLinkKind personLinkKindOf(Uri uri) {
   if (on('instagram.com')) return PersonLinkKind.instagram;
   if (on('x.com') || on('twitter.com')) return PersonLinkKind.x;
   if (on('youtube.com') || on('youtu.be')) return PersonLinkKind.youtube;
+  if (on('github.com')) return PersonLinkKind.github;
   return PersonLinkKind.website;
 }
 
@@ -81,12 +82,13 @@ class PersonLink {
 
   const PersonLink(this.kind, this.uri);
 
-  /// "LinkedIn", "Instagram", "X", "YouTube", "Website".
+  /// "LinkedIn", "Instagram", "X", "YouTube", "GitHub", "Website".
   String get label => switch (kind) {
         PersonLinkKind.linkedin => 'LinkedIn',
         PersonLinkKind.instagram => 'Instagram',
         PersonLinkKind.x => 'X',
         PersonLinkKind.youtube => 'YouTube',
+        PersonLinkKind.github => 'GitHub',
         PersonLinkKind.website => 'Website',
       };
 
@@ -114,6 +116,14 @@ class EventPerson {
   final String? bio;
   final List<PersonLink> links;
 
+  /// A speaker's page in the speakers directory (`profile_slug`): their
+  /// card opens it. Null when they have none, or it is hidden -- the card
+  /// then opens the sheet, as before the directory.
+  final String? profileSlug;
+
+  /// What a speaker talks about at this event (`talk_title`).
+  final String? talkTitle;
+
   const EventPerson({
     this.id,
     required this.name,
@@ -121,6 +131,8 @@ class EventPerson {
     this.photo,
     this.bio,
     this.links = const [],
+    this.profileSlug,
+    this.talkTitle,
   });
 
   /// "Ananya Iyer" -> "AI"; "?" without a name.
@@ -130,8 +142,10 @@ class EventPerson {
     return letters.isEmpty ? '?' : letters;
   }
 
-  /// Whether there is more to show than the row does: a bio or a link.
-  bool get hasMore => (bio?.isNotEmpty ?? false) || links.isNotEmpty;
+  /// Whether there is more to show than the row does: a bio, a link, or
+  /// a speaker's page.
+  bool get hasMore =>
+      (bio?.isNotEmpty ?? false) || links.isNotEmpty || profileSlug != null;
 
   /// A speaker, from `/discover/events/{ref}` (`photo` a URL) or from
   /// `/events/info` (`photo` the S3 sizes). Null without a name.
@@ -147,7 +161,15 @@ class EventPerson {
           prefer: const ['medium', 'large', 'thumbnail', 'original']),
       bio: _text(json['bio']),
       links: [if (link != null) PersonLink(personLinkKindOf(link), link)],
+      profileSlug: _slug(json['profile_slug']),
+      talkTitle: _text(json['talk_title']),
     );
+  }
+
+  /// A slug the app can put in an address: one path segment.
+  static String? _slug(Object? value) {
+    final slug = _text(value);
+    return slug == null || slug.contains('/') ? null : slug;
   }
 
   /// One of the team (`/discover/events/{ref}` `team`): their role, and

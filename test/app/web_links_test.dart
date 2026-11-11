@@ -81,6 +81,17 @@ void main() {
       expect(at('https://myotherapp.in/answers/12/reg-1/x'), isNull);
     });
 
+    test("a speaker's page opens in the app; their claim page does not", () {
+      expect(at('https://myotherapp.in/speakers/ananya-iyer'),
+          '/speakers/ananya-iyer');
+      expect(at('https://myotherapp.in/speakers/ananya-iyer?ref=ig'),
+          '/speakers/ananya-iyer?ref=ig');
+      expect(at('https://myotherapp.in/speakers'), isNull);
+      expect(at('https://myotherapp.in/speakers/claim'), isNull);
+      expect(at('https://myotherapp.in/speakers/claim/tok-1'), isNull);
+      expect(at('https://myotherapp.in/speakers/a/b'), isNull);
+    });
+
     test('the directories are batch A\'s Discover screens, filters and all',
         () {
       // The app's own /events and /clubs are the person's (the tabs).

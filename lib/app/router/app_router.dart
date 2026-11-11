@@ -39,6 +39,7 @@ import 'package:finnet/features/profile/presentation/pages/badges/my_badges_page
 import 'package:finnet/features/profile/presentation/pages/notifications/notifications_page.dart';
 import 'package:finnet/features/main/presentation/pages/main_shell.dart';
 import 'package:finnet/features/discover/presentation/discover_routes.dart';
+import 'package:finnet/features/speakers/presentation/speakers_routes.dart';
 
 // Batch C's routes (auth, threads, profile)
 import 'package:finnet/features/auth/presentation/auth_routes.dart';
@@ -442,6 +443,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ...overHome(rootKey, eventsRoutes),
                 ...overHome(rootKey, threadsRoutes),
                 ...overHome(rootKey, profileRoutes),
+                // A speaker's page (the speakers directory), from their card
+                // on an event page and from the website's link.
+                ...overHome(rootKey, speakersRoutes),
                 GoRoute(
                     path: 'events/explore',
                     name: 'exploreEvents',

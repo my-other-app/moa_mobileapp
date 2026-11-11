@@ -15,6 +15,8 @@
 /// | `interest_match` (push) /            | the event                    |
 /// | `nearby_event` (its inbox line)      |                              |
 /// | `club_announcement` (to registrants) | the event                    |
+/// | `speaker_event` (a followed          | the event                    |
+/// | speaker's new talk)                  |                              |
 /// | `event_reminder`, `event_started`,   | the event                    |
 /// | `event_checkin`, `event_registered`, |                              |
 /// | `event_invited`                      |                              |
@@ -66,6 +68,9 @@ const eventPageTypes = {
   'nearby_event',
   // The organiser's message to an event's registrants.
   'club_announcement',
+  // A speaker the person follows is speaking at a newly published event
+  // (speakers-contract.md: `speaker_event`, `{event_id, slug}`).
+  'speaker_event',
 };
 
 /// "You're now a volunteer": the push says `volunteer_assigned`, its line in

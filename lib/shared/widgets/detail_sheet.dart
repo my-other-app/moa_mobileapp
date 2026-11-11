@@ -9,6 +9,7 @@ IconData personLinkIcon(PersonLinkKind kind) => switch (kind) {
       PersonLinkKind.instagram => Icons.camera_alt_outlined,
       PersonLinkKind.x => Icons.alternate_email,
       PersonLinkKind.youtube => Icons.play_circle_outline,
+      PersonLinkKind.github => Icons.code,
       PersonLinkKind.website => Icons.link,
     };
 

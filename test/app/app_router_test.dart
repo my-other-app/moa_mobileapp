@@ -238,6 +238,17 @@ void main() {
             AppRoutes.eventRegister);
       });
 
+      test("a speaker's page opens over Home, signed out too", () {
+        expect(nameOf('/speakers/ananya-iyer'), 'speaker');
+        expect(matchOf('/speakers/ananya-iyer').pathParameters['slug'],
+            'ananya-iyer');
+        final shell = matchOf('/speakers/ananya-iyer').matches.first
+            as ShellRouteMatch;
+        expect(shell.matches.first.route,
+            isA<GoRoute>().having((r) => r.path, 'path', '/'));
+        expect(authRedirect(_signedOut, '/speakers/ananya-iyer'), isNull);
+      });
+
       test('a post, a ticket and a certificate open by their ids', () {
         expect(nameOf('/threads/7d0f3c2a-1111-4c4c-9a9a-000000000001'),
             AppRoutes.threadDetail);

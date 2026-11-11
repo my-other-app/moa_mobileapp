@@ -69,6 +69,8 @@ Future<_Harness> _pump(
         path: '/auth/onboarding', builder: (_, s) => record(s, 'sign in')),
     GoRoute(
         path: '/feedback/:e/:r', builder: (_, s) => record(s, 'the survey')),
+    GoRoute(
+        path: '/speakers/:slug', builder: (_, s) => record(s, 'the speaker')),
   ]);
   await tester.pumpWidget(ProviderScope(
     overrides: [
@@ -185,6 +187,59 @@ void main() {
       await tester.tap(find.widgetWithText(OutlinedButton, 'LinkedIn'));
       await _settle(tester);
       expect(h.opened.single.toString(), 'https://www.linkedin.com/in/ananya');
+    });
+
+    testWidgets("a speaker with a page opens it, and shows their talk",
+        (tester) async {
+      api
+        ..on('GET', '/events/info/7', eventInfo())
+        ..on(
+            'GET',
+            '/discover/events/7',
+            discoverEventPage(speakers: [
+              {
+                'id': 11,
+                'name': 'Ananya Iyer',
+                'designation': 'ML engineer, Sarvam',
+                'photo': null,
+                'bio': 'Ananya builds speech models for Indian languages.',
+                'link': 'https://www.linkedin.com/in/ananya',
+                'profile_slug': 'ananya-iyer',
+                'talk_title': 'Speech models for Bharat',
+              },
+            ]));
+      final h = await _pump(tester);
+
+      expect(find.text('“Speech models for Bharat”'), findsOneWidget);
+      await _tap(tester, find.text('Ananya Iyer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('the speaker'), findsOneWidget);
+      expect(h.went.last.$1, '/speakers/ananya-iyer');
+    });
+
+    testWidgets('a speaker without a page (hidden, or an older server) opens '
+        'the sheet, as before', (tester) async {
+      api
+        ..on('GET', '/events/info/7', eventInfo())
+        ..on(
+            'GET',
+            '/discover/events/7',
+            discoverEventPage(speakers: [
+              {
+                'id': 11,
+                'name': 'Ananya Iyer',
+                'bio': 'Ananya builds speech models for Indian languages.',
+                'profile_slug': null,
+              },
+            ]));
+      final h = await _pump(tester);
+
+      await _tap(tester, find.text('Ananya Iyer'));
+      expect(find.text('the speaker'), findsNothing);
+      expect(h.went.where((w) => w.$1.startsWith('/speakers/')), isEmpty);
+      expect(find.text('Ananya builds speech models for Indian languages.'),
+          findsNWidgets(2), reason: 'the row and the sheet');
     });
 
     testWidgets("a team member's sheet has their links, and no unsafe one",

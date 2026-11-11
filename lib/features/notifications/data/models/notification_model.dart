@@ -234,6 +234,8 @@ class NotificationModel {
         return '✅';
       case 'new_event':
         return '🎉';
+      case 'speaker_event':
+        return '🎤';
       case 'nearby_event':
         return '📌';
       case 'volunteer_added':

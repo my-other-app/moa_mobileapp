@@ -30,6 +30,7 @@ import 'package:finnet/core/config/app_config.dart';
 /// | `/feedback/{event}/{reg}?k=`     | the feedback survey                   |
 /// | `/answers/{event}/{ref}?k=`      | the details a club asked for          |
 /// | `/play/{event}`                  | the quiz, to join (its QR)            |
+/// | `/speakers/{slug}`               | the speaker's page                    |
 ///
 /// The app's own `/events` and `/clubs` are the person's events and clubs
 /// (the tabs); the website's are the directories, which is why a link is
@@ -121,6 +122,13 @@ String? webLocation(Uri uri) {
       return code.length == 1
           ? at('/verify/certificates/${one(code.first)}')
           : null;
+    case 'speakers':
+      // A speaker's page (the speakers directory). The site's directory
+      // and claim pages (`/speakers/claim/{token}`) stay in the browser.
+      if (rest.length != 1 || rest.first.toLowerCase() == 'claim') {
+        return null;
+      }
+      return at('/speakers/${one(rest.first)}');
     case 'claim':
       // A waiting list's offer: its link in the email, WhatsApp and push.
       return rest.length == 1 ? at('/claim/${one(rest.first)}') : null;
