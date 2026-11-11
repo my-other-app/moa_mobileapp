@@ -441,6 +441,7 @@ These answers match `ios/Runner/PrivacyInfo.xcprivacy` (checked against the code
 | Financial Info → Payment Info | Yes | Yes | No | App Functionality | entered in Razorpay's in-app checkout; the app never sees card numbers |
 | User Content → Photos or Videos | Yes | Yes | No | App Functionality | a profile photo the person takes with the camera or chooses from their library (`photo_picker.dart`), uploaded as their picture; sent without location or other metadata |
 | User Content → Other User Content | Yes | Yes | No | App Functionality | Threads comments, reports, registration answers, ratings |
+| User Content → Customer Support | Yes | Yes | No | App Functionality | a help request from Settings > Help and support: its topic, message, screenshots (camera or library) and the event it is about, kept with the account so the team can answer |
 | Other Data | Yes | Yes | No | App Functionality | college, interests, chosen avatar, blocks |
 | Location → Coarse Location | Yes | Yes | No | App Functionality | the city and region worked out from the IP address at each sign-in, kept with the account for the Security page and new-sign-in emails; "near you" uses the same kind of lookup but doesn't keep it |
 | Usage Data → Product Interaction | Yes | Yes | No | Analytics | Firebase Analytics (not linked), and the events a signed-in person opened (linked, on the server) |
@@ -477,8 +478,8 @@ The camera is also used to scan ticket and certificate QR codes; those images st
 | Location → Approximate location | Yes (the city and region worked out from the IP address at each sign-in, kept with the account for the Security page and new-sign-in emails; "near you" uses the same kind of lookup but doesn't keep it) | Required | App functionality, Fraud prevention, security, and compliance |
 | Financial info → User payment info | Yes (Razorpay checkout in the app) | Optional | App functionality |
 | Financial info → Purchase history | Yes | Optional | App functionality |
-| Photos and videos → Photos | Yes (a profile photo, from the camera or the system Photo Picker) | Optional | App functionality, Account management |
-| Messages / user content → Other in-app messages or content (Threads comments, reports) | Yes | Optional | App functionality |
+| Photos and videos → Photos | Yes (a profile photo, or a screenshot on a help request, from the camera or the system Photo Picker) | Optional | App functionality, Account management |
+| Messages / user content → Other in-app messages or content (Threads comments, reports, help requests and replies) | Yes | Optional | App functionality |
 | App activity → App interactions | Yes (Firebase Analytics; and the events a signed-in person opened, kept on the server) | Required | Analytics |
 | App info and performance → Crash logs | Yes | Required | App functionality (crash fixing) |
 | App info and performance → Diagnostics | Yes | Required | App functionality, Analytics |
