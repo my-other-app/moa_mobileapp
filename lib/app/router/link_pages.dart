@@ -88,6 +88,92 @@ class LinkNotFoundPage extends ConsumerWidget {
   }
 }
 
+/// A page of the website the app must not stand in for, though its
+/// address is one the app opens: "give your ticket back"
+/// (`/tickets/cancel?t=...`, from the email), which Android's App Links
+/// cannot leave out. It opens the site's page at once -- with its query,
+/// in the in-app browser -- and offers it again, and the way home, for
+/// when the person comes back.
+class WebsiteHandoffPage extends ConsumerStatefulWidget {
+  const WebsiteHandoffPage({super.key, required this.location});
+
+  /// The app location the link became (a path and query).
+  final String location;
+
+  static const openKey = ValueKey('website-handoff-open');
+
+  @override
+  ConsumerState<WebsiteHandoffPage> createState() =>
+      _WebsiteHandoffPageState();
+}
+
+class _WebsiteHandoffPageState extends ConsumerState<WebsiteHandoffPage> {
+  Uri get _page => websiteUriFor(widget.location);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(linkLauncherProvider)(_page);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: _bar(context),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.open_in_browser, size: 64, color: Colors.grey[500]),
+                const SizedBox(height: 20),
+                Text(
+                  'This opens on the website',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[850],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Finish there. If it did not open, open it again.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 28),
+                FilledButton.icon(
+                  key: WebsiteHandoffPage.openKey,
+                  onPressed: () => ref.read(linkLauncherProvider)(_page),
+                  icon: const Icon(Icons.open_in_browser),
+                  label: const Text('Open the website'),
+                  style: FilledButton.styleFrom(backgroundColor: _ink),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () {
+                    ref.read(navigationIndexProvider.notifier).state = 0;
+                    context.go('/');
+                  },
+                  style: TextButton.styleFrom(foregroundColor: _ink),
+                  child: const Text('Go to Home'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// `/certificates/{id}`: a certificate from its link (the website's
 /// address, which its holder shares), and `/profile/certificates/{id}`
 /// without the certificate in hand.

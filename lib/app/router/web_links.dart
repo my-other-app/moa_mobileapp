@@ -22,6 +22,7 @@ import 'package:finnet/core/config/app_config.dart';
 /// | `/threads`                       | `/discover/threads` (every club's)    |
 /// | `/threads/{id}`                  | the post                              |
 /// | `/tickets/{id}`                  | the ticket (its QR works offline)     |
+/// | `/tickets/cancel?t=`             | the browser: giving a ticket back     |
 /// | `/claim/{token}`                 | a place offered from a waiting list   |
 /// | `/requests/{token}`              | a registration under review           |
 /// | `/certificates/{id}`             | the certificate                       |
@@ -110,6 +111,15 @@ String? webLocation(Uri uri) {
       if (rest.isEmpty) return at('/topics');
       return rest.length == 1 ? at('/topics/${one(rest.first)}') : null;
     case 'tickets':
+      // "Give your ticket back" (the email's link,
+      // /tickets/cancel?t=...) is the website's page, not a ticket called
+      // "cancel". Android cannot leave the path out of its App Links, so
+      // it reaches the app; the router hands it to the browser
+      // ([ticketCancelPath], WebsiteHandoffPage).
+      if (rest.isNotEmpty && rest.first.toLowerCase() == 'cancel') {
+        return null;
+      }
+      return rest.length == 1 ? at('/$head/${one(rest.first)}') : null;
     case 'certificates':
       return rest.length == 1 ? at('/$head/${one(rest.first)}') : null;
     case 'verify':
@@ -172,6 +182,10 @@ String? webLocation(Uri uri) {
   }
   return null;
 }
+
+/// The website's "give your ticket back" page (`/tickets/cancel?t=...`),
+/// which the app hands to the browser rather than showing a ticket.
+const ticketCancelPath = '/tickets/cancel';
 
 /// The site's city pages under `/events` and `/clubs`: `in`, then at most
 /// the city's name. No event or club is called "in" (an event's slug ends

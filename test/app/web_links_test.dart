@@ -175,6 +175,20 @@ void main() {
       }
     });
 
+    test('"give your ticket back" is the website\'s page, not a ticket', () {
+      expect(at('https://myotherapp.in/tickets/cancel?t=tok.sig'), isNull);
+      expect(at('https://myotherapp.in/tickets/CANCEL?t=tok'), isNull);
+      expect(at('https://myotherapp.in/tickets/cancel/extra'), isNull);
+      // A ticket is still a ticket.
+      expect(at('https://myotherapp.in/tickets/MOA-7K3QF-X9PWM'),
+          '/tickets/MOA-7K3QF-X9PWM');
+      // The link Android hands the app keeps its query, for the browser.
+      expect(
+          appLocationForLink(
+              Uri.parse('https://myotherapp.in/tickets/cancel?t=tok.sig')),
+          '$ticketCancelPath?t=tok.sig');
+    });
+
     test('a path that is not path-safe stays one segment', () {
       expect(at('https://myotherapp.in/threads/a%2Fb'), '/threads/a%2Fb');
     });
@@ -344,6 +358,10 @@ void main() {
       expect(namesAt(router, '/events/12/live/quiz'),
           ['home', 'eventDetail', 'eventLive', 'eventLiveQuiz']);
       expect(namesAt(router, '/clubs/circuit-society'), ['home', 'clubDetail']);
+      // "Give your ticket back": the browser's page, never a ticket.
+      expect(namesAt(router, '/tickets/cancel?t=tok'),
+          ['home', 'ticketCancelLink']);
+      expect(namesAt(router, '/tickets/abc-123'), ['home', 'ticket']);
     });
 
     testWidgets('signed out, a public link opens and a private one asks first',
@@ -353,6 +371,12 @@ void main() {
           '/events/hack-night-04');
       expect(await resolve(tester, router, '/tickets/abc-123'),
           '/tickets/abc-123');
+      // Open without an account: the website asks for nothing more than
+      // the link's token.
+      expect(
+          await resolve(tester, router,
+              'https://myotherapp.in/tickets/cancel?t=tok.sig'),
+          '/tickets/cancel?t=tok.sig');
       expect(await resolve(tester, router, '/profile/notifications'),
           signInLocation('/profile/notifications'));
       // The whole URL from the platform is read first, then asked about.
