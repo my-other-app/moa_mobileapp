@@ -15,6 +15,9 @@ const speakerEventType = 'speaker_event';
 /// The app's (and the website's) address of a speaker's page.
 String speakerRoute(String slug) => '/speakers/${Uri.encodeComponent(slug)}';
 
+/// Profile > Speakers I Follow: signed in only, as all of `/profile` is.
+const followedSpeakersLocation = '/profile/speakers';
+
 String? _text(Object? value) {
   final s = jsonString(value)?.replaceAll(RegExp(r'\r\n?'), '\n').trim();
   return s == null || s.isEmpty ? null : s;
@@ -187,6 +190,48 @@ class SpeakerProfile {
       past: SpeakerTalk.listFrom(talks['past']),
     );
   }
+}
+
+/// A speaker the person follows (`GET /speakers/following`: `[{slug, name,
+/// headline, photo, upcoming_count}]`, newest follow first).
+class FollowedSpeaker {
+  const FollowedSpeaker({
+    required this.slug,
+    required this.name,
+    this.headline,
+    this.photo,
+    this.upcomingCount = 0,
+  });
+
+  final String slug;
+  final String name;
+  final String? headline;
+  final String? photo;
+
+  /// Their talks still to come at published events.
+  final int upcomingCount;
+
+  /// Null without a slug the app can open, or without a name.
+  static FollowedSpeaker? fromJson(Map<String, dynamic> json) {
+    final slug = profileSlugFrom(json['slug']);
+    final name = _text(json['name']);
+    if (slug == null || name == null) return null;
+    return FollowedSpeaker(
+      slug: slug,
+      name: name,
+      headline: _text(json['headline']),
+      photo: imageUrlFrom(json['photo'],
+          prefer: const ['thumbnail', 'medium', 'large', 'original']),
+      upcomingCount: _count(json['upcoming_count']),
+    );
+  }
+
+  /// The list; `{items: [...]}` too, should the server ever page it.
+  static List<FollowedSpeaker> listFrom(Object? value) => [
+        for (final json
+            in jsonObjects(jsonObject(value)?['items'] ?? value))
+          if (fromJson(json) case final speaker?) speaker,
+      ];
 }
 
 /// What following (or unfollowing) a speaker left: `{slug, following,

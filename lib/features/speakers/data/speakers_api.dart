@@ -3,9 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/speakers/domain/speaker.dart';
 
 final speakersApiProvider = Provider<SpeakersApi>((ref) => SpeakersApi());
+
+/// The speakers the person follows, newest first: none signed out, and
+/// null -- Profile then hides the entry -- on a server without the
+/// speakers directory (404). Read again after a follow or an unfollow.
+final followedSpeakersProvider =
+    FutureProvider.autoDispose<List<FollowedSpeaker>?>((ref) async {
+  if (!ref.watch(isAuthenticatedProvider)) return const [];
+  return ref.watch(speakersApiProvider).following();
+});
 
 /// The speakers directory's public side (feature-register
 /// `speakers-contract.md`): a speaker's page and following them, through
@@ -57,5 +67,17 @@ class SpeakersApi {
     final res =
         await _client.request('${path(slug)}/follow', DioMethod.delete);
     return SpeakerFollow.fromJson(res.data);
+  }
+
+  /// `GET /speakers/following`: the speakers the signed-in person follows;
+  /// null on a server without the speakers directory (404).
+  Future<List<FollowedSpeaker>?> following() async {
+    try {
+      final res = await _client.request('/speakers/following', DioMethod.get);
+      return FollowedSpeaker.listFrom(res.data);
+    } catch (e) {
+      if (statusCodeOf(e) == 404) return null;
+      rethrow;
+    }
   }
 }

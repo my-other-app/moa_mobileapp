@@ -1,5 +1,7 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:finnet/features/speakers/presentation/pages/followed_speakers_page.dart';
 import 'package:finnet/features/speakers/presentation/pages/speaker_page.dart';
 
 /// The speakers directory's routes: a speaker's page, open without an
@@ -13,3 +15,15 @@ final List<RouteBase> speakersRoutes = [
         SpeakerPage(slug: state.pathParameters['slug'] ?? ''),
   ),
 ];
+
+/// Profile > Speakers I Follow, as a sub-route of `/profile` on the root
+/// navigator ([followedSpeakersLocation]): signed in only, as all of
+/// `/profile` is (route_access.dart).
+List<RouteBase> followedSpeakersRoutes(GlobalKey<NavigatorState> rootKey) => [
+      GoRoute(
+        path: 'speakers',
+        name: 'followedSpeakers',
+        parentNavigatorKey: rootKey,
+        builder: (context, state) => const FollowedSpeakersPage(),
+      ),
+    ];
