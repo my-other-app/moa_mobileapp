@@ -30,11 +30,31 @@ abstract class PhotoPicker {
 /// the server needs) at most [maxSide] pixels across: a profile picture is
 /// drawn at 500 px at most, and a phone photo is 4000.
 class DevicePhotoPicker implements PhotoPicker {
-  DevicePhotoPicker([ImagePicker? picker]) : _picker = picker ?? ImagePicker();
+  DevicePhotoPicker([ImagePicker? picker])
+      : _picker = picker ?? ImagePicker(),
+        side = maxSide,
+        camera = CameraDevice.front;
+
+  /// A screenshot or a photo of a screen for a help request: big enough to
+  /// read its words ([screenshotSide]), from the camera at the back.
+  DevicePhotoPicker.screenshots([ImagePicker? picker])
+      : _picker = picker ?? ImagePicker(),
+        side = screenshotSide,
+        camera = CameraDevice.rear;
 
   final ImagePicker _picker;
 
+  /// The most pixels across a picture comes back at.
+  final double side;
+
+  /// The camera a new photo is taken with.
+  final CameraDevice camera;
+
   static const maxSide = 1080.0;
+
+  /// A phone's screenshot is 2400 tall; at 2048 its words stay sharp, and
+  /// it stays well under the help desk's 5 MB.
+  static const screenshotSide = 2048.0;
 
   @override
   Future<String?> pick(PhotoSource source) async {
@@ -43,10 +63,10 @@ class DevicePhotoPicker implements PhotoPicker {
         source: source == PhotoSource.camera
             ? ImageSource.camera
             : ImageSource.gallery,
-        maxWidth: maxSide,
-        maxHeight: maxSide,
+        maxWidth: side,
+        maxHeight: side,
         imageQuality: 85,
-        preferredCameraDevice: CameraDevice.front,
+        preferredCameraDevice: camera,
         // No location or other metadata, and so no library permission.
         requestFullMetadata: false,
       );

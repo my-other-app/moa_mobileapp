@@ -86,9 +86,9 @@
 	<key>NSContactsUsageDescription</key>
 	<string>When you add an event to your calendar, Apple's event screen can suggest a place from your contacts. MyOtherApp itself never reads your contacts.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>MyOtherApp uses the camera to scan tickets at check-in, to verify certificate QR codes, and to take your profile photo.</string>
+	<string>MyOtherApp uses the camera to scan tickets at check-in, to verify certificate QR codes, to take your profile photo, and to take a photo to attach to a help request.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>MyOtherApp lets you choose a photo from your library as your profile picture.</string>
+	<string>MyOtherApp lets you choose a photo from your library as your profile picture, or a screenshot to attach to a help request.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

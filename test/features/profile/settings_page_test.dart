@@ -19,9 +19,9 @@ import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/app_toggle.dart';
 import 'package:finnet/shared/widgets/settings_row.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../events/events_fakes.dart' show useFakeApi;
 import '../threads/moderation_fakes.dart';
@@ -261,38 +261,53 @@ void main() {
     expect(opened, [Uri.parse('https://myotherapp.in/terms')]);
   });
 
-  testWidgets('support is an email to the team, not a WhatsApp number',
+  testWidgets('Help and Support opens the help page, not an email',
       (tester) async {
-    final opened = await _pump(tester);
-
-    expect(find.text('Contact Support'), findsOneWidget);
-    await _tap(tester, 'settings-support');
-
-    expect(opened.single.scheme, 'mailto');
-    expect(opened.single.path, 'support@myotherapp.in');
-    expect(opened.single.toString(), isNot(contains('wa.me')));
-  });
-
-  testWidgets('without a mail app, the address is copied instead',
-      (tester) async {
-    String? copied;
-    tester.binding.defaultBinaryMessenger
-        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-      if (call.method == 'Clipboard.setData') {
-        copied = (call.arguments as Map)['text'] as String?;
-      }
-      return null;
-    });
-    addTearDown(() => tester.binding.defaultBinaryMessenger
-        .setMockMethodCallHandler(SystemChannels.platform, null));
-
-    await _pump(tester, launches: false);
-    await _tap(tester, 'settings-support');
+    final opened = <Uri>[];
+    final router = GoRouter(
+      initialLocation: '/profile/settings',
+      routes: [
+        GoRoute(
+          path: '/profile/settings',
+          builder: (_, __) => const SettingsPage(),
+        ),
+        GoRoute(
+          path: '/profile/help',
+          builder: (_, __) => const Scaffold(body: Text('help page')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        privacyChoicesStoreProvider.overrideWithValue(_MemoryChoices()),
+        collectionControlProvider.overrideWithValue(_RecordingControl()),
+        pushSettingsRepositoryProvider
+            .overrideWithValue(_FakePushSettings(null)),
+        profileRepositoryProvider.overrideWithValue(_FakeProfiles()),
+        volunteerRepositoryProvider.overrideWithValue(_FakeVolunteering()),
+        moderationRepositoryProvider
+            .overrideWithValue(FakeModerationRepository()),
+        isAuthenticatedProvider.overrideWithValue(true),
+        linkLauncherProvider.overrideWithValue((uri) async {
+          opened.add(uri);
+          return true;
+        }),
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    ));
+    await tester.pump();
     await tester.pump();
 
-    expect(copied, 'support@myotherapp.in');
-    expect(find.text('No email app found. support@myotherapp.in is copied.'),
-        findsOneWidget);
+    expect(find.text('Help and Support'), findsOneWidget);
+    // One row for both: the email and the Help Centre are on the page.
+    expect(find.text('Contact Support'), findsNothing);
+    expect(find.text('Help Centre'), findsNothing);
+    await _tap(tester, 'settings-help');
+    await tester.pumpAndSettle();
+
+    expect(find.text('help page'), findsOneWidget);
+    expect(opened, isEmpty);
   });
 
   testWidgets('the website opens', (tester) async {
@@ -337,8 +352,7 @@ void main() {
           'Verify Email',
           'Volunteer Check-in',
           'Blocked Users',
-          'Help Centre',
-          'Contact Support',
+          'Help and Support',
           'Terms and Conditions',
           'Privacy Policy',
           'Website',
@@ -404,14 +418,6 @@ void main() {
     testWidgets('Volunteer Check-in for a volunteer', (tester) async {
       await _pump(tester, volunteering: [_volunteerEvent]);
       expect(find.byKey(const ValueKey('settings-volunteer')), findsOneWidget);
-    });
-
-    testWidgets('Help Centre opens the site\'s Support page', (tester) async {
-      final opened = await _pump(tester);
-
-      await _tap(tester, 'settings-help');
-
-      expect(opened, [Uri.parse('https://myotherapp.in/support')]);
     });
 
     testWidgets('Log Out asks first', (tester) async {

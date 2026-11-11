@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
@@ -13,12 +12,12 @@ import 'package:finnet/features/profile/presentation/pages/settings/change_passw
 import 'package:finnet/features/profile/presentation/pages/settings/privacy_switches_section.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/sign_out.dart';
+import 'package:finnet/features/support/presentation/support_routes.dart';
 import 'package:finnet/features/volunteer/presentation/providers/volunteer_provider.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/confirmation_dialog.dart';
 import 'package:finnet/shared/widgets/settings_row.dart';
 import 'package:finnet/features/main/presentation/pages/main_shell.dart';
-import 'package:finnet/shared/widgets/toast.dart';
 
 /// Settings page - fully migrated to Riverpod (no Bloc).
 class SettingsPage extends ConsumerStatefulWidget {
@@ -123,19 +122,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
 
+            // Help and support: common answers, Contact us and My requests
+            // (the support desk). On a server without the desk, the page is
+            // the support email and the site's Help Centre, as this row
+            // was.
             SettingsRow(
               key: const ValueKey('settings-help'),
-              emoji: '🚨',
-              label: 'Help Centre',
-              onTap: () => _open(helpCentreUri),
-            ),
-
-            // Contact Support: the team inbox, not a personal WhatsApp.
-            SettingsRow(
-              key: const ValueKey('settings-support'),
               asset: AssetResources.contsctsupport,
-              label: 'Contact Support',
-              onTap: _emailSupport,
+              label: 'Help and Support',
+              onTap: () => context.push(SupportLocations.help),
             ),
 
             // The policies live on the website, so the copy people read is
@@ -191,18 +186,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final opened = await ref.read(linkLauncherProvider)(uri);
     if (!opened && mounted) {
       _snack("Couldn't open ${uri.host}${uri.path}. Try again later.");
-    }
-  }
-
-  /// Write to support. Without a mail app, the address is copied instead,
-  /// so there is still a way to reach us.
-  Future<void> _emailSupport() async {
-    final opened = await ref.read(linkLauncherProvider)(supportEmailUri);
-    if (opened || !mounted) return;
-    await Clipboard.setData(const ClipboardData(text: supportEmail));
-    if (mounted) {
-      showToast(context, 'No email app found. $supportEmail is copied.',
-          icon: Icons.copy_rounded);
     }
   }
 

@@ -28,6 +28,7 @@
 /// | `request_declined` (`token`)         | the request's screen         |
 /// | `answers_needed` (`url`)             | the missing-answers screen,  |
 /// |                                      | by the personal link         |
+/// | `support_reply` (`case_id`)          | the help request's thread    |
 ///
 /// A push carries its event as the string `event_id`; an inbox line as its
 /// `event` (and the push's data beside it).
@@ -37,6 +38,10 @@ import 'package:finnet/features/events/domain/missing_answers.dart';
 import 'package:finnet/features/events/domain/registration_request.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/live/live_locations.dart';
+import 'package:finnet/features/support/domain/support.dart';
+
+export 'package:finnet/features/support/domain/support.dart'
+    show supportReplyType;
 
 /// The pushes (and inbox lines) that open an event's live room.
 const liveRoomTypes = {
@@ -170,6 +175,11 @@ String? notificationRoute(
   }
   if (type != null && requestTypes.contains(type)) {
     return requestRouteFor(type, eventId, data);
+  }
+  if (type == supportReplyType) {
+    // The support team answered: the request's thread, in Help and support
+    // (support-leads-contract.md). Never the event, even with one named.
+    return supportReplyRoute(data);
   }
   if (type == answersNeededType) {
     // The missing-answers screen, by the push's personal link; without one,

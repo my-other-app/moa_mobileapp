@@ -14,6 +14,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:finnet/app/session_scope.dart';
+import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/cache/cache_store.dart';
 import 'package:finnet/core/network/dio_client.dart';
@@ -25,6 +26,8 @@ import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/profile/presentation/pages/notifications/notifications_page.dart';
 import 'package:finnet/features/profile/presentation/pages/profile_page.dart';
 import 'package:finnet/features/profile/presentation/pages/settings_page.dart';
+import 'package:finnet/features/support/data/support_api.dart';
+import 'package:finnet/features/support/presentation/pages/help_page.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -216,7 +219,37 @@ void main() {
 
       expect(find.text('SETTINGS'), findsOneWidget);
       expect(find.text('Blocked Users'), findsOneWidget);
-      expect(find.text('Contact Support'), findsOneWidget);
+      expect(find.text('Help and Support'), findsOneWidget);
+
+      await finish(tester);
+    });
+  });
+
+  group('Help and support', () {
+    testWidgets('the answers open offline once seen', (tester) async {
+      server.offline = true;
+      await save(
+        '/support/help',
+        [
+          {'id': 1, 'question': 'Where is my ticket?', 'answer': 'My events.'}
+        ],
+        scope: CacheScope.shared,
+      );
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          supportApiProvider
+              .overrideWithValue(SupportApi(api: APIService.over(dio))),
+        ],
+        child: const MaterialApp(home: HelpPage()),
+      ));
+      await settle(tester);
+
+      expect(find.text('Where is my ticket?'), findsOneWidget);
+      expect(find.byKey(HelpPage.contactKey), findsOneWidget);
 
       await finish(tester);
     });
