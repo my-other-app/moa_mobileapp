@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, test } from "node:test";
 
-import { classify, readResolved, sameUrlOn } from "../routing.js";
+import { canonicalClubHost, classify, readResolved, sameUrlOn } from "../routing.js";
 import worker from "../worker.js";
 
 const API = "https://api.myotherapp.in";
@@ -29,6 +29,8 @@ class FakeCache {
 let calls;
 let answers;
 let pages;
+// name -> the slug the API names in X-Site-Slug (the club's current one); absent: no header.
+let siteSlugs;
 let ctx;
 
 beforeEach(() => {
@@ -41,6 +43,7 @@ beforeEach(() => {
     "plain-x9y8z7.myotherapp.in": { club_slug: "plain-x9y8z7", status: "active", canonical_host: "plain-x9y8z7.myotherapp.in" },
   };
   pages = { "circuit-a1b2c3": PAGE, "plain-x9y8z7": PAGE };
+  siteSlugs = {};
   ctx = { pending: [], waitUntil(p) { this.pending.push(p); } };
   globalThis.caches = { default: new FakeCache() };
   globalThis.fetch = async (input, init) => {
@@ -57,8 +60,10 @@ beforeEach(() => {
     const site = url.match(/^https:\/\/api\.myotherapp\.in\/api\/v1\/sites\/([^/?]+)$/);
     if (site) {
       assert.equal(init?.headers?.accept, "text/html");
-      const html = pages[decodeURIComponent(site[1])];
-      return html ? new Response(html, { status: 200 }) : new Response("Not found", { status: 404 });
+      const name = decodeURIComponent(site[1]);
+      const html = pages[name];
+      const headers = siteSlugs[name] ? { "x-site-slug": siteSlugs[name] } : {};
+      return html ? new Response(html, { status: 200, headers }) : new Response("Not found", { status: 404 });
     }
     // Anything else is a pass-through to an origin.
     return new Response(`origin for ${url}`, { status: 200, headers: { "x-origin": "yes" } });
@@ -92,6 +97,15 @@ describe("classify", () => {
     assert.equal(readResolved({ club_slug: "../x", status: "active", canonical_host: "a.org" }), null);
     assert.equal(readResolved(null), null);
     assert.equal(sameUrlOn("www.theirclub.org", new URL("https://x.myotherapp.in/a/b?ref=k")), "https://www.theirclub.org/a/b?ref=k");
+  });
+
+  test("X-Site-Slug moves a subdomain only to another club subdomain", () => {
+    assert.equal(canonicalClubHost("gdg-old-a1b2c3", "gdg-tvm"), "gdg-tvm.myotherapp.in");
+    assert.equal(canonicalClubHost("gdg-old-a1b2c3", " GDG-TVM "), "gdg-tvm.myotherapp.in");
+    assert.equal(canonicalClubHost("gdg-tvm", "gdg-tvm"), null);
+    for (const odd of [null, undefined, "", "www", "sites", "api", "a.b", "-x", "evil.org/phish", "x".repeat(64)]) {
+      assert.equal(canonicalClubHost("gdg-old-a1b2c3", odd), null, String(odd));
+    }
   });
 });
 
@@ -127,6 +141,42 @@ describe("a club's subdomain", () => {
     assert.equal(r.status, 200);
   });
 
+  test("an old slug: 301 to the club's current subdomain, as the resolver says, keeping the path and query", async () => {
+    answers["gdg-old-a1b2c3.myotherapp.in"] = { club_slug: "gdg-tvm", status: "active", canonical_host: "gdg-tvm.myotherapp.in" };
+    pages["gdg-old-a1b2c3"] = PAGE;
+    siteSlugs["gdg-old-a1b2c3"] = "gdg-tvm";
+    let r = await get("https://gdg-old-a1b2c3.myotherapp.in/?ref=k7&utm_source=qr");
+    assert.equal(r.status, 301);
+    assert.equal(r.headers.get("location"), "https://gdg-tvm.myotherapp.in/?ref=k7&utm_source=qr");
+    assert.equal(r.headers.get("cache-control"), "public, max-age=300");
+    r = await get("https://gdg-old-a1b2c3.myotherapp.in/events?x=1");
+    assert.equal(r.headers.get("location"), "https://gdg-tvm.myotherapp.in/events?x=1");
+    assert.ok(!calls.some((u) => u.endsWith("/api/v1/sites/gdg-old-a1b2c3")), "the old address's page is never fetched");
+  });
+
+  test("an old slug the resolver still thinks current (its cached answer): the page's X-Site-Slug moves it, never served there", async () => {
+    answers["gdg-old-a1b2c3.myotherapp.in"] = { club_slug: "gdg-old-a1b2c3", status: "active", canonical_host: "gdg-old-a1b2c3.myotherapp.in" };
+    pages["gdg-old-a1b2c3"] = PAGE;
+    siteSlugs["gdg-old-a1b2c3"] = "gdg-tvm";
+    let r = await get("https://gdg-old-a1b2c3.myotherapp.in/?ref=k7");
+    assert.equal(r.status, 301);
+    assert.equal(r.headers.get("location"), "https://gdg-tvm.myotherapp.in/?ref=k7");
+    assert.equal(await r.text(), "");
+    // The API down for the resolver: the page still says where the club is now.
+    answers["gdg-old-a1b2c3.myotherapp.in"] = "down";
+    globalThis.caches = { default: new FakeCache() };
+    r = await get("https://gdg-old-a1b2c3.myotherapp.in/", "HEAD");
+    assert.equal(r.status, 301);
+    assert.equal(r.headers.get("location"), "https://gdg-tvm.myotherapp.in/");
+  });
+
+  test("the current subdomain, named by its own X-Site-Slug, is served", async () => {
+    siteSlugs["plain-x9y8z7"] = "plain-x9y8z7";
+    const r = await get("https://plain-x9y8z7.myotherapp.in/");
+    assert.equal(r.status, 200);
+    assert.equal(await r.text(), PAGE);
+  });
+
   test("an unknown club still gets the no-site page", async () => {
     const r = await get("https://nobody-000000.myotherapp.in/");
     assert.equal(r.status, 404);
@@ -145,6 +195,13 @@ describe("a club's own domain", () => {
     const head = await get("https://www.theirclub.org/", "HEAD");
     assert.equal(head.status, 200);
     assert.equal(await head.text(), "");
+  });
+
+  test("active: served at the domain whatever slug the page names", async () => {
+    siteSlugs["circuit-a1b2c3"] = "circuit-new";
+    const r = await get("https://www.theirclub.org/");
+    assert.equal(r.status, 200);
+    assert.equal(await r.text(), PAGE);
   });
 
   test("active: other paths land on the page, robots.txt is answered", async () => {

@@ -21,6 +21,14 @@
  * to that domain, same path and query. If the API cannot be asked, the
  * subdomain is served as before; a custom domain gets "Back in a moment".
  *
+ * An admin can change a club's slug; the old one keeps answering. The
+ * resolver names the club's current subdomain as canonical_host for an old
+ * one, so {old}.myotherapp.in answers 301 to {new}.myotherapp.in, same path
+ * and query. Should the resolver's answer be a cached one from before the
+ * change, the page itself says so: GET /api/v1/sites/{old} carries
+ * X-Site-Slug: {new}, and the Worker answers the same 301 instead of serving
+ * the page at the old address (never cached as that address's page).
+ *
  * The page is the one the club published from its dashboard: the backend
  * stores it as a single HTML file and serves it at /api/v1/sites/{name}.
  * This Worker only fetches it and hands it out at the club's own address,
@@ -32,7 +40,7 @@
  * CSP below refuses, and it ignores <!--email_off--> on Worker responses.
  */
 
-import { ZONE, classify, readResolved, sameUrlOn } from "./routing.js";
+import { ZONE, canonicalClubHost, classify, readResolved, sameUrlOn } from "./routing.js";
 
 const API = "https://api.myotherapp.in";
 const EVENTS = "https://events.myotherapp.in";
@@ -127,8 +135,12 @@ async function resolve(host, ctx) {
   }
 }
 
-/** The club's published page, served at `host` (its subdomain or its own domain). */
-async function serveSite(request, url, slug, host) {
+/**
+ * The club's published page, served at `host` (its subdomain or its own
+ * domain). `subdomain`: `host` is the club subdomain {slug}.myotherapp.in,
+ * which an X-Site-Slug naming another slug moves (an old address).
+ */
+async function serveSite(request, url, slug, host, subdomain = false) {
   if (url.pathname === "/robots.txt") {
     return new Response("User-agent: *\nAllow: /\n", { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" } });
   }
@@ -146,6 +158,10 @@ async function serveSite(request, url, slug, host) {
   }
   if (upstream && upstream.status === 404) return notFound(host);
   if (!upstream || !upstream.ok) return unavailable();
+  if (subdomain) {
+    const current = canonicalClubHost(slug, upstream.headers.get("x-site-slug"));
+    if (current) return redirect(sameUrlOn(current, url), 301);
+  }
   return new Response(request.method === "HEAD" ? null : upstream.body, {
     status: 200,
     headers: {
@@ -177,7 +193,7 @@ export default {
       if (found && found !== UNREACHABLE && found.status === "active" && found.canonical !== target.host) {
         return redirect(sameUrlOn(found.canonical, url), 301);
       }
-      return serveSite(request, url, target.name, target.host);
+      return serveSite(request, url, target.name, target.host, true);
     }
 
     // A club's own domain.
