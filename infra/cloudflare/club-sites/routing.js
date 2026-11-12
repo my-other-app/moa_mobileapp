@@ -67,3 +67,16 @@ export function readResolved(data) {
 export function sameUrlOn(host, url) {
   return `https://${host}${url.pathname}${url.search}`;
 }
+
+/**
+ * A club's subdomain asked by a slug it had once: the backend serves the page
+ * at an old slug too (the club's current one goes in X-Site-Slug), so a page
+ * fetched for `name` that names another slug means `name` is an old address.
+ * The club's current subdomain, or null when the page is `name`'s own (or the
+ * slug it names cannot be a club's subdomain: then the page is served as is).
+ */
+export function canonicalClubHost(name, siteSlug) {
+  const slug = String(siteSlug || "").trim().toLowerCase();
+  if (!slug || slug === name || !LABEL.test(slug) || RESERVED.has(slug) || slug === FALLBACK) return null;
+  return `${slug}.${ZONE}`;
+}

@@ -10,6 +10,7 @@ A Cloudflare Worker that serves each club's published website at its own subdoma
 - **Analytics:** on its own address the page counts its own visits (`POST /api/v1/sites/{name}/visit`), so nothing extra is needed here.
 - **Unknown names** get a small "No club site here" page (404). Reserved names (`www`, `api`, `mail`, ...) pass straight through to their origin if they are ever proxied.
 - **A club's own domain** (`www.theirclub.org`, Growth and up) is a Cloudflare for SaaS custom hostname that CNAMEs to `sites.myotherapp.in`. A `*/*` route brings it here, and `GET /api/v1/sites/resolve?host=` (edge-cached for 5 minutes) says whose site it is: active serves the site, paused redirects (302) to the club's subdomain, unknown gets the 404 page. A subdomain whose club has an active domain redirects (301) to it. The one-time setup, how to verify it and how to roll it back are in [CUSTOM_DOMAINS.md](CUSTOM_DOMAINS.md).
+- **A club's old slug** (an admin changed it; the old one keeps working): the resolver answers `{old}.myotherapp.in` with the club's current subdomain as `canonical_host`, so it redirects (301, same path and query). Should that answer be a cached one from before the change, `GET /api/v1/sites/{old}` carries `X-Site-Slug: {new}` and the Worker answers the same 301 rather than serving the page at the old address.
 - **Code:** `worker.js` is the handler; `routing.js` is the pure part (which host is what, checking the resolver's answer). Both are uploaded as modules.
 
 Auth cookies are host-only (no `Domain` attribute), so club subdomains never receive them.
@@ -28,4 +29,4 @@ The token needs **Account › Workers Scripts › Edit** and **Zone › Workers 
 node --test test/*.test.js     # or: npm test
 ```
 
-`test/worker.test.js` runs the Worker under Node 18+ with the API (`fetch`) and the edge cache (`caches.default`) stubbed: subdomains, clubs' own domains (active, paused, unknown, API down), our own hosts passing through.
+`test/worker.test.js` runs the Worker under Node 18+ with the API (`fetch`) and the edge cache (`caches.default`) stubbed: subdomains, old slugs (301 by the resolver or by X-Site-Slug), clubs' own domains (active, paused, unknown, API down), our own hosts passing through.
