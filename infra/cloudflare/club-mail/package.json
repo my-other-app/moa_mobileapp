@@ -1,0 +1,9 @@
+{
+  "name": "club-mail-worker",
+  "private": true,
+  "description": "The club-mail Cloudflare Worker (Email Routing catch-all -> the API). Deployed by deploy.sh; this file only lets Node run its tests.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}
