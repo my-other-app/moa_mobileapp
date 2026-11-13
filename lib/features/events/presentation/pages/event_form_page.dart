@@ -635,6 +635,11 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       setState(() => _ticketTypeError = refusal.title);
       unawaited(_loadTicketing());
     }
+    // Declined before: My events' list read again, so the event page (from
+    // a server that doesn't say it) shows that registration, not the form.
+    if (code == RegistrationErrorCodes.requestDeclined) {
+      unawaited(ref.read(myRegistrationRequestsProvider.notifier).refresh());
+    }
     final action = await showRegistrationRefusal(context, refusal);
     if (!mounted) return;
     // Cancelled meanwhile, or the club declined this person before: back

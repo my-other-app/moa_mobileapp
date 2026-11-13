@@ -43,6 +43,50 @@ class MyRegistrationRequests {
     }
     return null;
   }
+
+  /// The person's last registration for the event [eventId] that is no
+  /// longer open -- what the event's `viewer_last_request` says, for a
+  /// server without it. A declined one first, whenever it was: the server
+  /// refuses registering again after one. Else the newest that was
+  /// cancelled, expired or closed. Null with none, or one still open.
+  RegistrationRequest? lastFor(int? eventId) {
+    if (eventId == null || eventId <= 0 || !supported) return null;
+    final forEvent = [
+      for (final r in items)
+        if (r.event?.id == eventId) r,
+    ];
+    if (forEvent.any((r) => r.isOpen)) return null;
+    RegistrationRequest? newest(Iterable<RegistrationRequest> of) {
+      RegistrationRequest? found;
+      for (final r in of) {
+        final at = r.submittedAt, best = found?.submittedAt;
+        if (found == null || (at != null && (best == null || at.isAfter(best)))) {
+          found = r;
+        }
+      }
+      return found;
+    }
+
+    return newest(forEvent.where((r) => r.status == RequestStatus.declined)) ??
+        newest(forEvent.where((r) => const {
+              RequestStatus.withdrawn,
+              RequestStatus.lapsed,
+              RequestStatus.closed,
+            }.contains(r.status)));
+  }
+
+  /// The registrations the club didn't confirm, for events still to come
+  /// (or with no date said): My events lists them as "Not confirmed".
+  List<RegistrationRequest> notConfirmed({DateTime? now}) {
+    if (!supported) return const [];
+    final at = now ?? DateTime.now();
+    return [
+      for (final r in items)
+        if (r.status == RequestStatus.declined &&
+            !(r.event?.eventDateTime?.isBefore(at) ?? false))
+          r
+    ];
+  }
 }
 
 final myRegistrationRequestsProvider = StateNotifierProvider<

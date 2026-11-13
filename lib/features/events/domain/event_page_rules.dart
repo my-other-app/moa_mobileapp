@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 
 import 'package:finnet/common/models/events/event_page_model.dart';
 import 'package:finnet/core/config/app_config.dart';
+import 'package:finnet/features/events/domain/registration_request.dart';
 
 // What the event page works out from the event, with no widgets: what the
 // register button can do now, the event's addresses (to share, the live
@@ -186,6 +187,118 @@ String confirmsEachPlaceLine(String? clubName) {
 String reviewsEveryRegistrationNote(String? clubName) =>
     '${confirmsEachPlaceLine(clubName)} and emails tickets to the people it '
     'confirms.';
+
+/// What the event page says, by its register button, of the viewer's
+/// earlier registration for an event whose club reviews every
+/// registration, once it is no longer open (the event's
+/// `viewer_last_request`, or My events' list from an older server).
+class LastRegistrationNotice {
+  /// "Your registration wasn't confirmed", "You cancelled your
+  /// registration", ...
+  final String title;
+
+  /// The line under it.
+  final String note;
+
+  /// The club's note when it declined, quoted: 'Tinkerhub said: "..."'.
+  final String? quote;
+
+  /// The register button stays, as on any event. When false the button
+  /// opens the registration's page instead ([label]), never the form.
+  final bool canRegister;
+
+  /// The button's word when it doesn't register: "SEE DETAILS", or, with no
+  /// link to the registration, where it stands ("NOT CONFIRMED").
+  final String? label;
+
+  const LastRegistrationNotice({
+    required this.title,
+    required this.note,
+    this.quote,
+    this.canRegister = true,
+    this.label,
+  });
+}
+
+/// Said under a registration the person can't make again.
+const cantRegisterAgainLine = "You can't register for this event again.";
+
+/// The event page's word on [request], the viewer's last registration for
+/// the event ([LastRegistrationNotice]); null when there is nothing to say
+/// (still open, confirmed, got a ticket another way, or a status this build
+/// doesn't know). [clubName] names the club ("The club" without one).
+/// [hasLink]: the registration's page can be opened.
+LastRegistrationNotice? lastRegistrationNotice(
+  RegistrationRequest request, {
+  String? clubName,
+  bool hasLink = true,
+}) {
+  final name = clubName?.trim() ?? '';
+  final club = name.isEmpty ? 'The club' : name;
+  final clubMid = name.isEmpty ? 'the club' : name;
+  final may = request.mayRegisterAgain;
+  final howItWorks = reviewsEveryRegistrationNote(clubName);
+  String seeOr(String stands) => hasLink ? 'SEE DETAILS' : stands;
+  switch (request.status) {
+    case RequestStatus.declined:
+      final note = request.declineNote;
+      return LastRegistrationNotice(
+        title: "Your registration wasn't confirmed",
+        note: may
+            ? "$club couldn't confirm your registration this time."
+            : "$club couldn't confirm your registration this time, so you "
+                "can't register for this event again.",
+        quote: note == null ? null : '$club said: “$note”',
+        canRegister: may,
+        label: may ? null : seeOr('NOT CONFIRMED'),
+      );
+    case RequestStatus.withdrawn:
+      return LastRegistrationNotice(
+        title: 'You cancelled your registration',
+        note: may ? howItWorks : cantRegisterAgainLine,
+        canRegister: may,
+        label: may ? null : seeOr('CANCELLED'),
+      );
+    case RequestStatus.lapsed:
+      return LastRegistrationNotice(
+        title: "Your registration expired: it wasn't paid in time",
+        note: may ? howItWorks : cantRegisterAgainLine,
+        canRegister: may,
+        label: may ? null : seeOr('EXPIRED'),
+      );
+    case RequestStatus.closed:
+      final String note;
+      var open = may;
+      switch (request.closedReason) {
+        case RequestClosedReasons.registeredDirectly:
+          // A ticket of theirs: the page shows it instead.
+          return null;
+        case RequestClosedReasons.eventCancelled:
+          note = 'The event was cancelled, so it closed.';
+          open = false;
+        case RequestClosedReasons.eventEnded:
+          note = 'The event ended before $clubMid could confirm your '
+              'registration.';
+          open = false;
+        case RequestClosedReasons.eventDeleted:
+          note = 'The event was taken down before $clubMid could confirm '
+              'your registration.';
+          open = false;
+        default:
+          note = may ? howItWorks : cantRegisterAgainLine;
+      }
+      return LastRegistrationNotice(
+        title: 'Your registration was closed',
+        note: note,
+        canRegister: open,
+        label: open ? null : seeOr('CLOSED'),
+      );
+    case RequestStatus.pending:
+    case RequestStatus.approved:
+    case RequestStatus.unknown:
+      return null;
+  }
+}
 
 /// "12 going · 38 seats left", "Be the first to register", or null when
 /// there is nothing to say.

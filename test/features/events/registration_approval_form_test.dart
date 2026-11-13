@@ -387,8 +387,13 @@ void main() {
         status: 409);
     final (closedWith, _) = await _pump(tester, requiresApproval: true);
 
+    final askedBefore = api.sent('GET', '/registration-requests/mine').length;
     await _submit(tester, 'Register');
     expect(find.text("You can't register again"), findsOneWidget);
+    // My events' list read again: the event page (from a server that
+    // doesn't say it) then shows that registration, not the form.
+    expect(api.sent('GET', '/registration-requests/mine').length,
+        greaterThan(askedBefore));
     expect(
         find.text("Tinkerhub couldn't confirm your registration for this "
             "event, so you can't register again with this email."),

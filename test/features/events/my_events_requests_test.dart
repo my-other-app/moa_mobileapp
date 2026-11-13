@@ -49,8 +49,9 @@ Map<String, dynamic> _event(int id) => {
       'is_paid': true,
     };
 
-/// Every kind of request: only the open ones (waiting, or confirmed and
-/// waiting for the payment) are listed.
+/// Every kind of request: the open ones (waiting, or confirmed and waiting
+/// for the payment) are listed under review, the declined one under "Not
+/// confirmed", the rest not at all.
 Map<String, dynamic> _requests() => {
       'items': [
         requestBody(id: 'r-pending', token: 'tok_p'),
@@ -153,7 +154,6 @@ void main() {
       expect(find.textContaining('confirmed your place'), findsNothing);
       for (final settled in [
         'r-ticket',
-        'r-declined',
         'r-withdrawn',
         'r-lapsed',
         'r-closed'
@@ -161,6 +161,23 @@ void main() {
         expect(find.byKey(ValueKey('request-tile-$settled')), findsNothing,
             reason: settled);
       }
+      // The declined one: "Not confirmed", never "Under review".
+      expect(find.byKey(WaitingRequestsSection.declinedKey), findsOneWidget);
+      expect(find.text('NOT CONFIRMED'), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('request-tile-r-declined')), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('request-tile-r-declined')),
+              matching: find.text('Not confirmed')),
+          findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('request-tile-r-declined')),
+              matching: find.text('See details')),
+          findsOneWidget);
+      expect(find.text('Under review'), findsOneWidget,
+          reason: 'only the pending one says it');
       // The registration is still there, under them.
       expect(find.text('Event 1'), findsOneWidget);
       final sectionTop =
@@ -231,13 +248,57 @@ void main() {
       expect(find.byType(NoRegisteredEventPage), findsOneWidget);
     });
 
-    testWidgets('nothing open: no section', (tester) async {
+    testWidgets('nothing open nor declined: no section', (tester) async {
       useFakeApi()
         ..on('GET', _list, {
           'items': [_event(1)]
         })
         ..on('GET', _mine, {
-          'items': [requestBody(status: 'declined')]
+          'items': [
+            requestBody(status: 'withdrawn'),
+            requestBody(id: 'r-lapsed', status: 'lapsed'),
+          ]
+        });
+      await _pump(tester);
+      expect(find.byKey(WaitingRequestsSection.sectionKey), findsNothing);
+    });
+
+    testWidgets(
+        'only a declined one, no tickets: "Not confirmed", which opens it',
+        (tester) async {
+      useFakeApi()
+        ..on('GET', _list, {'items': []})
+        ..on('GET', _mine, {
+          'items': [
+            requestBody(id: 'r-d', token: 'tok_d', status: 'declined'),
+          ]
+        });
+      await _pump(tester);
+
+      expect(find.byType(NoRegisteredEventPage), findsNothing);
+      expect(find.text('UNDER REVIEW'), findsNothing);
+      expect(find.text('NOT CONFIRMED'), findsOneWidget);
+      expect(find.text('Not confirmed'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('request-tile-r-d')));
+      await tester.pumpAndSettle();
+      expect(find.text('Request tok_d'), findsOneWidget);
+    });
+
+    testWidgets('declined for an event that is over: not listed',
+        (tester) async {
+      useFakeApi()
+        ..on('GET', _list, {
+          'items': [_event(1)]
+        })
+        ..on('GET', _mine, {
+          'items': [
+            requestBody(status: 'declined')
+              ..['event'] = {
+                'id': 5,
+                'name': 'Old Jam',
+                'event_datetime': '2020-01-01T10:00:00Z',
+              },
+          ]
         });
       await _pump(tester);
       expect(find.byKey(WaitingRequestsSection.sectionKey), findsNothing);

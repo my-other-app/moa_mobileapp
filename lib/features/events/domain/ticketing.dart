@@ -278,6 +278,18 @@ class EventTicketing {
   /// there, even null): nothing else need be asked.
   final bool saysViewerRequest;
 
+  /// The signed-in viewer's latest registration for this event that is no
+  /// longer open -- declined, cancelled (withdrawn), expired (lapsed) or
+  /// closed -- with when the club decided, its note and whether they may
+  /// register again (`viewer_last_request`). Only when [viewerRequest] is
+  /// null; null when they have none.
+  final RegistrationRequest? viewerLastRequest;
+
+  /// The server says whether the viewer has an earlier registration
+  /// (`viewer_last_request` is there, even null). An older server doesn't:
+  /// My events' list is asked instead.
+  final bool saysViewerLastRequest;
+
   const EventTicketing({
     this.types = const [],
     this.requiresChoice = false,
@@ -289,6 +301,8 @@ class EventTicketing {
     this.requiresApproval = false,
     this.viewerRequest,
     this.saysViewerRequest = false,
+    this.viewerLastRequest,
+    this.saysViewerLastRequest = false,
   });
 
   /// The object, or null when [value] isn't one -- a server older than
@@ -318,6 +332,9 @@ class EventTicketing {
       requiresApproval: jsonBool(json['requires_approval']) ?? false,
       viewerRequest: RegistrationRequest.fromJson(json['viewer_request']),
       saysViewerRequest: json.containsKey('viewer_request'),
+      viewerLastRequest:
+          RegistrationRequest.fromJson(json['viewer_last_request']),
+      saysViewerLastRequest: json.containsKey('viewer_last_request'),
     );
     return read.requiresApproval ? read.withoutWaitlist() : read;
   }
@@ -336,7 +353,15 @@ class EventTicketing {
         requiresApproval: true,
         viewerRequest: viewerRequest,
         saysViewerRequest: saysViewerRequest,
+        viewerLastRequest: viewerLastRequest,
+        saysViewerLastRequest: saysViewerLastRequest,
       );
+
+  /// The server said all the event page needs about the viewer's own
+  /// registrations here: an open one, or none open and the earlier one (or
+  /// none). Otherwise -- an older server -- My events' list is asked.
+  bool get saysViewerRequests =>
+      saysViewerRequest && (viewerRequest != null || saysViewerLastRequest);
 
   TicketType? typeById(int? id) {
     if (id == null) return null;
