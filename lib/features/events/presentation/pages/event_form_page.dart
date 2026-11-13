@@ -807,6 +807,12 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             }
           }
           if (!mounted) return;
+          // The new ticket, saved on the phone for the door -- and shown on
+          // the "Next up" home-screen widget -- as a claimed or confirmed
+          // one is (ClaimOfferPage, RegistrationRequestPage).
+          if (ref.read(isAuthenticatedProvider)) {
+            unawaited(ref.read(savedTicketsProvider.notifier).refresh());
+          }
           context.go('/events/registration-success', extra: {
             'ticketId': data['ticket_id'],
             'eventName': data['event_name'],

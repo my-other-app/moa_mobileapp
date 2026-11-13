@@ -4,6 +4,12 @@
   <!-- Needed for launching URLs -->
   <uses-permission android:name="android.permission.INTERNET"/>
 
+  <!-- The "Next up" widget's booked redraw (midnight in India, an event's
+       start) is an alarm, which a restart clears: home_widget's receiver
+       books it again at boot. No exact-alarm permission: an inexact redraw
+       a few minutes late is fine. -->
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
   <!-- open_filex declares these for opening files in shared storage. The app
        only opens the ticket PDF it saved in its own documents directory,
        which needs none of them, and Google Play rejects READ_MEDIA_IMAGES /
@@ -132,6 +138,35 @@
               <data android:pathPrefix="/speakers/"/>
           </intent-filter>
       </activity>
+
+      <!-- "Next up", the home-screen widget (docs/HOME_WIDGETS.md): the
+           person's next event. Drawn from what the app writes
+           (lib/features/home_widget); a tap opens the event's ticket
+           through the app's deep link. -->
+      <receiver
+          android:name=".widget.NextUpWidgetProvider"
+          android:exported="false"
+          android:label="@string/next_up_label">
+          <intent-filter>
+              <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+          </intent-filter>
+          <meta-data
+              android:name="android.appwidget.provider"
+              android:resource="@xml/next_up_widget_info" />
+      </receiver>
+
+      <!-- Redraws "Next up" when its "Today" / "Tomorrow" changes (midnight
+           in India, an event starting or ending): home_widget's scheduler,
+           re-armed after a restart or an app update. -->
+      <receiver
+          android:name="es.antonborri.home_widget.HomeWidgetScheduledUpdateReceiver"
+          android:exported="false">
+          <intent-filter>
+              <action android:name="android.intent.action.BOOT_COMPLETED" />
+              <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+              <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+          </intent-filter>
+      </receiver>
 
       <!-- Links reach the app's router (go_router) as routes. On by default
            in current Flutter; said here so it stays on. -->

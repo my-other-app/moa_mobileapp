@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The "Next up" home-screen widget (docs/HOME_WIDGETS.md): its words and
+     its colours. The colours are the app's: ink #2C333D, the tabs' pale
+     yellow #F9FFA1 and the icon's teal #17A58F. values-night/ holds the
+     dark ones; the launcher picks by the phone's dark theme. -->
+<resources>
+    <color name="next_up_background">#FFFFFF</color>
+    <color name="next_up_outline">#1F2C333D</color>
+    <color name="next_up_ink">#2C333D</color>
+    <color name="next_up_secondary">#5F6773</color>
+    <color name="next_up_accent">#127F6E</color>
+    <color name="next_up_date_fill">#17A58F</color>
+    <color name="next_up_date_ink">#FFFFFF</color>
+    <color name="next_up_pill_fill">#F9FFA1</color>
+    <color name="next_up_pill_ink">#2C333D</color>
+    <color name="next_up_pill_outline">#2C333D</color>
+    <color name="next_up_review_fill">#F3F3F3</color>
+    <color name="next_up_review_ink">#2C333D</color>
+
+    <string name="next_up_widget_description">Your next event: its date, time and place. Tap to open your ticket.</string>
+    <string name="next_up_label">Next up</string>
+    <string name="next_up_under_review">Under review</string>
+    <string name="next_up_show_ticket">Show ticket ›</string>
+    <string name="next_up_signed_out">Sign in to see your next event</string>
+    <string name="next_up_sign_in">Sign in</string>
+    <string name="next_up_nothing">Nothing coming up yet</string>
+    <string name="next_up_find_events">Find events</string>
+    <string name="next_up_brand">MyOtherApp</string>
+</resources>
