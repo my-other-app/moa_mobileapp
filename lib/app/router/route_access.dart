@@ -28,6 +28,8 @@ final List<RegExp> _private = [
   RegExp(r'^/events/?$', caseSensitive: false),
   RegExp(r'^/events/registration-success/?$', caseSensitive: false),
   RegExp(r'^/events/request-sent/?$', caseSensitive: false),
+  // The ticket to an event, by the event (the home-screen widget's tap).
+  RegExp(r'^/events/[^/]+/ticket/?$', caseSensitive: false),
   // People Like You at an event: who else is checked in.
   RegExp(r'^/events/[^/]+/people/?$', caseSensitive: false),
   // The Clubs tab: the clubs they follow and pinned.

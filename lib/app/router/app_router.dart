@@ -499,6 +499,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                           name: 'eventRegister',
                           parentNavigatorKey: rootKey,
                           builder: buildEventRegisterPage),
+                      // The ticket, by the event (the "Next up" home-screen
+                      // widget's tap): found among the saved tickets.
+                      GoRoute(
+                          path: 'ticket',
+                          name: 'eventTicket',
+                          parentNavigatorKey: rootKey,
+                          builder: buildEventTicketPage),
                       // The live room, in the app (the website's address
                       // too), and its quiz.
                       GoRoute(
@@ -595,6 +602,7 @@ class AppRoutes {
   static const String events = 'events';
   static const String eventDetail = 'eventDetail';
   static const String eventRegister = 'eventRegister';
+  static const String eventTicket = 'eventTicket';
   static const String eventLive = 'eventLive';
   static const String eventLiveQuiz = 'eventLiveQuiz';
   static const String eventRegistrationSuccess = 'eventRegistrationSuccess';

@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/features/events/presentation/widgets/saved_tickets_sync.dart';
+import 'package:finnet/features/home_widget/presentation/home_widget_sync.dart';
 import 'package:finnet/features/main/presentation/providers/navigation_index_provider.dart';
 import 'package:finnet/features/main/presentation/widgets/personal_data_sync.dart';
 import 'package:finnet/shared/motion.dart';
@@ -26,10 +27,13 @@ class MainShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       // The signed-in screens: while they are up, the tickets on the phone
-      // are kept current for the door, and the notification switches and
-      // the inbox are read ahead of the screens that show them.
+      // are kept current for the door, the notification switches and the
+      // inbox are read ahead of the screens that show them, and the "Next
+      // up" home-screen widget follows the tickets.
       body: SavedTicketsSync(
-        child: PersonalDataSync(child: SafeArea(child: child)),
+        child: PersonalDataSync(
+          child: HomeWidgetSyncScope(child: SafeArea(child: child)),
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,

@@ -47,6 +47,8 @@ void main() {
       // People Like You: who else is checked in.
       '/events/12/people',
       '/events/hack-night-04/people',
+      // The ticket to an event (the "Next up" home-screen widget's tap).
+      '/events/12/ticket',
       '/clubs',
       '/profile',
       '/profile/edit',

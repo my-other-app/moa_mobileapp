@@ -1,0 +1,6 @@
+// The "Next up" widget extension's base settings: Flutter's generated
+// values, so the extension carries the app's version and build number
+// (FLUTTER_BUILD_NAME, FLUTTER_BUILD_NUMBER in Info.plist) -- App Store
+// Connect refuses an extension whose version differs from the app's.
+// Generated.xcconfig is written by `flutter pub get`, as for Runner.
+#include "../Flutter/Generated.xcconfig"

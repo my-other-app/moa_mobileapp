@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "Next up" (NextUpWidgetProvider, docs/HOME_WIDGETS.md). One widget,
+     resizable: 2x2 is the small layout (the date and the name), from about
+     4 cells wide the medium one (adds the time, the place and "Show
+     ticket"). It is placed at 4x2.
+
+     updatePeriodMillis is a backstop (hourly): the app redraws it whenever
+     what it shows changes, and the widget books its own redraw for the next
+     moment its "Today" / "Tomorrow" / "In 3 days" changes (midnight in
+     India, an event starting or ending) through home_widget's scheduler. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/next_up_widget_description"
+    android:initialLayout="@layout/widget_next_up_medium"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="110dp"
+    android:previewImage="@mipmap/ic_launcher"
+    android:previewLayout="@layout/widget_next_up_preview"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="3600000"
+    android:widgetCategory="home_screen" />
