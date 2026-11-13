@@ -1,17 +1,30 @@
 name: Mobile CI
 
 on:
+  # main on every push; any other branch through its pull request, so a PR's
+  # commits are not checked twice.
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: mobile-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   analyze-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Pinned to the Flutter the store builds are made with (.fvmrc), so CI
+      # checks what ships. An unpinned "stable" moved to 3.50 on 12 Nov, which
+      # deprecates package:flutter/material.dart, and analyze failed on 316
+      # infos the code never changed. Move this and .fvmrc together.
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.44.6
       - run: flutter pub get
 
       # lib/core/config/env/env.dart declares `part 'env.g.dart'`, but *.g.dart
