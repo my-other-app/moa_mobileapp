@@ -1,6 +1,7 @@
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/domain/registration_request.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
+import 'package:finnet/features/events/presentation/widgets/event_page/event_contact.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'events_fakes.dart';
+import 'last_registration_test.dart' show lastRequestBody;
 import 'registration_approval_model_test.dart' show requestBody, payBody;
 import 'ticketing_model_test.dart' show ticketingBody;
 
@@ -58,6 +60,12 @@ Future<void> _pump(WidgetTester tester, {bool signedIn = true}) async {
       path: '/requests/:token',
       builder: (_, state) =>
           Scaffold(body: Text('Request ${state.pathParameters['token']}')),
+    ),
+    GoRoute(
+      path: '/profile/help/contact',
+      builder: (_, state) => Scaffold(
+          body: Text('Contact us ${state.uri.queryParameters['topic']} '
+              '${state.uri.queryParameters['event']}')),
     ),
   ]);
   await tester.pumpWidget(ProviderScope(
@@ -177,13 +185,15 @@ void main() {
   });
 
   group('the event\'s own viewer_request', () {
-    Map<String, dynamic> withViewer(Map<String, dynamic>? request) =>
+    Map<String, dynamic> withViewer(Map<String, dynamic>? request,
+            {Map<String, dynamic>? last, bool saysLast = false}) =>
         _event(ticketing: {
           ...ticketingBody(requiresChoice: false, types: [
             {'id': 1, 'name': 'General', 'price': 0, 'status': 'on_sale'},
           ]),
           'requires_approval': true,
           'viewer_request': request,
+          if (saysLast) 'viewer_last_request': last,
         });
 
     testWidgets(
@@ -255,7 +265,9 @@ void main() {
       expect(button.onPressed, isNull);
     });
 
-    testWidgets('a declined one: register as before', (tester) async {
+    testWidgets(
+        'a declined one where the open one goes: not confirmed, and no '
+        'Register', (tester) async {
       api.on(
           'GET',
           _info,
@@ -265,16 +277,160 @@ void main() {
             'token': 'tok_9',
           }));
       await _pump(tester);
-      expect(find.text('REGISTER NOW'), findsOneWidget);
-      expect(find.text(_note), findsOneWidget);
+      expect(find.text("Your registration wasn't confirmed"), findsOneWidget);
+      expect(find.text('REGISTER NOW'), findsNothing);
+      expect(find.text('SEE DETAILS'), findsOneWidget);
     });
 
-    testWidgets('null: register, and nothing else is asked', (tester) async {
-      api.on('GET', _info, withViewer(null));
+    testWidgets('null, and no earlier one: register, and nothing else asked',
+        (tester) async {
+      api.on('GET', _info, withViewer(null, saysLast: true));
       await _pump(tester);
 
       expect(find.text('REGISTER NOW'), findsOneWidget);
+      expect(find.text(_note), findsOneWidget);
+      expect(find.byKey(IndividualEventPage.approvalTitleKey), findsNothing);
       expect(api.sent('GET', _mine), isEmpty);
+    });
+  });
+
+  group('the event\'s own viewer_last_request', () {
+    Map<String, dynamic> withLast(Map<String, dynamic>? last) => _event(
+            ticketing: {
+              ...ticketingBody(requiresChoice: false, types: [
+                {'id': 1, 'name': 'General', 'price': 0, 'status': 'on_sale'},
+              ]),
+              'requires_approval': true,
+              'viewer_request': null,
+              'viewer_last_request': last,
+            });
+
+    testWidgets(
+        'declined: "wasn\'t confirmed", the club\'s note, and SEE DETAILS '
+        'opens it -- never Register', (tester) async {
+      api.on('GET', _info,
+          withLast(lastRequestBody(declineNote: 'We ran out of room.')));
+      await _pump(tester);
+
+      expect(find.byKey(IndividualEventPage.approvalTitleKey), findsOneWidget);
+      expect(find.text("Your registration wasn't confirmed"), findsOneWidget);
+      expect(
+          find.text("Tinkerhub couldn't confirm your registration this time, "
+              "so you can't register for this event again."),
+          findsOneWidget);
+      expect(find.text('Tinkerhub said: “We ran out of room.”'),
+          findsOneWidget);
+      expect(find.text('REGISTER NOW'), findsNothing);
+      expect(api.sent('GET', _mine), isEmpty,
+          reason: 'the event said it; My events\' list is not asked');
+
+      await tester.tap(find.text('SEE DETAILS'));
+      await tester.pumpAndSettle();
+      expect(find.text('Request tok_9'), findsOneWidget);
+    });
+
+    testWidgets('declined, without its link: "NOT CONFIRMED", and no button',
+        (tester) async {
+      api.on('GET', _info, withLast(lastRequestBody(token: null)));
+      await _pump(tester);
+
+      expect(find.text("Your registration wasn't confirmed"), findsOneWidget);
+      expect(find.byKey(IndividualEventPage.approvalQuoteKey), findsNothing);
+      expect(find.text('NOT CONFIRMED'), findsOneWidget);
+      final button = tester.widget<FilledButton>(
+          find.byKey(const ValueKey('event-register-button')));
+      expect(button.onPressed, isNull);
+    });
+
+    testWidgets('cancelled: said, over the usual Register', (tester) async {
+      api.on('GET', _info, withLast(lastRequestBody(status: 'withdrawn')));
+      await _pump(tester);
+
+      expect(find.text('You cancelled your registration'), findsOneWidget);
+      expect(find.text(_note), findsOneWidget);
+      expect(find.text('REGISTER NOW'), findsOneWidget);
+      final button = tester.widget<FilledButton>(
+          find.byKey(const ValueKey('event-register-button')));
+      expect(button.onPressed, isNotNull);
+    });
+
+    testWidgets('expired: not paid in time, and Register', (tester) async {
+      api.on('GET', _info, withLast(lastRequestBody(status: 'lapsed')));
+      await _pump(tester);
+
+      expect(find.text("Your registration expired: it wasn't paid in time"),
+          findsOneWidget);
+      expect(find.text('REGISTER NOW'), findsOneWidget);
+    });
+
+    testWidgets('closed as the event ended: why, and no Register',
+        (tester) async {
+      api.on(
+          'GET',
+          _info,
+          withLast(lastRequestBody(
+              status: 'closed', closedReason: 'event_ended')));
+      await _pump(tester);
+
+      expect(find.text('Your registration was closed'), findsOneWidget);
+      expect(
+          find.text('The event ended before Tinkerhub could confirm your '
+              'registration.'),
+          findsOneWidget);
+      expect(find.text('REGISTER NOW'), findsNothing);
+      expect(find.text('SEE DETAILS'), findsOneWidget);
+    });
+  });
+
+  group('a server without viewer_last_request: My events\' list', () {
+    testWidgets(
+        'viewer_request null: the list is asked, and a declined one is said',
+        (tester) async {
+      api
+        ..on(
+            'GET',
+            _info,
+            _event(ticketing: {
+              ...ticketingBody(requiresChoice: false, types: [
+                {'id': 1, 'name': 'General', 'price': 0, 'status': 'on_sale'},
+              ]),
+              'requires_approval': true,
+              'viewer_request': null,
+            }))
+        ..on('GET', _mine, {
+          'items': [
+            requestBody(
+                token: 'tok_d',
+                status: 'declined',
+                declineNote: 'Seats ran out.'),
+          ]
+        });
+      await _pump(tester);
+
+      expect(api.sent('GET', _mine), isNotEmpty);
+      expect(find.text("Your registration wasn't confirmed"), findsOneWidget);
+      expect(find.text('Tinkerhub said: “Seats ran out.”'), findsOneWidget);
+      expect(find.text('REGISTER NOW'), findsNothing);
+      await tester.tap(find.text('SEE DETAILS'));
+      await tester.pumpAndSettle();
+      expect(find.text('Request tok_d'), findsOneWidget);
+    });
+
+    testWidgets('no ticketing at all: the same, from the list',
+        (tester) async {
+      api
+        ..on('GET', _info, _event(requiresApproval: true))
+        ..on('GET', _mine, {
+          'items': [
+            requestBody(token: 'tok_w', status: 'withdrawn'),
+            requestBody(token: 'tok_d', status: 'declined', id: 'req-2'),
+          ]
+        });
+      await _pump(tester);
+
+      expect(find.text("Your registration wasn't confirmed"), findsOneWidget,
+          reason: 'a decline stops registering again, whenever it was');
+      expect(find.text('REGISTER NOW'), findsNothing);
     });
   });
 
@@ -300,6 +456,57 @@ void main() {
     expect(find.text('REGISTER NOW'), findsOneWidget);
     expect(find.text(_note), findsOneWidget);
     expect(api.sent('GET', _mine), isEmpty);
+  });
+
+  group('"Get help" under "Questions?"', () {
+    Future<void> openHelp(WidgetTester tester) async {
+      final help = find.byKey(EventContactSection.getHelpKey);
+      await tester.ensureVisible(help);
+      await tester.pumpAndSettle();
+      await tester.tap(help);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('declined: Contact us, about this event and its tickets',
+        (tester) async {
+      api.on(
+          'GET',
+          _info,
+          _event(ticketing: {
+            ...ticketingBody(requiresChoice: false, types: [
+              {'id': 1, 'name': 'General', 'price': 0, 'status': 'on_sale'},
+            ]),
+            'requires_approval': true,
+            'viewer_request': null,
+            'viewer_last_request': lastRequestBody(),
+          }));
+      await _pump(tester);
+
+      expect(find.text('Questions?'), findsOneWidget);
+      expect(find.text('Get help with your ticket or payment'), findsOneWidget);
+      await openHelp(tester);
+      expect(find.text('Contact us tickets 7'), findsOneWidget);
+    });
+
+    testWidgets('registered: offered too', (tester) async {
+      api.on('GET', _info, _event(requiresApproval: true, registered: true));
+      await _pump(tester);
+      expect(find.byKey(EventContactSection.getHelpKey), findsOneWidget);
+    });
+
+    testWidgets('nothing of theirs here, or signed out: not offered',
+        (tester) async {
+      api.on('GET', _info, _event(requiresApproval: true));
+      await _pump(tester);
+      expect(find.byKey(EventContactSection.getHelpKey), findsNothing);
+      expect(find.text('Questions?'), findsNothing);
+    });
+
+    testWidgets('signed out, even registered: not offered', (tester) async {
+      api.on('GET', _info, _event(registered: true));
+      await _pump(tester, signedIn: false);
+      expect(find.byKey(EventContactSection.getHelpKey), findsNothing);
+    });
   });
 
   testWidgets('registered already: the ticket, no note', (tester) async {

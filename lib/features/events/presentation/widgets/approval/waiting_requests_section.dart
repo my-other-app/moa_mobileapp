@@ -11,21 +11,30 @@ import 'package:finnet/features/events/presentation/widgets/answers_needed_note.
 /// My events' "Under review": the person's registrations at events whose
 /// club reviews every registration, still under review or waiting for the
 /// payment. Each opens its registration's screen; one the club asked more
-/// details for has "2 details needed · Add them" under it.
+/// details for has "2 details needed · Add them" under it. Then, under
+/// "Not confirmed", those the club declined ([declined]), for events still
+/// to come: each opens its registration's screen, which says what the club
+/// said.
 class WaitingRequestsSection extends StatelessWidget {
   const WaitingRequestsSection({
     super.key,
     required this.requests,
+    this.declined = const [],
     this.onAnswersReturn,
   });
 
   final List<RegistrationRequest> requests;
+
+  /// The registrations the club didn't confirm.
+  final List<RegistrationRequest> declined;
 
   /// Called once the details screen a note opened is closed.
   final VoidCallback? onAnswersReturn;
 
   static const sectionKey = ValueKey('waiting-for-confirmation');
   static const title = 'UNDER REVIEW';
+  static const declinedKey = ValueKey('requests-not-confirmed');
+  static const declinedTitle = 'NOT CONFIRMED';
 
   @override
   Widget build(BuildContext context) {
@@ -33,11 +42,13 @@ class WaitingRequestsSection extends StatelessWidget {
       key: sectionKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          title,
-          style: TextStyle(fontSize: 20, fontFamily: 'BebasNeue'),
-        ),
-        const SizedBox(height: 8),
+        if (requests.isNotEmpty) ...[
+          const Text(
+            title,
+            style: TextStyle(fontSize: 20, fontFamily: 'BebasNeue'),
+          ),
+          const SizedBox(height: 8),
+        ],
         for (final request in requests) ...[
           RequestTile(request: request),
           if (request.answersNeeded case final needed?) ...[
@@ -49,6 +60,18 @@ class WaitingRequestsSection extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 10),
+        ],
+        if (declined.isNotEmpty) ...[
+          const Text(
+            declinedTitle,
+            key: declinedKey,
+            style: TextStyle(fontSize: 20, fontFamily: 'BebasNeue'),
+          ),
+          const SizedBox(height: 8),
+          for (final request in declined) ...[
+            RequestTile(request: request),
+            const SizedBox(height: 10),
+          ],
         ],
       ],
     );
@@ -75,9 +98,13 @@ class RequestTile extends StatelessWidget {
   }
 
   /// "Under review", or, confirmed for a paid ticket, "Confirmed · pay by
-  /// Sat 1 Nov, 6:00 PM to get your ticket". No price: an iPhone doesn't
-  /// show one for a paid online event.
+  /// Sat 1 Nov, 6:00 PM to get your ticket", or "Not confirmed" for one
+  /// the club declined. No price: an iPhone doesn't show one for a paid
+  /// online event.
   String get statusLine => request.statusWord ?? 'Under review';
+
+  /// The club didn't confirm it.
+  bool get _declined => request.status == RequestStatus.declined;
 
   /// What tapping it does, in words: "See your registration", or "Pay
   /// ₹199" for a confirmed paid ticket. An iPhone names no price (it
@@ -91,7 +118,7 @@ class RequestTile extends StatelessWidget {
         defaultTargetPlatform != TargetPlatform.iOS) {
       return 'Pay ${formatRupees(pay.amount)}';
     }
-    return 'See your registration';
+    return _declined ? 'See details' : 'See your registration';
   }
 
   @override
@@ -99,10 +126,18 @@ class RequestTile extends StatelessWidget {
     final when = request.event?.eventDateTime;
     final to = location;
     final confirmed = request.awaitingPayment;
-    final accent =
-        confirmed ? const Color(0xFF047857) : const Color(0xFF1D4ED8);
+    final declined = _declined;
+    final accent = declined
+        ? const Color(0xFF4B5563)
+        : confirmed
+            ? const Color(0xFF047857)
+            : const Color(0xFF1D4ED8);
     return Material(
-      color: confirmed ? const Color(0xFFECFDF5) : const Color(0xFFEFF6FF),
+      color: declined
+          ? const Color(0xFFF3F4F6)
+          : confirmed
+              ? const Color(0xFFECFDF5)
+              : const Color(0xFFEFF6FF),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         key: ValueKey('request-tile-${request.id}'),
@@ -115,7 +150,11 @@ class RequestTile extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                confirmed ? Icons.celebration_outlined : Icons.hourglass_top,
+                declined
+                    ? Icons.event_busy
+                    : confirmed
+                        ? Icons.celebration_outlined
+                        : Icons.hourglass_top,
                 size: 22,
                 color: accent,
               ),

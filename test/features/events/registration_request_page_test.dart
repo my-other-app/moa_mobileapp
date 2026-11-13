@@ -486,6 +486,15 @@ void main() {
               "couldn't confirm your registration this time."),
           findsOneWidget);
       expect(find.text('Tinkerhub said: We ran out of room.'), findsOneWidget);
+      // When the club decided.
+      final decided = RegistrationRequest.fromJson(
+              requestBody(status: 'declined'))!
+          .decidedAt!;
+      expect(
+          tester
+              .widget<Text>(find.byKey(RegistrationRequestPage.decidedKey))
+              .data,
+          'Not confirmed ${requestMoment(decided)}');
       expect(find.byKey(RegistrationRequestPage.withdrawKey), findsNothing);
       expect(_label(tester, RegistrationRequestPage.findEventsKey),
           'Find other events');
@@ -512,6 +521,20 @@ void main() {
       expect(_label(tester, RegistrationRequestPage.registerAgainKey),
           'Register again');
       expect(find.byKey(RegistrationRequestPage.withdrawKey), findsNothing);
+    });
+
+    testWidgets(
+        'cancelled, opened from an event that declined them before: no '
+        '"Register again"', (tester) async {
+      api.on('GET', _path, requestBody(status: 'withdrawn'));
+      await _pump(tester,
+          initial: RegistrationRequest.fromJson({
+            ...requestBody(status: 'withdrawn'),
+            'can_register_again': false,
+          }));
+      expect(_title(tester), 'You cancelled your registration');
+      expect(find.byKey(RegistrationRequestPage.registerAgainKey), findsNothing);
+      expect(find.byKey(RegistrationRequestPage.eventKey), findsOneWidget);
     });
 
     testWidgets('expired', (tester) async {

@@ -87,7 +87,10 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final waiting = ref.watch(myRegistrationRequestsProvider).open;
+    final requests = ref.watch(myRegistrationRequestsProvider);
+    final waiting = requests.open;
+    // The club didn't confirm these: said, so they aren't left wondering.
+    final declined = requests.notConfirmed();
 
     if (isLoading) {
       return Container(
@@ -122,8 +125,9 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
     }
 
     if (events.isEmpty) {
-      if (waiting.isEmpty) return NoRegisteredEventPage();
-      // No tickets yet, but registrations under review: those.
+      if (waiting.isEmpty && declined.isEmpty) return NoRegisteredEventPage();
+      // No tickets yet, but registrations under review (or not confirmed):
+      // those.
       return Container(
         color: Colors.white,
         child: RefreshIndicator(
@@ -135,6 +139,7 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
             children: [
               WaitingRequestsSection(
                 requests: waiting,
+                declined: declined,
                 onAnswersReturn: _requests.refresh,
               ),
             ],
@@ -144,7 +149,7 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
     }
 
     // The requests, above the registrations, when there are any.
-    final header = waiting.isEmpty ? 0 : 1;
+    final header = waiting.isEmpty && declined.isEmpty ? 0 : 1;
     return NotificationListener<ScrollNotification>(
       onNotification: onFeedScroll,
       child: RefreshIndicator(
@@ -166,6 +171,7 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
             if (at < header) {
               return WaitingRequestsSection(
                 requests: waiting,
+                declined: declined,
                 onAnswersReturn: _requests.refresh,
               );
             }

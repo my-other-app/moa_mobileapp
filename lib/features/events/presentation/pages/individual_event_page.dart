@@ -17,6 +17,8 @@ import 'package:finnet/features/events/data/live/live_stream_client.dart';
 import 'package:finnet/features/live/live_routes.dart';
 import 'package:finnet/features/events/domain/event_page_rules.dart';
 import 'package:finnet/features/events/domain/registration_status.dart';
+import 'package:finnet/features/support/presentation/support_routes.dart'
+    show SupportLocations;
 import 'package:finnet/features/events/presentation/providers/event_page_provider.dart';
 import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
 import 'package:finnet/features/events/presentation/utils/event_sign_in.dart';
@@ -134,6 +136,10 @@ class IndividualEventPage extends ConsumerStatefulWidget {
   /// Over [approvalNoteKey]'s line, when the person has registered: "Your
   /// registration is under review", or confirmed.
   static const approvalTitleKey = ValueKey('event-approval-title');
+
+  /// Under [approvalNoteKey]'s line, when the club declined the person's
+  /// registration with a note: 'Tinkerhub said: "..."'.
+  static const approvalQuoteKey = ValueKey('event-approval-quote');
 
   /// The event as it was asked for: [eventRef] when given, else [eventId].
   String get ref {
@@ -488,10 +494,11 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     if (!mounted) return;
     // A club that reviews every registration: the person's own registration
     // for it, if there is one, so the button opens it rather than
-    // registering again. The event's `viewer_request` says it; a server
-    // without it, My events' list.
+    // registering again -- open, or declined (or cancelled, expired,
+    // closed) before. The event's `viewer_request` and
+    // `viewer_last_request` say it; a server without them, My events' list.
     if (_requiresApproval &&
-        !(_ticketing?.saysViewerRequest ?? false) &&
+        !(_ticketing?.saysViewerRequests ?? false) &&
         ref.read(isAuthenticatedProvider)) {
       unawaited(ref
           .read(myRegistrationRequestsProvider.notifier)
@@ -1354,7 +1361,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                 )
               : null,
         ),
-      if (!contact.isEmpty)
+      if (!contact.isEmpty || _canGetHelp)
         EventContactSection(
           key: const ValueKey('event-contact'),
           contact: contact,
@@ -1367,6 +1374,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               ? null
               : () => _openLink(Uri(scheme: 'tel', path: contact.dialable),
                   "Couldn't start a call"),
+          onGetHelp: _canGetHelp ? _getHelp : null,
         ),
       if (more.isNotEmpty)
         EventRail(
@@ -2772,6 +2780,18 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF1D4ED8)),
                       ),
+                      if (approval.quote case final quote?)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            quote,
+                            key: IndividualEventPage.approvalQuoteKey,
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontStyle: FontStyle.italic,
+                                color: Color(0xFF374151)),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -2845,13 +2865,21 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// With a registration of theirs still open -- the event's
   /// `viewer_request`, or, from a server without it,
   /// `/registration-requests/mine` -- it says "Your registration is under
-  /// review" (or confirmed, to pay) and the button opens it; otherwise the
-  /// button registers as on any event ([label] null keeps its word), with
-  /// a note on how the club reviews.
+  /// review" (or confirmed, to pay) and the button opens it.
+  ///
+  /// With none open but an earlier one -- `viewer_last_request`, or My
+  /// events' list -- it says what became of it ([lastRegistrationNotice]):
+  /// one the club declined says so, with the club's note, and the button
+  /// opens it ("SEE DETAILS"), never the form; one they cancelled, or that
+  /// expired, says so over the usual button.
+  ///
+  /// Otherwise the button registers as on any event ([label] null keeps its
+  /// word), with a note on how the club reviews.
   ({
     String? title,
     String? label,
     String note,
+    String? quote,
     VoidCallback? onPressed,
     RegistrationRequest? request,
   })? _approvalButton({required bool registering}) {
@@ -2893,8 +2921,38 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                 'ticket.'
             : '$who reviews every registration. If yours is confirmed, your '
                 'ticket will come by email.',
+        quote: null,
         onPressed: route == null ? null : () => _openRequest(route, mine),
         request: mine,
+      );
+    }
+    final last = _lastRequest;
+    final route = last?.route;
+    final said = last == null
+        ? null
+        : lastRegistrationNotice(last,
+            clubName: clubName, hasLink: route != null);
+    if (last != null && said != null) {
+      // They can't register again: the button opens the registration (what
+      // happened, when, the club's note), never the form.
+      if (!said.canRegister) {
+        return (
+          title: said.title,
+          label: said.label,
+          note: said.note,
+          quote: said.quote,
+          onPressed: route == null ? null : () => _openRequest(route, last),
+          request: last,
+        );
+      }
+      // They may: the usual button, under a word on what became of it.
+      return (
+        title: said.title,
+        label: null,
+        note: said.note,
+        quote: said.quote,
+        onPressed: null,
+        request: null,
       );
     }
     if (!registering) return null;
@@ -2902,6 +2960,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       title: null,
       label: null,
       note: reviewsEveryRegistrationNote(clubName),
+      quote: null,
       onPressed: null,
       request: null,
     );
@@ -2934,6 +2993,50 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     final open = found.status == RequestStatus.pending ||
         found.status == RequestStatus.approved;
     return open ? found : null;
+  }
+
+  /// With none open ([_viewerRequest]), the signed-in person's last
+  /// registration for this event -- declined, cancelled, expired or closed:
+  /// the event's `viewer_last_request`, or -- from a server without it --
+  /// the one My events' list has ([MyRegistrationRequests.lastFor]). Null
+  /// when signed out, or there is none. Read while building.
+  RegistrationRequest? get _lastRequest {
+    if (!ref.watch(isAuthenticatedProvider) || _viewerRequest != null) {
+      return null;
+    }
+    final ticketing = _ticketing;
+    final said = ticketing?.viewerRequest;
+    final RegistrationRequest? found;
+    if (said != null) {
+      // A settled one where the open one is said: that one.
+      found = said;
+    } else if (ticketing != null && ticketing.saysViewerLastRequest) {
+      found = ticketing.viewerLastRequest;
+    } else {
+      found = ref.watch(myRegistrationRequestsProvider).lastFor(_eventId);
+    }
+    if (found == null || found.hasTicket || found.isOpen) return null;
+    return found;
+  }
+
+  /// Signed in, with a registration here (a ticket, one to pay for, one
+  /// under review or one the club declined): MyOtherApp's help with it is
+  /// offered under "Questions?". Read while building.
+  bool get _canGetHelp =>
+      ref.watch(isAuthenticatedProvider) &&
+      (isRegistered ||
+          awaitingPayment ||
+          isAttended ||
+          _viewerRequest != null ||
+          _lastRequest != null);
+
+  /// Contact us, about this event and its tickets (Help and support).
+  void _getHelp() {
+    final id = _eventId;
+    context.push(Uri(path: SupportLocations.contact, queryParameters: {
+      'topic': 'tickets',
+      if (id != null && id > 0) 'event': '$id',
+    }).toString());
   }
 
   /// The registration's screen; the event is read again after, since it may

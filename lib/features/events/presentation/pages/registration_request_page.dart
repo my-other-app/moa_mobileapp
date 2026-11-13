@@ -92,6 +92,7 @@ class RegistrationRequestPage extends ConsumerStatefulWidget {
   static const problemKey = ValueKey('request-problem');
   static const noticeKey = ValueKey('request-notice');
   static const noteKey = ValueKey('request-decline-note');
+  static const decidedKey = ValueKey('request-decided');
   static const emailedKey = ValueKey('request-link-emailed');
 
   /// Cancelling refused because the registration moved on meanwhile
@@ -758,7 +759,9 @@ class _RegistrationRequestPageState
           buttons.add(find);
           if (back != null) buttons.add(back);
         case RequestStatus.withdrawn:
-          if (event != null) {
+          // Not after the club declined them for it before (the event's
+          // `can_register_again`), which the server would refuse.
+          if (event != null && request.mayRegisterAgain) {
             buttons.add((
               RegistrationRequestPage.registerAgainKey,
               'Register again',
@@ -876,6 +879,7 @@ class _RequestCard extends StatelessWidget {
     final event = request.event;
     final when = event?.eventDateTime;
     final registered = request.submittedAt;
+    final decided = request.decidedLine;
     final type = request.ticketTypeName;
     final name = request.fullName;
     const detail = TextStyle(fontSize: 13.5, color: _muted);
@@ -898,7 +902,10 @@ class _RequestCard extends StatelessWidget {
           if (when != null)
             Text(DateFormat('EEE d MMM yyyy, h:mm a').format(when.toLocal()),
                 style: detail),
-          if (type != null || name != null || registered != null)
+          if (type != null ||
+              name != null ||
+              registered != null ||
+              decided != null)
             const Divider(height: 20),
           if (type != null)
             Text(type,
@@ -907,6 +914,10 @@ class _RequestCard extends StatelessWidget {
           if (name != null) Text('For $name', style: detail),
           if (registered != null)
             Text('Registered ${requestMoment(registered)}', style: detail),
+          // When the club decided: "Not confirmed Sat 1 Nov, 6:00 PM".
+          if (decided != null)
+            Text(decided,
+                key: RegistrationRequestPage.decidedKey, style: detail),
         ],
       ),
     );

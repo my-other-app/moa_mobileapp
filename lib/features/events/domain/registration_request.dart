@@ -165,6 +165,12 @@ class RegistrationRequest {
   /// nothing, or the server is older.
   final AnswersNeeded? answersNeeded;
 
+  /// Whether the person may register for the event again
+  /// (`can_register_again`, on the event's `viewer_last_request`): false
+  /// once the club declined them for it. Null when the server doesn't say
+  /// ([mayRegisterAgain] then works it out from [status]).
+  final bool? canRegisterAgain;
+
   const RegistrationRequest({
     required this.id,
     required this.status,
@@ -181,6 +187,7 @@ class RegistrationRequest {
     this.ticketId,
     this.pay,
     this.answersNeeded,
+    this.canRegisterAgain,
   });
 
   bool get isPending => status == RequestStatus.pending;
@@ -241,6 +248,27 @@ class RegistrationRequest {
         RequestStatus.unknown => null,
       };
 
+  /// Whether registering for the event again is allowed: what the server
+  /// says ([canRegisterAgain]), else everything but a declined one (the
+  /// server refuses those with REQUEST_DECLINED).
+  bool get mayRegisterAgain =>
+      canRegisterAgain ?? status != RequestStatus.declined;
+
+  /// When the club decided, in words, for the registration's own page:
+  /// "Not confirmed Sat 1 Nov, 6:00 PM", or "Confirmed ..." for one it
+  /// confirmed (an expired one too). Null when not decided, or not said.
+  String? get decidedLine {
+    final at = decidedAt;
+    if (at == null) return null;
+    return switch (status) {
+      RequestStatus.declined => 'Not confirmed ${requestMoment(at)}',
+      RequestStatus.approved ||
+      RequestStatus.lapsed =>
+        'Confirmed ${requestMoment(at)}',
+      _ => null,
+    };
+  }
+
   /// The status screen, when the token is known.
   String? get route {
     final known = token;
@@ -266,6 +294,9 @@ class RegistrationRequest {
         ticketId: fresh.ticketId,
         pay: fresh.pay,
         answersNeeded: fresh.answersNeeded,
+        // Kept only while the status is the same: what it said was of that.
+        canRegisterAgain: fresh.canRegisterAgain ??
+            (fresh.status == status ? canRegisterAgain : null),
       );
 
   /// The request, or null when [value] is not one: no object, or neither
@@ -294,6 +325,7 @@ class RegistrationRequest {
       ticketId: _text(json['ticket_id']),
       pay: RequestPay.fromJson(json['pay']),
       answersNeeded: AnswersNeeded.fromJson(json['answers_needed']),
+      canRegisterAgain: jsonBool(json['can_register_again']),
     );
   }
 
