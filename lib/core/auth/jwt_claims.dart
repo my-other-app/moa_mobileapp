@@ -18,6 +18,14 @@ Map<String, dynamic>? unverifiedJwtClaims(String? token) {
   }
 }
 
+/// The account [token] was issued to: its `user_id` claim. Null for
+/// anything that is not one of the app's JWTs.
+int? userIdOf(String? token) {
+  final id = unverifiedJwtClaims(token)?['user_id'];
+  if (id is int) return id;
+  return int.tryParse(id?.toString() ?? '');
+}
+
 /// The id of the session [token] belongs to: the `sid` claim the backend
 /// puts in every access and refresh token it issues, which
 /// `DELETE /auth/sessions/{sid}` ends. Null for tokens issued before sessions

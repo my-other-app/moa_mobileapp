@@ -6,22 +6,77 @@ import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/features/events/presentation/widgets/saved_tickets_sync.dart';
 import 'package:finnet/features/main/presentation/providers/navigation_index_provider.dart';
 import 'package:finnet/features/main/presentation/widgets/personal_data_sync.dart';
+import 'package:finnet/features/network/presentation/providers/network_saver.dart';
 import 'package:finnet/shared/motion.dart';
 
 export 'package:finnet/features/main/presentation/providers/navigation_index_provider.dart';
+
+/// The tab whose page is at [path], when it is one of the bar's own:
+/// 0 home, 1 events, 2 network, 3 clubs, 4 profile.
+int? tabIndexFor(String path) {
+  final p = path.isEmpty ? '/' : path.toLowerCase();
+  if (p == '/') return 0;
+  for (final (root, index) in const [
+    ('/events', 1),
+    ('/network', 2),
+    ('/clubs', 3),
+    ('/profile', 4),
+  ]) {
+    if (p == root || p == '$root/') return index;
+  }
+  return null;
+}
 
 /// Main shell widget that contains the bottom navigation bar.
 ///
 /// This widget wraps the main navigation routes and provides
 /// a persistent bottom navigation bar across all main screens.
-class MainShell extends ConsumerWidget {
+///
+/// Given the shell's [location], the bar follows it whenever it moves to
+/// one of the tabs some other way than a tap -- a link, a push (the
+/// recap's opens Network) -- so the tab lit is the page on show.
+class MainShell extends ConsumerStatefulWidget {
   final Widget child;
 
-  const MainShell({super.key, required this.child});
+  /// The shell's current path, from the router; null to follow taps only.
+  final String? location;
+
+  const MainShell({super.key, required this.child, this.location});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends ConsumerState<MainShell> {
+  @override
+  void initState() {
+    super.initState();
+    _follow(widget.location);
+  }
+
+  @override
+  void didUpdateWidget(MainShell old) {
+    super.didUpdateWidget(old);
+    if (old.location != widget.location) _follow(widget.location);
+  }
+
+  /// Light the tab at [location], once this frame is built.
+  void _follow(String? location) {
+    final index = location == null ? null : tabIndexFor(location);
+    if (index == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final tab = ref.read(navigationIndexProvider.notifier);
+      if (tab.state != index) tab.state = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentIndex = ref.watch(navigationIndexProvider);
+    // People saved with no signal are sent when the phone is back online,
+    // whichever screen is up: the saver listens for that while it lives.
+    ref.listen(networkSaverProvider, (_, __) {});
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -29,7 +84,7 @@ class MainShell extends ConsumerWidget {
       // are kept current for the door, and the notification switches and
       // the inbox are read ahead of the screens that show them.
       body: SavedTicketsSync(
-        child: PersonalDataSync(child: SafeArea(child: child)),
+        child: PersonalDataSync(child: SafeArea(child: widget.child)),
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -47,6 +102,8 @@ class MainShell extends ConsumerWidget {
     return [
       _buildNavItem(image: AssetResources.home, label: 'Home'),
       _buildNavItem(image: AssetResources.events, label: 'Events'),
+      // The people the person met: no picture of its own in the set.
+      _iconNavItem(icon: Icons.people_alt_outlined, label: 'Network'),
       _buildNavItem(image: AssetResources.clubs, label: 'Clubs'),
       _buildNavItem(image: AssetResources.profile, label: 'Profile'),
     ];
@@ -73,6 +130,19 @@ class MainShell extends ConsumerWidget {
     );
   }
 
+  BottomNavigationBarItem _iconNavItem({
+    required IconData icon,
+    required String label,
+  }) {
+    return BottomNavigationBarItem(
+      icon: Icon(icon, color: Colors.grey),
+      activeIcon: _ChosenIcon(
+        child: Icon(icon, color: const Color(0xFFF9FFA1)),
+      ),
+      label: label,
+    );
+  }
+
   void _onItemTapped(BuildContext context, WidgetRef ref, int index) {
     // Choosing another tab is felt; tapping the one already open is not.
     if (index != ref.read(navigationIndexProvider)) Haptics.selection();
@@ -89,9 +159,12 @@ class MainShell extends ConsumerWidget {
         context.go('/events');
         break;
       case 2:
-        context.go('/clubs');
+        context.go('/network');
         break;
       case 3:
+        context.go('/clubs');
+        break;
+      case 4:
         context.go('/profile');
         break;
     }

@@ -40,6 +40,7 @@ import 'package:finnet/features/profile/presentation/pages/notifications/notific
 import 'package:finnet/features/main/presentation/pages/main_shell.dart';
 import 'package:finnet/features/discover/presentation/discover_routes.dart';
 import 'package:finnet/features/speakers/presentation/speakers_routes.dart';
+import 'package:finnet/features/network/presentation/network_routes.dart';
 
 // Batch C's routes (auth, threads, profile)
 import 'package:finnet/features/auth/presentation/auth_routes.dart';
@@ -58,6 +59,7 @@ import 'package:finnet/app/router/link_pages.dart';
 import 'package:finnet/app/router/pending_location.dart';
 import 'package:finnet/app/router/route_access.dart';
 import 'package:finnet/app/router/tracking_ref.dart';
+import 'package:finnet/app/router/route_observer.dart';
 import 'package:finnet/app/router/web_links.dart';
 
 GlobalKey<NavigatorState> _rootNavigatorKey =
@@ -189,8 +191,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         : '/splash',
     debugLogDiagnostics: kDebugMode,
     refreshListenable: auth,
-    // Add analytics observer for automatic screen tracking
-    observers: ref.read(routerObserversProvider),
+    // Add analytics observer for automatic screen tracking; and the pages
+    // that must know when another covers them (My QR's brightness).
+    observers: [...ref.read(routerObserversProvider), appRouteObserver],
     redirect: (context, state) {
       // A club's tracking link (`?ref=`), kept to credit the registration
       // or the follow it leads to (tracking_ref.dart).
@@ -323,7 +326,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // taken for an event called "explore".
       ShellRoute(
         navigatorKey: shellKey,
-        builder: (context, state, child) => MainShell(child: child),
+        // The bar follows the location, so a link or a push that opens a
+        // tab (the recap's Network) lights it.
+        builder: (context, state, child) =>
+            MainShell(location: state.uri.path, child: child),
         routes: [
           // My events: registrations and tickets. Signed in only.
           GoRoute(
@@ -355,6 +361,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                     redirect: requestSentRedirect,
                     builder: buildRequestSentPage),
               ]),
+          // The Network tab: everyone the person saved, where and when they
+          // met. Signed in only.
+          networkTabRoute(rootKey),
           // My clubs: followed and pinned. Signed in only.
           GoRoute(
               path: '/clubs',
@@ -421,6 +430,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const MyBadgesPage()),
                 // Speakers I Follow (Profile): each opens the speaker's page.
                 ...followedSpeakersRoutes(rootKey),
+                // My QR, and the public profile's editor and preview.
+                ...myNetworkProfileRoutes(rootKey),
                 // Share kits (Settings, for a club's team members): each
                 // event's words and posters -- what a share_kit push opens.
                 ...socialRoutes(rootKey),
@@ -452,6 +463,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 // A speaker's page (the speakers directory), from their card
                 // on an event page and from the website's link.
                 ...overHome(rootKey, speakersRoutes),
+                // A person's profile (`/u/{handle}`) and their personal
+                // QR's link (`/p/{code}`: the profile with Save, never a save
+                // on open).
+                ...overHome(rootKey, profileLinkRoutes),
                 GoRoute(
                     path: 'events/explore',
                     name: 'exploreEvents',
@@ -612,4 +627,5 @@ class AppRoutes {
   static const String certificates = 'certificates';
   static const String badges = 'badges';
   static const String notifications = 'notifications';
+  static const String network = 'network';
 }

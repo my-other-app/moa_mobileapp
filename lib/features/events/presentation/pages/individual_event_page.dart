@@ -59,6 +59,7 @@ import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/widgets/networking/people_like_you_card.dart';
+import 'package:finnet/features/network/presentation/widgets/at_event_qr_row.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/core/network/network_status.dart';
@@ -2153,6 +2154,14 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               eventName: name,
               status: _status,
               networking: _networking,
+              startsAt: eventDateTime,
+              durationHours: duration,
+              revoked: _ticketRevoked,
+            ),
+            // At the venue: My QR, and saving the people met here.
+            AtEventQrRow(
+              eventId: _eventId,
+              status: _status,
               startsAt: eventDateTime,
               durationHours: duration,
               revoked: _ticketRevoked,

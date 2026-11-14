@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/features/network/domain/network_links.dart';
+import 'package:finnet/features/network/domain/profile.dart'
+    show ProfileCompleteness;
+import 'package:finnet/features/network/presentation/providers/my_profile_provider.dart';
+import 'package:finnet/features/network/presentation/widgets/profile_notices.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/sign_out.dart';
 import 'package:finnet/features/profile/presentation/widgets/my_picture.dart';
@@ -29,6 +34,13 @@ class ProfilePage extends ConsumerStatefulWidget {
   /// Speakers I Follow, in the menu.
   static const followedSpeakersKey = ValueKey('profile-followed-speakers');
 
+  /// My Public Profile and My QR, in the menu.
+  static const publicProfileKey = ValueKey('profile-public-profile');
+  static const myQrKey = ValueKey('profile-my-qr');
+
+  /// "Make it easy for people you meet to find your work."
+  static const nudgeKey = ValueKey('profile-public-nudge');
+
   @override
   ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
@@ -40,6 +52,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     // Load profile on page init
     Future.microtask(() {
       ref.read(profileProvider.notifier).loadProfile();
+      // The public profile's headline and how complete it is.
+      ref.read(myProfileProvider.notifier).load();
     });
   }
 
@@ -52,6 +66,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     // there while the list loads, and when it fails (the page says so).
     final followed = ref.watch(followedSpeakersProvider);
     final speakersShown = !(followed.hasValue && followed.value == null);
+    final public = ref.watch(myProfileProvider).profile;
 
     // The menu: rows of the Settings design, as on Settings itself.
     final menu = dividedRows([
@@ -59,6 +74,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         asset: AssetResources.editprofile,
         label: 'Edit Profile',
         onTap: () => context.push('/profile/edit'),
+      ),
+      // What people see when they scan the person's QR or open their link.
+      SettingsRow(
+        key: ProfilePage.publicProfileKey,
+        emoji: '🪪',
+        label: 'My Public Profile',
+        onTap: () => context.push(editPublicProfileLocation),
+      ),
+      SettingsRow(
+        key: ProfilePage.myQrKey,
+        emoji: '🔳',
+        label: 'My QR',
+        onTap: () => context.push(myQrLocation),
       ),
       SettingsRow(
         asset: AssetResources.mycertificates,
@@ -170,6 +198,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                     fontFamily: 'BebasNeue',
                                   ),
                                 ),
+                                if (public?.profile.headline != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      public!.profile.headline!,
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  ),
                                 const SizedBox(height: 24),
                                 // 2) Tags
                                 Wrap(
@@ -190,9 +226,88 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         ],
                       ),
               ),
+              // Every profile from before Feature 4 starts private.
+              if (public != null && public.settings.isPrivate)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 24, 16, 0),
+                  child: PrivateProfileCard(),
+                ),
+              if (public != null && public.handleNeedsChange)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: HandleNeedsChangeCard(
+                    onPick: () => context.push(editPublicProfileLocation),
+                  ),
+                ),
+              if (public != null && !public.completeness.complete)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                  child: _PublicProfileNudge(
+                    missing: public.completeness.missing,
+                    score: public.completeness.score,
+                  ),
+                ),
               const SizedBox(height: 40),
               // 2) The menu list
               ...menu,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Make it easy for people you meet to find your work": what the public
+/// profile still lacks, into its editor.
+class _PublicProfileNudge extends StatelessWidget {
+  const _PublicProfileNudge({required this.missing, required this.score});
+
+  final List<String> missing;
+  final int score;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = missing.map(ProfileCompleteness.missingLabel).toList();
+    final add = parts.isEmpty
+        ? null
+        : parts.length == 1
+            ? parts.single
+            : '${parts.sublist(0, parts.length - 1).join(', ')} and '
+                '${parts.last}';
+    return Material(
+      color: const Color(0xFFF9FFA1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Color(0xFF1E1E1E)),
+      ),
+      child: InkWell(
+        key: ProfilePage.nudgeKey,
+        customBorder:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        onTap: () => context.push(editPublicProfileLocation),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Make it easy for people you meet to find your work',
+                      style:
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    ),
+                    if (add != null) ...[
+                      const SizedBox(height: 2),
+                      Text('Add $add · $score% done',
+                          style: const TextStyle(fontSize: 13)),
+                    ],
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
             ],
           ),
         ),

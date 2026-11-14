@@ -104,7 +104,9 @@
                place at an event whose club confirms each one;
                /answers/{event}/{ref} is the personal link a club's ask
                for missing sign-up details sends; /speakers/{slug} is a
-               speaker's page. An intent
+               speaker's page; /u/{handle} is a person's profile and
+               /p/{code} their personal QR (the profile, with Save); /network is
+               the recap's link to the Network tab. An intent
                filter cannot
                leave a path out: the router sends what it can't show to
                the browser. -->
@@ -130,6 +132,9 @@
               <data android:pathPrefix="/answers/"/>
               <data android:pathPrefix="/play/"/>
               <data android:pathPrefix="/speakers/"/>
+              <data android:pathPrefix="/u/"/>
+              <data android:pathPrefix="/p/"/>
+              <data android:path="/network"/>
           </intent-filter>
       </activity>
 

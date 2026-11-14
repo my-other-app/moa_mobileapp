@@ -95,6 +95,18 @@ void main() {
       expect(await queue.all(7), isEmpty);
     });
 
+    test("a personal QR is not a ticket: said at once, nothing sent",
+        () async {
+      await door.start();
+
+      await door.scan('https://myotherapp.in/p/abcdefghjk');
+
+      expect(api.scans, isEmpty);
+      expect(door.state.card!.card.tag, 'Personal QR');
+      expect(door.state.card!.card.title, "That's a personal QR, not a ticket.");
+      expect(await queue.all(7), isEmpty);
+    });
+
     test('an empty code is not a scan', () async {
       await door.start();
       await door.scan('   ');

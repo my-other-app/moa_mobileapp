@@ -11,6 +11,13 @@ class NetworkingAttendee {
   final List<SharedInterest> sharedInterests;
   final int matchCount;
 
+  /// Their profile's handle (Feature 4), to save them by; null from a
+  /// server without profiles, when there is no Save.
+  final String? handle;
+
+  /// The reader saved them already.
+  final bool saved;
+
   NetworkingAttendee({
     required this.userId,
     required this.name,
@@ -18,6 +25,8 @@ class NetworkingAttendee {
     this.organization,
     required this.sharedInterests,
     required this.matchCount,
+    this.handle,
+    this.saved = false,
   });
 
   factory NetworkingAttendee.fromJson(Map<String, dynamic> json) {
@@ -31,7 +40,14 @@ class NetworkingAttendee {
           .map(SharedInterest.fromJson)
           .toList(),
       matchCount: jsonInt(json['match_count']) ?? 0,
+      handle: _handle(json['handle']),
+      saved: jsonBool(json['saved']) == true,
     );
+  }
+
+  static String? _handle(Object? value) {
+    final h = jsonString(value)?.trim().toLowerCase();
+    return h == null || h.isEmpty || h.contains('/') ? null : h;
   }
 }
 

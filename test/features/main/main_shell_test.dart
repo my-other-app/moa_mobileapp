@@ -127,11 +127,12 @@ void main() {
   late GoRouter router;
   late ProviderContainer container;
 
-  /// The four tabs in the shell, as the app's router has them.
+  /// The five tabs in the shell, as the app's router has them.
   Future<void> pumpShell(WidgetTester tester,
       {AuthState session = _signedOut,
       String start = '/',
-      int index = 0}) async {
+      int index = 0,
+      bool followLocation = false}) async {
     tester.view
       ..physicalSize = const Size(1080, 2400)
       ..devicePixelRatio = 3;
@@ -139,10 +140,13 @@ void main() {
     auth = _Auth(session);
     router = GoRouter(initialLocation: start, routes: [
       ShellRoute(
-        builder: (_, __, child) => MainShell(child: child),
+        // As the app's router has it, when [followLocation].
+        builder: (_, state, child) => MainShell(
+            location: followLocation ? state.uri.path : null, child: child),
         routes: [
           GoRoute(path: '/', builder: (_, __) => const _Tab('home')),
           GoRoute(path: '/events', builder: (_, __) => const _Tab('events')),
+          GoRoute(path: '/network', builder: (_, __) => const _Tab('network')),
           GoRoute(path: '/clubs', builder: (_, __) => const _Tab('clubs')),
           GoRoute(path: '/profile', builder: (_, __) => const _Tab('profile')),
         ],
@@ -170,13 +174,15 @@ void main() {
 
   String here() => router.routerDelegate.currentConfiguration.uri.path;
 
-  testWidgets('four tabs -- Home, Events, Clubs and Profile -- Home lit first',
+  testWidgets(
+      'five tabs -- Home, Events, Network, Clubs and Profile -- Home lit first',
       (tester) async {
     await pumpShell(tester);
 
     final bar =
         tester.widget<BottomNavigationBar>(find.byType(BottomNavigationBar));
-    expect(bar.items.map((i) => i.label), ['Home', 'Events', 'Clubs', 'Profile']);
+    expect(bar.items.map((i) => i.label),
+        ['Home', 'Events', 'Network', 'Clubs', 'Profile']);
     expect(lit(tester), 0);
     expect(find.text('the home tab'), findsOneWidget);
   });
@@ -185,9 +191,10 @@ void main() {
     await pumpShell(tester, session: _signedIn);
 
     for (final (label, path, page, index) in [
-      ('Clubs', '/clubs', 'the clubs tab', 2),
+      ('Clubs', '/clubs', 'the clubs tab', 3),
       ('Events', '/events', 'the events tab', 1),
-      ('Profile', '/profile', 'the profile tab', 3),
+      ('Network', '/network', 'the network tab', 2),
+      ('Profile', '/profile', 'the profile tab', 4),
       ('Home', '/', 'the home tab', 0),
     ]) {
       await tester.tap(find.text(label));
@@ -200,21 +207,37 @@ void main() {
     }
   });
 
+  testWidgets('a link or a push that opens a tab lights it', (tester) async {
+    await pumpShell(tester, session: _signedIn, followLocation: true);
+    expect(lit(tester), 0);
+
+    // The recap push: the Network tab at an event.
+    router.go('/network?event=9');
+    await tester.pumpAndSettle();
+    expect(find.text('the network tab'), findsOneWidget);
+    expect(lit(tester), 2);
+    expect(container.read(navigationIndexProvider), 2);
+
+    router.go('/profile');
+    await tester.pumpAndSettle();
+    expect(lit(tester), 4);
+  });
+
   testWidgets('tapping the tab already open stays on it', (tester) async {
-    await pumpShell(tester, start: '/clubs', index: 2);
+    await pumpShell(tester, start: '/clubs', index: 3);
     await tester.tap(find.text('Clubs'));
     await tester.pumpAndSettle();
 
     expect(here(), '/clubs');
-    expect(lit(tester), 2);
+    expect(lit(tester), 3);
   });
 
   testWidgets(
       'logging out from Profile asks first, then ends the session with Home '
       'the tab to come back to', (tester) async {
-    await pumpShell(tester, session: _signedIn, start: '/profile', index: 3);
+    await pumpShell(tester, session: _signedIn, start: '/profile', index: 4);
     await tester.pump();
-    expect(lit(tester), 3);
+    expect(lit(tester), 4);
     expect(find.text('Asha Menon'), findsOneWidget);
 
     await tester.tap(find.text('Log out'));
@@ -232,7 +255,7 @@ void main() {
 
   testWidgets('cancelling the log-out leaves things as they were',
       (tester) async {
-    await pumpShell(tester, session: _signedIn, start: '/profile', index: 3);
+    await pumpShell(tester, session: _signedIn, start: '/profile', index: 4);
     await tester.tap(find.text('Log out'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('CANCEL'));
@@ -240,6 +263,6 @@ void main() {
 
     expect(auth.logouts, 0);
     expect(container.read(isAuthenticatedProvider), isTrue);
-    expect(lit(tester), 3);
+    expect(lit(tester), 4);
   });
 }

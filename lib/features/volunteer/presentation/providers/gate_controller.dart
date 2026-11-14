@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/network/network_status.dart';
+import 'package:finnet/features/network/domain/network_links.dart'
+    show isPersonalCode;
 import 'package:finnet/features/volunteer/data/gate_api.dart';
 import 'package:finnet/features/volunteer/data/gate_models.dart';
 import 'package:finnet/features/volunteer/data/scan_queue.dart';
@@ -191,6 +193,11 @@ class GateController extends StateNotifier<GateState> {
   Future<void> scan(String code) async {
     final trimmed = code.trim();
     if (trimmed.isEmpty || state.busy) return;
+    // A personal QR is never a ticket: said at once, and nothing is sent.
+    if (isPersonalCode(trimmed)) {
+      _show(const GateCard(personalCodeCard));
+      return;
+    }
     final scan = QueuedScan(
       eventId: eventId,
       code: trimmed,

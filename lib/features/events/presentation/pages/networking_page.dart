@@ -9,6 +9,9 @@ import 'package:finnet/features/events/domain/networking.dart';
 import 'package:finnet/features/events/presentation/providers/networking_provider.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:finnet/features/events/presentation/widgets/networking/networking_visibility_switch.dart';
+import 'package:finnet/features/network/domain/network.dart' show MetHow;
+import 'package:finnet/features/network/domain/network_links.dart';
+import 'package:finnet/features/network/presentation/providers/network_saver.dart';
 import 'package:finnet/features/threads/domain/entities/moderation.dart';
 import 'package:finnet/features/threads/presentation/providers/moderation_provider.dart';
 import 'package:finnet/features/threads/presentation/widgets/moderation_actions.dart';
@@ -30,6 +33,9 @@ const _muted = Color(0xFF6B6B6B);
 /// or blocked from their card, with the same report (`POST /reports`, a
 /// `user`) and block (`/user/blocks`) as in Threads; someone blocked leaves
 /// the list at once.
+///
+/// Each person can be saved to the reader's network from their card
+/// (Feature 4, method `discovery`, at this event).
 ///
 /// Opened from the event page's card, Home's "You're at" banner and the
 /// check-in push, as `/events/{id}/people`. A slug there is read as its
@@ -194,12 +200,12 @@ class _NetworkingPageState extends ConsumerState<NetworkingPage> {
               ? '1 person shares your interests'
               : '${sharing.length} people share your interests',
         ),
-        for (final a in sharing) _PersonCard(attendee: a),
+        for (final a in sharing) _PersonCard(attendee: a, eventId: _eventId),
       ],
       if (alsoHere.isNotEmpty) ...[
         const SizedBox(height: 8),
         const _SectionTitle('Also here'),
-        for (final a in alsoHere) _PersonCard(attendee: a),
+        for (final a in alsoHere) _PersonCard(attendee: a, eventId: _eventId),
       ],
     ]);
   }
@@ -374,14 +380,52 @@ class _Empty extends StatelessWidget {
   }
 }
 
-class _PersonCard extends ConsumerWidget {
-  const _PersonCard({required this.attendee});
+class _PersonCard extends ConsumerStatefulWidget {
+  const _PersonCard({required this.attendee, required this.eventId});
 
   final NetworkingAttendee attendee;
+  final int eventId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_PersonCard> createState() => _PersonCardState();
+}
+
+class _PersonCardState extends ConsumerState<_PersonCard> {
+  /// Saved here since the list was read.
+  bool _saved = false;
+  bool _saving = false;
+
+  NetworkingAttendee get attendee => widget.attendee;
+
+  Future<void> _save(String handle) async {
+    setState(() => _saving = true);
+    final attempt = await ref.read(networkSaverProvider.notifier).save(
+          handle: handle,
+          method: MetHow.discovery,
+          eventId: widget.eventId,
+        );
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      _saved = attempt is! SaveRefused;
+    });
+    final message = switch (attempt) {
+      Saved(:final result) => result.person.mutual
+          ? "You've saved each other."
+          : 'Saved to your network.',
+      SavedLater() => "Saved. It'll sync when you're back online.",
+      SaveRefused(:final message) => message,
+    };
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final org = attendee.organization?.trim() ?? '';
+    final handle = attendee.handle;
+    final saved = _saved || attendee.saved;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
@@ -409,6 +453,30 @@ class _PersonCard extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(org,
                       style: const TextStyle(fontSize: 12.5, color: _muted)),
+                ],
+                if (handle != null) ...[
+                  const SizedBox(height: 8),
+                  saved
+                      ? OutlinedButton.icon(
+                          key: ValueKey('person-saved-${attendee.userId}'),
+                          onPressed: () => context.push(profileRoute(handle)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.ink,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon: const Icon(Icons.check, size: 16),
+                          label: const Text('In your network'),
+                        )
+                      : FilledButton.icon(
+                          key: ValueKey('person-save-${attendee.userId}'),
+                          onPressed: _saving ? null : () => _save(handle),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.ink,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon: const Icon(Icons.person_add_alt, size: 16),
+                          label: const Text('Save'),
+                        ),
                 ],
                 if (attendee.sharedInterests.isNotEmpty) ...[
                   const SizedBox(height: 8),

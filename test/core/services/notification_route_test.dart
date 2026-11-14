@@ -177,6 +177,37 @@ void main() {
     });
   });
 
+  group('people saved you, and the recap (Feature 4)', () {
+    test('saves open who saved you, at the event; signed in only', () {
+      final route = NotificationService.routeFor(
+          const {'type': 'network_saves', 'event_id': '9'});
+      expect(route, '/network/saved-me?event=9');
+      expect(needsAccount(route!), isTrue);
+      final line = NotificationModel.fromJson({
+        'id': 'n-2',
+        'user_id': 1,
+        'title': 'Ananya and 3 others saved your profile at DevFest',
+        'description': '',
+        'type': 'network_saves',
+        'status': 'unread',
+        'data': {'event_id': '9'},
+        'created_at': '2026-11-28T10:10:00Z',
+      });
+      expect(line.route, '/network/saved-me?event=9');
+      expect(line.iconEmoji, '👋');
+    });
+
+    test('the recap opens the Network tab at its event', () {
+      expect(
+          NotificationService.routeFor(
+              const {'type': 'network_recap', 'event_id': '9'}),
+          '/network?event=9');
+      expect(
+          NotificationService.routeFor(const {'type': 'network_recap'}),
+          '/network');
+    });
+  });
+
   group("a club's ask for missing details (answers_needed)", () {
     const url = 'https://myotherapp.in/answers/12/reg-1?k=abc.def';
 

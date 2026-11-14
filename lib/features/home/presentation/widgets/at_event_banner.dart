@@ -9,6 +9,7 @@ import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/presentation/providers/networking_provider.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/widgets/networking/people_like_you_card.dart';
+import 'package:finnet/features/network/domain/network_links.dart';
 import 'package:finnet/shared/widgets/pressable.dart';
 
 /// How early someone checked in counts as being at the event.
@@ -52,6 +53,7 @@ class AtEventBanner extends ConsumerWidget {
   final DateTime Function()? now;
 
   static const bannerKey = ValueKey('at-event-banner');
+  static const myQrKey = ValueKey('at-event-my-qr');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -106,6 +108,14 @@ class AtEventBanner extends ConsumerWidget {
                       style: const TextStyle(
                           fontSize: 13.5, color: Color(0xFF1E1E1E)),
                     ),
+                  ),
+                  // My QR, for the people met here to save them.
+                  IconButton(
+                    key: myQrKey,
+                    tooltip: 'My QR',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.qr_code_2, color: AppColors.ink),
+                    onPressed: () => context.push(myQrLocation),
                   ),
                   const Icon(Icons.chevron_right, color: AppColors.ink),
                 ],

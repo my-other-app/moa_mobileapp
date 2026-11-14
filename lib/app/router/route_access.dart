@@ -5,7 +5,7 @@
 /// certificate and the policies all open signed out. What is about the
 /// person -- their events and tickets, their clubs, profile, settings,
 /// inbox, badges, certificates, the volunteer scanner, who else is at an
-/// event they are checked in to -- asks them to sign
+/// event they are checked in to, their network -- asks them to sign
 /// in first, and comes back to it afterwards.
 ///
 /// Anything not listed here is open: a new screen works without an account
@@ -35,6 +35,8 @@ final List<RegExp> _private = [
   // Profile, settings, inbox, badges, certificates.
   RegExp(r'^/profile(/.*)?$', caseSensitive: false),
   RegExp(r'^/volunteer(/.*)?$', caseSensitive: false),
+  // The Network tab: the people they saved, who saved them, the scanner.
+  RegExp(r'^/network(/.*)?$', caseSensitive: false),
 ];
 
 /// Whether [path] (a location's path, without its query) needs an account.
@@ -60,8 +62,13 @@ bool isAuthFlow(String path) {
 
 /// The tabs of the bottom bar. A sign-in that started from one goes back to
 /// it with `go`, not `push`: the tab is the page, not something above home.
-bool isTabRoot(String path) =>
-    const {'/', '/events', '/clubs', '/profile'}.contains(_pathOf(path));
+bool isTabRoot(String path) => const {
+      '/',
+      '/events',
+      '/network',
+      '/clubs',
+      '/profile'
+    }.contains(_pathOf(path));
 
 /// The sign-in screen, told to come back to [from] once signed in.
 String signInLocation(String from) => Uri(
