@@ -45,9 +45,10 @@ Future<GoRouter> _start(WidgetTester tester, {required bool signedIn}) async {
     ],
     child: MaterialApp.router(routerConfig: router),
   ));
-  // The splash holds for 1.5s, then routes; the launch route follows a frame
-  // later. Timed pumps, not pumpAndSettle, while the splash pulses forever.
-  await tester.pump(const Duration(milliseconds: 1600));
+  // The splash routes once the session is read; the launch route follows a
+  // frame later. Timed pumps, not pumpAndSettle, while the splash pulses
+  // forever.
+  await tester.pump(const Duration(milliseconds: 100));
   await tester.pump();
   await tester.pump();
   await tester.pumpAndSettle();
