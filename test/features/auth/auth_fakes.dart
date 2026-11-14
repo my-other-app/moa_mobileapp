@@ -126,6 +126,12 @@ class FakeSessionCaches extends SessionCaches {
 
   int cleared = 0;
 
+  /// How many of [cleared] were at a sign-in.
+  int atSignIn = 0;
+
   @override
-  Future<void> clearAll() async => cleared++;
+  Future<void> clearAll({bool signingIn = false}) async {
+    cleared++;
+    if (signingIn) atSignIn++;
+  }
 }

@@ -9,6 +9,7 @@ import 'package:finnet/core/cache/session_caches.dart';
 import 'package:finnet/core/services/notification_service.dart';
 import 'package:finnet/core/services/opened_push_lines.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
+import 'package:finnet/features/live/data/live_identity.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_pin_store.dart';
 import 'package:finnet/features/volunteer/data/saved_scans.dart';
 import 'package:finnet/features/network/data/network_files.dart';
@@ -143,7 +144,8 @@ final sessionRevokerProvider = Provider<SessionRevoker>(
 /// Everything kept on the phone about the person: cleared at sign-out, when
 /// the server ends the session, and at sign-in (so a second account never
 /// sees the first one's tickets, registrations, profile, certificates,
-/// PDFs or pictures). Posters and other public pictures stay.
+/// PDFs or pictures). Posters and other public pictures stay. Quiz players
+/// go at the end of a session only.
 final sessionCachesProvider = Provider<SessionCaches>((ref) {
   final tickets = ref.watch(savedTicketsLocalDataSourceProvider);
   final pins = ref.watch(certificatePinStoreProvider);
@@ -164,5 +166,9 @@ final sessionCachesProvider = Provider<SessionCaches>((ref) {
     'network exports': clearNetworkExports,
     // Lines of pushes tapped while signed out: the last person's.
     'tapped push lines': () async => OpenedPushLines.clear(),
+  }, atSessionEnd: {
+    // Who this phone is in a live room, and each quiz's player: the next
+    // person to sign in is a new player, never the last one's.
+    'quiz players': ref.watch(liveIdentityProvider).forgetAll,
   });
 });

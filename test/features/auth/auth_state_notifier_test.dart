@@ -95,6 +95,8 @@ void main() {
         .setAuthenticated(accessToken: 'a', refreshToken: 'r');
 
     expect(caches.cleared, 1);
+    // A sign-in: what goes only at a session's end (quiz players) stays.
+    expect(caches.atSignIn, 1);
     expect(container.read(authStateProvider).isAuthenticated, isTrue);
   });
 
@@ -131,8 +133,9 @@ void main() {
 
       // FCM token off the server, then the session, then the token itself.
       expect(push.calls, ['restored', 'serverUnregistered', 'signedOut']);
-      // And everything kept about the person.
+      // And everything kept about the person, quiz players too.
       expect(caches.cleared, 1);
+      expect(caches.atSignIn, 0);
       expect(revoker.revoked, [token]);
       // Through the normal path, so the interceptor can refresh once.
       expect(revoker.stored, [true]);
@@ -228,8 +231,10 @@ void main() {
       expect(push.calls.last, 'signedOut');
       // Nothing to end on the server: it ended it.
       expect(revoker.revoked, isEmpty);
-      // What was kept about the person goes with the session.
+      // What was kept about the person goes with the session, quiz
+      // players too.
       expect(caches.cleared, 1);
+      expect(caches.atSignIn, 0);
     });
 
     test('a suspension says so', () async {

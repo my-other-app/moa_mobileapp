@@ -160,7 +160,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     // app killed mid-sign-out, or a session ended while nothing listened,
     // did not. (Door scans saved with no signal are not among them: they
     // are kept under their own account.)
-    await _ref.read(sessionCachesProvider).clearAll();
+    await _ref.read(sessionCachesProvider).clearAll(signingIn: true);
     final storage = _ref.read(secureStorageServiceProvider);
     await storage.saveTokens(
         accessToken: accessToken, refreshToken: refreshToken);
