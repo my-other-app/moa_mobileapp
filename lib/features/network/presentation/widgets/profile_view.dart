@@ -263,7 +263,7 @@ class ProfileBody extends ConsumerWidget {
             emoji: '👀',
             text: profile.relation?.mutual == true
                 ? 'Some parts are only for ${_first(profile)}.'
-                : 'Some parts are only for people ${_first(profile)} has met.',
+                : 'Some parts are only for people ${_first(profile)} has saved.',
           ),
         ],
       ],

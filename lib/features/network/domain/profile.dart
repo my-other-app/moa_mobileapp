@@ -27,10 +27,19 @@ String? _picture(Object? value) => imageUrlFrom(value,
 /// Who may see a part of a profile (`visibility` in the settings).
 ///
 /// - [everyone]: anyone, signed in or not;
-/// - [met]: the owner saved them, or they saved the owner;
+/// - [met]: people the owner saved (and so those who saved each other
+///   with them) -- someone who saved the owner without being saved back
+///   doesn't count (the owner's decision of 14 Nov). The wire name stays
+///   `met`; the app calls it "People I saved";
 /// - [mutual]: both saved each other;
 /// - [me]: only the owner.
 enum Audience { everyone, met, mutual, me }
+
+/// What "People I saved" ([Audience.met], [ContactShare.met]) means, for
+/// the settings to say.
+const savedAudienceHelp =
+    "Shown to people you've saved, and to people you've saved each other "
+    'with.';
 
 /// [Audience] from its wire name; [fallback] for anything else.
 Audience audienceFrom(Object? value, [Audience fallback = Audience.everyone]) {
@@ -44,7 +53,7 @@ Audience audienceFrom(Object? value, [Audience fallback = Audience.everyone]) {
 extension AudienceWords on Audience {
   String get label => switch (this) {
         Audience.everyone => 'Everyone',
-        Audience.met => 'People I met',
+        Audience.met => 'People I saved',
         Audience.mutual => 'Mutual connections',
         Audience.me => 'Only me',
       };
@@ -66,7 +75,7 @@ extension ContactShareWords on ContactShare {
   String get label => switch (this) {
         ContactShare.nobody => 'Nobody',
         ContactShare.mutual => 'Mutual connections',
-        ContactShare.met => 'People I met',
+        ContactShare.met => 'People I saved',
       };
 }
 
@@ -681,6 +690,7 @@ class MyProfile {
     this.completeness = const ProfileCompleteness(),
     this.email,
     this.phone,
+    this.handleNeedsChange = false,
   });
 
   final PublicProfile profile;
@@ -690,6 +700,10 @@ class MyProfile {
   /// Their own, for the contact-sharing settings to say what is shared.
   final String? email;
   final String? phone;
+
+  /// Their handle (their old username) is one a profile can't use: they
+  /// are asked to pick another (`handle_needs_change`).
+  final bool handleNeedsChange;
 
   String get handle => profile.handle;
 
@@ -703,6 +717,7 @@ class MyProfile {
       completeness: ProfileCompleteness.fromJson(json['completeness']),
       email: _text(json['email']),
       phone: _text(json['phone']),
+      handleNeedsChange: jsonBool(json['handle_needs_change']) == true,
     );
   }
 
@@ -712,6 +727,7 @@ class MyProfile {
         completeness: completeness,
         email: email,
         phone: phone,
+        handleNeedsChange: handleNeedsChange,
       );
 }
 

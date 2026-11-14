@@ -5,6 +5,7 @@ import 'package:finnet/features/network/domain/network_links.dart';
 import 'package:finnet/features/network/domain/profile.dart'
     show ProfileCompleteness;
 import 'package:finnet/features/network/presentation/providers/my_profile_provider.dart';
+import 'package:finnet/features/network/presentation/widgets/profile_notices.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/sign_out.dart';
 import 'package:finnet/features/profile/presentation/widgets/my_picture.dart';
@@ -225,6 +226,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         ],
                       ),
               ),
+              // Every profile from before Feature 4 starts private.
+              if (public != null && public.settings.isPrivate)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 24, 16, 0),
+                  child: PrivateProfileCard(),
+                ),
+              if (public != null && public.handleNeedsChange)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: HandleNeedsChangeCard(
+                    onPick: () => context.push(editPublicProfileLocation),
+                  ),
+                ),
               if (public != null && !public.completeness.complete)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),

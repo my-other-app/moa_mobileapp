@@ -9,6 +9,7 @@ import 'package:finnet/features/network/domain/network_links.dart';
 import 'package:finnet/features/network/domain/profile.dart';
 import 'package:finnet/features/network/presentation/providers/my_profile_provider.dart';
 import 'package:finnet/features/network/presentation/widgets/link_sheet.dart';
+import 'package:finnet/features/network/presentation/widgets/profile_notices.dart';
 import 'package:finnet/features/network/presentation/widgets/profile_view.dart';
 import 'package:finnet/features/network/presentation/widgets/project_sheet.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
@@ -51,6 +52,7 @@ class _EditPublicProfilePageState extends ConsumerState<EditPublicProfilePage> {
   final _headline = TextEditingController();
   final _bio = TextEditingController();
   final _city = TextEditingController();
+  final _handleFocus = FocusNode();
 
   /// The profile the fields were filled from: they are filled once.
   MyProfile? _filledFrom;
@@ -75,6 +77,7 @@ class _EditPublicProfilePageState extends ConsumerState<EditPublicProfilePage> {
     for (final c in [_handle, _headline, _bio, _city]) {
       c.dispose();
     }
+    _handleFocus.dispose();
     super.dispose();
   }
 
@@ -215,17 +218,39 @@ class _EditPublicProfilePageState extends ConsumerState<EditPublicProfilePage> {
     return ListView(
       padding: const EdgeInsets.only(bottom: 40),
       children: [
+        // Every profile from before Feature 4 starts private.
+        if (_pending['is_private'] as bool? ?? mine.settings.isPrivate)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: PrivateProfileCard(),
+          ),
+        if (mine.handleNeedsChange)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: HandleNeedsChangeCard(
+              onPick: () {
+                _handleFocus.requestFocus();
+                _handle.selection = TextSelection(
+                    baseOffset: 0, extentOffset: _handle.text.length);
+              },
+            ),
+          ),
         _Completeness(mine: mine),
         _section('ABOUT YOU'),
         _pad(TextField(
           key: EditPublicProfilePage.handleKey,
           controller: _handle,
+          focusNode: _handleFocus,
           autocorrect: false,
           maxLength: 30,
           decoration: InputDecoration(
             labelText: 'Handle',
             prefixText: 'myotherapp.in/u/',
-            errorText: _handleError,
+            errorText: _handleError ??
+                (mine.handleNeedsChange && _handle.text.trim() == mine.handle
+                    ? "This one can't be used for a profile link. Pick "
+                        'another.'
+                    : null),
             helperText: 'Changing it breaks links to the old one. Your QR '
                 'keeps working.',
             helperMaxLines: 2,
@@ -285,6 +310,15 @@ class _EditPublicProfilePageState extends ConsumerState<EditPublicProfilePage> {
         _section('PROJECTS · ${mine.profile.projects.length}/$maxProjects'),
         _projects(mine),
         _section('WHO SEES WHAT'),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(
+            'People I saved: $savedAudienceHelp Saving you doesn\'t count '
+            'until you save them back.',
+            key: ValueKey('saved-audience-help'),
+            style: TextStyle(fontSize: 12.5, color: _muted),
+          ),
+        ),
         for (final section in profileSections)
           _ChoiceRow<Audience>(
             key: ValueKey('visibility-$section'),

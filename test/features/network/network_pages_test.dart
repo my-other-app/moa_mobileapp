@@ -26,7 +26,9 @@ import 'package:finnet/features/network/presentation/pages/stranger_preview_page
 import 'package:finnet/features/network/presentation/providers/network_providers.dart';
 import 'package:finnet/features/network/presentation/widgets/link_sheet.dart';
 import 'package:finnet/features/network/presentation/widgets/save_outcome_card.dart';
+import 'package:finnet/features/network/presentation/widgets/profile_notices.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/features/profile/presentation/pages/profile_page.dart';
 import 'package:finnet/features/profile/domain/repositories/profile_repository.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:finnet/features/threads/data/repositories/moderation_repository_impl.dart';
@@ -862,6 +864,77 @@ void main() {
           'org': 'everyone',
         },
       });
+    });
+
+    testWidgets('private, as every profile from before starts: one tap out',
+        (tester) async {
+      api
+        ..on(
+            'GET', '/me/profile', myProfileJson(settings: {'is_private': true}))
+        ..on('PATCH', '/me/profile', myProfileJson());
+      await _pump(tester, '/profile/public');
+
+      expect(find.byKey(PrivateProfileCard.cardKey), findsOneWidget);
+      expect(
+          find.text('Your profile is private: only your name, photo and '
+              'headline are visible.'),
+          findsOneWidget);
+      await tester.tap(find.byKey(PrivateProfileCard.makePublicKey));
+      await _settle(tester);
+      expect(_body(api.sent('PATCH', '/me/profile').single),
+          {'is_private': false});
+      expect(find.byKey(PrivateProfileCard.cardKey), findsNothing);
+    });
+
+    testWidgets('"met" reads as People I saved, and says what it means',
+        (tester) async {
+      api.on('GET', '/me/profile', myProfileJson());
+      await _pump(tester, '/profile/public');
+      // Projects are `met` in the fixture: the wire value stays.
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('visibility-projects')),
+              matching: find.text('People I saved')),
+          findsOneWidget);
+      expect(
+          find.textContaining("Shown to people you've saved"), findsOneWidget);
+      expect(find.text('People I met'), findsNothing);
+    });
+
+    testWidgets('a handle profiles can\'t use: asked to pick another',
+        (tester) async {
+      api.on('GET', '/me/profile',
+          {...myProfileJson(handle: 'old_user'), 'handle_needs_change': true});
+      await _pump(tester, '/profile/public');
+      expect(find.byKey(HandleNeedsChangeCard.cardKey), findsOneWidget);
+      expect(find.textContaining("can't be used for a profile link"),
+          findsWidgets);
+      await tester.tap(find.byKey(HandleNeedsChangeCard.cardKey));
+      await tester.pump();
+      final field =
+          tester.widget<TextField>(find.byKey(EditPublicProfilePage.handleKey));
+      expect(field.focusNode!.hasFocus, isTrue);
+    });
+
+    testWidgets('the Profile tab says it too', (tester) async {
+      useFakeApi().on('GET', '/me/profile', {
+        ...myProfileJson(settings: {'is_private': true}),
+        'handle_needs_change': true,
+      });
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          isAuthenticatedProvider.overrideWithValue(true),
+          profileRepositoryProvider.overrideWithValue(_Profiles()),
+          pendingSaveStoreProvider.overrideWithValue(MemoryPendingSaveStore()),
+        ],
+        child: const MaterialApp(home: ProfilePage()),
+      ));
+      await _settle(tester);
+      expect(find.byKey(PrivateProfileCard.cardKey), findsOneWidget);
+      expect(find.byKey(HandleNeedsChangeCard.cardKey), findsOneWidget);
     });
 
     testWidgets('the preview asks as a stranger', (tester) async {

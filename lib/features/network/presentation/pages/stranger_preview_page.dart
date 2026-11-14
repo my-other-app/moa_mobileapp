@@ -9,8 +9,8 @@ import 'package:finnet/features/network/presentation/providers/network_providers
 import 'package:finnet/features/network/presentation/widgets/profile_view.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 
-/// `/profile/public/preview`: the person's profile exactly as someone who
-/// hasn't met them sees it -- asked of the server as nobody, so what is
+/// `/profile/public/preview`: the person's profile exactly as someone they
+/// haven't saved sees it -- asked of the server as nobody, so what is
 /// hidden is hidden.
 class StrangerPreviewPage extends ConsumerStatefulWidget {
   const StrangerPreviewPage({super.key});
@@ -72,7 +72,7 @@ class _StrangerPreviewPageState extends ConsumerState<StrangerPreviewPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Text(
-                          "This is what someone who hasn't met you sees, on "
+                          "This is what someone you haven't saved sees, on "
                           'the app and at your link.',
                           style: TextStyle(fontSize: 13.5),
                         ),
