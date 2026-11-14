@@ -59,6 +59,7 @@ import 'package:finnet/app/router/link_pages.dart';
 import 'package:finnet/app/router/pending_location.dart';
 import 'package:finnet/app/router/route_access.dart';
 import 'package:finnet/app/router/tracking_ref.dart';
+import 'package:finnet/app/router/route_observer.dart';
 import 'package:finnet/app/router/web_links.dart';
 
 GlobalKey<NavigatorState> _rootNavigatorKey =
@@ -190,8 +191,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         : '/splash',
     debugLogDiagnostics: kDebugMode,
     refreshListenable: auth,
-    // Add analytics observer for automatic screen tracking
-    observers: ref.read(routerObserversProvider),
+    // Add analytics observer for automatic screen tracking; and the pages
+    // that must know when another covers them (My QR's brightness).
+    observers: [...ref.read(routerObserversProvider), appRouteObserver],
     redirect: (context, state) {
       // A club's tracking link (`?ref=`), kept to credit the registration
       // or the follow it leads to (tracking_ref.dart).

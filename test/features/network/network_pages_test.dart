@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:finnet/app/router/route_observer.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
@@ -109,20 +111,26 @@ Future<_Harness> _pump(
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final rootKey = GlobalKey<NavigatorState>();
-  final router =
-      GoRouter(navigatorKey: rootKey, initialLocation: start, routes: [
-    ...profileLinkRoutes,
-    networkTabRoute(rootKey),
-    GoRoute(
-      path: '/profile',
-      builder: (_, __) => const Scaffold(body: Text('the profile tab')),
-      routes: myNetworkProfileRoutes(rootKey),
-    ),
-    GoRoute(
-      path: '/events/:ref',
-      builder: (_, __) => const Scaffold(body: Text('the event')),
-    ),
-  ]);
+  final router = GoRouter(
+      navigatorKey: rootKey,
+      initialLocation: start,
+      // As the app's router has it: My QR knows when a page covers it.
+      observers: [
+        appRouteObserver
+      ],
+      routes: [
+        ...profileLinkRoutes,
+        networkTabRoute(rootKey),
+        GoRoute(
+          path: '/profile',
+          builder: (_, __) => const Scaffold(body: Text('the profile tab')),
+          routes: myNetworkProfileRoutes(rootKey),
+        ),
+        GoRoute(
+          path: '/events/:ref',
+          builder: (_, __) => const Scaffold(body: Text('the event')),
+        ),
+      ]);
   addTearDown(router.dispose);
   final h = _Harness(router, store: store);
   await tester.pumpWidget(ProviderScope(
@@ -596,6 +604,63 @@ void main() {
       h.router.go('/profile');
       await tester.pumpAndSettle();
       expect(h.light.restored, 1);
+    });
+
+    testWidgets(
+        'the screen goes back when the app leaves the front or a page covers '
+        'My QR, and comes up again on return', (tester) async {
+      useFakeApi()
+        ..on('GET', '/me/qr', {
+          'code': 'abcdefghjk',
+          'url': 'https://myotherapp.in/p/abcdefghjk',
+        })
+        ..on('GET', '/me/profile', myProfileJson());
+      addTearDown(() => tester.binding
+          .handleAppLifecycleStateChanged(AppLifecycleState.resumed));
+      final h = await _pump(tester, '/profile/qr');
+      expect((h.light.raised, h.light.restored), (1, 0));
+
+      // Home-swiped away, or another app in front (iOS has no scene to put
+      // it back by itself).
+      for (final state in const [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      await tester.pump();
+      expect((h.light.raised, h.light.restored), (1, 1));
+      for (final state in const [
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      await tester.pump();
+      expect((h.light.raised, h.light.restored), (2, 1));
+
+      // Edit my profile, opened over My QR, isn't lit; back, it is again.
+      unawaited(h.router.push('/profile/public'));
+      await tester.pumpAndSettle();
+      expect((h.light.raised, h.light.restored), (2, 2));
+      h.router.pop();
+      await tester.pumpAndSettle();
+      expect((h.light.raised, h.light.restored), (3, 2));
+
+      // A dialog over it covers nothing.
+      await tester.tap(find.byKey(MyQrPage.replaceKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Replace code'));
+      await tester.pumpAndSettle();
+      expect((h.light.raised, h.light.restored), (3, 2));
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      h.router.go('/profile');
+      await tester.pumpAndSettle();
+      expect((h.light.raised, h.light.restored), (3, 3));
     });
 
     testWidgets('scanning switched off: said, with the way back on',

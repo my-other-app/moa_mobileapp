@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 
+import 'package:finnet/app/router/route_observer.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/network/data/profiles_api.dart';
@@ -71,22 +72,88 @@ class MyQrPage extends ConsumerStatefulWidget {
   ConsumerState<MyQrPage> createState() => _MyQrPageState();
 }
 
-class _MyQrPageState extends ConsumerState<MyQrPage> {
+/// The screen is up only while this page is the one on show, in the app
+/// at the front: it goes back as the app leaves the front (inactive,
+/// hidden, paused) or a page opens over it, and comes up again on return.
+///
+/// On iOS the app's brightness is the phone's, and it stays until the
+/// phone locks. The plugin puts it back only on scene events, which this
+/// app -- with no `UIApplicationSceneManifest` in its Info.plist -- never
+/// gets; Flutter's lifecycle comes from the application's own events, so
+/// it is followed here instead.
+class _MyQrPageState extends ConsumerState<MyQrPage>
+    with WidgetsBindingObserver, RouteAware {
   late final ScreenLight _light = ref.read(screenLightProvider);
   bool _replacing = false;
+
+  /// The screen is turned up now.
+  bool _lit = false;
+
+  /// Another page is open over this one.
+  bool _covered = false;
+  PageRoute<dynamic>? _route;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_light.raise());
+    WidgetsBinding.instance.addObserver(this);
+    final state = WidgetsBinding.instance.lifecycleState;
+    if (state == null || state == AppLifecycleState.resumed) _lightUp();
     WidgetsBinding.instance.addPostFrameCallback(
         (_) => ref.read(myProfileProvider.notifier).ensureLoaded());
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic> && route != _route) {
+      appRouteObserver.unsubscribe(this);
+      appRouteObserver.subscribe(this, route);
+      _route = route;
+    }
+  }
+
+  @override
   void dispose() {
-    unawaited(_light.restore());
+    WidgetsBinding.instance.removeObserver(this);
+    appRouteObserver.unsubscribe(this);
+    _lightDown();
     super.dispose();
+  }
+
+  void _lightUp() {
+    if (_lit) return;
+    _lit = true;
+    unawaited(_light.raise());
+  }
+
+  void _lightDown() {
+    if (!_lit) return;
+    _lit = false;
+    unawaited(_light.restore());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (!_covered && (_route?.isCurrent ?? true)) _lightUp();
+    } else {
+      _lightDown();
+    }
+  }
+
+  @override
+  void didPushNext() {
+    _covered = true;
+    _lightDown();
+  }
+
+  @override
+  void didPopNext() {
+    _covered = false;
+    final state = WidgetsBinding.instance.lifecycleState;
+    if (state == null || state == AppLifecycleState.resumed) _lightUp();
   }
 
   Future<void> _replace() async {

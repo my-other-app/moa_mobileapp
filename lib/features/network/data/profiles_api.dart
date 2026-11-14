@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/network/domain/network.dart';
@@ -141,10 +142,21 @@ class ProfilesApi {
     return _qr(res.data);
   }
 
-  /// `POST /me/qr/replace`: a new code; the old one stops at once.
+  /// `POST /me/qr/replace`: a new code; the old one stops at once. The new
+  /// one becomes the phone's saved `GET /me/qr` too, so My QR -- read
+  /// again with no signal, now or after a restart -- never shows the dead
+  /// one.
   Future<MyQr> replaceQr() async {
     final res = await _client.request('/me/qr/replace', DioMethod.post);
-    return _qr(res.data);
+    final qr = _qr(res.data);
+    await ApiCache.instance.saveAnswer(
+      _client.dio,
+      '/me/qr',
+      res.data as Object,
+      scope: CacheScope.personal,
+      keep: true,
+    );
+    return qr;
   }
 
   /// `GET /profiles/{handle}`, as this viewer may see it; [anonymous] asks

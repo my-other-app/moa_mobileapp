@@ -184,6 +184,26 @@ void main() {
       expect((await ProfilesApi().replaceQr()).code, 'mnpqrstuvw');
     });
 
+    test('after Replace, My QR read with no signal is the new code', () async {
+      APIService.instance.dio.interceptors.insert(0, ApiCacheInterceptor());
+      api
+        ..on('GET', '/me/qr', {
+          'code': 'abcdefghjk',
+          'url': 'https://myotherapp.in/p/abcdefghjk',
+          'created_at': '2026-11-14T10:00:00Z',
+        })
+        ..on('POST', '/me/qr/replace', {
+          'code': 'mnpqrstuvw',
+          'url': 'https://myotherapp.in/p/mnpqrstuvw',
+          'created_at': '2026-11-14T11:00:00Z',
+        });
+      // The old one is on the phone; it is replaced; then no signal.
+      await ProfilesApi().myQr();
+      await ProfilesApi().replaceQr();
+      APIService.instance.dio.httpClientAdapter = _NoSignal();
+      expect((await ProfilesApi().myQr()).code, 'mnpqrstuvw');
+    });
+
     test('a public profile, anonymously too, and one not there', () async {
       api.on('GET', '/profiles/ananya', publicProfileJson());
       final found = await ProfilesApi().profile('ananya');
