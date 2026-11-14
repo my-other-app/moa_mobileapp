@@ -33,7 +33,7 @@ import 'package:finnet/core/config/app_config.dart';
 /// | `/play/{event}`                  | the quiz, to join (its QR)            |
 /// | `/speakers/{slug}`               | the speaker's page                    |
 /// | `/u/{handle}`                    | a person's profile                    |
-/// | `/p/{code}`                      | a personal QR: saves the person       |
+/// | `/p/{code}`                      | a personal QR: the profile, with Save |
 /// | `/network?event=`                | the Network tab (the recap's link)    |
 ///
 /// The app's own `/events` and `/clubs` are the person's events and clubs
@@ -146,7 +146,7 @@ String? webLocation(Uri uri) {
       // A person's profile (Feature 4).
       return rest.length == 1 ? at('/u/${one(rest.first)}') : null;
     case 'p':
-      // A personal QR: in the app it saves the person.
+      // A personal QR: the profile, with Save (saved only on the tap).
       return rest.length == 1 ? at('/p/${one(rest.first)}') : null;
     case 'network':
       // The recap's "See who you met" (`?event=`): the Network tab.

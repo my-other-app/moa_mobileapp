@@ -53,7 +53,7 @@ final screenLightProvider =
     Provider<ScreenLight>((ref) => const PhoneScreenLight());
 
 /// My QR (`/profile/qr`), full screen: the code another phone scans to
-/// save the person -- any camera opens their profile, the app saves them
+/// save the person -- any camera opens their profile, the app's scanner saves them
 /// -- with their name and headline under it, so the other person knows
 /// they scanned the right one. The screen is turned up while it is open.
 /// Works with no signal once the code has been read once.

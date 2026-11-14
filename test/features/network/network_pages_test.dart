@@ -233,25 +233,53 @@ void main() {
     late RouteAdapter api;
     setUp(() => api = useFakeApi());
 
-    testWidgets('signed in, the person is saved at once', (tester) async {
-      api.on('POST', '/network', saveResultJson());
+    testWidgets('opening it saves nobody: the profile, and Save on a tap',
+        (tester) async {
+      api
+        ..on('GET', '/profiles/by-code/abcdefghjk',
+            {'handle': 'ananya', 'profile': publicProfileJson()})
+        ..on('POST', '/network', saveResultJson());
       await _pump(tester, '/p/abcdefghjk', atEvent: 9);
 
+      // Open, settled, and still nothing sent.
+      await tester.pumpAndSettle();
+      expect(api.sent('POST', '/network'), isEmpty);
+      expect(find.text('Ananya Iyer'), findsOneWidget);
+      expect(find.text('Save Ananya'), findsOneWidget);
+
+      await tester.tap(find.byKey(CodeSavePage.saveKey));
+      await _settle(tester);
+      // A link is not a scan: saved as `link`, at the event if any.
       expect(_body(api.sent('POST', '/network').single),
-          {'code': 'abcdefghjk', 'method': 'qr', 'event_id': 9});
+          {'code': 'abcdefghjk', 'method': 'link', 'event_id': 9});
       expect(find.byKey(SaveOutcomeCard.savedKey), findsOneWidget);
-      expect(find.text('Saved to your network'), findsOneWidget);
       expect(find.byKey(SaveOutcomeCard.noteKey), findsOneWidget);
     });
 
-    testWidgets('my own code says so', (tester) async {
-      api.on('POST', '/network',
-          {'message': 'No', 'error_code': cannotSaveSelfCode},
-          status: 422);
+    testWidgets('already saved: In your network, and no Save', (tester) async {
+      api.on('GET', '/profiles/by-code/abcdefghjk', {
+        'handle': 'ananya',
+        'profile': publicProfileJson(relation: {
+          'saved_by_me': true,
+          'saved_me': false,
+          'mutual': false,
+          'network_id': 5,
+        }),
+      });
       await _pump(tester, '/p/abcdefghjk');
-      expect(find.byKey(SaveOutcomeCard.refusedKey), findsOneWidget);
-      expect(find.text("That's your own code."), findsOneWidget);
+      expect(find.byKey(CodeSavePage.savedKey), findsOneWidget);
+      expect(find.byKey(CodeSavePage.saveKey), findsNothing);
+      expect(api.sent('POST', '/network'), isEmpty);
+    });
+
+    testWidgets('my own code says so, and offers My QR', (tester) async {
+      api.on('GET', '/profiles/by-code/abcdefghjk',
+          {'handle': 'asha', 'profile': myProfileJson()});
+      await _pump(tester, '/p/abcdefghjk');
+      expect(find.byKey(CodeSavePage.ownKey), findsOneWidget);
       expect(find.text('Show my QR'), findsOneWidget);
+      expect(find.byKey(CodeSavePage.saveKey), findsNothing);
+      expect(api.sent('POST', '/network'), isEmpty);
     });
 
     testWidgets('signed out: the profile, and Save asks for an account',
@@ -261,7 +289,7 @@ void main() {
       await _pump(tester, '/p/abcdefghjk', signedIn: false);
 
       expect(find.text('Ananya Iyer'), findsOneWidget);
-      await tester.tap(find.byKey(CodeSavePage.signInKey));
+      await tester.tap(find.byKey(CodeSavePage.saveKey));
       await tester.pumpAndSettle();
       expect(find.byType(SignInPromptSheet), findsOneWidget);
       expect(api.sent('POST', '/network'), isEmpty);

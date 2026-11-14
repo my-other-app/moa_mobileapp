@@ -459,7 +459,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                 // on an event page and from the website's link.
                 ...overHome(rootKey, speakersRoutes),
                 // A person's profile (`/u/{handle}`) and their personal
-                // QR's link (`/p/{code}`, which saves them).
+                // QR's link (`/p/{code}`: the profile with Save, never a save
+                // on open).
                 ...overHome(rootKey, profileLinkRoutes),
                 GoRoute(
                     path: 'events/explore',

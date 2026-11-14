@@ -105,7 +105,7 @@
                /answers/{event}/{ref} is the personal link a club's ask
                for missing sign-up details sends; /speakers/{slug} is a
                speaker's page; /u/{handle} is a person's profile and
-               /p/{code} their personal QR, which saves them; /network is
+               /p/{code} their personal QR (the profile, with Save); /network is
                the recap's link to the Network tab. An intent
                filter cannot
                leave a path out: the router sends what it can't show to

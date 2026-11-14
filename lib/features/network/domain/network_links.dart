@@ -8,7 +8,8 @@ import 'package:finnet/features/volunteer/data/ticket_code.dart';
 /// A profile, by handle: the website's `/u/<handle>` too. Open signed out.
 String profileRoute(String handle) => '/u/${Uri.encodeComponent(handle)}';
 
-/// A personal QR's link, `/p/<code>`: opened signed in, it saves the person.
+/// A personal QR's link, `/p/<code>`: the profile with Save. It never saves
+/// as it opens; only the in-app scanner saves on scan.
 String profileCodeRoute(String code) => '/p/${Uri.encodeComponent(code)}';
 
 /// The Network tab (signed in only).
