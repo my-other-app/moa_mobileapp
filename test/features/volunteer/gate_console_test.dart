@@ -14,6 +14,7 @@ import 'package:finnet/features/volunteer/presentation/widgets/guest_search.dart
 import 'package:finnet/features/volunteer/presentation/widgets/door_answers.dart';
 import 'package:finnet/features/volunteer/presentation/widgets/merch_handover.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -27,6 +28,13 @@ import 'volunteer_fakes.dart';
 class _FakeCamera extends MobileScannerPlatform {
   final _codes = StreamController<BarcodeCapture?>.broadcast();
   int starts = 0;
+  int stops = 0;
+
+  /// Thrown by every start after the first, when set.
+  Object? failRestart;
+
+  /// Holds a start until completed: the camera still starting.
+  Completer<void>? holdStart;
 
   void show(String? code) =>
       _codes.add(BarcodeCapture(barcodes: [Barcode(rawValue: code)]));
@@ -46,6 +54,8 @@ class _FakeCamera extends MobileScannerPlatform {
   @override
   Future<MobileScannerViewAttributes> start(StartOptions startOptions) async {
     starts++;
+    if (holdStart != null) await holdStart!.future;
+    if (starts > 1 && failRestart != null) throw failRestart!;
     return const MobileScannerViewAttributes(
       cameraDirection: CameraFacing.back,
       currentTorchMode: TorchState.off,
@@ -54,7 +64,7 @@ class _FakeCamera extends MobileScannerPlatform {
   }
 
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async => stops++;
 
   @override
   Future<void> pause() async {}
@@ -130,6 +140,104 @@ void main() {
     await tester.pump();
     await tester.pump();
   }
+
+  group('coming back to the app', () {
+    const allowed = MobileScannerState(
+      availableCameras: 1,
+      cameraDirection: CameraFacing.back,
+      cameraLensType: CameraLensType.normal,
+      isInitialized: true,
+      isStarting: false,
+      isRunning: false,
+      size: Size(1280, 720),
+      torchState: TorchState.off,
+      zoomScale: 1,
+      deviceOrientation: DeviceOrientation.portraitUp,
+    );
+
+    test('starts the camera only when it is allowed and stopped', () {
+      expect(VolunteerScannerPage.cameraShouldRestart(allowed), isTrue);
+      expect(
+          VolunteerScannerPage.cameraShouldRestart(
+              allowed.copyWith(isRunning: true)),
+          isFalse);
+      // Still starting: start() would throw controllerInitializing.
+      expect(
+          VolunteerScannerPage.cameraShouldRestart(
+              allowed.copyWith(isStarting: true)),
+          isFalse);
+      // The first open, before the permission prompt was answered.
+      expect(
+          VolunteerScannerPage.cameraShouldRestart(
+              const MobileScannerState.uninitialized()),
+          isFalse);
+      expect(
+          VolunteerScannerPage.cameraShouldRestart(allowed.copyWith(
+              error: const MobileScannerException(
+                  errorCode: MobileScannerErrorCode.permissionDenied))),
+          isFalse);
+    });
+
+    testWidgets(
+        'while the camera is still starting (the permission prompt), '
+        'nothing is restarted and nothing crashes', (tester) async {
+      camera.holdStart = Completer<void>();
+      await pump(tester);
+      expect(camera.starts, 1);
+
+      // The prompt answered: inactive, then resumed, mid-start.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      camera.holdStart!.complete();
+      await tester.pump();
+      await tester.pump();
+
+      expect(camera.starts, 1);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('with the camera on, nothing is restarted', (tester) async {
+      await pump(tester);
+      final before = camera.starts;
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+
+      expect(camera.starts, before);
+    });
+
+    testWidgets('after a pause it starts again, and a failed start is no crash',
+        (tester) async {
+      await pump(tester);
+      final before = camera.starts;
+      camera.failRestart = const MobileScannerException(
+          errorCode: MobileScannerErrorCode.controllerInitializing);
+
+      for (final s in [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(s);
+      }
+      await tester.pump();
+      for (final s in [
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(s);
+      }
+      await tester.pump();
+      await tester.pump();
+
+      expect(camera.stops, greaterThan(0));
+      expect(camera.starts, greaterThan(before));
+      expect(tester.takeException(), isNull);
+    });
+  });
 
   group('the door', () {
     testWidgets(

@@ -62,6 +62,14 @@ class VolunteerScannerPage extends ConsumerStatefulWidget {
   /// How long an admission's card stays before the next scan.
   static const admitCardFor = Duration(seconds: 7);
 
+  /// Whether coming back to the app should start the camera again: only
+  /// when it is allowed and stopped. While it is still starting (the
+  /// permission prompt sends the app inactive, then resumed, on the first
+  /// open) `start()` throws, and that went down as a crash; before the
+  /// person has allowed it, the scanner's own start asks.
+  static bool cameraShouldRestart(MobileScannerState camera) =>
+      camera.hasCameraPermission && !camera.isRunning && !camera.isStarting;
+
   @override
   ConsumerState<VolunteerScannerPage> createState() =>
       _VolunteerScannerPageState();
@@ -88,11 +96,15 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_camera.start());
+      if (VolunteerScannerPage.cameraShouldRestart(_camera.value)) {
+        unawaited(_camera.start().catchError(
+            (Object e) => debugPrint('Scanner: could not restart: $e')));
+      }
       // Back in the app: send what was saved, if there is signal now.
       unawaited(_controller.drain());
     } else if (state == AppLifecycleState.paused) {
-      unawaited(_camera.stop());
+      unawaited(_camera.stop().catchError(
+          (Object e) => debugPrint('Scanner: could not stop: $e')));
     }
   }
 
