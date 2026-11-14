@@ -114,8 +114,8 @@ ScannedCode readScannedCode(String raw) {
       if (head == 'p' && looksLikeProfileCode(value)) {
         return PersonalCode(value.toLowerCase());
       }
-      if (head == 'u' && handleProblem(value.toLowerCase()) == null) {
-        return ProfileHandleCode(value.toLowerCase());
+      if (head == 'u' && handleProblem(normalHandle(value)) == null) {
+        return ProfileHandleCode(normalHandle(value));
       }
       if (head == 'tickets') return const TicketScanned();
     }
@@ -130,25 +130,41 @@ ScannedCode readScannedCode(String raw) {
 /// says no to without asking the server.
 bool isPersonalCode(String raw) => readScannedCode(raw) is PersonalCode;
 
-/// Handles nobody may take: the contract's list and every top-level word
-/// the website serves (its notes of 14 Nov). The server has the last word
-/// (`HANDLE_RESERVED`); this only saves a round trip.
+/// Handles nobody may take: the backend's list exactly
+/// (`app/api/profiles/rules.py` RESERVED) -- the contract's, the website's
+/// top-level paths and files, and the API's own `by-code`. The server has
+/// the last word (`HANDLE_RESERVED`); this only saves a round trip.
 const reservedHandles = {
   // The contract's.
   'admin', 'api', 'app', 'me', 'u', 'p', 'help', 'support', 'about',
   'events', 'clubs', 'club', 'speakers', 'settings', 'login', 'signup',
   'register', 'myotherapp', 'official', 'null', 'undefined',
-  // The website's top-level pages.
+  // The website's top-level paths.
   'answers', 'certificates', 'claim', 'data-deletion', 'developers',
   'feedback', 'for-clubs', 'media', 'og', 'play', 'pricing', 'privacy',
-  'requests', 'sitemaps', 'terms', 'threads', 'tickets', 'topics',
-  'verify', 'live', 'compete', 'network',
+  'requests', 'robots', 'robots.txt', 'sitemap', 'sitemap.xml', 'sitemaps',
+  'terms', 'threads', 'tickets', 'topics', 'verify', 'manifest',
+  'manifest.json', 'manifest.webmanifest', 'favicon.ico',
+  'apple-touch-icon.png', 'brand', 'logo.svg', 'network', 'profiles',
+  'profile', 'well-known', 'tests', 'error', 'not-found', 'global-error',
+  'layout', 'page', 'providers', 'live', 'compete',
+  // The API's own path under /profiles.
+  'by-code',
 };
+
+/// A handle as the server stores and matches it: trimmed, a leading `@`
+/// dropped, lower case.
+String normalHandle(String raw) {
+  var text = raw.trim();
+  if (text.startsWith('@')) text = text.substring(1);
+  return text.toLowerCase();
+}
 
 final _handleShape = RegExp(r'^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$');
 
-/// Why [handle] can't be used, in words for the person; null when it can.
-/// The server has the last word (a taken handle only it knows).
+/// Why [handle] (in its [normalHandle] form) can't be used, in words for
+/// the person; null when it can. The server has the last word (a taken
+/// handle only it knows).
 String? handleProblem(String handle) {
   final h = handle.trim();
   if (h.length < 3) return 'At least 3 characters.';

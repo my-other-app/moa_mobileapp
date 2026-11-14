@@ -101,10 +101,14 @@ class ProfilesApi {
   Future<void> deleteProject(int id) =>
       _client.request('/me/profile/projects/$id', DioMethod.delete);
 
-  /// `PUT /me/profile/projects/order`: every project's id, in order.
-  Future<void> orderProjects(List<int> ids) =>
-      _client.request('/me/profile/projects/order', DioMethod.put,
-          param: {'ids': ids});
+  /// `PUT /me/profile/projects/order`: every project's id once, in order
+  /// (else 422 `ORDER_INVALID`). Answers the profile as saved.
+  Future<MyProfile> orderProjects(List<int> ids) async {
+    final res = await _client.request(
+        '/me/profile/projects/order', DioMethod.put,
+        param: {'ids': ids});
+    return _mine(res.data);
+  }
 
   /// The picture at [path] (any format; the server resizes it) for the
   /// project.

@@ -4,12 +4,14 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/features/network/data/network_api.dart';
 import 'package:finnet/features/network/data/profiles_api.dart';
 import 'package:finnet/features/network/data/save_queue.dart';
 import 'package:finnet/features/network/domain/network.dart';
 import 'package:finnet/features/network/domain/network_errors.dart';
 import 'package:finnet/features/network/domain/profile.dart';
+import 'package:finnet/features/network/presentation/providers/my_profile_provider.dart';
 import 'package:finnet/features/network/presentation/providers/network_saver.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -91,7 +93,14 @@ void main() {
         ..on('POST', '/me/profile/projects', {'id': 9, 'title': 'Club app'})
         ..on(
             'PATCH', '/me/profile/projects/9', {'id': 9, 'title': 'Club app 2'})
-        ..on('PUT', '/me/profile/projects/order', {'ok': true})
+        // The order answers the whole profile (the backend's notes).
+        ..on(
+            'PUT',
+            '/me/profile/projects/order',
+            myProfileJson(projects: [
+              {'id': 9, 'title': 'Club app 2'},
+              {'id': 3, 'title': 'Older one'},
+            ]))
         ..on('DELETE', '/me/profile/projects/9', null, status: 204);
       final profiles = ProfilesApi();
       final added =
@@ -102,12 +111,62 @@ void main() {
                   9, const ProfileProject(title: 'Club app 2')))
               .title,
           'Club app 2');
-      await profiles.orderProjects([9, 3]);
+      final ordered = await profiles.orderProjects([9, 3]);
+      expect(ordered.profile.projects.map((p) => p.id), [9, 3]);
       expect(_body(api.sent('PUT', '/me/profile/projects/order').single), {
         'ids': [9, 3]
       });
       await profiles.deleteProject(9);
       expect(api.sent('DELETE', '/me/profile/projects/9'), hasLength(1));
+    });
+
+    test("the backend's other refusals, in words", () {
+      ApiException refused(String code, {Map<String, dynamic>? errors}) =>
+          ApiException.fromResponse(
+              422, {'message': 'No', 'error_code': code, 'errors': errors});
+      String words(String code) =>
+          profileEditErrorMessage(refused(code), fallback: 'fallback');
+      expect(words(projectLimitCode), contains('12 projects'));
+      expect(words(orderInvalidCode), contains('changed meanwhile'));
+      expect(
+          words(notAnImageCode), "That file isn't a picture. Choose a photo.");
+      expect(words(orgNotFoundCode), contains('organisation'));
+      expect(words(linkInvalidCode), contains('https://'));
+      expect(words(handleTakenCode), 'Someone already has that handle.');
+      // A save refused for going too fast says how long to wait.
+      expect(
+          saveErrorMessage(ApiException.fromResponse(429, {
+            'message': 'Slow down',
+            'error_code': rateLimitedCode,
+            'errors': {'retry_after': 20},
+          })),
+          contains('Wait 20 seconds'));
+      // Scanning off refuses saving by QR; the profile link still works.
+      expect(saveErrorMessage(refused(profileScanningOffCode)),
+          contains('profile link'));
+    });
+
+    test('a refused order puts the projects back, and reads them again',
+        () async {
+      api
+        ..on(
+            'GET',
+            '/me/profile',
+            myProfileJson(projects: [
+              {'id': 3, 'title': 'Older one'},
+              {'id': 9, 'title': 'Club app'},
+            ]))
+        ..on('PUT', '/me/profile/projects/order',
+            {'message': 'No', 'error_code': orderInvalidCode},
+            status: 422);
+      final notifier = MyProfileNotifier(ProfilesApi());
+      addTearDown(notifier.dispose);
+      await notifier.load();
+      final order = notifier.state.profile!.profile.projects.reversed.toList();
+      await expectLater(notifier.reorderProjects(order), throwsA(anything));
+      expect(notifier.state.profile!.profile.projects.map((p) => p.id), [3, 9]);
+      await pumpEventQueue();
+      expect(api.sent('GET', '/me/profile'), hasLength(2));
     });
 
     test('my QR, and replacing it', () async {
@@ -202,6 +261,42 @@ void main() {
       final attempt = await saver.save(code: 'abcdefghjk', method: MetHow.qr);
       expect(attempt, isA<SaveRefused>());
       expect((attempt as SaveRefused).message, "That's your own code.");
+    });
+  });
+
+  group('pictures are signed links that expire', () {
+    test('a copy answered with no signal comes without them', () async {
+      final api = useFakeApi();
+      // The app's own order: the saved copy answers before the error is read.
+      APIService.instance.dio.interceptors.insert(0, ApiCacheInterceptor());
+      final person = networkPersonJson();
+      (person['person'] as Map)['picture'] =
+          'https://bucket.s3.amazonaws.com/u/1.jpg?X-Amz-Signature=abc';
+      api.on('GET', '/network', networkListJson([person]));
+
+      final fresh = await NetworkApi().list(const NetworkQuery());
+      expect(fresh.items.single.person.picture, isNotNull);
+
+      APIService.instance.dio.httpClientAdapter = _NoSignal();
+      final offline = await NetworkApi().list(const NetworkQuery());
+      expect(offline.items.single.person.fullName, 'Ananya Iyer');
+      expect(offline.items.single.person.picture, isNull);
+    });
+
+    test('withoutPictures takes out every picture and image, at any depth', () {
+      expect(
+          withoutPictures({
+            'person': {'picture': 'x', 'name': 'A'},
+            'projects': [
+              {'image': 'y', 'title': 'T'},
+            ],
+          }),
+          {
+            'person': {'name': 'A'},
+            'projects': [
+              {'title': 'T'},
+            ],
+          });
     });
   });
 

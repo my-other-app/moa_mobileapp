@@ -96,9 +96,10 @@ class _EditPublicProfilePageState extends ConsumerState<EditPublicProfilePage> {
     }
 
     final p = mine.profile;
+    // As the server keeps it: a leading @ dropped, lower case.
+    final handle = normalHandle(_handle.text);
     return {
-      if (_handle.text.trim().toLowerCase() != mine.handle)
-        'handle': _handle.text.trim().toLowerCase(),
+      if (handle != mine.handle) 'handle': handle,
       if (v(_headline) != p.headline) 'headline': v(_headline),
       if (v(_bio) != p.bio) 'bio': v(_bio),
       if (v(_city) != p.city) 'city': v(_city),
@@ -132,7 +133,7 @@ class _EditPublicProfilePageState extends ConsumerState<EditPublicProfilePage> {
         setState(() => _handleError = handleMessage);
       } else {
         showToast(context,
-            extractErrorMessage(e, defaultMessage: "Couldn't save. Try again."),
+            profileEditErrorMessage(e, fallback: "Couldn't save. Try again."),
             icon: Icons.error_outline);
       }
     } finally {
@@ -149,8 +150,8 @@ class _EditPublicProfilePageState extends ConsumerState<EditPublicProfilePage> {
       if (mounted) {
         showToast(
             context,
-            extractErrorMessage(e,
-                defaultMessage: "Couldn't change that. Try again."),
+            profileEditErrorMessage(e,
+                fallback: "Couldn't change that. Try again."),
             icon: Icons.error_outline);
       }
     } finally {
@@ -165,10 +166,8 @@ class _EditPublicProfilePageState extends ConsumerState<EditPublicProfilePage> {
       if (!mounted) return;
       showToast(
           context,
-          errorCodeOf(e) == linkInvalidCode
-              ? "One of the links isn't allowed. Use an https:// web link."
-              : extractErrorMessage(e,
-                  defaultMessage: "Couldn't save your links. Try again."),
+          profileEditErrorMessage(e,
+              fallback: "Couldn't save your links. Try again."),
           icon: Icons.error_outline);
     }
   }
@@ -473,7 +472,10 @@ class _EditPublicProfilePageState extends ConsumerState<EditPublicProfilePage> {
                     .reorderProjects(order);
               } catch (e) {
                 if (mounted) {
-                  showToast(context, extractErrorMessage(e),
+                  showToast(
+                      context,
+                      profileEditErrorMessage(e,
+                          fallback: "Couldn't change the order. Try again."),
                       icon: Icons.error_outline);
                 }
               }

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:finnet/core/themes/app_colors.dart';
-import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/features/network/domain/network_errors.dart';
 import 'package:finnet/features/network/domain/profile.dart';
 import 'package:finnet/features/network/presentation/providers/my_profile_provider.dart';
 import 'package:finnet/features/network/presentation/widgets/profile_view.dart';
@@ -141,8 +141,8 @@ class _ProjectSheetState extends ConsumerState<ProjectSheet> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = extractErrorMessage(e,
-            defaultMessage: "Couldn't save the project. Try again.");
+        _error = profileEditErrorMessage(e,
+            fallback: "Couldn't save the project. Try again.");
       });
     }
   }
@@ -179,8 +179,8 @@ class _ProjectSheetState extends ConsumerState<ProjectSheet> {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
       if (mounted) {
-        setState(() => _error = extractErrorMessage(e,
-            defaultMessage: "Couldn't change the picture. Try again."));
+        setState(() => _error = profileEditErrorMessage(e,
+            fallback: "Couldn't change the picture. Try again."));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -198,8 +198,8 @@ class _ProjectSheetState extends ConsumerState<ProjectSheet> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = extractErrorMessage(e,
-            defaultMessage: "Couldn't delete the project. Try again.");
+        _error = profileEditErrorMessage(e,
+            fallback: "Couldn't delete the project. Try again.");
       });
     }
   }

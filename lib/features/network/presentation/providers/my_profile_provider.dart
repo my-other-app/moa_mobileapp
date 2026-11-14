@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/network/data/profiles_api.dart';
+import 'package:finnet/features/network/domain/network_errors.dart';
 import 'package:finnet/features/network/domain/profile.dart';
 
 class MyProfileState {
@@ -84,17 +86,20 @@ class MyProfileNotifier extends StateNotifier<MyProfileState> {
     unawaited(_refreshQuietly());
   }
 
-  /// Shown in the new order at once; put back if the server refuses.
+  /// Shown in the new order at once; the server's answer once it has one.
+  /// Refused, it goes back -- and when the server's projects are not the
+  /// ones on screen (`ORDER_INVALID`), they are read again.
   Future<void> reorderProjects(List<ProfileProject> order) async {
     final before = _projects;
     _setProjects(order);
     try {
-      await _api.orderProjects([
+      _set(await _api.orderProjects([
         for (final p in order)
           if (p.id != null) p.id!
-      ]);
-    } catch (_) {
+      ]));
+    } catch (e) {
       _setProjects(before);
+      if (errorCodeOf(e) == orderInvalidCode) unawaited(_refreshQuietly());
       rethrow;
     }
   }

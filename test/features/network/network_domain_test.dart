@@ -41,6 +41,48 @@ void main() {
       expect(savedBack.relation!.mutual, isTrue);
     });
 
+    test(
+        "a private profile to a stranger, as the backend sends it: every key, "
+        'empty', () {
+      final p = PublicProfile.fromJson({
+        'user_id': null,
+        'handle': 'ananya',
+        'full_name': 'Ananya Iyer',
+        'picture': null,
+        'headline': 'Flutter dev',
+        'bio': null,
+        'city': null,
+        'org': null,
+        'interests': [],
+        'links': [],
+        'projects': [],
+        'achievements': {
+          'events_attended': null,
+          'certificates': null,
+          'talks': null,
+          'clubs': null,
+        },
+        'contact': {'email': null, 'phone': null},
+        'hidden_sections': [
+          'links',
+          'projects',
+          'achievements',
+          'interests',
+          'org',
+        ],
+        'private': true,
+        'indexable': false,
+        'is_me': false,
+        'relation': null,
+      })!;
+      expect(p.locked, isTrue);
+      expect(p.headline, 'Flutter dev');
+      // Signed out: no user id, so no report or block offered.
+      expect(p.userId, isNull);
+      expect(p.achievements.isEmpty, isTrue);
+      expect(p.hiddenSections, hasLength(5));
+    });
+
     test('nonsense is no profile, never a crash', () {
       expect(PublicProfile.fromJson('nope'), isNull);
       expect(PublicProfile.fromJson({'full_name': 'No handle'}), isNull);
@@ -252,6 +294,23 @@ void main() {
       expect(handleProblem('asha menon'), isNotNull);
       expect(handleProblem('admin'), 'That one is reserved.');
       expect(handleProblem('events'), 'That one is reserved.');
+    });
+
+    test("the backend's reserved words and files, and its normal form", () {
+      for (final word in [
+        'by-code',
+        'robots.txt',
+        'favicon.ico',
+        'well-known',
+        'profiles',
+        'compete',
+      ]) {
+        expect(handleProblem(word), 'That one is reserved.', reason: word);
+      }
+      expect(normalHandle(' @Asha.Menon '), 'asha.menon');
+      expect(normalHandle('asha'), 'asha');
+      expect(readScannedCode('https://myotherapp.in/u/@Ananya'),
+          isA<ProfileHandleCode>().having((c) => c.handle, 'h', 'ananya'));
     });
   });
 

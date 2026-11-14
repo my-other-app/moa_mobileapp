@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:finnet/core/network/network_status.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/home/presentation/widgets/at_event_banner.dart'
@@ -30,17 +31,22 @@ final myQrProvider = FutureProvider<MyQr>((ref) {
   return ref.watch(profilesApiProvider).myQr();
 });
 
-/// One page of the network.
+/// One page of the network. Read again when the phone is back online: a
+/// copy shown offline has no pictures (their links expire), the fresh one
+/// does.
 final networkListProvider =
     FutureProvider.autoDispose.family<NetworkList, NetworkQuery>((ref, query) {
   ref.watch(isAuthenticatedProvider);
+  ref.watch(backOnlineProvider);
   return ref.watch(networkApiProvider).list(query);
 });
 
-/// One person in the network, with every encounter.
+/// One person in the network, with every encounter; read again when the
+/// phone is back online, as the list is.
 final networkPersonProvider =
     FutureProvider.autoDispose.family<NetworkPerson, int>((ref, id) {
   ref.watch(isAuthenticatedProvider);
+  ref.watch(backOnlineProvider);
   return ref.watch(networkApiProvider).person(id);
 });
 

@@ -610,6 +610,21 @@ void main() {
           {'headline': 'Designer at CET'});
     });
 
+    testWidgets('a handle goes as the server keeps it: no @, lower case',
+        (tester) async {
+      api
+        ..on('GET', '/me/profile', myProfileJson())
+        ..on('PATCH', '/me/profile', myProfileJson(handle: 'asha.m'));
+      await _pump(tester, '/profile/public');
+      await tester.enterText(
+          find.byKey(EditPublicProfilePage.handleKey), '@Asha.M');
+      await tester.pump();
+      await tester.tap(find.byKey(EditPublicProfilePage.saveAboutKey));
+      await _settle(tester);
+      expect(
+          _body(api.sent('PATCH', '/me/profile').single), {'handle': 'asha.m'});
+    });
+
     testWidgets("a handle that can't be used is said before sending",
         (tester) async {
       api.on('GET', '/me/profile', myProfileJson());

@@ -1,6 +1,8 @@
+import 'package:dio/dio.dart' show Response;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/network/data/profiles_api.dart'
     show textOfAnswer;
@@ -40,19 +42,29 @@ class NetworkApi {
   }
 
   /// `GET /network`. Kept on the phone (cleared at sign-out), so the tab
-  /// opens with no signal.
+  /// opens with no signal -- without its pictures then ([_fresh]).
   Future<NetworkList> list(NetworkQuery query) async {
     final res = await _client.request('/network', DioMethod.get,
         param: query.toParams(), cache: CachePolicy.personal);
-    return NetworkList.fromJson(res.data);
+    return NetworkList.fromJson(_fresh(res));
   }
 
   /// `GET /network/{id}`: with every encounter.
   Future<NetworkPerson> person(int id) async {
     final res = await _client.request('/network/$id', DioMethod.get,
         cache: CachePolicy.personal);
-    return _person(res.data);
+    return _person(_fresh(res));
   }
+
+  /// The answer's data -- minus its pictures when it is the copy saved on
+  /// the phone, answered for lack of a signal. Pictures are signed links
+  /// that expire within the hour, so an old copy's are never used; the
+  /// screens read the list again once the phone is back online. A 304's
+  /// copy is the server's current answer byte for byte, links and all.
+  static Object? _fresh(Response<dynamic> res) =>
+      ApiCacheInterceptor.answerOf(res) == CachedAnswer.offline
+          ? withoutPictures(res.data)
+          : res.data;
 
   /// `PATCH /network/{id}`: the note and tags, both private.
   Future<NetworkPerson> update(int id,
@@ -92,6 +104,19 @@ class NetworkApi {
     if (person == null) throw const FormatException('No person in the answer');
     return person;
   }
+}
+
+/// [json] with every `picture` and `image` link taken out, at any depth.
+Object? withoutPictures(Object? json) {
+  if (json is List) return [for (final item in json) withoutPictures(item)];
+  if (json is Map) {
+    return {
+      for (final entry in json.entries)
+        if (entry.key != 'picture' && entry.key != 'image')
+          '${entry.key}': withoutPictures(entry.value),
+    };
+  }
+  return json;
 }
 
 /// The network as contact cards (vCard 3.0) or a spreadsheet.
