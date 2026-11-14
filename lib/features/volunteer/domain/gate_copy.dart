@@ -172,6 +172,17 @@ const offlineNotATicketCard = OutcomeCard(
       'or try the scan again.',
 );
 
+/// Someone showed their personal QR (Feature 4's `/p/` link) instead of
+/// their ticket: refused on the phone, without asking the server.
+const personalCodeCard = OutcomeCard(
+  tone: GateTone.refuse,
+  tag: 'Personal QR',
+  title: "That's a personal QR, not a ticket.",
+  sub: 'NOT A TICKET · NOT CHECKED IN',
+  note: 'Ask for the ticket in their app or email, or find them by name '
+      'under Guests.',
+);
+
 /// No signal, and an admission number: it never lets anyone in, and
 /// finding whose it is needs the server.
 const offlineAdmissionNumberCard = OutcomeCard(

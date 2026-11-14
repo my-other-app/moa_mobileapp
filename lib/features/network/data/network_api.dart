@@ -65,7 +65,8 @@ class NetworkApi {
   }
 
   /// `DELETE /network/{id}`: silent to them.
-  Future<void> remove(int id) => _client.request('/network/$id', DioMethod.delete);
+  Future<void> remove(int id) =>
+      _client.request('/network/$id', DioMethod.delete);
 
   /// `GET /network/saved-me`: who saved the person, not saved back.
   Future<({List<SavedMeEntry> items, int total})> savedMe(

@@ -77,7 +77,10 @@ class MyProfileNotifier extends StateNotifier<MyProfileState> {
 
   Future<void> deleteProject(int id) async {
     await _api.deleteProject(id);
-    _setProjects([for (final p in _projects) if (p.id != id) p]);
+    _setProjects([
+      for (final p in _projects)
+        if (p.id != id) p
+    ]);
     unawaited(_refreshQuietly());
   }
 
@@ -86,7 +89,10 @@ class MyProfileNotifier extends StateNotifier<MyProfileState> {
     final before = _projects;
     _setProjects(order);
     try {
-      await _api.orderProjects([for (final p in order) if (p.id != null) p.id!]);
+      await _api.orderProjects([
+        for (final p in order)
+          if (p.id != null) p.id!
+      ]);
     } catch (_) {
       _setProjects(before);
       rethrow;

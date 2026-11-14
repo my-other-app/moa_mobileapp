@@ -87,7 +87,8 @@ class MemoryPendingSaveStore implements PendingSaveStore {
 
   @override
   Future<void> add(PendingSave save) async {
-    saved.removeWhere((s) => s.who == save.who || s.clientRef == save.clientRef);
+    saved
+        .removeWhere((s) => s.who == save.who || s.clientRef == save.clientRef);
     saved.add(save);
   }
 

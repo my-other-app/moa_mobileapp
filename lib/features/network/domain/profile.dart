@@ -72,7 +72,13 @@ extension ContactShareWords on ContactShare {
 
 /// The parts of a profile with their own [Audience], in the order the
 /// settings list them.
-const profileSections = ['links', 'projects', 'achievements', 'interests', 'org'];
+const profileSections = [
+  'links',
+  'projects',
+  'achievements',
+  'interests',
+  'org'
+];
 
 String profileSectionLabel(String section) => switch (section) {
       'links' => 'Links',
@@ -288,7 +294,9 @@ class ProfileOrg {
   static ProfileOrg? fromJson(Object? value) {
     final json = jsonObject(value);
     final name = _text(json?['name']);
-    return name == null ? null : ProfileOrg(id: jsonInt(json?['id']), name: name);
+    return name == null
+        ? null
+        : ProfileOrg(id: jsonInt(json?['id']), name: name);
   }
 }
 
@@ -432,8 +440,7 @@ class ProfileRelation {
         networkId: networkId ?? this.networkId,
       );
 
-  ProfileRelation get removed =>
-      ProfileRelation(savedMe: savedMe);
+  ProfileRelation get removed => ProfileRelation(savedMe: savedMe);
 }
 
 /// The public page at `myotherapp.in/u/<handle>`, as this viewer may see
@@ -744,7 +751,8 @@ class PersonBrief {
     return PersonBrief(
       userId: jsonInt(json['user_id']),
       handle: _text(json['handle'])?.toLowerCase(),
-      fullName: _text(json['full_name']) ?? _text(json['name']) ?? 'Deleted user',
+      fullName:
+          _text(json['full_name']) ?? _text(json['name']) ?? 'Deleted user',
       picture: _picture(json['picture']),
       headline: _text(json['headline']),
       orgName: _text(json['org_name']),

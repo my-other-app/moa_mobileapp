@@ -1,14 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
+import 'package:finnet/features/home/presentation/widgets/at_event_banner.dart'
+    show checkedInNow;
 import 'package:finnet/features/network/data/network_api.dart';
 import 'package:finnet/features/network/data/profiles_api.dart';
 import 'package:finnet/features/network/domain/network.dart';
 
 /// Someone's public page, by handle, as this viewer may see it. Read again
 /// when the person signs in or out: what they may see changes.
-final publicProfileProvider = FutureProvider.autoDispose
-    .family<ProfileLookup, String>((ref, handle) {
+final publicProfileProvider =
+    FutureProvider.autoDispose.family<ProfileLookup, String>((ref, handle) {
   ref.watch(isAuthenticatedProvider);
   return ref.watch(profilesApiProvider).profile(handle);
 });
@@ -28,8 +31,8 @@ final myQrProvider = FutureProvider<MyQr>((ref) {
 });
 
 /// One page of the network.
-final networkListProvider = FutureProvider.autoDispose
-    .family<NetworkList, NetworkQuery>((ref, query) {
+final networkListProvider =
+    FutureProvider.autoDispose.family<NetworkList, NetworkQuery>((ref, query) {
   ref.watch(isAuthenticatedProvider);
   return ref.watch(networkApiProvider).list(query);
 });
@@ -48,4 +51,12 @@ final savedMeProvider = FutureProvider.autoDispose
     return (items: const <SavedMeEntry>[], total: 0);
   }
   return ref.watch(networkApiProvider).savedMe(eventId: eventId);
+});
+
+/// The event the person is checked in to right now, if any -- from the
+/// tickets on the phone, so it costs no request. Sent with a save; the
+/// server records it only if the other person is checked in too.
+final atEventIdProvider = Provider.autoDispose<int?>((ref) {
+  if (!ref.watch(isAuthenticatedProvider)) return null;
+  return checkedInNow(ref.watch(savedTicketsProvider), DateTime.now())?.eventId;
 });

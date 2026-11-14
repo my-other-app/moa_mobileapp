@@ -78,8 +78,11 @@ class NetworkSaver extends StateNotifier<PendingSaves> {
   static bool _worthKeeping(Object e) {
     if (gotNoAnswer(e)) return true;
     final status = statusCodeOf(e);
-    return status == 401 || status == 429 || status == 502 ||
-        status == 503 || status == 504;
+    return status == 401 ||
+        status == 429 ||
+        status == 502 ||
+        status == 503 ||
+        status == 504;
   }
 
   Future<SaveAttempt> save({
@@ -96,8 +99,7 @@ class NetworkSaver extends StateNotifier<PendingSaves> {
       if (state.count > 0) unawaited(drain());
       return Saved(result);
     } catch (e) {
-      if (gotNoAnswer(e) ||
-          const {502, 503, 504}.contains(statusCodeOf(e))) {
+      if (gotNoAnswer(e) || const {502, 503, 504}.contains(statusCodeOf(e))) {
         final pending = PendingSave(
           clientRef: _newRef(),
           code: code,

@@ -6,6 +6,7 @@ import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/features/events/presentation/widgets/saved_tickets_sync.dart';
 import 'package:finnet/features/main/presentation/providers/navigation_index_provider.dart';
 import 'package:finnet/features/main/presentation/widgets/personal_data_sync.dart';
+import 'package:finnet/features/network/presentation/providers/network_saver.dart';
 import 'package:finnet/shared/motion.dart';
 
 export 'package:finnet/features/main/presentation/providers/navigation_index_provider.dart';
@@ -22,6 +23,9 @@ class MainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(navigationIndexProvider);
+    // People saved with no signal are sent when the phone is back online,
+    // whichever screen is up: the saver listens for that while it lives.
+    ref.listen(networkSaverProvider, (_, __) {});
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -47,6 +51,8 @@ class MainShell extends ConsumerWidget {
     return [
       _buildNavItem(image: AssetResources.home, label: 'Home'),
       _buildNavItem(image: AssetResources.events, label: 'Events'),
+      // The people the person met: no picture of its own in the set.
+      _iconNavItem(icon: Icons.people_alt_outlined, label: 'Network'),
       _buildNavItem(image: AssetResources.clubs, label: 'Clubs'),
       _buildNavItem(image: AssetResources.profile, label: 'Profile'),
     ];
@@ -73,6 +79,19 @@ class MainShell extends ConsumerWidget {
     );
   }
 
+  BottomNavigationBarItem _iconNavItem({
+    required IconData icon,
+    required String label,
+  }) {
+    return BottomNavigationBarItem(
+      icon: Icon(icon, color: Colors.grey),
+      activeIcon: _ChosenIcon(
+        child: Icon(icon, color: const Color(0xFFF9FFA1)),
+      ),
+      label: label,
+    );
+  }
+
   void _onItemTapped(BuildContext context, WidgetRef ref, int index) {
     // Choosing another tab is felt; tapping the one already open is not.
     if (index != ref.read(navigationIndexProvider)) Haptics.selection();
@@ -89,9 +108,12 @@ class MainShell extends ConsumerWidget {
         context.go('/events');
         break;
       case 2:
-        context.go('/clubs');
+        context.go('/network');
         break;
       case 3:
+        context.go('/clubs');
+        break;
+      case 4:
         context.go('/profile');
         break;
     }

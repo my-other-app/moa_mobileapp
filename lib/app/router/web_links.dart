@@ -32,6 +32,9 @@ import 'package:finnet/core/config/app_config.dart';
 /// | `/answers/{event}/{ref}?k=`      | the details a club asked for          |
 /// | `/play/{event}`                  | the quiz, to join (its QR)            |
 /// | `/speakers/{slug}`               | the speaker's page                    |
+/// | `/u/{handle}`                    | a person's profile                    |
+/// | `/p/{code}`                      | a personal QR: saves the person       |
+/// | `/network?event=`                | the Network tab (the recap's link)    |
 ///
 /// The app's own `/events` and `/clubs` are the person's events and clubs
 /// (the tabs); the website's are the directories, which is why a link is
@@ -139,6 +142,15 @@ String? webLocation(Uri uri) {
         return null;
       }
       return at('/speakers/${one(rest.first)}');
+    case 'u':
+      // A person's profile (Feature 4).
+      return rest.length == 1 ? at('/u/${one(rest.first)}') : null;
+    case 'p':
+      // A personal QR: in the app it saves the person.
+      return rest.length == 1 ? at('/p/${one(rest.first)}') : null;
+    case 'network':
+      // The recap's "See who you met" (`?event=`): the Network tab.
+      return rest.isEmpty ? at('/network') : null;
     case 'claim':
       // A waiting list's offer: its link in the email, WhatsApp and push.
       return rest.length == 1 ? at('/claim/${one(rest.first)}') : null;

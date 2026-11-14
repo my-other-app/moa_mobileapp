@@ -78,8 +78,10 @@ class ProfilesApi {
 
   /// `PUT /me/profile/links`: the whole list, in order.
   Future<MyProfile> putLinks(List<ProfileLink> links) async {
-    final res = await _client.request('/me/profile/links', DioMethod.put,
-        param: {'links': [for (final l in links) l.toJson()]});
+    final res =
+        await _client.request('/me/profile/links', DioMethod.put, param: {
+      'links': [for (final l in links) l.toJson()]
+    });
     return _mine(res.data);
   }
 
@@ -100,9 +102,9 @@ class ProfilesApi {
       _client.request('/me/profile/projects/$id', DioMethod.delete);
 
   /// `PUT /me/profile/projects/order`: every project's id, in order.
-  Future<void> orderProjects(List<int> ids) => _client.request(
-      '/me/profile/projects/order', DioMethod.put,
-      param: {'ids': ids});
+  Future<void> orderProjects(List<int> ids) =>
+      _client.request('/me/profile/projects/order', DioMethod.put,
+          param: {'ids': ids});
 
   /// The picture at [path] (any format; the server resizes it) for the
   /// project.

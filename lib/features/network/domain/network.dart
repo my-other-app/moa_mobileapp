@@ -147,7 +147,8 @@ class NetworkPerson {
     ];
   }
 
-  NetworkPerson copyWith({String? note, bool clearNote = false, List<String>? tags}) =>
+  NetworkPerson copyWith(
+          {String? note, bool clearNote = false, List<String>? tags}) =>
       NetworkPerson(
         id: id,
         person: person,

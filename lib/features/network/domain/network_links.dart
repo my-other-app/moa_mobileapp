@@ -130,16 +130,19 @@ ScannedCode readScannedCode(String raw) {
 /// says no to without asking the server.
 bool isPersonalCode(String raw) => readScannedCode(raw) is PersonalCode;
 
-/// Handles nobody may take: the contract's list, and the website's own
-/// top-level pages (the server refuses those too, `HANDLE_RESERVED`).
+/// Handles nobody may take: the contract's list and every top-level word
+/// the website serves (its notes of 14 Nov). The server has the last word
+/// (`HANDLE_RESERVED`); this only saves a round trip.
 const reservedHandles = {
+  // The contract's.
   'admin', 'api', 'app', 'me', 'u', 'p', 'help', 'support', 'about',
   'events', 'clubs', 'club', 'speakers', 'settings', 'login', 'signup',
   'register', 'myotherapp', 'official', 'null', 'undefined',
-  // The website's pages.
-  'threads', 'topics', 'tickets', 'certificates', 'verify', 'claim',
-  'requests', 'play', 'feedback', 'answers', 'network', 'privacy', 'terms',
-  'developers', 'pricing', 'for-clubs', 'discover', 'search',
+  // The website's top-level pages.
+  'answers', 'certificates', 'claim', 'data-deletion', 'developers',
+  'feedback', 'for-clubs', 'media', 'og', 'play', 'pricing', 'privacy',
+  'requests', 'sitemaps', 'terms', 'threads', 'tickets', 'topics',
+  'verify', 'live', 'compete', 'network',
 };
 
 final _handleShape = RegExp(r'^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$');

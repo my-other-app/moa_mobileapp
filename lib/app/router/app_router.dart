@@ -40,6 +40,7 @@ import 'package:finnet/features/profile/presentation/pages/notifications/notific
 import 'package:finnet/features/main/presentation/pages/main_shell.dart';
 import 'package:finnet/features/discover/presentation/discover_routes.dart';
 import 'package:finnet/features/speakers/presentation/speakers_routes.dart';
+import 'package:finnet/features/network/presentation/network_routes.dart';
 
 // Batch C's routes (auth, threads, profile)
 import 'package:finnet/features/auth/presentation/auth_routes.dart';
@@ -355,6 +356,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                     redirect: requestSentRedirect,
                     builder: buildRequestSentPage),
               ]),
+          // The Network tab: everyone the person saved, where and when they
+          // met. Signed in only.
+          networkTabRoute(rootKey),
           // My clubs: followed and pinned. Signed in only.
           GoRoute(
               path: '/clubs',
@@ -421,6 +425,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const MyBadgesPage()),
                 // Speakers I Follow (Profile): each opens the speaker's page.
                 ...followedSpeakersRoutes(rootKey),
+                // My QR, and the public profile's editor and preview.
+                ...myNetworkProfileRoutes(rootKey),
                 // Share kits (Settings, for a club's team members): each
                 // event's words and posters -- what a share_kit push opens.
                 ...socialRoutes(rootKey),
@@ -452,6 +458,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 // A speaker's page (the speakers directory), from their card
                 // on an event page and from the website's link.
                 ...overHome(rootKey, speakersRoutes),
+                // A person's profile (`/u/{handle}`) and their personal
+                // QR's link (`/p/{code}`, which saves them).
+                ...overHome(rootKey, profileLinkRoutes),
                 GoRoute(
                     path: 'events/explore',
                     name: 'exploreEvents',
@@ -612,4 +621,5 @@ class AppRoutes {
   static const String certificates = 'certificates';
   static const String badges = 'badges';
   static const String notifications = 'notifications';
+  static const String network = 'network';
 }
