@@ -19,7 +19,7 @@ Bindings:
 | `MAILBOX_HOOK_SECRET` | secret | `set-secret.sh`; the same value as the server's `APP_MAILBOX_HOOK_SECRET` |
 | `API_URL` | text | `deploy.sh` (default: the production hook) |
 | `FORWARD` | text | `deploy.sh` (`FORWARD='{"info":"x@gmail.com"}' ./deploy.sh`) |
-| `MAX_BYTES` | text, optional | default 25 MiB (Email Routing's own limit) |
+| `MAX_BYTES` | text, optional | default 15 MiB (the API's `APP_MAILBOX_INBOUND_MAX_MB`); a larger mail is refused by its size before it is read |
 
 ## Turning it on
 

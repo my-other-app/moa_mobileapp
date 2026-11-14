@@ -18,7 +18,8 @@
 // straight to an address verified in Email Routing, without asking the API.
 //
 // Bindings: MAILBOX_HOOK_SECRET (secret; the API's APP_MAILBOX_HOOK_SECRET),
-// API_URL and FORWARD (plain text, set by deploy.sh), MAX_BYTES (optional).
+// API_URL and FORWARD (plain text, set by deploy.sh), MAX_BYTES (optional:
+// default 15 MiB, the API's APP_MAILBOX_INBOUND_MAX_MB).
 //
 // Nothing a mail says, and no address, is logged: only the outcome.
 
@@ -27,7 +28,9 @@ export const DEFAULT_URL = "https://api.myotherapp.in/api/v1/hooks/mailbox/cloud
 export const TOO_LARGE = "Message too large for this mailbox";
 // Waits (ms) before each try: now, then 2 s, then 6 s.
 export const WAITS = [0, 2000, 6000];
-const MAX_DEFAULT = 25 * 1024 * 1024;
+// A larger mail is refused in the SMTP session, by its size alone, before
+// anything is read or sent on: the API keeps nothing past 15 MiB either.
+export const MAX_DEFAULT = 15 * 1024 * 1024;
 
 const enc = (value) => encodeURIComponent(value || "");
 
