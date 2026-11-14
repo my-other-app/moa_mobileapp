@@ -251,4 +251,90 @@ void main() {
           '/api/v1/user/me');
     });
   });
+
+  group('secrets in addresses', () {
+    test('a ticket-shaped path loses its code, for Crashlytics and Analytics',
+        () {
+      expect(apiPathOf('/events/tickets/MOA-7K3QF-X9PWM/image'),
+          '/events/tickets/:code/image');
+      expect(apiPathOf('/events/tickets/MOA-3F2A9C-K7QXD/pdf?download=1'),
+          '/events/tickets/:code/pdf');
+      expect(apiPathOf('/events/tickets/MOA-7K3QF-X9PWM/wallet.pkpass'),
+          '/events/tickets/:code/wallet.pkpass');
+      expect(apiPathOf('/events/tickets/MOA-7K3QF-X9PWM'),
+          '/events/tickets/:code');
+    });
+
+    test('offer and request tokens, certificates, answers and feedback links',
+        () {
+      for (final (path, shape) in [
+        ('/waitlist/offers/tok_9f8e7d6c5b4a', '/waitlist/offers/:token'),
+        (
+          '/waitlist/offers/tok_9f8e7d6c5b4a/claim',
+          '/waitlist/offers/:token/claim'
+        ),
+        (
+          '/waitlist/offers/tok_9f8e7d6c5b4a/decline',
+          '/waitlist/offers/:token/decline'
+        ),
+        ('/registration-requests/rq_abcdef123456', '/registration-requests/:token'),
+        (
+          '/events/certificates/MOA-7K3QF-X9PWM/image',
+          '/events/certificates/:id/image'
+        ),
+        (
+          '/events/7/answers/3f2a9c1e-0b4d-4e5f-8a6b-7c8d9e0f1a2b',
+          '/events/7/answers/:ref'
+        ),
+        (
+          '/events/7/feedback/3f2a9c1e-0b4d-4e5f-8a6b-7c8d9e0f1a2b',
+          '/events/7/feedback/:ref'
+        ),
+        (
+          '/events/7/gate/check-in/3f2a9c1e-0b4d-4e5f-8a6b-7c8d9e0f1a2b',
+          '/events/7/gate/check-in/:id'
+        ),
+        (
+          '/events/7/gate/merch/3f2a9c1e-0b4d-4e5f-8a6b-7c8d9e0f1a2b',
+          '/events/7/gate/merch/:id'
+        ),
+        // Handles too (Feature 4), through the same address.
+        ('/profiles/ananya.iyer', '/profiles/:handle'),
+      ]) {
+        expect(apiPathOf(path), shape, reason: path);
+      }
+    });
+
+    test("the app's own links lose theirs as well", () {
+      for (final (path, shape) in [
+        ('/tickets/MOA-7K3QF-X9PWM', '/tickets/:code'),
+        ('/claim/tok_9f8e7d6c5b4a', '/claim/:token'),
+        ('/requests/rq_abcdef123456', '/requests/:token'),
+        ('/answers/7/abcdef123456', '/answers/:ref'),
+        ('/feedback/7/3f2a9c1e-0b4d', '/feedback/:ref'),
+        ('/profile/certificates/MOA-7K3QF-X9PWM', '/profile/certificates/:id'),
+      ]) {
+        expect(redactForCrashReport(path), shape, reason: path);
+      }
+    });
+
+    test('a ticket code written out anywhere is taken out', () {
+      expect(redactForCrashReport('No ticket matches MOA-7K3QF-X9PWM.'),
+          'No ticket matches <ticket>.');
+      // Nothing secret is lost from what is not one.
+      expect(redactForCrashReport('/events/7/gate/context'),
+          '/events/7/gate/context');
+      expect(redactForCrashReport('/events/hack-night-04/ticket-types'),
+          '/events/hack-night-04/ticket-types');
+    });
+
+    test('the crash log line and the api_error event both get the shape',
+        () {
+      final sink = _Sink();
+      final reporter = CrashReporter(sink: sink, enabled: () => true);
+      reporter.log('API Error: /events/tickets/MOA-7K3QF-X9PWM/image - 404');
+
+      expect(sink.logs, ['API Error: /events/tickets/:code/image - 404']);
+    });
+  });
 }
