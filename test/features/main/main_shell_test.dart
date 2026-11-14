@@ -131,7 +131,8 @@ void main() {
   Future<void> pumpShell(WidgetTester tester,
       {AuthState session = _signedOut,
       String start = '/',
-      int index = 0}) async {
+      int index = 0,
+      bool followLocation = false}) async {
     tester.view
       ..physicalSize = const Size(1080, 2400)
       ..devicePixelRatio = 3;
@@ -139,7 +140,9 @@ void main() {
     auth = _Auth(session);
     router = GoRouter(initialLocation: start, routes: [
       ShellRoute(
-        builder: (_, __, child) => MainShell(child: child),
+        // As the app's router has it, when [followLocation].
+        builder: (_, state, child) => MainShell(
+            location: followLocation ? state.uri.path : null, child: child),
         routes: [
           GoRoute(path: '/', builder: (_, __) => const _Tab('home')),
           GoRoute(path: '/events', builder: (_, __) => const _Tab('events')),
@@ -202,6 +205,22 @@ void main() {
       expect(lit(tester), index, reason: label);
       expect(container.read(navigationIndexProvider), index, reason: label);
     }
+  });
+
+  testWidgets('a link or a push that opens a tab lights it', (tester) async {
+    await pumpShell(tester, session: _signedIn, followLocation: true);
+    expect(lit(tester), 0);
+
+    // The recap push: the Network tab at an event.
+    router.go('/network?event=9');
+    await tester.pumpAndSettle();
+    expect(find.text('the network tab'), findsOneWidget);
+    expect(lit(tester), 2);
+    expect(container.read(navigationIndexProvider), 2);
+
+    router.go('/profile');
+    await tester.pumpAndSettle();
+    expect(lit(tester), 4);
   });
 
   testWidgets('tapping the tab already open stays on it', (tester) async {

@@ -157,6 +157,9 @@ class _ProjectSheetState extends ConsumerState<ProjectSheet> {
         path = await ref.read(photoPickerProvider).pick(PhotoSource.library);
         if (path == null) return;
       }
+      // The sheet may have gone while the picker was up (a link opened
+      // over it): nothing to show the picture in.
+      if (!mounted) return;
       setState(() => _busy = true);
       if (remove) {
         await notifier.removeProjectImage(project!);

@@ -81,8 +81,9 @@ String? webLocation(Uri uri) {
   final head = segments.first.toLowerCase();
   final rest = segments.skip(1).toList();
 
-  // Feeds and files are never pages.
-  if (segments.last.contains('.')) return null;
+  // Feeds and files are never pages -- but a handle may hold a dot
+  // (`/u/asha.rao`): that is a person, not a file.
+  if (segments.last.contains('.') && head != 'u') return null;
 
   switch (head) {
     case 'events':

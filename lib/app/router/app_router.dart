@@ -326,7 +326,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // taken for an event called "explore".
       ShellRoute(
         navigatorKey: shellKey,
-        builder: (context, state, child) => MainShell(child: child),
+        // The bar follows the location, so a link or a push that opens a
+        // tab (the recap's Network) lights it.
+        builder: (context, state, child) =>
+            MainShell(location: state.uri.path, child: child),
         routes: [
           // My events: registrations and tickets. Signed in only.
           GoRoute(

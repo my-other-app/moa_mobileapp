@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/core/utils/time_ago.dart';
+import 'package:finnet/features/network/data/network_api.dart';
 import 'package:finnet/features/network/domain/network.dart';
 import 'package:finnet/features/network/presentation/providers/network_providers.dart';
 import 'package:finnet/features/network/presentation/providers/network_saver.dart';
@@ -21,6 +22,7 @@ class SavedMePage extends ConsumerStatefulWidget {
   final int? eventId;
 
   static const emptyKey = ValueKey('saved-me-empty');
+  static const moreKey = ValueKey('saved-me-more');
 
   @override
   ConsumerState<SavedMePage> createState() => _SavedMePageState();
@@ -30,6 +32,39 @@ class _SavedMePageState extends ConsumerState<SavedMePage> {
   /// Saved back here, by handle: shown as done until the list is read again.
   final Set<String> _savedBack = {};
   final Set<String> _saving = {};
+
+  /// Pages after the first.
+  final List<SavedMeEntry> _more = [];
+  int _page = 1;
+  bool _loadingMore = false;
+
+  Future<void> _loadMore() async {
+    if (_loadingMore) return;
+    setState(() => _loadingMore = true);
+    final firstPage = ref.read(savedMeProvider(widget.eventId)).valueOrNull;
+    final next = _page + 1;
+    try {
+      final more = await ref
+          .read(networkApiProvider)
+          .savedMe(eventId: widget.eventId, page: next);
+      if (!mounted) return;
+      // Page 1 read again meanwhile: these were at the old offsets.
+      if (!identical(
+          ref.read(savedMeProvider(widget.eventId)).valueOrNull, firstPage)) {
+        return;
+      }
+      setState(() {
+        _more.addAll(more.items);
+        _page = next;
+      });
+    } catch (e) {
+      if (mounted) {
+        showToast(context, extractErrorMessage(e), icon: Icons.error_outline);
+      }
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
 
   Future<void> _saveBack(SavedMeEntry entry) async {
     final handle = entry.person.handle;
@@ -58,8 +93,27 @@ class _SavedMePageState extends ConsumerState<SavedMePage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(savedMeProvider(widget.eventId), (before, now) {
+      if (before?.valueOrNull != null &&
+          now.valueOrNull != null &&
+          !identical(before!.valueOrNull, now.valueOrNull) &&
+          (_more.isNotEmpty || _page != 1)) {
+        setState(() {
+          _more.clear();
+          _page = 1;
+        });
+      }
+    });
     final answer = ref.watch(savedMeProvider(widget.eventId));
     final page = answer.valueOrNull;
+    // Each person once, however the pages overlapped.
+    final seen = <String>{};
+    final items = page == null
+        ? const <SavedMeEntry>[]
+        : [
+            for (final e in [...page.items, ..._more])
+              if (seen.add('${e.person.userId ?? e.person.handle}')) e,
+          ];
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -90,7 +144,7 @@ class _SavedMePageState extends ConsumerState<SavedMePage> {
                     ref.refresh(savedMeProvider(widget.eventId).future);
                 await fresh;
               },
-              child: page.items.isEmpty
+              child: items.isEmpty
                   ? ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       children: const [
@@ -111,7 +165,17 @@ class _SavedMePageState extends ConsumerState<SavedMePage> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                       children: [
-                        for (final entry in page.items) _row(entry),
+                        for (final entry in items) _row(entry),
+                        if (_page * savedMePageSize < page.total)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: OutlinedButton(
+                              key: SavedMePage.moreKey,
+                              onPressed: _loadingMore ? null : _loadMore,
+                              child:
+                                  Text(_loadingMore ? 'Loading…' : 'Show more'),
+                            ),
+                          ),
                       ],
                     ),
             ),

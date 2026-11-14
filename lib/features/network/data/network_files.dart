@@ -24,19 +24,39 @@ final textFileSharerProvider = Provider<TextFileSharer>(
     subject,
     origin,
   }) async {
-    // The cache, not the support directory: the share sheet copies it, and
-    // the system may empty this whenever it likes.
-    final dir = Directory('${(await getTemporaryDirectory()).path}/network');
+    // The cache, not the support directory; and only while the share sheet
+    // has it: the file is the person's network -- names, shared contact
+    // details, their notes -- so it goes as soon as the sheet is done
+    // (share_plus hands the receiving app its own copy).
+    final dir = await _exportsDir();
     await dir.create(recursive: true);
     final file = File('${dir.path}/$fileName');
-    await file.writeAsString(text, flush: true);
-    await Share.shareXFiles(
-      [XFile(file.path, mimeType: mimeType, name: fileName)],
-      subject: subject,
-      sharePositionOrigin: origin,
-    );
+    try {
+      await file.writeAsString(text, flush: true);
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: mimeType, name: fileName)],
+        subject: subject,
+        sharePositionOrigin: origin,
+      );
+    } finally {
+      try {
+        if (await file.exists()) await file.delete();
+      } catch (_) {
+        // Swept at sign-out ([clearNetworkExports]) if not now.
+      }
+    }
   },
 );
+
+Future<Directory> _exportsDir() async =>
+    Directory('${(await getTemporaryDirectory()).path}/network');
+
+/// Every export file left on the phone: at sign-out, with the rest of the
+/// person's data (session_services.dart).
+Future<void> clearNetworkExports() async {
+  final dir = await _exportsDir();
+  if (await dir.exists()) await dir.delete(recursive: true);
+}
 
 /// A name for a file from [name]: letters, digits and dashes.
 String fileNameFor(String name, String extension) {

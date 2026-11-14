@@ -246,10 +246,35 @@ final _indianMobile = RegExp(
   r'(?<![\w.+])(?:0|91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}(?![\w.])',
 );
 
-/// [text] with emails, phone numbers and tokens replaced by placeholders:
-/// what may go into a crash report or an analytics event.
+/// Addresses that name a person (Feature 4): a profile's handle -- usually
+/// their name -- a personal QR's code, a row of someone's network. Each
+/// keeps its shape, without the person.
+final _personalPaths = <(RegExp, String)>[
+  (RegExp(r'/profiles/by-code/[^/\s?#]+'), '/profiles/by-code/:code'),
+  (
+    RegExp(r'/profiles/(?!by-code(?:[/\s?#]|$)|:handle)[^/\s?#]+'),
+    '/profiles/:handle'
+  ),
+  (RegExp(r'/network/\d+'), '/network/:id'),
+  // The app's own addresses, and the website's.
+  (RegExp(r'/u/[^/\s?#]+'), '/u/:handle'),
+  (RegExp(r'/p/[^/\s?#]+'), '/p/:code'),
+];
+
+/// [text] with the people in its addresses taken out ([_personalPaths]).
+String redactPersonalPaths(String text) {
+  var out = text;
+  for (final (pattern, shape) in _personalPaths) {
+    out = out.replaceAll(pattern, shape);
+  }
+  return out;
+}
+
+/// [text] with emails, phone numbers, tokens and the people in addresses
+/// replaced by placeholders: what may go into a crash report or an
+/// analytics event.
 String redactForCrashReport(String text) {
-  return text
+  return redactPersonalPaths(text)
       // The header first: `authorization: Bearer x` must lose x, not only
       // the word after the colon.
       .replaceAllMapped(_authHeader, (m) => '${m[1]} <token>')

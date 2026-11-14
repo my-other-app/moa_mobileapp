@@ -82,9 +82,14 @@ class NetworkApi {
 
   /// `GET /network/saved-me`: who saved the person, not saved back.
   Future<({List<SavedMeEntry> items, int total})> savedMe(
-      {int? eventId, int page = 1}) async {
-    final res = await _client.request('/network/saved-me', DioMethod.get,
-        param: {if (eventId != null) 'event_id': eventId, 'page': page});
+      {int? eventId, int page = 1, int pageSize = savedMePageSize}) async {
+    final res =
+        await _client.request('/network/saved-me', DioMethod.get, param: {
+      if (eventId != null) 'event_id': eventId,
+      'page': page,
+      // The server's default is 20; its most, 100.
+      'page_size': pageSize,
+    });
     final items = SavedMeEntry.listFrom(res.data);
     return (
       items: items,
@@ -105,6 +110,9 @@ class NetworkApi {
     return person;
   }
 }
+
+/// How many of "Saved you" are read at a time: the server's most.
+const savedMePageSize = 100;
 
 /// [json] with every `picture` and `image` link taken out, at any depth.
 Object? withoutPictures(Object? json) {

@@ -9,6 +9,7 @@ import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/network/data/network_api.dart';
 import 'package:finnet/features/network/data/network_files.dart';
+import 'package:finnet/features/network/data/save_queue.dart';
 import 'package:finnet/features/network/domain/network.dart';
 import 'package:finnet/features/network/domain/network_links.dart';
 import 'package:finnet/features/network/presentation/providers/network_providers.dart';
@@ -58,6 +59,7 @@ class NetworkPage extends ConsumerStatefulWidget {
   static const pendingKey = ValueKey('network-pending');
   static const scanKey = ValueKey('network-scan');
   static const exportKey = ValueKey('network-export');
+  static const noticesKey = ValueKey('network-notices');
 
   @override
   ConsumerState<NetworkPage> createState() => _NetworkPageState();
@@ -115,24 +117,34 @@ class _NetworkPageState extends ConsumerState<NetworkPage> {
   Future<void> _loadMore() async {
     if (_loadingMore) return;
     setState(() => _loadingMore = true);
+    // What was asked for: an answer for anything else is not shown.
+    final asked = _query;
+    final firstPage = ref.read(networkListProvider(asked)).valueOrNull;
     final next = _page + 1;
     try {
       final list = await ref.read(networkApiProvider).list(NetworkQuery(
-            q: _query.q,
-            eventId: _query.eventId,
-            tag: _query.tag,
-            mutualOnly: _query.mutualOnly,
-            sort: _query.sort,
+            q: asked.q,
+            eventId: asked.eventId,
+            tag: asked.tag,
+            mutualOnly: asked.mutualOnly,
+            sort: asked.sort,
             page: next,
-            pageSize: _query.pageSize,
+            pageSize: asked.pageSize,
           ));
       if (!mounted) return;
+      // The search changed, or page 1 was read again, meanwhile: these
+      // rows belong to another list.
+      if (_query != asked ||
+          !identical(
+              ref.read(networkListProvider(asked)).valueOrNull, firstPage)) {
+        return;
+      }
       setState(() {
         _more.addAll(list.items);
         _page = next;
       });
     } catch (e) {
-      if (mounted) {
+      if (mounted && _query == asked) {
         showToast(context, extractErrorMessage(e), icon: Icons.error_outline);
       }
     } finally {
@@ -176,6 +188,21 @@ class _NetworkPageState extends ConsumerState<NetworkPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Page 1 read again (a save synced, back online, a refresh): the pages
+    // after it were at the old offsets, so they go.
+    ref.listen<AsyncValue<NetworkList>>(networkListProvider(_query),
+        (before, now) {
+      final was = before?.valueOrNull;
+      final fresh = now.valueOrNull;
+      if (was != null && fresh != null && !identical(was, fresh)) {
+        if (_more.isNotEmpty || _page != 1) {
+          setState(() {
+            _more.clear();
+            _page = 1;
+          });
+        }
+      }
+    });
     final answer = ref.watch(networkListProvider(_query));
     final list = answer.valueOrNull;
     return Scaffold(
@@ -227,6 +254,7 @@ class _NetworkPageState extends ConsumerState<NetworkPage> {
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
               sliver: SliverList.list(children: [
                 const _PendingStrip(),
+                const _NoticesStrip(),
                 const _SavedMeStrip(),
                 _searchField(),
                 const SizedBox(height: 10),
@@ -396,7 +424,12 @@ class _NetworkPageState extends ConsumerState<NetworkPage> {
         ),
       ];
     }
-    final people = [...list.items, ..._more];
+    // Each person once, however the pages overlapped.
+    final seen = <int>{};
+    final people = [
+      for (final p in [...list.items, ..._more])
+        if (seen.add(p.id)) p,
+    ];
     if (people.isEmpty) {
       return [
         SliverFillRemaining(
@@ -571,6 +604,95 @@ class _PendingStrip extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// Who a waiting save was for, as the phone knew them: a handle, or a QR
+/// scanned at a time.
+String pendingWho(PendingSave save) {
+  if (save.handle != null) return '@${save.handle}';
+  return 'A QR scanned ${DateFormat('d MMM, h:mm a').format(save.metAt.toLocal())}';
+}
+
+/// Saves made with no signal that didn't go as the person was told --
+/// refused, or saved without the event -- until they have read them.
+class _NoticesStrip extends ConsumerWidget {
+  const _NoticesStrip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notices = ref.watch(networkSaverProvider).notices;
+    if (notices.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: const Color(0xFFFFF4E5),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          key: NetworkPage.noticesKey,
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _show(context, ref, notices),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    notices.length == 1
+                        ? 'A save made with no signal needs a look'
+                        : '${notices.length} saves made with no signal need '
+                            'a look',
+                    style: const TextStyle(fontSize: 13.5),
+                  ),
+                ),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _show(
+      BuildContext context, WidgetRef ref, List<SaveNotice> notices) async {
+    final dismiss = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      builder: (sheet) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          children: [
+            const Text('Saves made with no signal',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            for (final n in notices)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(n.kind == SaveNoticeKind.refused
+                    ? Icons.block
+                    : Icons.schedule),
+                title: Text(pendingWho(n.save)),
+                subtitle: Text(n.message),
+              ),
+            const SizedBox(height: 8),
+            FilledButton(
+              key: const ValueKey('network-notices-dismiss'),
+              onPressed: () => Navigator.pop(sheet, true),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.ink),
+              child: const Text('Got it'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (dismiss == true) {
+      await ref.read(networkSaverProvider.notifier).dismissNotices();
+    }
   }
 }
 

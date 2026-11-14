@@ -37,6 +37,25 @@ class _NoSignal implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// [inner], calling [first] as the first request goes out.
+class _OnFirstRequest implements HttpClientAdapter {
+  _OnFirstRequest(this.inner, this.first);
+  final HttpClientAdapter inner;
+  void Function()? first;
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options,
+      Stream<Uint8List>? requestStream, Future<void>? cancelFuture) {
+    final call = first;
+    first = null;
+    call?.call();
+    return inner.fetch(options, requestStream, cancelFuture);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 Map<String, dynamic> _body(RequestOptions r) =>
     r.data is Map ? Map<String, dynamic>.from(r.data as Map) : const {};
 
@@ -375,9 +394,84 @@ void main() {
             {'message': 'Gone', 'error_code': profileCodeInactiveCode},
             status: 410)
         ..on('POST', '/network', saveResultJson());
-      final saver = NetworkSaver(NetworkApi(), store);
+      final saver = NetworkSaver(NetworkApi(), store,
+          now: () => DateTime(2026, 1, 1, 10));
       expect(await saver.drain(), 1);
       expect(store.saved, isEmpty);
+      // They were told "Saved, it'll sync": now they hear it wasn't.
+      final notice = saver.state.notices.single;
+      expect(notice.kind, SaveNoticeKind.refused);
+      expect(notice.save.code, 'oldoldoldo');
+      expect(notice.message, contains('no longer active'));
+      expect(store.told, hasLength(1));
+      await saver.dismissNotices();
+      expect(saver.state.notices, isEmpty);
+      expect(store.told, isEmpty);
+    });
+
+    test('past 72 hours: saved now, without the event, and said so', () async {
+      final store = MemoryPendingSaveStore();
+      await store.add(PendingSave(
+          clientRef: 'a',
+          code: 'abcdefghjk',
+          method: MetHow.qr,
+          eventId: 9,
+          metAt: DateTime.utc(2026, 11, 28, 10)));
+      final api = useFakeApi()..on('POST', '/network', saveResultJson());
+      final saver = NetworkSaver(NetworkApi(), store,
+          now: () => DateTime.utc(2026, 12, 1, 11));
+      expect(await saver.drain(), 1);
+      expect(_body(api.sent('POST', '/network').single),
+          {'code': 'abcdefghjk', 'method': 'qr'});
+      expect(saver.state.notices.single.kind, SaveNoticeKind.late);
+    });
+
+    test("another account's waiting saves are not sent as this one", () async {
+      final store = MemoryPendingSaveStore();
+      await store.add(PendingSave(
+          clientRef: 'a',
+          code: 'abcdefghjk',
+          method: MetHow.qr,
+          metAt: DateTime.utc(2026, 11, 28, 10),
+          ownerId: 1));
+      final api = useFakeApi()..on('POST', '/network', saveResultJson());
+      final saver = NetworkSaver(NetworkApi(), store,
+          ownerId: 2, now: () => DateTime.utc(2026, 11, 28, 11));
+      expect(await saver.drain(), 0);
+      expect(api.sent('POST', '/network'), isEmpty);
+      expect(saver.state.count, 0);
+      // Theirs is still there, for them.
+      expect(store.saved, hasLength(1));
+    });
+
+    test('signed out mid-send: the rest are not sent', () async {
+      final store = MemoryPendingSaveStore();
+      for (final ref in ['a', 'b']) {
+        await store.add(PendingSave(
+            clientRef: ref,
+            handle: 'person-$ref',
+            method: MetHow.discovery,
+            metAt: DateTime.utc(2026, 11, 28, 10)));
+      }
+      final api = useFakeApi()..on('POST', '/network', saveResultJson());
+      final saver = NetworkSaver(NetworkApi(), store,
+          now: () => DateTime.utc(2026, 11, 28, 11));
+      // The session ends while the first is on its way.
+      APIService.instance.dio.httpClientAdapter =
+          _OnFirstRequest(api, () => saver.dispose());
+      await saver.drain();
+      expect(api.sent('POST', '/network'), hasLength(1));
+      expect(store.saved.single.clientRef, 'b');
+    });
+
+    test('a waiting save remembers whose it is', () async {
+      final store = MemoryPendingSaveStore();
+      useFakeApi();
+      APIService.instance.dio.httpClientAdapter = _NoSignal();
+      final saver = NetworkSaver(NetworkApi(), store, ownerId: 7);
+      await saver.save(code: 'abcdefghjk', method: MetHow.qr);
+      expect(store.saved.single.ownerId, 7);
+      expect(PendingSave.fromJson(store.saved.single.toJson())!.ownerId, 7);
     });
 
     test('the file store keeps them across restarts', () async {
@@ -395,12 +489,23 @@ void main() {
       final saved = await again.all();
       expect(saved.single.code, 'abcdefghjk');
       expect(saved.single.eventId, 9);
-      expect(jsonDecode(await file.readAsString()), hasLength(1));
+      expect((jsonDecode(await file.readAsString()) as Map)['pending'],
+          hasLength(1));
+      // A notice stays with the file, and survives the save's removal.
+      await again.addNotice(SaveNotice(
+          kind: SaveNoticeKind.refused,
+          save: saved.single,
+          message: 'Gone',
+          at: DateTime.utc(2026, 11, 29)));
       await again.remove(['a']);
+      final third = FilePendingSaveStore(file: () async => file);
+      expect(await third.all(), isEmpty);
+      expect((await third.notices()).single.message, 'Gone');
+      await third.clearNotices();
       expect(await file.exists(), isFalse);
-      await again.add(saved.single);
-      await again.clear();
-      expect(await again.all(), isEmpty);
+      await third.add(saved.single);
+      await third.clear();
+      expect(await third.all(), isEmpty);
     });
   });
 }

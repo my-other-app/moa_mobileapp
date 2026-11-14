@@ -11,6 +11,7 @@ import 'package:finnet/core/services/opened_push_lines.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_pin_store.dart';
 import 'package:finnet/features/volunteer/data/scan_queue.dart';
+import 'package:finnet/features/network/data/network_files.dart';
 import 'package:finnet/features/network/data/save_queue.dart';
 
 /// This device's push registration, as signing in and out need it.
@@ -130,6 +131,8 @@ final sessionCachesProvider = Provider<SessionCaches>((ref) {
     'door scan queue': ref.watch(scanQueueStoreProvider).clear,
     // People saved with no signal: this person's to send.
     'network save queue': ref.watch(pendingSaveStoreProvider).clear,
+    // A network export the share sheet was given and not yet swept.
+    'network exports': clearNetworkExports,
     // Lines of pushes tapped while signed out: the last person's.
     'tapped push lines': () async => OpenedPushLines.clear(),
   });

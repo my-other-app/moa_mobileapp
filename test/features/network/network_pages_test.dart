@@ -407,6 +407,34 @@ void main() {
       expect(find.byKey(NetworkPage.pendingKey), findsNothing);
     });
 
+    testWidgets('a save that went wrong later is said, until read',
+        (tester) async {
+      final store = MemoryPendingSaveStore();
+      await store.addNotice(SaveNotice(
+        kind: SaveNoticeKind.refused,
+        save: PendingSave(
+            clientRef: 'a',
+            handle: 'ananya',
+            method: MetHow.qr,
+            metAt: DateTime.utc(2026, 11, 28, 10)),
+        message: "They've turned off saving by QR.",
+        at: DateTime.utc(2026, 11, 28, 12),
+      ));
+      api.on('GET', '/network', networkListJson(const []));
+      await _pump(tester, '/network', store: store);
+
+      expect(
+          find.text('A save made with no signal needs a look'), findsOneWidget);
+      await tester.tap(find.byKey(NetworkPage.noticesKey));
+      await tester.pumpAndSettle();
+      expect(find.text('@ananya'), findsOneWidget);
+      expect(find.text("They've turned off saving by QR."), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('network-notices-dismiss')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(NetworkPage.noticesKey), findsNothing);
+      expect(store.told, isEmpty);
+    });
+
     testWidgets('a save waiting when the tab opens is sent then',
         (tester) async {
       final store = MemoryPendingSaveStore();
@@ -487,6 +515,36 @@ void main() {
       expect(_body(api.sent('POST', '/network').single),
           {'handle': 'ananya', 'method': 'link', 'event_id': 9});
       expect(find.text('Saved'), findsOneWidget);
+    });
+
+    testWidgets('a hundred at a time, and Show more past them', (tester) async {
+      final api = useFakeApi()
+        ..on('GET', '/network/saved-me', {
+          'items': [
+            {'person': personBriefJson()},
+          ],
+          'total': 101,
+        })
+        ..on('GET', '/network/saved-me', {
+          'items': [
+            {
+              'person':
+                  personBriefJson(userId: 99, handle: 'riya', name: 'Riya')
+            },
+          ],
+          'total': 101,
+        });
+      await _pump(tester, '/network/saved-me');
+      expect(api.sent('GET', '/network/saved-me').single.queryParameters,
+          {'page': 1, 'page_size': 100});
+
+      await tester.tap(find.byKey(const ValueKey('saved-me-more')));
+      await _settle(tester);
+      expect(api.sent('GET', '/network/saved-me').last.queryParameters,
+          {'page': 2, 'page_size': 100});
+      expect(find.text('Riya'), findsOneWidget);
+      expect(find.text('Ananya Iyer'), findsOneWidget);
+      expect(find.byKey(const ValueKey('saved-me-more')), findsNothing);
     });
   });
 
