@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/app/app.dart';
+import 'package:finnet/app/release_logging.dart';
 import 'package:finnet/app/start_up.dart';
 import 'package:finnet/app/session_scope.dart';
 import 'package:finnet/core/cache/api_cache.dart';
@@ -15,6 +16,9 @@ import 'package:finnet/features/discover/data/datasources/discover_place_store.d
 import 'package:finnet/firebase_options.dart';
 
 void main() async {
+  // Nothing the app logs reaches a release build's device log.
+  silenceDebugPrintInRelease();
+
   // Errors are reported from three places, all through
   // AnalyticsService.crashReporter (Crashlytics, as the person chose in
   // Settings, with emails, phone numbers and tokens taken out):

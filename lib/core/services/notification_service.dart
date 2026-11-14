@@ -437,7 +437,7 @@ class NotificationService {
   }
 
   void _handleLocalNotificationTap(NotificationResponse response) {
-    debugPrint('Local notification tapped: ${response.payload}');
+    debugPrint(localTapLogLine(response));
     if (response.payload == null) return;
     try {
       final data = jsonDecode(response.payload!);
@@ -517,6 +517,13 @@ class NotificationService {
     pendingLaunch.hold(data);
     OpenedPushLines.opened(data);
   }
+
+  /// What is logged for a tap on a push shown while the app was open: its
+  /// id, never its payload -- the push's data, which can carry a waitlist
+  /// offer's or a request's token.
+  @visibleForTesting
+  static String localTapLogLine(NotificationResponse response) =>
+      'Local notification tapped: ${response.id}';
 
   /// A local notification's payload that launched the app: held to open
   /// once the app is up, its line noted, and counted as that push's one
