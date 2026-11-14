@@ -123,12 +123,22 @@ class FakePaymentRepository implements PaymentRepository {
     return order;
   }
 
+  /// What verify answers, in order, the last one kept; verified when
+  /// empty. And how often it was asked.
+  final List<Result<void>> verifyAnswers = [];
+  int verifies = 0;
+
   @override
   Future<Result<void>> verifyPayment({
     required String razorpayOrderId,
     required String razorpayPaymentId,
-  }) async =>
-      Either.right(null);
+  }) async {
+    verifies++;
+    if (verifyAnswers.isEmpty) return Either.right(null);
+    return verifyAnswers.length > 1
+        ? verifyAnswers.removeAt(0)
+        : verifyAnswers.first;
+  }
 }
 
 /// The tickets' designs kept in memory, fetched through the app's Dio (the

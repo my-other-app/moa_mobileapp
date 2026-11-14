@@ -4,6 +4,7 @@ import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/error/failures.dart';
 import 'package:finnet/features/events/presentation/utils/registration_refusal.dart';
 import 'package:finnet/features/payments/domain/payment_failures.dart';
+import 'package:finnet/features/payments/payment_confirmation.dart';
 
 /// What finishing the payment for a registration came to.
 enum FinishPaymentResult {
@@ -14,6 +15,15 @@ enum FinishPaymentResult {
   /// The checkout was closed or the payment failed. The registration is
   /// still there, waiting.
   notCompleted,
+
+  /// Razorpay took the payment and the server hasn't confirmed it yet
+  /// (CheckoutResult.confirming). Say so, read the registration again, and
+  /// never offer to pay again.
+  confirming,
+
+  /// The registration was taken off the list before the payment went
+  /// through; the server refunds it. [FinishPaymentOutcome.message] says so.
+  removed,
 
   /// The event asks questions (or the profile lacks the details the
   /// registration needs), so the registration form has to be filled in to
@@ -41,11 +51,19 @@ class FinishPaymentOutcome {
   final RegistrationRefusal? refusal;
   final Failure? failure;
 
-  const FinishPaymentOutcome._(this.result, {this.refusal, this.failure});
+  /// What to say for [FinishPaymentResult.removed].
+  final String? message;
+
+  const FinishPaymentOutcome._(this.result,
+      {this.refusal, this.failure, this.message});
 
   static const paid = FinishPaymentOutcome._(FinishPaymentResult.paid);
   static const notCompleted =
       FinishPaymentOutcome._(FinishPaymentResult.notCompleted);
+  static const confirming =
+      FinishPaymentOutcome._(FinishPaymentResult.confirming);
+  static const removed = FinishPaymentOutcome._(FinishPaymentResult.removed,
+      message: registrationRemovedMessage);
   static const needsForm =
       FinishPaymentOutcome._(FinishPaymentResult.needsForm);
 
@@ -68,8 +86,13 @@ typedef RegisterCall = Future<Map<String, dynamic>> Function(
   Map<String, dynamic> body,
 );
 
+/// What the registration form closes with when it leaves a payment the
+/// server is still confirming: the event page then says so, and offers to
+/// check rather than to pay again.
+const paymentConfirmingResult = 'payment-confirming';
+
 /// `RegistrationCheckout.pay`, bound to the payments repository.
-typedef PayCall = Future<Result<bool>> Function({
+typedef PayCall = Future<Result<CheckoutResult>> Function({
   required int eventId,
   required String registrationId,
   required String name,
@@ -200,9 +223,16 @@ class FinishPayment {
       }
       return FinishPaymentOutcome.failed(failure);
     }
-    return paid.right
-        ? FinishPaymentOutcome.paid
-        : FinishPaymentOutcome.notCompleted;
+    switch (paid.right) {
+      case CheckoutResult.paid:
+        return FinishPaymentOutcome.paid;
+      case CheckoutResult.notCompleted:
+        return FinishPaymentOutcome.notCompleted;
+      case CheckoutResult.confirming:
+        return FinishPaymentOutcome.confirming;
+      case CheckoutResult.removed:
+        return FinishPaymentOutcome.removed;
+    }
   }
 
   static String _string(Object? value, String fallback) =>

@@ -4,6 +4,7 @@ import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/error/failures.dart';
 import 'package:finnet/features/events/presentation/finish_payment.dart';
 import 'package:finnet/features/payments/domain/payment_failures.dart';
+import 'package:finnet/features/payments/payment_confirmation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 AdditionalDetail _question({bool required = true}) => AdditionalDetail(
@@ -23,7 +24,7 @@ FinishPayment _flow(
   _Calls calls, {
   Map<String, dynamic>? registration,
   Object? refusal,
-  Result<bool>? paid,
+  Result<CheckoutResult>? paid,
 }) {
   return FinishPayment(
     register: (eventId, body) async {
@@ -46,7 +47,7 @@ FinishPayment _flow(
       required String phone,
     }) async {
       calls.paidFor.add(registrationId);
-      return paid ?? Either.right(true);
+      return paid ?? Either.right(CheckoutResult.paid);
     },
   );
 }
@@ -82,8 +83,24 @@ void main() {
 
   test('a closed checkout is not completed', () async {
     final calls = _Calls();
-    final outcome = await _run(_flow(calls, paid: Either.right(false)));
+    final outcome = await _run(
+        _flow(calls, paid: Either.right(CheckoutResult.notCompleted)));
     expect(outcome.result, FinishPaymentResult.notCompleted);
+  });
+
+  test("a payment Razorpay took and the server hasn't confirmed is "
+      'confirming, never "not completed"', () async {
+    final outcome = await _run(
+        _flow(_Calls(), paid: Either.right(CheckoutResult.confirming)));
+    expect(outcome.result, FinishPaymentResult.confirming);
+  });
+
+  test('a registration removed mid-checkout says it is being refunded',
+      () async {
+    final outcome = await _run(
+        _flow(_Calls(), paid: Either.right(CheckoutResult.removed)));
+    expect(outcome.result, FinishPaymentResult.removed);
+    expect(outcome.message, contains('refunded in full'));
   });
 
   test('409 ALREADY_PAID on the order is a payment that went through',
