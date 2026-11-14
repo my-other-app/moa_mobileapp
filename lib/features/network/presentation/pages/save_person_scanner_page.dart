@@ -183,13 +183,16 @@ class _SavePersonScannerPageState extends ConsumerState<SavePersonScannerPage>
       body: Stack(
         children: [
           Positioned.fill(child: camera(context, _onCode)),
-          Center(
-            child: Container(
-              width: 240,
-              height: 240,
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFF9FFA1), width: 4),
-                borderRadius: BorderRadius.circular(20),
+          // The frame to aim with: drawn over the camera, never in the way.
+          IgnorePointer(
+            child: Center(
+              child: Container(
+                width: 240,
+                height: 240,
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFF9FFA1), width: 4),
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
             ),
           ),
@@ -197,14 +200,15 @@ class _SavePersonScannerPageState extends ConsumerState<SavePersonScannerPage>
             top: 16,
             left: 16,
             right: 16,
-            child: Text(
+            child: IgnorePointer(
+                child: Text(
               widget.eventId == null
                   ? "Point at someone's personal QR"
                   : "Point at someone's personal QR. Saved with this event "
                       'when you are both checked in.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white, fontSize: 14),
-            ),
+            )),
           ),
           if (_busy)
             const Positioned(

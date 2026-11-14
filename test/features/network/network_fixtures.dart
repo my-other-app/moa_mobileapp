@@ -29,7 +29,11 @@ Map<String, dynamic> publicProfileJson({
       ],
       'links': links ??
           [
-            {'type': 'github', 'url': 'https://github.com/ananya', 'label': null},
+            {
+              'type': 'github',
+              'url': 'https://github.com/ananya',
+              'label': null
+            },
             {'type': 'website', 'url': 'ananya.dev', 'label': 'My blog'},
             {'type': 'other', 'url': 'javascript:alert(1)'},
           ],
@@ -49,10 +53,17 @@ Map<String, dynamic> publicProfileJson({
       'achievements': {
         'events_attended': 12,
         'certificates': [
-          {'event_name': 'DevFest', 'url': 'https://myotherapp.in/certificates/ab'},
+          {
+            'event_name': 'DevFest',
+            'url': 'https://myotherapp.in/certificates/ab'
+          },
         ],
         'talks': [
-          {'event_name': 'Hack Night', 'title': 'State in Flutter', 'event_slug': 'hack-night'},
+          {
+            'event_name': 'Hack Night',
+            'title': 'State in Flutter',
+            'event_slug': 'hack-night'
+          },
         ],
         'clubs': null,
       },
@@ -166,15 +177,16 @@ Map<String, dynamic> networkListJson(List<Map<String, dynamic>> items) => {
       ],
     };
 
-Map<String, dynamic> saveResultJson({bool created = true, bool mutual = false}) => {
+Map<String, dynamic> saveResultJson(
+        {bool created = true, bool mutual = false}) =>
+    {
       'person': networkPersonJson(mutual: mutual),
       'created': created,
       'new_encounter': true,
-      'profile': publicProfileJson(
-          relation: {
-            'saved_by_me': true,
-            'saved_me': mutual,
-            'mutual': mutual,
-            'network_id': 5,
-          }),
+      'profile': publicProfileJson(relation: {
+        'saved_by_me': true,
+        'saved_me': mutual,
+        'mutual': mutual,
+        'network_id': 5,
+      }),
     };

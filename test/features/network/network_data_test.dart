@@ -47,13 +47,17 @@ void main() {
       api
         ..on('GET', '/me/profile', myProfileJson())
         ..on('PATCH', '/me/profile', myProfileJson(handle: 'asha.m'))
-        ..on('PUT', '/me/profile/links', myProfileJson(links: [
-          {'type': 'github', 'url': 'https://github.com/asha'},
-        ]));
+        ..on(
+            'PUT',
+            '/me/profile/links',
+            myProfileJson(links: [
+              {'type': 'github', 'url': 'https://github.com/asha'},
+            ]));
       final profiles = ProfilesApi();
       expect((await profiles.me()).handle, 'asha');
       expect((await profiles.update({'handle': 'asha.m'})).handle, 'asha.m');
-      expect(_body(api.sent('PATCH', '/me/profile').single), {'handle': 'asha.m'});
+      expect(
+          _body(api.sent('PATCH', '/me/profile').single), {'handle': 'asha.m'});
 
       final mine = await profiles.putLinks([
         ProfileLink(type: 'github', uri: Uri.parse('https://github.com/asha')),
@@ -71,7 +75,8 @@ void main() {
 
     test('a taken handle is thrown with its code', () async {
       api.on('PATCH', '/me/profile',
-          {'message': 'Taken', 'error_code': handleTakenCode}, status: 409);
+          {'message': 'Taken', 'error_code': handleTakenCode},
+          status: 409);
       Object? error;
       try {
         await ProfilesApi().update({'handle': 'ananya'});
@@ -84,7 +89,8 @@ void main() {
     test('projects: add, change, order, delete', () async {
       api
         ..on('POST', '/me/profile/projects', {'id': 9, 'title': 'Club app'})
-        ..on('PATCH', '/me/profile/projects/9', {'id': 9, 'title': 'Club app 2'})
+        ..on(
+            'PATCH', '/me/profile/projects/9', {'id': 9, 'title': 'Club app 2'})
         ..on('PUT', '/me/profile/projects/order', {'ok': true})
         ..on('DELETE', '/me/profile/projects/9', null, status: 204);
       final profiles = ProfilesApi();
@@ -97,8 +103,9 @@ void main() {
               .title,
           'Club app 2');
       await profiles.orderProjects([9, 3]);
-      expect(_body(api.sent('PUT', '/me/profile/projects/order').single),
-          {'ids': [9, 3]});
+      expect(_body(api.sent('PUT', '/me/profile/projects/order').single), {
+        'ids': [9, 3]
+      });
       await profiles.deleteProject(9);
       expect(api.sent('DELETE', '/me/profile/projects/9'), hasLength(1));
     });
@@ -123,7 +130,8 @@ void main() {
       final found = await ProfilesApi().profile('ananya');
       expect((found as ProfileFound).profile.fullName, 'Ananya Iyer');
       await ProfilesApi().profile('ananya', anonymous: true);
-      expect(api.sent('GET', '/profiles/ananya').last.extra['skipAuth'], isTrue);
+      expect(
+          api.sent('GET', '/profiles/ananya').last.extra['skipAuth'], isTrue);
       expect(await ProfilesApi().profile('gone'), isA<ProfileMissing>());
     });
 
@@ -171,14 +179,15 @@ void main() {
           'total': 1,
         });
       final network = NetworkApi();
-      final list =
-          await network.list(const NetworkQuery(eventId: 9, sort: NetworkSort.name));
+      final list = await network
+          .list(const NetworkQuery(eventId: 9, sort: NetworkSort.name));
       expect(list.items.single.person.fullName, 'Ananya Iyer');
       expect(api.sent('GET', '/network').single.queryParameters,
           containsPair('event_id', 9));
       expect((await network.person(5)).id, 5);
       expect((await network.update(5, note: ' Riverpod ')).note, 'Riverpod');
-      expect(_body(api.sent('PATCH', '/network/5').single), {'note': 'Riverpod'});
+      expect(
+          _body(api.sent('PATCH', '/network/5').single), {'note': 'Riverpod'});
       await network.remove(5);
       final savedMe = await network.savedMe(eventId: 9);
       expect(savedMe.total, 1);
@@ -187,7 +196,8 @@ void main() {
 
     test('a refused save says why', () async {
       api.on('POST', '/network',
-          {'message': 'No', 'error_code': cannotSaveSelfCode}, status: 422);
+          {'message': 'No', 'error_code': cannotSaveSelfCode},
+          status: 422);
       final saver = NetworkSaver(NetworkApi(), MemoryPendingSaveStore());
       final attempt = await saver.save(code: 'abcdefghjk', method: MetHow.qr);
       expect(attempt, isA<SaveRefused>());

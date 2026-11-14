@@ -30,9 +30,9 @@ void main() {
       expect(p.publicUri.toString(), 'https://myotherapp.in/u/ananya');
     });
 
-    test('a private one seen by a stranger is locked until they save back',
-        () {
-      final stranger = PublicProfile.fromJson(publicProfileJson(private: true))!;
+    test('a private one seen by a stranger is locked until they save back', () {
+      final stranger =
+          PublicProfile.fromJson(publicProfileJson(private: true))!;
       expect(stranger.locked, isTrue);
       final savedBack = PublicProfile.fromJson(publicProfileJson(
           private: true,
@@ -186,7 +186,9 @@ void main() {
             'saved_at': '2026-11-28T10:00:00Z',
             'event': devFest(),
           },
-          {'person': {'full_name': null}},
+          {
+            'person': {'full_name': null}
+          },
         ],
         'total': 2,
       });
@@ -229,7 +231,8 @@ void main() {
     });
 
     test('anything else, and look-alike letters, are not codes', () {
-      expect(readScannedCode('https://evil.com/p/abcdefghjk'), isA<OtherCode>());
+      expect(
+          readScannedCode('https://evil.com/p/abcdefghjk'), isA<OtherCode>());
       expect(readScannedCode('abcdefgh10'), isA<OtherCode>());
       expect(readScannedCode('hello'), isA<OtherCode>());
       expect(readScannedCode(''), isA<OtherCode>());
@@ -254,7 +257,8 @@ void main() {
 
   group('the pushes', () {
     test('saves open who saved me; the recap, the network at the event', () {
-      expect(networkPushRoute(networkSavesType, 9), '/network/saved-me?event=9');
+      expect(
+          networkPushRoute(networkSavesType, 9), '/network/saved-me?event=9');
       expect(networkPushRoute(networkSavesType, null), '/network/saved-me');
       expect(networkPushRoute(networkRecapType, 9), '/network?event=9');
       expect(networkPushRoute(networkRecapType, null), '/network');
