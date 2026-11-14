@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/core/utils/email_address.dart';
 import 'package:finnet/app/router/tracking_ref.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
@@ -1120,8 +1121,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your email';
                             }
-                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                .hasMatch(value)) {
+                            if (!looksLikeEmail(value)) {
                               return 'Please enter a valid email';
                             }
                             return null;
