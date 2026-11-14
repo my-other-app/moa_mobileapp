@@ -101,7 +101,8 @@ GateScanResult scanned(ScanOutcome outcome,
         String? byName,
         String? byDoor,
         DateTime? at,
-        bool replayed = false}) =>
+        bool replayed = false,
+        bool retry = false}) =>
     GateScanResult(
       outcome: outcome,
       attendee: who,
@@ -111,6 +112,7 @@ GateScanResult scanned(ScanOutcome outcome,
       checkedInAtDoor: byDoor,
       checkedInAt: at,
       replayed: replayed,
+      retry: retry,
     );
 
 GateContext gateContext({
@@ -183,10 +185,14 @@ class FakeGateApi extends GateApi {
     return _answer<GateScanResult>(answer);
   }
 
+  /// Held until completed, to see two sends meet.
+  Completer<void>? holdBatch;
+
   @override
   Future<List<ReplayedScan>> scanBatch(
       int eventId, List<QueuedScan> scans) async {
     batches.add(scans);
+    if (holdBatch != null) await holdBatch!.future;
     final error = batchError;
     if (error != null) throw error;
     return [

@@ -9,8 +9,9 @@ import 'package:finnet/core/cache/session_caches.dart';
 import 'package:finnet/core/services/notification_service.dart';
 import 'package:finnet/core/services/opened_push_lines.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
+import 'package:finnet/features/live/data/live_identity.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_pin_store.dart';
-import 'package:finnet/features/volunteer/data/scan_queue.dart';
+import 'package:finnet/features/volunteer/data/saved_scans.dart';
 import 'package:finnet/features/network/data/network_files.dart';
 import 'package:finnet/features/network/data/save_queue.dart';
 
@@ -104,6 +105,34 @@ class ApiSessionRevoker implements SessionRevoker {
   }
 }
 
+/// What the person's account left on the phone unsent -- door scans taken
+/// with no signal -- sent when that account's session is back: a sign-in,
+/// or a session restored at start-up.
+abstract class UnsentWork {
+  /// Best effort; never throws.
+  Future<void> send();
+}
+
+/// [UnsentWork] for the door: [SavedScanSender.sendAll] of the account now
+/// signed in.
+class DoorScansUnsentWork implements UnsentWork {
+  const DoorScansUnsentWork(this._ref);
+
+  final Ref _ref;
+
+  @override
+  Future<void> send() async {
+    try {
+      await _ref.read(savedScanSenderProvider).sendAll();
+    } catch (e) {
+      debugPrint('UnsentWork: the saved door scans were not sent: $e');
+    }
+  }
+}
+
+final unsentWorkProvider =
+    Provider<UnsentWork>((ref) => DoorScansUnsentWork(ref));
+
 final pushRegistrationProvider = Provider<PushRegistration>(
   (ref) => const NotificationPushRegistration(),
 );
@@ -115,7 +144,8 @@ final sessionRevokerProvider = Provider<SessionRevoker>(
 /// Everything kept on the phone about the person: cleared at sign-out, when
 /// the server ends the session, and at sign-in (so a second account never
 /// sees the first one's tickets, registrations, profile, certificates,
-/// PDFs or pictures). Posters and other public pictures stay.
+/// PDFs or pictures). Posters and other public pictures stay. Quiz players
+/// go at the end of a session only.
 final sessionCachesProvider = Provider<SessionCaches>((ref) {
   final tickets = ref.watch(savedTicketsLocalDataSourceProvider);
   final pins = ref.watch(certificatePinStoreProvider);
@@ -127,13 +157,18 @@ final sessionCachesProvider = Provider<SessionCaches>((ref) {
     'kept documents': () => DocumentCache.instance.clear(),
     'private pictures': AppImageCaches.clearPrivate,
     'certificate pins': pins.clear,
-    // Door scans saved with no signal: this volunteer's to send.
-    'door scan queue': ref.watch(scanQueueStoreProvider).clear,
+    // Not the door scans saved with no signal: each is an admission that
+    // already happened. They are kept under the account that took them
+    // and sent when it is back ([UnsentWork]).
     // People saved with no signal: this person's to send.
     'network save queue': ref.watch(pendingSaveStoreProvider).clear,
     // A network export the share sheet was given and not yet swept.
     'network exports': clearNetworkExports,
     // Lines of pushes tapped while signed out: the last person's.
     'tapped push lines': () async => OpenedPushLines.clear(),
+  }, atSessionEnd: {
+    // Who this phone is in a live room, and each quiz's player: the next
+    // person to sign in is a new player, never the last one's.
+    'quiz players': ref.watch(liveIdentityProvider).forgetAll,
   });
 });

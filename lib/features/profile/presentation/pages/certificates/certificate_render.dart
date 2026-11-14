@@ -134,7 +134,11 @@ class _CertificateRenderState extends ConsumerState<CertificateRender> {
         _refusal = refused;
         if (refused != null) _image = null;
         _failed = _image == null;
-        _offline = e is DioException && DocumentCache.noAnswer(e);
+        // A render the server was too busy to draw is no reason to say
+        // "once you're online": the person is.
+        _offline = e is DioException &&
+            DocumentCache.noAnswer(e) &&
+            !DocumentCache.renderBusy(e);
       });
     }
   }

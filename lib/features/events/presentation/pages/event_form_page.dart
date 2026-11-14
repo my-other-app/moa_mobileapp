@@ -6,6 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/features/events/presentation/finish_payment.dart' show paymentConfirmingResult;
+import 'package:finnet/features/payments/payment_confirmation.dart';
+import 'package:finnet/features/payments/presentation/confirming_payment.dart';
+import 'package:finnet/core/utils/email_address.dart';
 import 'package:finnet/app/router/tracking_ref.dart';
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/common/models/events/store_model.dart';
@@ -793,17 +797,33 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               name: _nameController.text.trim(),
               email: _emailController.text.trim(),
               phone: _phoneController.text.trim(),
+              whileConfirming: (confirming) =>
+                  showConfirmingPayment(context, confirming),
             );
             if (!mounted) return;
             if (outcome.isLeft) {
               showPaymentFailure(context, outcome.left);
               return;
             }
-            if (!outcome.right) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Payment not completed. Your place is held — tap Continue to pay.')),
-              );
-              return;
+            switch (outcome.right) {
+              case CheckoutResult.paid:
+                break;
+              case CheckoutResult.notCompleted:
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Payment not completed. Your place is held — tap Continue to pay.')),
+                );
+                return;
+              case CheckoutResult.confirming:
+                // Razorpay took it and the server will confirm it: back to
+                // the event, which says so and offers to check -- never
+                // Continue, which would pay again.
+                _leaveConfirming();
+                return;
+              case CheckoutResult.removed:
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text(registrationRemovedMessage)),
+                );
+                return;
             }
           }
           if (!mounted) return;
@@ -839,6 +859,20 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         }
       }
     }
+  }
+
+  /// A payment the server is still confirming: off the form (whose
+  /// Continue would pay again) to the event, which says so.
+  void _leaveConfirming() {
+    if (context.canPop()) {
+      context.pop(paymentConfirmingResult);
+      return;
+    }
+    final id = _eventId;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text(paymentConfirmingMessage)),
+    );
+    if (id != null) context.go('/events/$id');
   }
 
   /// The club reviews every registration, and this one is in: its screen
@@ -1120,8 +1154,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your email';
                             }
-                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                .hasMatch(value)) {
+                            if (!looksLikeEmail(value)) {
                               return 'Please enter a valid email';
                             }
                             return null;

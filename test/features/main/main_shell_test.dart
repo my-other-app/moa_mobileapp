@@ -15,10 +15,15 @@ import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/profile/domain/repositories/profile_repository.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/sign_out.dart';
+import 'package:finnet/features/volunteer/data/gate_api.dart';
+import 'package:finnet/features/volunteer/data/gate_models.dart';
+import 'package:finnet/features/volunteer/data/scan_queue.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+
+import '../volunteer/volunteer_fakes.dart';
 
 const _signedIn = AuthState(accessToken: 'token', isInitialized: true);
 const _signedOut = AuthState(isInitialized: true);
@@ -126,6 +131,13 @@ void main() {
   late _Auth auth;
   late GoRouter router;
   late ProviderContainer container;
+  late MemoryScanQueueStore doorQueue;
+  late FakeGateApi door;
+
+  setUp(() {
+    doorQueue = MemoryScanQueueStore();
+    door = FakeGateApi();
+  });
 
   /// The five tabs in the shell, as the app's router has them.
   Future<void> pumpShell(WidgetTester tester,
@@ -161,6 +173,8 @@ void main() {
         pushSettingsRepositoryProvider.overrideWithValue(_NoSwitches()),
         notificationRepositoryProvider.overrideWithValue(_EmptyInbox()),
         profileRepositoryProvider.overrideWithValue(_Profiles()),
+        scanQueueStoreProvider.overrideWithValue(doorQueue),
+        gateApiProvider.overrideWithValue(door),
       ],
       child: MaterialApp.router(routerConfig: router),
     ));
@@ -264,5 +278,96 @@ void main() {
     expect(auth.logouts, 0);
     expect(container.read(isAuthenticatedProvider), isTrue);
     expect(lit(tester), 4);
+  });
+
+  group('door scans not sent yet', () {
+    Future<void> saveTwo() async {
+      for (final (event, ref) in [(7, 'ref-a-xxxxxxxx'), (8, 'ref-b-xxxxxxxx')]) {
+        await doorQueue.add(QueuedScan(
+            eventId: event,
+            code: 'MOA-AAAAA-BBBB$event',
+            clientRef: ref,
+            scannedAt: DateTime.utc(2026, 11, 28, 9)));
+      }
+    }
+
+    Future<void> logOut(WidgetTester tester) async {
+      await pumpShell(tester, session: _signedIn, start: '/profile', index: 4);
+      await tester.tap(find.text('Log out'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('are said before signing out, never deleted: sign out anyway '
+        'keeps them on the phone', (tester) async {
+      await saveTwo();
+      await logOut(tester);
+
+      expect(find.text('LOG OUT?'), findsNothing);
+      expect(find.text("2 door scans haven't been sent yet"), findsOneWidget);
+      expect(find.text(UnsentScansDialog.message), findsOneWidget);
+
+      await tester.tap(find.byKey(UnsentScansDialog.signOutKey));
+      await tester.pumpAndSettle();
+
+      expect(auth.logouts, 1);
+      expect(await doorQueue.count(), 2);
+      expect(door.batches, isEmpty);
+    });
+
+    testWidgets('Cancel stays signed in, with the scans', (tester) async {
+      await saveTwo();
+      await logOut(tester);
+
+      await tester.tap(find.byKey(UnsentScansDialog.cancelKey));
+      await tester.pumpAndSettle();
+
+      expect(auth.logouts, 0);
+      expect(container.read(isAuthenticatedProvider), isTrue);
+      expect(await doorQueue.count(), 2);
+    });
+
+    testWidgets('Send now sends every event\'s, then signs out', (tester) async {
+      await saveTwo();
+      await logOut(tester);
+
+      await tester.tap(find.byKey(UnsentScansDialog.sendNowKey));
+      await tester.pumpAndSettle();
+
+      expect(door.batches.map((b) => b.single.clientRef),
+          ['ref-a-xxxxxxxx', 'ref-b-xxxxxxxx']);
+      expect(await doorQueue.count(), 0);
+      expect(auth.logouts, 1);
+    });
+
+    testWidgets('Send now with no signal says so, and asks again',
+        (tester) async {
+      await saveTwo();
+      door.batchError = noSignal('/scan-batch');
+      await logOut(tester);
+
+      await tester.tap(find.byKey(UnsentScansDialog.sendNowKey));
+      await tester.pumpAndSettle();
+
+      expect(auth.logouts, 0);
+      expect(find.text(UnsentScansDialog.stillLeft(2)), findsOneWidget);
+      // No signal for the first event: the second isn't tried.
+      expect(door.batches, hasLength(1));
+
+      await tester.tap(find.byKey(UnsentScansDialog.signOutKey));
+      await tester.pumpAndSettle();
+      expect(auth.logouts, 1);
+      expect(await doorQueue.count(), 2);
+    });
+
+    testWidgets('one scan: said in the singular', (tester) async {
+      await doorQueue.add(QueuedScan(
+          eventId: 7,
+          code: 'MOA-AAAAA-BBBBB',
+          clientRef: 'ref-a-xxxxxxxx',
+          scannedAt: DateTime.utc(2026, 11, 28, 9)));
+      await logOut(tester);
+
+      expect(find.text("1 door scan hasn't been sent yet"), findsOneWidget);
+    });
   });
 }

@@ -15,6 +15,7 @@ import 'package:finnet/features/social/data/share_kit_api.dart';
 import 'package:finnet/features/social/domain/share_kit.dart';
 import 'package:finnet/features/threads/data/repositories/moderation_repository_impl.dart';
 import 'package:finnet/features/volunteer/data/repositories/volunteer_repository_impl.dart';
+import 'package:finnet/features/volunteer/data/scan_queue.dart';
 import 'package:finnet/features/volunteer/domain/entities/volunteer_event.dart';
 import 'package:finnet/features/volunteer/domain/repositories/volunteer_repository.dart';
 import 'package:finnet/shared/utils/external_links.dart';
@@ -147,6 +148,8 @@ Future<List<Uri>> _pump(WidgetTester tester,
           .overrideWithValue(FakeModerationRepository()),
       shareKitsProvider.overrideWith((ref) async => shareKits),
       isAuthenticatedProvider.overrideWithValue(true),
+      // No door scans waiting: Log Out asks the usual way.
+      scanQueueStoreProvider.overrideWithValue(MemoryScanQueueStore()),
       linkLauncherProvider.overrideWithValue((uri) async {
         opened.add(uri);
         return launches;

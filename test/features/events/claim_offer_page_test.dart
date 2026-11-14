@@ -4,7 +4,11 @@ import 'package:finnet/features/events/data/datasources/saved_tickets_local_data
 import 'package:finnet/features/events/data/repositories/saved_tickets_repository.dart';
 import 'package:finnet/features/events/presentation/pages/claim_offer_page.dart';
 import 'package:finnet/features/events/presentation/widgets/ticketing/cancelled_notice.dart';
+import 'package:finnet/core/error/either.dart';
+import 'package:finnet/core/error/failures.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
+import 'package:finnet/features/payments/payment_confirmation.dart';
+import 'package:finnet/features/payments/presentation/confirming_payment.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -146,6 +150,49 @@ void main() {
     expect(payments.orders, [(7, 'reg-1')]);
     expect(sheet.opened, hasLength(1));
     expect(find.text("You're in!"), findsOneWidget);
+  });
+
+  testWidgets(
+      "paid on Razorpay and the server can't confirm it yet: \"we're "
+      'confirming your payment", Check payment in place of Pay, and the '
+      'ticket once it is confirmed', (tester) async {
+    final sheet = FakeRazorpaySheet(razorpayPaid)..install(tester);
+    api
+      ..on('GET', _offerPath, _offer(price: 199))
+      ..on('POST', _claimPath, _claimed(pay: 199))
+      ..on('GET', '/events/info/7',
+          {'id': 7, 'is_registered': true, 'is_paid': false, 'has_fee': true});
+    final payments = await _pump(tester);
+    payments.verifyAnswers.add(
+        Either.left(const NetworkFailure(message: 'No connection')));
+
+    await tester.tap(find.byKey(ClaimOfferPage.claimKey));
+    // Timed pumps: the button spins until the dialog is read.
+    for (var i = 0; i < 600; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(payments.verifies, 4, reason: 'asked again 1 s, 3 s, 8 s apart');
+    expect(find.text(paymentConfirmingMessage), findsOneWidget);
+    await tester.tap(find.byKey(ConfirmingPaymentDialog.okKey));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(ClaimOfferPage.confirmingKey), findsOneWidget);
+    expect(find.byKey(ClaimOfferPage.claimKey), findsNothing,
+        reason: 'never offered to pay again');
+    expect(find.textContaining('Payment not completed'), findsNothing);
+
+    api.on('GET', '/events/info/7',
+        {'id': 7, 'is_registered': true, 'is_paid': true, 'has_fee': true});
+    await tester.tap(find.byKey(ClaimOfferPage.checkPaymentKey));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 5));
+    await tester.tap(find.byKey(ClaimOfferPage.checkPaymentKey));
+    await tester.pumpAndSettle();
+
+    expect(find.text("You're in!"), findsOneWidget);
+    expect(sheet.opened, hasLength(1));
+    expect(payments.orders, hasLength(1));
   });
 
   testWidgets('a checkout closed: the place is still held, pay again',

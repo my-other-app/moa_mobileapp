@@ -270,11 +270,50 @@ String redactPersonalPaths(String text) {
   return out;
 }
 
-/// [text] with emails, phone numbers, tokens and the people in addresses
-/// replaced by placeholders: what may go into a crash report or an
-/// analytics event.
+/// Addresses that carry a secret, each kept in its shape without it: a
+/// ticket's code (it is the entry pass), a certificate by its ticket id, a
+/// waitlist offer's or a registration request's token, and a
+/// registration's id in a feedback or missing-answers link and at the door
+/// (where it checks the guest in like a ticket). The API's addresses and
+/// the app's own.
+final _secretPaths = <(RegExp, String Function(Match))>[
+  (RegExp(r'/tickets/[^/\s?#]+'), (_) => '/tickets/:code'),
+  (RegExp(r'/certificates/[^/\s?#]+'), (_) => '/certificates/:id'),
+  (RegExp(r'/offers/[^/\s?#]+'), (_) => '/offers/:token'),
+  (RegExp(r'/claim/[^/\s?#]+'), (_) => '/claim/:token'),
+  (
+    RegExp(r'/registration-requests/[^/\s?#]+'),
+    (_) => '/registration-requests/:token'
+  ),
+  (RegExp(r'/requests/[^/\s?#]+'), (_) => '/requests/:token'),
+  (RegExp(r'/answers/(?:\d+/)?[^/\s?#]+'), (_) => '/answers/:ref'),
+  (RegExp(r'/feedback/(?:\d+/)?[^/\s?#]+'), (_) => '/feedback/:ref'),
+  (
+    RegExp(r'/gate/(check-in|merch|store)/[^/\s?#]+'),
+    (m) => '/gate/${m[1]}/:id'
+  ),
+];
+
+/// [text] with the secrets in its addresses taken out ([_secretPaths]).
+String redactSecretPaths(String text) {
+  var out = text;
+  for (final (pattern, shape) in _secretPaths) {
+    out = out.replaceAllMapped(pattern, shape);
+  }
+  return out;
+}
+
+/// A ticket's code written out anywhere (`MOA-7K3QF-X9PWM`, or an older
+/// `MOA-3F2A9C-K7QXD`): it is the entry pass.
+final _ticketCode =
+    RegExp(r'\bMOA-[0-9A-Z]{1,7}-[0-9A-Z]{5}\b', caseSensitive: false);
+
+/// [text] with emails, phone numbers, tokens, ticket codes and the people
+/// and secrets in addresses replaced by placeholders: what may go into a
+/// crash report or an analytics event.
 String redactForCrashReport(String text) {
-  return redactPersonalPaths(text)
+  return redactSecretPaths(redactPersonalPaths(text))
+      .replaceAll(_ticketCode, '<ticket>')
       // The header first: `authorization: Bearer x` must lose x, not only
       // the word after the colon.
       .replaceAllMapped(_authHeader, (m) => '${m[1]} <token>')

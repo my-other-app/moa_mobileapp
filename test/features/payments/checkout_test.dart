@@ -1,12 +1,13 @@
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/features/payments/checkout.dart';
 import 'package:finnet/features/payments/domain/payment_failures.dart';
+import 'package:finnet/features/payments/payment_confirmation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../events/events_fakes.dart';
 
 void main() {
-  Future<Result<bool>> pay(FakePaymentRepository repository) =>
+  Future<Result<CheckoutResult>> pay(FakePaymentRepository repository) =>
       RegistrationCheckout.pay(
         repository: repository,
         eventId: 7,
@@ -25,7 +26,7 @@ void main() {
     final result = await pay(repository);
 
     expect(result.isRight, isTrue);
-    expect(result.right, isTrue);
+    expect(result.right, CheckoutResult.paid);
     expect(repository.orders, [(7, 'reg-1')]);
   });
 

@@ -1,5 +1,8 @@
 import 'package:finnet/core/network/network_status.dart';
+import 'dart:async';
+
 import 'package:finnet/features/volunteer/data/gate_models.dart';
+import 'package:finnet/features/volunteer/data/saved_scans.dart';
 import 'package:finnet/features/volunteer/data/scan_queue.dart';
 import 'package:finnet/features/volunteer/domain/gate_copy.dart';
 import 'package:finnet/features/volunteer/presentation/providers/gate_controller.dart';
@@ -19,14 +22,16 @@ void main() {
   late NetworkStatus network;
   late GateController door;
   var refs = 0;
+  var clock = DateTime.utc(2026, 10, 25, 9, 30);
 
-  GateController make() => GateController(
+  GateController make({SavedScanSender? sender}) => GateController(
         eventId: 7,
         api: api,
         queue: queue,
+        sender: sender,
         network: network,
         drainEvery: null,
-        now: () => DateTime.utc(2026, 10, 25, 9, 30),
+        now: () => clock,
         newRef: () => 'ref-${++refs}-abcdefgh',
       );
 
@@ -35,6 +40,7 @@ void main() {
     queue = MemoryScanQueueStore();
     network = NetworkStatus(probe: () async => false);
     refs = 0;
+    clock = DateTime.utc(2026, 10, 25, 9, 30);
     door = make();
   });
 
@@ -426,6 +432,137 @@ void main() {
 
       expect(api.batches.map((b) => b.length), [200, 50]);
       expect(door.state.report!.synced, 250);
+    });
+  });
+
+  group('the server asks for a scan again', () {
+    Future<void> saveTwo() async {
+      await door.start();
+      api.scanAnswers.add(noSignal('/scan'));
+      await door.scan('MOA-AAAAA-AAAAA');
+      await door.scan('MOA-BBBBB-BBBBB');
+    }
+
+    GateScanResult couldNotRecord() => scanned(ScanOutcome.invalid,
+        retry: true);
+
+    test('retry: true keeps it saved, unreported; the rest are answered',
+        () async {
+      await saveTwo();
+      api.batchAnswer = (s) => s.code == 'MOA-BBBBB-BBBBB'
+          ? couldNotRecord()
+          : scanned(ScanOutcome.checkedIn, who: guest());
+
+      await door.drain();
+
+      final left = (await queue.all(7)).single;
+      expect(left.code, 'MOA-BBBBB-BBBBB');
+      expect(left.attempts, 1);
+      expect(door.state.queued, 1);
+      expect(door.state.retrying, 1);
+      // Not "not found": no answer about the ticket yet.
+      final report = door.state.report!;
+      expect(report.synced, 1);
+      expect(report.problems, isEmpty);
+    });
+
+    test('it is sent again only after its wait: 15 s, then 30 s', () async {
+      await saveTwo();
+      api.batchAnswer = (_) => couldNotRecord();
+      await door.drain();
+      expect(api.batches, hasLength(1));
+
+      clock = clock.add(const Duration(seconds: 10));
+      await door.drain();
+      expect(api.batches, hasLength(1), reason: 'still waiting');
+
+      clock = clock.add(const Duration(seconds: 6));
+      await door.drain();
+      expect(api.batches, hasLength(2));
+      expect((await queue.all(7)).first.attempts, 2);
+
+      clock = clock.add(const Duration(seconds: 20));
+      await door.drain();
+      expect(api.batches, hasLength(2), reason: 'the wait doubled');
+
+      api.batchAnswer = (s) => scanned(ScanOutcome.checkedIn, who: guest());
+      clock = clock.add(const Duration(seconds: 11));
+      await door.drain();
+      expect(api.batches, hasLength(3));
+      expect(await queue.all(7), isEmpty);
+      expect(door.state.retrying, 0);
+      expect(door.state.report!.admitted, 2);
+    });
+
+    test('Send now sends it at once, wait or not', () async {
+      await saveTwo();
+      api.batchAnswer = (_) => couldNotRecord();
+      await door.drain();
+
+      await door.drain(force: true);
+
+      expect(api.batches, hasLength(2));
+    });
+
+    test('a real refusal is still final: it leaves the phone, by name',
+        () async {
+      await saveTwo();
+      api.batchAnswer = (s) => s.code == 'MOA-AAAAA-AAAAA'
+          ? scanned(ScanOutcome.revoked, who: guest(name: 'Diya Nair'))
+          : couldNotRecord();
+
+      await door.drain();
+
+      expect((await queue.all(7)).single.code, 'MOA-BBBBB-BBBBB');
+      expect(door.state.report!.problems.single.name, 'Diya Nair');
+      expect(door.state.report!.problems.single.tag, 'Revoked');
+    });
+  });
+
+  group('sent while the console was closed', () {
+    test('the answers are listed when it opens on that event', () async {
+      final sender = SavedScanSender(
+          api: () => api, queue: queue, now: () => clock);
+      await queue.add(QueuedScan(
+          eventId: 7,
+          code: 'MOA-AAAAA-AAAAA',
+          clientRef: 'old-ref-xxxxxxxx',
+          scannedAt: DateTime.utc(2026, 10, 25, 9)));
+      api.batchAnswer = (s) => scanned(ScanOutcome.alreadyCheckedIn,
+          who: guest(name: 'Diya Nair'), byName: 'Rahul');
+      door.dispose();
+
+      // Signed in again, the console not open: sent by itself.
+      final sent = await sender.sendAll();
+      expect(sent.answered, 1);
+      expect(sent.left, 0);
+
+      door = make(sender: sender);
+      final problem = door.state.report!.problems.single;
+      expect(problem.name, 'Diya Nair');
+      expect(problem.tag, 'Already used');
+    });
+
+    test('one send an event at a time: the console and a background send '
+        'share it', () async {
+      final sender = SavedScanSender(
+          api: () => api, queue: queue, now: () => clock);
+      door.dispose();
+      door = make(sender: sender);
+      await door.start();
+      api.scanAnswers.add(noSignal('/scan'));
+      await door.scan('MOA-AAAAA-AAAAA');
+      api.holdBatch = Completer<void>();
+
+      final background = sender.sendAll();
+      final fromConsole = door.drain();
+      await pumpEventQueue();
+      api.holdBatch!.complete();
+      await Future.wait([background, fromConsole]);
+
+      expect(api.batches, hasLength(1));
+      expect(door.state.report!.synced, 1);
+      expect(door.state.queued, 0);
     });
   });
 

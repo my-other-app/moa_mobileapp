@@ -1,3 +1,4 @@
+import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 
 /// An event this user is a volunteer for.
@@ -34,25 +35,33 @@ class VolunteerEvent {
     this.maxParticipants,
   });
 
-  factory VolunteerEvent.fromJson(Map<String, dynamic> json) {
-    final poster = json['poster'] as Map<String, dynamic>?;
-    final club = json['club'] is Map ? json['club'] as Map : null;
-    final clubName = club?['name'];
+  /// One row of `/events/volunteer/my-events`, read field by field: an
+  /// odd value (a null slug, a draft with no date yet) costs that field or
+  /// that row, never the volunteer's whole list. Null for a row with no id
+  /// or no date, which can't be shown or opened.
+  static VolunteerEvent? fromJson(Object? value) {
+    final json = jsonObject(value);
+    if (json == null) return null;
+    final id = jsonInt(json['id']);
+    // In the phone's time: the card shows its day.
+    final at = jsonDate(json['event_datetime']);
+    if (id == null || at == null) return null;
+    final poster = jsonObject(json['poster']);
+    final club = jsonObject(json['club']);
 
     return VolunteerEvent(
-      id: json['id'] as int,
-      slug: json['slug'] as String,
-      name: json['name'] as String,
-      posterUrl: poster?['large'] as String? ?? poster?['medium'] as String?,
+      id: id,
+      slug: jsonText(json['slug']),
+      name: jsonText(json['name']),
+      posterUrl: jsonString(poster?['large']) ?? jsonString(poster?['medium']),
       poster: poster,
       // The S3 dict, an older row's bare URL, or a club without a logo.
       clubLogoUrl: imageUrlFrom(club?['logo']),
-      clubName: clubName is String ? clubName : '',
-      // In the phone's time: the card shows its day.
-      eventDatetime: DateTime.parse(json['event_datetime'] as String).toLocal(),
-      hasFee: json['has_fee'] as bool? ?? false,
-      regFee: (json['reg_fee'] as num?)?.toDouble() ?? 0.0,
-      maxParticipants: json['max_participants'] as int?,
+      clubName: jsonText(club?['name']),
+      eventDatetime: at,
+      hasFee: jsonBool(json['has_fee']) ?? false,
+      regFee: jsonDouble(json['reg_fee']) ?? 0.0,
+      maxParticipants: jsonInt(json['max_participants']),
     );
   }
 }

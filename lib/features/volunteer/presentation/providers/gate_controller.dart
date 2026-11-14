@@ -10,6 +10,7 @@ import 'package:finnet/features/network/domain/network_links.dart'
     show isPersonalCode;
 import 'package:finnet/features/volunteer/data/gate_api.dart';
 import 'package:finnet/features/volunteer/data/gate_models.dart';
+import 'package:finnet/features/volunteer/data/saved_scans.dart';
 import 'package:finnet/features/volunteer/data/scan_queue.dart';
 import 'package:finnet/features/volunteer/data/ticket_code.dart';
 import 'package:finnet/features/volunteer/domain/gate_copy.dart';
@@ -34,6 +35,7 @@ class GateState {
     this.loading = true,
     this.contextError,
     this.queued = 0,
+    this.retrying = 0,
     this.card,
     this.busy = false,
     this.report,
@@ -50,6 +52,10 @@ class GateState {
 
   /// Scans saved on the phone, waiting to be sent.
   final int queued;
+
+  /// Of [queued], those the server asked for again (it couldn't record
+  /// them yet): sent again by themselves after a wait.
+  final int retrying;
   final GateCard? card;
 
   /// A scan or a check-in on its way.
@@ -70,6 +76,7 @@ class GateState {
     String? contextError,
     bool clearContextError = false,
     int? queued,
+    int? retrying,
     GateCard? card,
     bool clearCard = false,
     bool? busy,
@@ -85,6 +92,7 @@ class GateState {
         contextError:
             clearContextError ? null : (contextError ?? this.contextError),
         queued: queued ?? this.queued,
+        retrying: retrying ?? this.retrying,
         card: clearCard ? null : (card ?? this.card),
         busy: busy ?? this.busy,
         report: clearReport ? null : (report ?? this.report),
@@ -103,15 +111,18 @@ class GateState {
 /// ([ScanQueueStore]) and shown as unverified, honestly: the volunteer is
 /// asked to check the person, and "welcome in" is never said before the
 /// server has committed. The saved scans are sent through
-/// `/gate/scan-batch` when the app is back online, every [drainEvery], and
-/// when the console opens; the server admits each once, by its client ref,
-/// whichever phones come back first. Those it does not admit are listed by
-/// name in [GateState.report].
+/// `/gate/scan-batch` ([SavedScanSender]) when the app is back online,
+/// every [drainEvery], and when the console opens; the server admits each
+/// once, by its client ref, whichever phones come back first. Those it does
+/// not admit are listed by name in [GateState.report] -- those sent while
+/// the console was closed too. One the server asks for again stays saved
+/// and is sent again after a wait.
 class GateController extends StateNotifier<GateState> {
   GateController({
     required this.eventId,
     required GateApi api,
     required ScanQueueStore queue,
+    SavedScanSender? sender,
     NetworkStatus? network,
     Duration? drainEvery = const Duration(seconds: 15),
     DateTime Function()? now,
@@ -122,6 +133,9 @@ class GateController extends StateNotifier<GateState> {
         _now = now ?? DateTime.now,
         _newRef = newRef ?? _randomRef,
         super(const GateState()) {
+    _sender =
+        sender ?? SavedScanSender(api: () => api, queue: queue, now: _now);
+    _stopWatching = _sender.watch(eventId, _onAnswers);
     _network?.backOnline.addListener(_onBackOnline);
     if (drainEvery != null) {
       _timer = Timer.periodic(drainEvery, (_) => drain());
@@ -131,6 +145,8 @@ class GateController extends StateNotifier<GateState> {
   final int eventId;
   final GateApi _api;
   final ScanQueueStore _queue;
+  late final SavedScanSender _sender;
+  late final void Function() _stopWatching;
   final NetworkStatus? _network;
   final DateTime Function() _now;
   final String Function() _newRef;
@@ -178,8 +194,13 @@ class GateController extends StateNotifier<GateState> {
 
   Future<void> _refreshCount() async {
     try {
-      final n = (await _queue.all(eventId)).length;
-      if (mounted) state = state.copyWith(queued: n);
+      final saved = await _queue.all(eventId);
+      if (mounted) {
+        state = state.copyWith(
+          queued: saved.length,
+          retrying: saved.where((s) => s.attempts > 0).length,
+        );
+      }
     } catch (e) {
       debugPrint('GateController: could not read the queue: $e');
     }
@@ -330,37 +351,24 @@ class GateController extends StateNotifier<GateState> {
     }
   }
 
-  /// Send the saved scans, [GateApi.batchSize] at a time. Quiet when there
-  /// is nothing to send or still no signal; the next tick tries again.
-  Future<void> drain() async {
+  /// Send the saved scans that are due ([force]: all of them -- "Send
+  /// now"). Quiet when there is nothing to send or still no signal; the
+  /// next tick tries again.
+  Future<void> drain({bool force = false}) async {
     if (_draining || !mounted) return;
     _draining = true;
     try {
-      final pending = await _queue.all(eventId);
-      if (pending.isEmpty || !mounted) return;
-      state = state.copyWith(syncing: true);
-      for (var i = 0; i < pending.length; i += GateApi.batchSize) {
-        final slice =
-            pending.sublist(i, min(i + GateApi.batchSize, pending.length));
-        final results = await _api.scanBatch(eventId, slice);
-        for (final r in results) {
-          final s = r.scan;
-          if (s != null) _noteIn([s.code], r.result, s.scannedAt);
-        }
-        await _queue.remove(eventId, results.map((r) => r.clientRef));
-        if (!mounted) return;
-        state = state.copyWith(
-          report: withReplayed(state.report, results),
-          clearSyncError: true,
-        );
-      }
-      // The counters moved: read them again.
-      unawaited(load());
-    } catch (e) {
-      if (!_keepForLater(e) && mounted) {
+      final result = await _sender.send(eventId, force: force, onSending: () {
+        if (mounted) state = state.copyWith(syncing: true);
+      });
+      final error = result.error;
+      if (!mounted) return;
+      if (error != null && !_keepForLater(error)) {
         state = state.copyWith(
             syncError: gateErrorMessage(
-                e, "The saved scans couldn't be sent. They stay saved."));
+                error, "The saved scans couldn't be sent. They stay saved."));
+      } else if (result.sentAny && error == null) {
+        state = state.copyWith(clearSyncError: true);
       }
     } finally {
       _draining = false;
@@ -369,6 +377,23 @@ class GateController extends StateNotifier<GateState> {
         await _refreshCount();
       }
     }
+  }
+
+  /// Final answers about saved scans of this event, whoever sent them: in
+  /// the report, and remembered as in.
+  void _onAnswers(List<ReplayedScan> results) {
+    if (!mounted || results.isEmpty) return;
+    for (final r in results) {
+      final s = r.scan;
+      if (s != null) _noteIn([s.code], r.result, s.scannedAt);
+    }
+    state = state.copyWith(
+      report: withReplayed(state.report, results),
+      clearSyncError: true,
+    );
+    // The counters moved: read them again.
+    unawaited(load());
+    unawaited(_refreshCount());
   }
 
   void _onBackOnline() => unawaited(drain());
@@ -397,6 +422,7 @@ class GateController extends StateNotifier<GateState> {
   @override
   void dispose() {
     _timer?.cancel();
+    _stopWatching();
     _network?.backOnline.removeListener(_onBackOnline);
     super.dispose();
   }
@@ -409,6 +435,7 @@ final gateControllerProvider = StateNotifierProvider.autoDispose
     eventId: eventId,
     api: ref.watch(gateApiProvider),
     queue: ref.watch(scanQueueStoreProvider),
+    sender: ref.watch(savedScanSenderProvider),
     network: ref.watch(networkStatusProvider),
     drainEvery: ref.watch(gateDrainEveryProvider),
   );

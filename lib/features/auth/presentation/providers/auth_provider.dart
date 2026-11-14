@@ -129,6 +129,8 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
             isInitialized: true);
         debugPrint('AuthStateNotifier: Restored session from storage');
         unawaited(_ref.read(pushRegistrationProvider).onSessionRestored());
+        // Door scans this account saved with no signal, if any.
+        unawaited(_ref.read(unsentWorkProvider).send());
       } else {
         state = state.copyWith(isInitialized: true);
         debugPrint('AuthStateNotifier: No saved session found');
@@ -156,8 +158,9 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     // nothing behind for the new session: no saved answers, tickets, PDFs
     // or private pictures. Normally the last sign-out already did this; an
     // app killed mid-sign-out, or a session ended while nothing listened,
-    // did not.
-    await _ref.read(sessionCachesProvider).clearAll();
+    // did not. (Door scans saved with no signal are not among them: they
+    // are kept under their own account.)
+    await _ref.read(sessionCachesProvider).clearAll(signingIn: true);
     final storage = _ref.read(secureStorageServiceProvider);
     await storage.saveTokens(
         accessToken: accessToken, refreshToken: refreshToken);
@@ -173,6 +176,9 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     // sign in, rather than being met by a prompt before the app has shown
     // anything.
     unawaited(_ref.read(pushRegistrationProvider).onSignedIn());
+    // Door scans this account saved before it signed out, if any: sent now
+    // it is back.
+    unawaited(_ref.read(unsentWorkProvider).send());
   }
 
   /// The same person's session, on new tokens: after a password change,
