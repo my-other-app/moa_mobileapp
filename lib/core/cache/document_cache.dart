@@ -220,6 +220,28 @@ class DocumentCache {
       ApiCacheInterceptor.gotNoAnswer(error) ||
       ApiCacheInterceptor.serverDown(error);
 
+  /// The server's `error_code` when every render thread is busy (503): the
+  /// picture couldn't be drawn in time. Online, and nothing wrong with the
+  /// document -- the kept copy, or the app's own drawing, stands in.
+  static const renderBusyCode = 'RENDER_BUSY';
+
+  /// Whether [error] is the server too busy to draw the document now
+  /// ([renderBusyCode]). Documents are asked for as bytes, so the error
+  /// envelope is read from them.
+  static bool renderBusy(Object? error) {
+    if (error is! DioException) return false;
+    final response = error.response;
+    if (response?.statusCode != 503) return false;
+    Object? body = response?.data;
+    try {
+      if (body is List<int>) body = utf8.decode(body, allowMalformed: true);
+      if (body is String) body = jsonDecode(body);
+    } catch (_) {
+      return false;
+    }
+    return body is Map && body['error_code'] == renderBusyCode;
+  }
+
   /// Bring the kept documents under [budget] bytes, the least recently
   /// saved first. A ticket is saved again before its event (TicketImages),
   /// so the ones deleted are old certificates and past tickets, which come
