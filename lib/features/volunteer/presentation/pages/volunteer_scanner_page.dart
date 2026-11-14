@@ -313,11 +313,12 @@ class _VolunteerScannerPageState extends ConsumerState<VolunteerScannerPage>
               valueListenable: network.offline,
               builder: (_, offline, __) => GateSyncPanel(
                 queued: state.queued,
+                retrying: state.retrying,
                 offline: offline,
                 syncing: state.syncing,
                 syncError: state.syncError,
                 report: state.report,
-                onSendNow: _controller.drain,
+                onSendNow: () => _controller.drain(force: true),
                 onDone: _controller.dismissReport,
               ),
             ),

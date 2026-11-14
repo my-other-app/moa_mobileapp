@@ -15,6 +15,7 @@ void main() {
   late FakeSessionRevoker revoker;
   late FakeSessionCaches caches;
   late FakeBadgeChannel icon;
+  late FakeUnsentWork unsent;
 
   ProviderContainer containerWith({AuthState? seed}) {
     final container = ProviderContainer(overrides: [
@@ -23,6 +24,7 @@ void main() {
       pushRegistrationProvider.overrideWithValue(push),
       sessionRevokerProvider.overrideWithValue(revoker),
       sessionCachesProvider.overrideWithValue(caches),
+      unsentWorkProvider.overrideWithValue(unsent),
       if (seed != null) authSeedProvider.overrideWithValue(seed),
     ]);
     addTearDown(container.dispose);
@@ -38,6 +40,7 @@ void main() {
     revoker = FakeSessionRevoker();
     caches = FakeSessionCaches();
     icon = FakeBadgeChannel.install();
+    unsent = FakeUnsentWork();
   });
 
   group('start-up', () {
@@ -52,6 +55,16 @@ void main() {
       expect(state.isAuthenticated, isTrue);
       expect(state.isInitialized, isTrue);
       expect(push.calls, ['restored']);
+      // Door scans the account saved with no signal go now it is back.
+      expect(unsent.sends, 1);
+    });
+
+    test('nobody signed in: nothing of anyone\'s is sent', () async {
+      final container = containerWith();
+      container.read(authStateProvider);
+      await settle();
+
+      expect(unsent.sends, 0);
     });
 
     test('a seeded scope does not read storage', () async {
@@ -96,6 +109,8 @@ void main() {
 
     expect(push.calls, ['signedIn']);
     expect(storage.values['access_token'], 'a');
+    // And what the account left unsent at its last sign-out.
+    expect(unsent.sends, 1);
   });
 
   group('logout', () {
