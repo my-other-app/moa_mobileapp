@@ -75,6 +75,37 @@ void main() {
     });
   });
 
+  group('two feeds', () {
+    Map<String, dynamic> body({String? banner, String status = 'live'}) => {
+          'event': {
+            'id': 68,
+            'status': status,
+            'starts_at': '2026-11-28T03:30:00Z',
+            'ends_at': '2026-11-28T12:30:00Z',
+          },
+          if (banner != null) 'banner': {'text': banner, 'kind': 'info'},
+          'poll': {'prompt': 'Lunch?'},
+          'quiz': {'live': false, 'title': 'Round 1'},
+          'questions': [1, 2],
+        };
+
+    test('saying the same are equal, so the page is not redrawn for them',
+        () {
+      final a = LiveFeed.fromJson(body(banner: 'Doors open'));
+      final b = LiveFeed.fromJson(body(banner: 'Doors open'));
+      expect(a, b);
+      expect(a.hashCode, b.hashCode);
+    });
+
+    test('differing in anything shown are not', () {
+      final a = LiveFeed.fromJson(body(banner: 'Doors open'));
+      expect(a == LiveFeed.fromJson(body(banner: 'Lunch at 1')), isFalse);
+      expect(a == LiveFeed.fromJson(body(banner: 'Doors open', status: 'closed')),
+          isFalse);
+      expect(a == LiveFeed.empty, isFalse);
+    });
+  });
+
   group('a tapped notification', () {
     test('a live update opens the event\'s live room', () {
       expect(NotificationService.routeFor({'type': 'event_live_update', 'event_id': '68'}), '/events/68/live');
