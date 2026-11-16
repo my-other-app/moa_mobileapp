@@ -12,6 +12,7 @@ import 'package:finnet/core/cache/image_caches.dart';
 import 'package:finnet/core/network/interceptors/app_version_interceptor.dart';
 import 'package:finnet/core/services/analytics_service.dart';
 import 'package:finnet/core/services/notification_service.dart';
+import 'package:finnet/core/services/push_pictures.dart';
 import 'package:finnet/core/storage/backup_exclusion.dart';
 import 'package:finnet/core/storage/keychain_start_up.dart';
 import 'package:finnet/features/discover/data/datasources/discover_place_store.dart';
@@ -84,6 +85,8 @@ void main() async {
     unawaited(DocumentCache.instance.trim());
     // Saved answers past their week, or over their caps, go the same way.
     unawaited(ApiCache.instance.prune());
+    // Pictures of pushes shown over a day ago, and older builds' ones.
+    unawaited(PushPictures.instance.prune());
     // Door scans, kept tickets and offline saves out of iCloud backups,
     // for the folders older builds made.
     unawaited(BackupExclusion.instance.excludeKnown());
