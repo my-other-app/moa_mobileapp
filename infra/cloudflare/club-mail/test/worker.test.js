@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import worker, { deliver, forwardTarget, signedHeaders, TOO_LARGE } from "../worker.js";
+import worker, { deliver, forwardTarget, MAX_DEFAULT, signedHeaders, TOO_LARGE } from "../worker.js";
 
 const SECRET = "k".repeat(64);
 const RAW = "From: Ananya <ananya@example.org>\r\nTo: yukthi@myotherapp.in\r\nSubject: Parking\r\nMessage-ID: <p@example.org>\r\n\r\nIs parking free?\r\n";
@@ -96,10 +96,17 @@ test("without the secret nothing is sent, and the mail comes again", async () =>
 
 test("too large is rejected before anything is read or sent", async () => {
   const { calls, fetchFn } = api({ body: { action: "accept" } });
-  const m = message({ size: 26 * 1024 * 1024 });
+  assert.equal(MAX_DEFAULT, 15 * 1024 * 1024);
+  const m = message({ size: 15 * 1024 * 1024 + 1 });
   assert.equal(await deliver(m, env, { fetchFn, ...fast }), "rejected:too_large");
   assert.equal(m.rejected, TOO_LARGE);
   assert.equal(calls.length, 0);
+  // Up to the limit it goes to the API; MAX_BYTES can raise or lower it.
+  assert.equal(await deliver(message({ size: 15 * 1024 * 1024 }), env, { fetchFn, ...fast }), "accepted");
+  assert.equal(calls.length, 1);
+  const small = message({ size: 2 * 1024 * 1024 });
+  assert.equal(await deliver(small, { ...env, MAX_BYTES: String(1024 * 1024) }, { fetchFn, ...fast }), "rejected:too_large");
+  assert.equal(calls.length, 1);
   const big = api({ status: 413, body: null });
   const m2 = message();
   assert.equal(await deliver(m2, env, { fetchFn: big.fetchFn, ...fast }), "rejected:too_large");
