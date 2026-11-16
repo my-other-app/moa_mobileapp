@@ -70,7 +70,10 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
     try {
       final response =
           await APIService.instance.request('/orgs/list', DioMethod.get);
-      final List data = response.data;
+      // The page may have gone while the list loaded.
+      if (!mounted) return;
+      final data = response.data;
+      if (data is! List) return;
       setState(() {
         _orgList = data.map((json) => Organization.fromJson(json)).toList();
       });
