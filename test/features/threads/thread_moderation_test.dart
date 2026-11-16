@@ -49,9 +49,10 @@ class _FakeThreads implements ThreadRepository {
   Future<Result<Thread>> getThread(String threadId) async => Either.right(_post);
 
   @override
-  Future<Result<List<ThreadComment>>> getComments(String threadId) async {
+  Future<Result<CommentPage>> getComments(String threadId,
+          {String? after}) async {
     commentLoads++;
-    return comments;
+    return comments.map(CommentPage.new);
   }
 
   @override

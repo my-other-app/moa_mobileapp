@@ -31,6 +31,9 @@ class ThreadDetailPage extends ConsumerStatefulWidget {
 
   const ThreadDetailPage({super.key, required this.threadId});
 
+  /// "Show more comments", while the server has more.
+  static const moreCommentsKey = ValueKey('thread-more-comments');
+
   @override
   ConsumerState<ThreadDetailPage> createState() => _ThreadDetailPageState();
 }
@@ -104,47 +107,50 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
       );
     }
 
+    // The post, then each comment as it scrolls into view: a popular
+    // post's comments are not all built at open.
+    final rows = <Widget Function()>[
+      () => ThreadCard(
+            thread: thread,
+            expanded: true,
+            onLike: _like,
+            onVote: _vote,
+            // The post's one comment button: here it opens the box
+            // below rather than the page it is already on.
+            onComments: _startComment,
+            onClubTap: () => _openClub(thread),
+            onReport: () => reportContent(
+              context,
+              ref,
+              target: ReportTarget.thread(thread.id),
+              what: 'post',
+            ),
+            onShare: (button) => shareThread(button, ref, thread),
+          ),
+      () => const SizedBox(height: 28),
+      () => Text(
+            thread.comments > 0 ? 'COMMENTS (${thread.comments})' : 'COMMENTS',
+            style: const TextStyle(
+              fontSize: 22,
+              fontFamily: 'BebasNeue',
+              color: Colors.black,
+            ),
+          ),
+      () => const SizedBox(height: 12),
+      ..._commentRows(state, thread),
+    ];
+
     return Column(
       children: [
         Expanded(
           child: RefreshIndicator(
             color: ThreadCard.ink,
             onRefresh: _notifier.load,
-            child: ListView(
+            child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              children: [
-                ThreadCard(
-                  thread: thread,
-                  expanded: true,
-                  onLike: _like,
-                  onVote: _vote,
-                  // The post's one comment button: here it opens the box
-                  // below rather than the page it is already on.
-                  onComments: _startComment,
-                  onClubTap: () => _openClub(thread),
-                  onReport: () => reportContent(
-                    context,
-                    ref,
-                    target: ReportTarget.thread(thread.id),
-                    what: 'post',
-                  ),
-                  onShare: (button) => shareThread(button, ref, thread),
-                ),
-                const SizedBox(height: 28),
-                Text(
-                  thread.comments > 0
-                      ? 'COMMENTS (${thread.comments})'
-                      : 'COMMENTS',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontFamily: 'BebasNeue',
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _comments(state, thread),
-              ],
+              itemCount: rows.length,
+              itemBuilder: (_, i) => rows[i](),
             ),
           ),
         ),
@@ -158,7 +164,88 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
     );
   }
 
-  Widget _comments(ThreadDetailState state, Thread thread) {
+  /// The rows under the post: a spinner, an error, "no comments", or one
+  /// row a comment and, while there are more, "Show more comments".
+  List<Widget Function()> _commentRows(ThreadDetailState state, Thread thread) {
+    final only = _commentsPlaceholder(state);
+    if (only != null) return [() => only];
+
+    // Blocked people's comments go the moment the block is confirmed; the
+    // refetch that follows has the server leave them out for good. The
+    // club's own replies speak for the club and are never hidden here.
+    final hidden = ref.watch(moderationProvider.select((s) => s.hiddenUserIds));
+    final comments = state.comments
+        .where((c) => c.isClub || !hidden.contains(c.authorId))
+        .toList();
+    if (comments.isEmpty && state.commentsNext == null) {
+      return [
+        () => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'No comments yet. Start the conversation.',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+            ),
+      ];
+    }
+
+    final viewerId = ref.watch(threadViewerIdProvider);
+    // Their picture as it is now: a change of avatar shows on their own
+    // comments at once, not at the next load of the post.
+    final myPicture = ref.watch(
+        profileProvider.select((s) => s.profile?.pictureUrl(small: true)));
+
+    return [
+      for (final comment in comments)
+        () => Padding(
+              key: ValueKey('comment-row-${comment.id}'),
+              padding: const EdgeInsets.only(bottom: 18),
+              child: ThreadCommentTile(
+                key: ValueKey('comment-${comment.id}'),
+                comment: comment,
+                clubLogoUrl: thread.club.logoUrl,
+                ownPictureUrl: comment.isBy(viewerId) ? myPicture : null,
+                canDelete: comment.isBy(viewerId),
+                isDeleting: state.deleting.contains(comment.id),
+                onDelete: () => _confirmDelete(comment),
+                onReport: () => reportContent(
+                  context,
+                  ref,
+                  target: ReportTarget.comment(comment.id),
+                  what: 'comment',
+                ),
+                onBlock:
+                    comment.authorCanBeBlocked ? () => _block(comment) : null,
+              ),
+            ),
+      if (state.commentsNext != null)
+        () => Center(
+              child: state.loadingMoreComments
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: ThreadCard.ink),
+                      ),
+                    )
+                  : TextButton(
+                      key: ThreadDetailPage.moreCommentsKey,
+                      onPressed: _moreComments,
+                      child: const Text('Show more comments'),
+                    ),
+            ),
+    ];
+  }
+
+  Future<void> _moreComments() async {
+    final failure = await _notifier.loadMoreComments();
+    if (failure != null && mounted) showThreadFailure(context, ref, failure);
+  }
+
+  /// What stands in for the comments while there are none to list.
+  Widget? _commentsPlaceholder(ThreadDetailState state) {
     if (state.commentsLoading && state.comments.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
@@ -181,52 +268,7 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
         onRetry: _notifier.load,
       );
     }
-    // Blocked people's comments go the moment the block is confirmed; the
-    // refetch that follows has the server leave them out for good. The
-    // club's own replies speak for the club and are never hidden here.
-    final hidden = ref.watch(moderationProvider.select((s) => s.hiddenUserIds));
-    final comments = state.comments
-        .where((c) => c.isClub || !hidden.contains(c.authorId))
-        .toList();
-
-    if (comments.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Text(
-          'No comments yet. Start the conversation.',
-          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-        ),
-      );
-    }
-
-    final viewerId = ref.watch(threadViewerIdProvider);
-    // Their picture as it is now: a change of avatar shows on their own
-    // comments at once, not at the next load of the post.
-    final myPicture = ref.watch(
-        profileProvider.select((s) => s.profile?.pictureUrl(small: true)));
-    return Column(
-      children: [
-        for (final comment in comments) ...[
-          ThreadCommentTile(
-            key: ValueKey('comment-${comment.id}'),
-            comment: comment,
-            clubLogoUrl: thread.club.logoUrl,
-            ownPictureUrl: comment.isBy(viewerId) ? myPicture : null,
-            canDelete: comment.isBy(viewerId),
-            isDeleting: state.deleting.contains(comment.id),
-            onDelete: () => _confirmDelete(comment),
-            onReport: () => reportContent(
-              context,
-              ref,
-              target: ReportTarget.comment(comment.id),
-              what: 'comment',
-            ),
-            onBlock: comment.authorCanBeBlocked ? () => _block(comment) : null,
-          ),
-          const SizedBox(height: 18),
-        ],
-      ],
-    );
+    return null;
   }
 
   void _openClub(Thread thread) {

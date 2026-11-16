@@ -47,3 +47,12 @@ class ThreadComment extends Equatable {
   List<Object?> get props =>
       [id, body, authorId, authorName, authorAvatarUrl, isClub, createdAt];
 }
+
+/// One page of a post's comments, oldest first, and the cursor of the next
+/// page ([next]; null when this is the last).
+class CommentPage {
+  const CommentPage(this.comments, {this.next});
+
+  final List<ThreadComment> comments;
+  final String? next;
+}

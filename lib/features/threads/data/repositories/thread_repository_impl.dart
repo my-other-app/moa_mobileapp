@@ -150,10 +150,13 @@ class ThreadRepositoryImpl implements ThreadRepository {
   }
 
   @override
-  Future<Result<List<ThreadComment>>> getComments(String threadId) {
+  Future<Result<CommentPage>> getComments(String threadId, {String? after}) {
     return _guard('getComments', () async {
-      final comments = await remoteDataSource.getComments(threadId);
-      return comments.map((c) => c.toEntity()).toList();
+      final page = await remoteDataSource.getComments(threadId, after: after);
+      return CommentPage(
+        page.comments.map((c) => c.toEntity()).toList(),
+        next: page.next,
+      );
     });
   }
 

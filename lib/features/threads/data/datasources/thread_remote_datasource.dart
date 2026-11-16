@@ -47,8 +47,12 @@ abstract class ThreadRemoteDataSource {
   /// `POST /threads/{thread_id}/vote` with `{option_id}`.
   Future<PollModel> vote(String threadId, String optionId);
 
-  /// `GET /threads/{thread_id}/comments`.
-  Future<List<ThreadCommentModel>> getComments(String threadId);
+  /// `GET /threads/{thread_id}/comments`: a page of comments, oldest
+  /// first, after the cursor [after]; the next page's cursor, from the
+  /// `X-Next-Cursor` header, or null at the last page.
+  Future<({List<ThreadCommentModel> comments, String? next})> getComments(
+      String threadId,
+      {String? after});
 
   /// `POST /threads/{thread_id}/comments` with `{body}`.
   Future<ThreadCommentModel> addComment(String threadId, String body);
@@ -155,18 +159,28 @@ class ThreadRemoteDataSourceImpl implements ThreadRemoteDataSource {
   }
 
   @override
-  Future<List<ThreadCommentModel>> getComments(String threadId) async {
-    final response = await _dio.get<dynamic>('${_thread(threadId)}/comments');
+  Future<({List<ThreadCommentModel> comments, String? next})> getComments(
+      String threadId,
+      {String? after}) async {
+    final response = await _dio.get<dynamic>(
+      '${_thread(threadId)}/comments',
+      queryParameters: {if (after != null) 'after': after},
+    );
     final data = response.data;
     // A bare list, as `list[CommentOut]` serialises; anything else is read
     // as no comments rather than thrown at the page.
     final items = data is List ? data : const [];
-    return items
-        .whereType<Map>()
-        .map((e) => ThreadCommentModel.fromJson(Map<String, dynamic>.from(e)))
-        // A comment without an id could never be deleted or keyed.
-        .where((c) => c.id.isNotEmpty)
-        .toList();
+    final next = response.headers.value('x-next-cursor')?.trim();
+    return (
+      comments: items
+          .whereType<Map>()
+          .map((e) =>
+              ThreadCommentModel.fromJson(Map<String, dynamic>.from(e)))
+          // A comment without an id could never be deleted or keyed.
+          .where((c) => c.id.isNotEmpty)
+          .toList(),
+      next: next == null || next.isEmpty ? null : next,
+    );
   }
 
   @override

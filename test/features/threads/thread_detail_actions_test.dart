@@ -96,8 +96,9 @@ class _Repository implements ThreadRepository {
       Either.right(_byId(threadId));
 
   @override
-  Future<Result<List<ThreadComment>>> getComments(String threadId) async =>
-      Either.right([
+  Future<Result<CommentPage>> getComments(String threadId,
+          {String? after}) async =>
+      Either.right(CommentPage([
         ThreadComment(
           id: 'c1',
           body: 'Count me in',
@@ -113,7 +114,7 @@ class _Repository implements ThreadRepository {
           isClub: true,
           createdAt: DateTime.now(),
         ),
-      ]);
+      ]));
 
   @override
   Future<Result<ThreadPage>> getClubThreads(int clubId,
