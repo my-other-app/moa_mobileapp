@@ -187,27 +187,54 @@ class _NetworkingPageState extends ConsumerState<NetworkingPage> {
     final alsoHere = people.alsoHere.where(shown).toList();
     final name = people.eventName.isNotEmpty ? people.eventName : widget.eventName;
 
-    return _scrolling([
-      const NetworkingVisibilityBanner(),
-      const SizedBox(height: 16),
-      _Heading(eventName: name, closesAt: people.closesAt),
-      const SizedBox(height: 12),
+    // Each row is built when it scrolls into view, not all at open: the
+    // check-in push sends everyone at the event here at about the same
+    // time, and "Also here" can be hundreds of people.
+    (Key, Widget Function()) card(String section, NetworkingAttendee a) {
+      final key = ValueKey('networking-$section-${a.userId}');
+      return (
+        key,
+        () => _PersonCard(key: key, attendee: a, eventId: _eventId),
+      );
+    }
+
+    final rows = <(Key?, Widget Function())>[
+      (null, () => const NetworkingVisibilityBanner()),
+      (null, () => const SizedBox(height: 16)),
+      (null, () => _Heading(eventName: name, closesAt: people.closesAt)),
+      (null, () => const SizedBox(height: 12)),
       if (sharing.isEmpty)
-        const _Empty()
+        (null, () => const _Empty())
       else ...[
-        _SectionTitle(
-          sharing.length == 1
-              ? '1 person shares your interests'
-              : '${sharing.length} people share your interests',
+        (
+          null,
+          () => _SectionTitle(
+                sharing.length == 1
+                    ? '1 person shares your interests'
+                    : '${sharing.length} people share your interests',
+              ),
         ),
-        for (final a in sharing) _PersonCard(attendee: a, eventId: _eventId),
+        for (final a in sharing) card('sharing', a),
       ],
       if (alsoHere.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        const _SectionTitle('Also here'),
-        for (final a in alsoHere) _PersonCard(attendee: a, eventId: _eventId),
+        (null, () => const SizedBox(height: 8)),
+        (null, () => const _SectionTitle('Also here')),
+        for (final a in alsoHere) card('here', a),
       ],
-    ]);
+    ];
+    // Where each card is now, so a card keeps its state (a save just
+    // made) when the rows above it change.
+    final at = <Key, int>{
+      for (final (i, (key, _)) in rows.indexed)
+        if (key != null) key: i,
+    };
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      itemCount: rows.length,
+      itemBuilder: (_, i) => rows[i].$2(),
+      findChildIndexCallback: (key) => at[key],
+    );
   }
 }
 
@@ -381,7 +408,8 @@ class _Empty extends StatelessWidget {
 }
 
 class _PersonCard extends ConsumerStatefulWidget {
-  const _PersonCard({required this.attendee, required this.eventId});
+  const _PersonCard(
+      {super.key, required this.attendee, required this.eventId});
 
   final NetworkingAttendee attendee;
   final int eventId;
