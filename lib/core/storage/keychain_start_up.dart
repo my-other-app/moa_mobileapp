@@ -36,9 +36,10 @@ enum KeychainStart {
 /// first launch of a new install or the first launch after an update from
 /// a build that never wrote one (1.2.1, 1.3.0) -- and a missing marker
 /// alone can't tell those apart. What does is the app's folders: every
-/// launch of those builds left files there ([earlierRunTraces]: the
-/// picture caches' indexes and the saved answers' folder, made at every
-/// start-up), and a new install's folders are empty. So: no marker and no
+/// launch of those builds left files there ([supportTraces],
+/// [cacheTraces]: the picture caches' indexes and the saved answers'
+/// folder are made at every start-up), and a new install's folders are
+/// empty. So: no marker and no
 /// trace of an earlier run is a new install, and only then is the keychain
 /// emptied. No marker but a trace is an update, which keeps everything.
 ///
