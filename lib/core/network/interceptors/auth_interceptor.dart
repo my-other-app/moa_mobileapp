@@ -10,7 +10,8 @@ typedef SessionEndedCallback = void Function(SessionEndReason reason);
 /// Interceptor that automatically adds authentication token to requests.
 ///
 /// Handles:
-/// - Adding Bearer token to Authorization header
+/// - Adding Bearer token to Authorization header, on requests to the API's
+///   own address only ([sendsSessionTo])
 /// - Skipping auth for specific requests (using 'skipAuth' extra)
 /// - Token refresh on 401 errors, then one retry of the request. Exactly one
 ///   refresh runs at a time, shared by every request that hit a 401 while
@@ -48,6 +49,20 @@ class AuthInterceptor extends Interceptor {
     SessionEndedCallback? onSessionEnded,
   }) : _onSessionEnded = onSessionEnded ?? SessionEvents.reportRevoked;
 
+  /// Whether [options] goes to the API this Dio is for -- the same scheme,
+  /// host and port as its base address -- and so carries the session. A
+  /// request to any other address (a picture's storage link, a page a
+  /// server named) is sent without it.
+  @visibleForTesting
+  bool sendsSessionTo(RequestOptions options) {
+    final api = Uri.tryParse(_dio.options.baseUrl);
+    if (api == null || api.host.isEmpty) return false;
+    final to = options.uri;
+    return to.scheme.toLowerCase() == api.scheme.toLowerCase() &&
+        to.host.toLowerCase() == api.host.toLowerCase() &&
+        to.port == api.port;
+  }
+
   @override
   void onRequest(
     RequestOptions options,
@@ -56,7 +71,7 @@ class AuthInterceptor extends Interceptor {
     // Check if this request should skip authentication
     final skipAuth = options.extra['skipAuth'] == true;
 
-    if (!skipAuth) {
+    if (!skipAuth && sendsSessionTo(options)) {
       try {
         final token = await _secureStorage.getAccessToken();
 
@@ -76,8 +91,11 @@ class AuthInterceptor extends Interceptor {
     final options = err.requestOptions;
     final status = err.response?.statusCode;
     // Sign-in calls and the refresh itself are sent with skipAuth: their 401
-    // means "wrong password" or "dead refresh token", not "refresh me".
-    final sentWithSession = options.extra['skipAuth'] != true;
+    // means "wrong password" or "dead refresh token", not "refresh me". A
+    // request to another server went without the session, so its 401 is
+    // that server's.
+    final sentWithSession =
+        options.extra['skipAuth'] != true && sendsSessionTo(options);
 
     if (!sentWithSession) {
       handler.next(err);
