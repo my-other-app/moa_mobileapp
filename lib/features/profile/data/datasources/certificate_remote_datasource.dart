@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/network/dio_client.dart';
@@ -39,11 +40,20 @@ class CertificateRemoteDataSourceImpl implements CertificateRemoteDataSource {
       : _cache = cache;
 
   static const _path = '/events/list';
-  static const _query = <String, dynamic>{
-    'is_registered': true,
-    'limit': 100,
-    'offset': 0,
-  };
+
+  /// The server's largest page.
+  static const pageSize = 100;
+
+  /// Pages read at most: a thousand registrations.
+  static const maxPages = 10;
+
+  static Map<String, dynamic> _queryAt(int offset) => <String, dynamic>{
+        'is_registered': true,
+        'limit': pageSize,
+        'offset': offset,
+      };
+
+  static final _query = _queryAt(0);
 
   /// There is no certificates endpoint; a certificate is a registration
   /// the organiser issued one to. So this reads the event list filtered to
@@ -53,15 +63,45 @@ class CertificateRemoteDataSourceImpl implements CertificateRemoteDataSource {
   /// `is_ended` is not sent: a certificate can be issued while the event
   /// is still running, and filtering on it would hide today's until
   /// tomorrow.
+  ///
+  /// Every page, while the server says there is a next one (up to
+  /// [maxPages]): it used to read the first hundred registrations only, so
+  /// a frequent attendee's older certificates were missing. The first page
+  /// is saved for offline, as before; a later page that fails ends the
+  /// list there rather than losing what was read.
   @override
   Future<List<Certificate>> getMyCertificates() async {
-    final response = await _dio.get<dynamic>(
+    final first = await _dio.get<dynamic>(
       _path,
       queryParameters: _query,
       // The person's own registrations: saved encrypted.
       options: Options(extra: CachePolicy.personalKept.extra),
     );
-    return _certificatesFrom(response.data);
+    final items = [..._itemsOf(first.data)];
+    var more = _hasNext(first.data);
+    for (var page = 1; more && page < maxPages; page++) {
+      try {
+        final next = await _dio.get<dynamic>(_path,
+            queryParameters: _queryAt(page * pageSize));
+        final got = _itemsOf(next.data);
+        items.addAll(got);
+        more = got.isNotEmpty && _hasNext(next.data);
+      } catch (e) {
+        debugPrint('Certificates: page ${page + 1} failed: $e');
+        break;
+      }
+    }
+    return _certificatesFrom({'items': items});
+  }
+
+  static List<Object?> _itemsOf(Object? body) {
+    final raw = body is Map ? body['items'] : null;
+    return raw is List ? raw : const [];
+  }
+
+  static bool _hasNext(Object? body) {
+    final next = body is Map ? body['next'] : null;
+    return next is String && next.isNotEmpty;
   }
 
   @override
@@ -76,12 +116,14 @@ class CertificateRemoteDataSourceImpl implements CertificateRemoteDataSource {
   }
 
   static List<Certificate> _certificatesFrom(Object? body) {
-    final raw = body is Map ? body['items'] : null;
-    final items = raw is List ? raw : const [];
-    final certificates = items
+    // One certificate a registration, should a page repeat a row (the
+    // list moving while it is read).
+    final seen = <String>{};
+    final certificates = _itemsOf(body)
         .whereType<Map<String, dynamic>>()
         .map(Certificate.fromEventJson)
         .whereType<Certificate>()
+        .where((c) => seen.add(c.ticketId))
         .toList();
 
     // Most recent first: a certificate earned last week is more likely to be
