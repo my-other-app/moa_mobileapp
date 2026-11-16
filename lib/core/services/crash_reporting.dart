@@ -115,16 +115,24 @@ class CrashReporter {
     return true;
   }
 
-  /// An error nothing caught. Fatal, unless it is a failed image or network
-  /// fetch that nothing awaited -- those leave the app running.
+  /// An error nothing caught: a future that failed with nobody waiting on
+  /// it, from main's zone or `PlatformDispatcher.onError`. Recorded as
+  /// non-fatal, with [uncaughtReason]: it does not end the app (the screen
+  /// carries on), so counting it as a crash buried the real ones -- a
+  /// native crash, or a framework error that breaks a screen
+  /// ([handleFlutterError]), which stay fatal.
   void recordUncaught(Object error, StackTrace stack) {
     if (!_on) return;
     _send(sink.recordError(
       redactForCrashReport('$error'),
       stack,
-      fatal: !isNonFatalError(error),
+      reason: uncaughtReason,
+      fatal: false,
     ));
   }
+
+  /// The reason an uncaught error is filed under, to find them together.
+  static const uncaughtReason = 'uncaught async error';
 
   /// An error the app caught and carried on from, worth seeing anyway.
   void recordNonFatal(Object error, StackTrace? stack, {String? reason}) {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:finnet/core/storage/backup_exclusion.dart';
 import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/network/domain/network.dart';
 
@@ -243,6 +245,8 @@ class FilePendingSaveStore implements PendingSaveStore {
         }),
         flush: true);
     await temp.rename(file.path);
+    // A new file each write, so marked each time; not waited on.
+    unawaited(BackupExclusion.instance.exclude(file.path));
   }
 
   @override

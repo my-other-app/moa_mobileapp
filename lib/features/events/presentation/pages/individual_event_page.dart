@@ -426,7 +426,10 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       poll: () => liveSource.fetchBanner(_idOrZero),
       parse: LiveFeed.tryParse,
       onData: (feed) {
-        if (mounted) setState(() => live = feed);
+        // A poll every 30 s around the event, and stream snapshots while
+        // it is live: most say what the strip shows already, and redrawing
+        // this whole page for them was wasted.
+        if (mounted && feed != live) setState(() => live = feed);
       },
       // As the website: a stream only while the event is happening.
       shouldStream: (feed) => feed.isEventLive,

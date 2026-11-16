@@ -91,4 +91,24 @@ class LiveFeed {
     if (questions > 0) return 'Questions are being taken from the floor';
     return 'The live room is open — updates, polls and questions';
   }
+
+  /// Equal when every field is: the event page redraws only for a feed
+  /// that changed, not for each poll that answered the same.
+  @override
+  bool operator ==(Object other) =>
+      other is LiveFeed &&
+      other.eventId == eventId &&
+      other.eventStatus == eventStatus &&
+      other.startsAt == startsAt &&
+      other.endsAt == endsAt &&
+      other.bannerText == bannerText &&
+      other.bannerKind == bannerKind &&
+      other.pollPrompt == pollPrompt &&
+      other.quizLive == quizLive &&
+      other.quizTitle == quizTitle &&
+      other.questions == questions;
+
+  @override
+  int get hashCode => Object.hash(eventId, eventStatus, startsAt, endsAt,
+      bannerText, bannerKind, pollPrompt, quizLive, quizTitle, questions);
 }

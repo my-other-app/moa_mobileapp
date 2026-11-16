@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/cache/api_cache_interceptor.dart';
 import 'package:finnet/core/cache/image_caches.dart' show overBudget;
+import 'package:finnet/core/storage/backup_exclusion.dart';
 
 /// A document on the phone, and whether it is known to be current.
 class SavedDocument {
@@ -99,7 +100,11 @@ class DocumentCache {
 
   Future<Directory> _directory() async {
     final dir = await _root();
-    if (!await dir.exists()) await dir.create(recursive: true);
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+      // The person's tickets and certificates stay out of backups.
+      await BackupExclusion.instance.exclude(dir.path);
+    }
     return dir;
   }
 

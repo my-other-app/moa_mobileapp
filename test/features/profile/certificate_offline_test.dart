@@ -360,8 +360,10 @@ void main() {
 
       // And it is drawn: at the render's own shape.
       await tester.runAsync(() async {
-        await precacheImage(MemoryImage(_render),
-            tester.element(find.byType(RenderedDocumentImage)));
+        final context = tester.element(find.byType(RenderedDocumentImage));
+        await precacheImage(
+            RenderedDocumentImage.sizedFor(context, MemoryImage(_render)),
+            context);
         await Future<void>.delayed(const Duration(milliseconds: 100));
       });
       await tester.pump();

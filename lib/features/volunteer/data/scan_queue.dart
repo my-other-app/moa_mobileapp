@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:finnet/core/auth/jwt_claims.dart';
+import 'package:finnet/core/storage/backup_exclusion.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/volunteer/data/gate_models.dart';
 
@@ -123,7 +125,12 @@ class FileScanQueueStore implements ScanQueueStore {
 
   Future<Directory> _dir() async {
     final dir = await _root();
-    if (!await dir.exists()) await dir.create(recursive: true);
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+      // Other people's ticket codes: kept on this phone until sent, and
+      // out of its backups. Not waited on: a scan is saved at once.
+      unawaited(BackupExclusion.instance.exclude(dir.path));
+    }
     if (!_adopted) {
       _adopted = true;
       await _adoptUnowned(dir);

@@ -156,20 +156,25 @@ void main() {
       expect(sink.reports.single.fatal, isFalse);
     });
 
-    test('an uncaught error: fatal unless it is a failed fetch', () {
+    test(
+        'an uncaught async error: non-fatal (the app carries on), filed '
+        'under its own reason, and redacted', () {
       reporter.recordUncaught(
           StateError('no user deepu@x.io'), StackTrace.current);
       reporter.recordUncaught(
           const SocketException('Failed host lookup'), StackTrace.current);
 
-      expect(sink.reports.map((r) => r.fatal), [true, false]);
+      expect(sink.reports.map((r) => r.fatal), [false, false]);
+      expect(sink.reports.map((r) => r.reason),
+          everyElement(CrashReporter.uncaughtReason));
       expect(sink.reports.first.exception, 'Bad state: no user <email>');
     });
 
-    test('PlatformDispatcher errors are handled and reported', () {
+    test('PlatformDispatcher errors are handled and reported, non-fatal', () {
       expect(reporter.handlePlatformError(StateError('x'), StackTrace.current),
           isTrue);
-      expect(sink.reports.single.fatal, isTrue);
+      expect(sink.reports.single.fatal, isFalse);
+      expect(sink.reports.single.reason, CrashReporter.uncaughtReason);
     });
 
     test('a caught error is non-fatal, with its reason redacted', () {

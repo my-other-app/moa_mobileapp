@@ -12,6 +12,7 @@ class _RecordingAdapter implements HttpClientAdapter {
   final List<RequestOptions> requests = [];
   Object? body = const <String, dynamic>{};
   int status = 200;
+  Map<String, List<String>> headers = const {};
 
   @override
   Future<ResponseBody> fetch(
@@ -25,6 +26,7 @@ class _RecordingAdapter implements HttpClientAdapter {
       status,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
+        ...headers,
       },
     );
   }
@@ -109,16 +111,37 @@ void main() {
         },
       ];
 
-      final comments = await dataSource.getComments('t1');
+      final page = await dataSource.getComments('t1');
 
       expect(adapter.only.path, '/threads/t1/comments');
-      expect(comments.single.body, 'hi');
+      expect(page.comments.single.body, 'hi');
+      expect(page.next, isNull);
+    });
+
+    test(
+        'comments a page at a time: the next page\'s cursor from '
+        'X-Next-Cursor, sent back as after', () async {
+      adapter
+        ..body = []
+        ..headers = {
+          'x-next-cursor': ['c2026-10-16T09:00:00|c1'],
+        };
+
+      final first = await dataSource.getComments('t1');
+      expect(first.next, 'c2026-10-16T09:00:00|c1');
+      expect(adapter.requests.last.queryParameters, isEmpty);
+
+      adapter.headers = const {};
+      final second = await dataSource.getComments('t1', after: first.next);
+      expect(adapter.requests.last.queryParameters,
+          {'after': 'c2026-10-16T09:00:00|c1'});
+      expect(second.next, isNull);
     });
 
     test('comments that are not a list read as none', () async {
       adapter.body = {'items': []};
 
-      expect(await dataSource.getComments('t1'), isEmpty);
+      expect((await dataSource.getComments('t1')).comments, isEmpty);
     });
 
     test('comment: POST /threads/{id}/comments with body', () async {

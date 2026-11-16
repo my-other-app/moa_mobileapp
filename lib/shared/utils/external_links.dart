@@ -31,6 +31,16 @@ typedef PlatformLauncher = Future<bool> Function(Uri uri, LaunchMode mode);
 
 Future<bool> _launch(Uri uri, LaunchMode mode) => launchUrl(uri, mode: mode);
 
+/// The schemes a link may open with: a web page, an email, a call. Links
+/// come from what clubs, speakers and pushes say; anything else -- another
+/// app's own scheme, a payment app's, `intent:`, `file:`, `sms:` -- is not
+/// opened, and the screen says it couldn't open the link.
+const openableSchemes = {'https', 'http', 'mailto', 'tel'};
+
+/// Whether [uri] may be opened at all ([openableSchemes]).
+bool isOpenableLink(Uri uri) =>
+    openableSchemes.contains(uri.scheme.toLowerCase());
+
 /// Whether [uri] is a page of our own site (myotherapp.in or a subdomain).
 bool isOwnSite(Uri uri) {
   final site = websiteUri.host;
@@ -42,11 +52,13 @@ bool isOwnSite(Uri uri) {
 /// Opens [uri] inside the app -- SFSafariViewController on iOS, a Custom
 /// Tab on Android, so the person stays in the app and Back returns to it --
 /// and in the browser when that cannot be done (no in-app browser, or the
-/// platform refused). Answers whether anything opened; never throws.
+/// platform refused). A web page only. Answers whether anything opened;
+/// never throws.
 Future<bool> openInAppThenBrowser(
   Uri uri, {
   PlatformLauncher launch = _launch,
 }) async {
+  if (!(uri.isScheme('https') || uri.isScheme('http'))) return false;
   try {
     if (await launch(uri, LaunchMode.inAppBrowserView)) return true;
   } catch (_) {
@@ -59,11 +71,13 @@ Future<bool> openInAppThenBrowser(
   }
 }
 
-/// Opens [uri] outside the app: the browser, or the app for its scheme.
+/// Opens [uri] outside the app: the browser, or the app for its scheme --
+/// one of [openableSchemes]; any other is not opened (false).
 Future<bool> openExternally(
   Uri uri, {
   PlatformLauncher launch = _launch,
 }) async {
+  if (!isOpenableLink(uri)) return false;
   try {
     return await launch(uri, LaunchMode.externalApplication);
   } catch (_) {

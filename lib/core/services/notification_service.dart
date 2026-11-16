@@ -5,8 +5,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/network/interceptors/topic_change_interceptor.dart';
@@ -15,6 +13,7 @@ import 'package:finnet/core/services/opened_push_lines.dart';
 import 'package:finnet/core/services/pending_notification_route.dart';
 import 'package:finnet/core/services/push_arrivals.dart';
 import 'package:finnet/core/services/push_dedupe.dart';
+import 'package:finnet/core/services/push_pictures.dart';
 import 'package:finnet/core/services/push_topics.dart';
 import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/core/utils/error_utils.dart';
@@ -340,15 +339,6 @@ class NotificationService {
         topics: topics,
       );
 
-  Future<String> _downloadAndSaveFile(String url, String fileName) async {
-    final Directory directory = await getApplicationDocumentsDirectory();
-    final String filePath = '${directory.path}/$fileName';
-    final http.Response response = await http.get(Uri.parse(url));
-    final File file = File(filePath);
-    await file.writeAsBytes(response.bodyBytes);
-    return filePath;
-  }
-
   void _handleForegroundMessage(RemoteMessage message) {
     debugPrint('Received foreground message: ${message.messageId}');
     // A second copy of a broadcast (the same push_id): shown once.
@@ -575,17 +565,11 @@ class NotificationService {
     String? imageUrl,
   }) async {
     // The picture, downloaded once -- it was fetched twice, once for each
-    // platform's details, on every phone. A .jpg name: an iPhone's
-    // attachment is typed by it; Android reads the file whatever its name.
+    // platform's details, on every phone -- into the temporary folder, in
+    // a few seconds at most (PushPictures). None: the text alone.
     String? picturePath;
     if (imageUrl != null && imageUrl.isNotEmpty) {
-      try {
-        picturePath = await _downloadAndSaveFile(imageUrl,
-            'bigPicture-${DateTime.now().millisecondsSinceEpoch}.jpg');
-      } catch (e) {
-        // The text alone, then.
-        debugPrint('Error downloading image for notification: $e');
-      }
+      picturePath = await PushPictures.instance.download(imageUrl, id: id);
     }
 
     await _localNotifications.show(

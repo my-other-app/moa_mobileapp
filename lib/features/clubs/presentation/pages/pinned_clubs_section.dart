@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:finnet/shared/utils/image_url.dart';
+import 'package:finnet/features/clubs/domain/club_summary.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 
 class PinnedClubsSection extends StatelessWidget {
-  final List<dynamic> pinnedClubs;
+  final List<ClubSummary> pinnedClubs;
   const PinnedClubsSection({
     super.key,
     required this.pinnedClubs,
@@ -40,9 +40,9 @@ class PinnedClubsSection extends StatelessWidget {
               final club = pinnedClubs[index];
               return InkWell(
                 onTap: () {
-                  context.push('/clubs/${club['id']}', extra: {
-                    'clubSlug': club['slug'],
-                    'clubName': club['name'],
+                  context.push('/clubs/${club.id}', extra: {
+                    'clubSlug': club.slug,
+                    'clubName': club.name,
                   });
                 },
                 child: Column(
@@ -51,7 +51,7 @@ class PinnedClubsSection extends StatelessWidget {
                     // `club['logo']['thumbnail']` threw and took the whole
                     // clubs tab down with it.
                     ClubLogo(
-                      url: imageUrlFrom(club['logo']),
+                      url: club.logoUrl,
                       size: 48,
                       circle: true,
                     ),
@@ -59,7 +59,7 @@ class PinnedClubsSection extends StatelessWidget {
                     SizedBox(
                       width: 60, // limit the width so text can wrap/ellipsis
                       child: Text(
-                        club['name'] ?? '',
+                        club.name,
                         style: const TextStyle(fontSize: 12),
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,

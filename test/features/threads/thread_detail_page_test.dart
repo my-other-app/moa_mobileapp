@@ -43,9 +43,14 @@ class _FakeRepository implements ThreadRepository {
   @override
   Future<Result<Thread>> getThread(String threadId) async => thread;
 
+  /// Pages by their `after`; [comments] is the first page when none is
+  /// set for it.
+  final Map<String?, Result<CommentPage>> pages = {};
+
   @override
-  Future<Result<List<ThreadComment>>> getComments(String threadId) async =>
-      comments;
+  Future<Result<CommentPage>> getComments(String threadId,
+          {String? after}) async =>
+      pages[after] ?? comments.map(CommentPage.new);
 
   @override
   Future<Result<ThreadComment>> addComment(String threadId, String body) async {
@@ -124,6 +129,39 @@ void main() {
 
     expect(find.text('This post was removed'), findsOneWidget);
     expect(find.byKey(const ValueKey('comment-field')), findsNothing);
+  });
+
+  testWidgets(
+      'a long thread: comments are built as they scroll in, and "Show more '
+      'comments" reads the next page', (tester) async {
+    ThreadComment c(int i) => ThreadComment(
+          id: 'c$i',
+          body: 'Comment $i',
+          authorId: 100 + i,
+          authorName: 'Person $i',
+          createdAt: DateTime.now(),
+        );
+    final repo = _FakeRepository()
+      ..pages[null] = Either.right(
+          CommentPage([for (var i = 1; i <= 120; i++) c(i)], next: 'k2'))
+      ..pages['k2'] = Either.right(CommentPage([c(121)]));
+    await _pump(tester, repository: repo);
+
+    expect(find.text('Comment 1'), findsOneWidget);
+    // A screenful, not 120 tiles.
+    expect(find.textContaining('Comment ').evaluate().length, lessThan(40));
+
+    final more = find.byKey(ThreadDetailPage.moreCommentsKey);
+    await tester.scrollUntilVisible(more, 2000,
+        scrollable: find.byType(Scrollable).first, maxScrolls: 200);
+    await tester.tap(more);
+    await tester.pump();
+    await tester.pump();
+
+    await tester.scrollUntilVisible(find.text('Comment 121'), 500,
+        scrollable: find.byType(Scrollable).first, maxScrolls: 50);
+    expect(find.text('Comment 121'), findsOneWidget);
+    expect(more, findsNothing);
   });
 
   testWidgets('no comments yet invites the first one', (tester) async {
