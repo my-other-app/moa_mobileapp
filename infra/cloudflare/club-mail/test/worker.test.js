@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import worker, { deliver, forwardTarget, MAX_DEFAULT, signedHeaders, TOO_LARGE } from "../worker.js";
+import worker, { deliver, forwardTarget, MAX_DEFAULT, sha256Hex, signedHeaders, TOO_LARGE } from "../worker.js";
 
 const SECRET = "k".repeat(64);
 const RAW = "From: Ananya <ananya@example.org>\r\nTo: yukthi@myotherapp.in\r\nSubject: Parking\r\nMessage-ID: <p@example.org>\r\n\r\nIs parking free?\r\n";
@@ -43,6 +43,39 @@ test("signs exactly as the API checks (the backend's own vector)", async () => {
   assert.equal(h["X-Moa-Envelope-To"], "Yukthi%2BEvents%40myotherapp.in");
   assert.equal(h["X-Moa-Auth-Results"], "mx.cloudflare.net%3B%20dmarc%3Dpass");
   assert.equal(h["X-Moa-Signature"], "a56d9288597c17eed940afd1c06f08f13113a0785a9592fed6d1f9798aa677aa");
+});
+
+test("signs the body too (v2), exactly as the API checks (the backend's own vector)", async () => {
+  // backend: hmac(sha256, key, "v1\n...\n<auth>\n<sha256 of the body>") with "v2" first
+  const body = await sha256Hex(new TextEncoder().encode("hello"));
+  assert.equal(body, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+  const h = await signedHeaders(SECRET, { to: "Yukthi+Events@myotherapp.in", from: "ananya@example.org", size: 1234, auth: "mx.cloudflare.net; dmarc=pass", now: 1_700_000_000_000, bodySha256: body });
+  assert.equal(h["X-Moa-Signature"], "a56d9288597c17eed940afd1c06f08f13113a0785a9592fed6d1f9798aa677aa");
+  assert.equal(h["X-Moa-Body-Sha256"], body);
+  assert.equal(h["X-Moa-Signature-V2"], "4a917b041982b97a02e938d1083a7a1ef94e304665a01d9993126dcfe9dc62cb");
+  // Without the body's hash, v1 alone, as before.
+  const old = await signedHeaders(SECRET, { to: "a@myotherapp.in", from: "b@example.org", size: 1, auth: "", now: 1_700_000_000_000 });
+  assert.ok(old["X-Moa-Signature"] && !("X-Moa-Signature-V2" in old) && !("X-Moa-Body-Sha256" in old));
+});
+
+test("every try carries both signatures and the hash of the bytes it posts", async () => {
+  const { calls, fetchFn } = api({ status: 502, body: null }, { body: { action: "accept" } });
+  assert.equal(await deliver(message(), env, { fetchFn, ...fast }), "accepted");
+  assert.equal(calls.length, 2);
+  const expected = await sha256Hex(new TextEncoder().encode(RAW));
+  for (const { init } of calls) {
+    assert.equal(init.headers["X-Moa-Body-Sha256"], expected);
+    assert.equal(await sha256Hex(init.body), expected);
+    assert.match(init.headers["X-Moa-Signature"], /^[0-9a-f]{64}$/);
+    assert.match(init.headers["X-Moa-Signature-V2"], /^[0-9a-f]{64}$/);
+  }
+});
+
+test("BODY_SIGNATURE=off sends the older signature alone", async () => {
+  const { calls, fetchFn } = api({ body: { action: "accept" } });
+  assert.equal(await deliver(message(), { ...env, BODY_SIGNATURE: "OFF" }, { fetchFn, ...fast }), "accepted");
+  const { headers } = calls[0].init;
+  assert.ok(headers["X-Moa-Signature"] && !("X-Moa-Signature-V2" in headers) && !("X-Moa-Body-Sha256" in headers));
 });
 
 test("posts the raw mail, signed, and is done when the API keeps it", async () => {
