@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:finnet/shared/utils/image_url.dart';
+import 'package:finnet/features/clubs/domain/club_summary.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
@@ -58,7 +58,7 @@ class ExploreMoreClubsPage extends ConsumerStatefulWidget {
 }
 
 class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
-  List<dynamic> clubs = [];
+  List<ClubSummary> clubs = [];
   bool isLoading = true;
   String? errorMessage;
 
@@ -160,7 +160,7 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
       if (!mounted || generation != _generation) return;
       final items = data is Map ? data['items'] : null;
       setState(() {
-        clubs = items is List ? List<dynamic>.of(items) : [];
+        clubs = ClubSummary.listFrom(items);
         isLoading = false;
       });
     }
@@ -410,18 +410,14 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
         itemBuilder: (context, index) {
           final club = clubs[index];
           return ExploreMoreClubCard(
-            name: club['name'] ?? '',
-            followersCount: club['followers_count'] ?? 0,
-            logo: imageUrlFrom(club['logo']) ?? '',
-            interests: club['interests'] != null
-                ? (club['interests'] as List)
-                    .map((interest) => interest['name'] ?? '')
-                    .toList()
-                : [],
-            id: club['id'] ?? 0,
-            clubSlug: club['slug'] ?? '',
-            // `bool_or` over no rows is null, not false.
-            isFollowing: club['is_following'] == true,
+            key: ValueKey('explore-club-${club.id}'),
+            name: club.name,
+            followersCount: club.followersCount,
+            logo: club.logoUrl ?? '',
+            interests: club.interests,
+            id: club.id,
+            clubSlug: club.slug,
+            isFollowing: club.isFollowing,
           );
         },
       ),

@@ -14,6 +14,7 @@ import 'package:finnet/shared/widgets/section_header.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/clubs/presentation/pages/no_clubs_following_page.dart';
 
+import 'package:finnet/features/clubs/domain/club_summary.dart';
 import 'package:finnet/features/clubs/presentation/pages/clubs_you_follow_section.dart';
 import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/domain/topic_emoji.dart';
@@ -34,8 +35,8 @@ class ClubsPage extends ConsumerStatefulWidget {
 
 class _ClubsPageState extends ConsumerState<ClubsPage>
     with RefreshWhenBackOnline<ClubsPage> {
-  List<dynamic> pinnedClubs = [];
-  List<dynamic> followingClubs = [];
+  List<ClubSummary> pinnedClubs = [];
+  List<ClubSummary> followingClubs = [];
 
   // Filter state
   int? _selectedOrgId;
@@ -103,29 +104,24 @@ class _ClubsPageState extends ConsumerState<ClubsPage>
     }
   }
 
-  /// The clubs in an answer; anything that is not one is skipped. A club's
-  /// id used to be cast with `as int`, and one odd row lost the whole tab.
-  static List<Map<String, dynamic>> _clubsOf(Object? data) {
-    final items = data is Map ? data['items'] : null;
-    return [
-      if (items is List)
-        for (final item in items)
-          if (item is Map) Map<String, dynamic>.from(item),
-    ];
-  }
+  /// The clubs in an answer, read once ([ClubSummary]); anything that is
+  /// not one is skipped. A club's id used to be cast with `as int`, and one
+  /// odd row lost the whole tab.
+  static List<ClubSummary> _clubsOf(Object? data) =>
+      ClubSummary.listFrom(data is Map ? data['items'] : null);
 
   void _show(Object? pinnedData, Object? followingData) {
     if (!mounted) return;
     final pinned = _clubsOf(pinnedData);
     // Pinned club IDs, to mark the followed clubs that are also pinned.
-    final pinnedIds = {for (final club in pinned) club['id']};
+    final pinnedIds = {for (final club in pinned) club.id};
     setState(() {
       pinnedClubs = [
-        for (final club in pinned) {...club, 'is_pinned': true},
+        for (final club in pinned) club.copyWith(isPinned: true),
       ];
       followingClubs = [
         for (final club in _clubsOf(followingData))
-          {...club, 'is_pinned': pinnedIds.contains(club['id'])},
+          club.copyWith(isPinned: pinnedIds.contains(club.id)),
       ];
       isLoading = false;
       errorMessage = null;
@@ -205,49 +201,58 @@ class _ClubsPageState extends ConsumerState<ClubsPage>
       );
     }
 
+    // One scroll, in slivers: the top as one box, then each followed club
+    // built as it scrolls into view.
     return RefreshIndicator(
       onRefresh: _refresh,
-      child: SingleChildScrollView(
+      child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Search box and filter chips
-            _buildSearchAndFilters(userOrg, topicsAsync),
-            // Show PinnedClubsSection only if there are pinned clubs
-            if (pinnedClubs.isNotEmpty) ...[
-              PinnedClubsSection(pinnedClubs: pinnedClubs),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Divider(height: 0, thickness: 1),
-              ),
-              const SizedBox(height: 16),
-            ],
-            // What the clubs you follow have posted, in one feed.
-            if (followingClubs.isNotEmpty) ...[
-              const _FollowingPostsCard(),
-              const SizedBox(height: 20),
-            ],
-            // The followed clubs, with a way to more.
-            SectionHeader(
-              title: 'Clubs you follow',
-              seeAllLabel: 'Explore more',
-              seeAllKey: const ValueKey('clubs-explore-more'),
-              onSeeAll: () => context.push('/clubs/explore'),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-            ),
-            // Clubs list or empty state
-            followingClubs.isEmpty
-                ? SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.5,
-                    child: NoClubsFollowingPage(),
-                  )
-                : ClubsYouFollowSection(
-                    clubs: followingClubs,
-                    onActionCompleted: _refresh,
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Search box and filter chips
+                _buildSearchAndFilters(userOrg, topicsAsync),
+                // Show PinnedClubsSection only if there are pinned clubs
+                if (pinnedClubs.isNotEmpty) ...[
+                  PinnedClubsSection(pinnedClubs: pinnedClubs),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Divider(height: 0, thickness: 1),
                   ),
-          ],
-        ),
+                  const SizedBox(height: 16),
+                ],
+                // What the clubs you follow have posted, in one feed.
+                if (followingClubs.isNotEmpty) ...[
+                  const _FollowingPostsCard(),
+                  const SizedBox(height: 20),
+                ],
+                // The followed clubs, with a way to more.
+                SectionHeader(
+                  title: 'Clubs you follow',
+                  seeAllLabel: 'Explore more',
+                  seeAllKey: const ValueKey('clubs-explore-more'),
+                  onSeeAll: () => context.push('/clubs/explore'),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+              ],
+            ),
+          ),
+          // Clubs list or empty state
+          if (followingClubs.isEmpty)
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.5,
+                child: NoClubsFollowingPage(),
+              ),
+            )
+          else
+            ClubsYouFollowSection(
+              clubs: followingClubs,
+              onActionCompleted: _refresh,
+            ),
+        ],
       ),
     );
   }

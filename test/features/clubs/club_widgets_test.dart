@@ -1,3 +1,4 @@
+import 'package:finnet/features/clubs/domain/club_summary.dart';
 import 'package:finnet/features/clubs/presentation/pages/pinned_clubs_section.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/club_tab_header.dart';
@@ -15,7 +16,8 @@ void main() {
     testWidgets('a club with no logo draws a placeholder, not a red screen',
         (tester) async {
       // The crash: `club['logo']['thumbnail']` on `logo: null`.
-      await tester.pumpWidget(_app(const PinnedClubsSection(pinnedClubs: [
+      await tester.pumpWidget(_app(PinnedClubsSection(
+          pinnedClubs: ClubSummary.listFrom([
         {'id': 1, 'name': 'No Logo Club', 'slug': 'nlc', 'logo': null},
         {'id': 2, 'name': 'Old Row', 'slug': 'old', 'logo': ''},
         {
@@ -24,7 +26,7 @@ void main() {
           'slug': 'has',
           'logo': {'thumbnail': null, 'medium': 'https://img/m.png'},
         },
-      ])));
+      ]))));
 
       expect(tester.takeException(), isNull);
       expect(find.text('No Logo Club'), findsOneWidget);
