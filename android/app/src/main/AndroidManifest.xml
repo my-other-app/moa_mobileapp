@@ -160,6 +160,21 @@
               android:resource="@xml/next_up_widget_info" />
       </receiver>
 
+      <!-- "Networking", the home-screen widget (docs/HOME_WIDGETS.md): the
+           person's QR code, drawn from the profile link the app writes,
+           with Scan and Network. Home screen only. -->
+      <receiver
+          android:name=".widget.NetworkingWidgetProvider"
+          android:exported="false"
+          android:label="@string/networking_label">
+          <intent-filter>
+              <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+          </intent-filter>
+          <meta-data
+              android:name="android.appwidget.provider"
+              android:resource="@xml/networking_widget_info" />
+      </receiver>
+
       <!-- Redraws "Next up" when its "Today" / "Tomorrow" changes (midnight
            in India, an event starting or ending): home_widget's scheduler,
            re-armed after a restart or an app update. -->
