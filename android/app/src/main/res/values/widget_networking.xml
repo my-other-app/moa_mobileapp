@@ -33,5 +33,6 @@
     <string name="networking_recently_met">Recently met</string>
     <string name="networking_met_empty">Scan someone’s code to save them. They show here.</string>
     <string name="networking_met_unknown">The people you meet show here.</string>
+    <string name="networking_met_signed_out">Sign in to see the people you meet here.</string>
     <string name="networking_no_note">%1$d without a note yet ›</string>
 </resources>

@@ -41,14 +41,15 @@ struct NetworkingLarge: View {
           .padding(.bottom, 4)
           .frame(height: 30, alignment: .bottomLeading)
         if people.isEmpty {
-          Text(
-            data.met == nil
-              ? "The people you meet show here."
-              : "Scan someone’s code to save them. They show here."
-          )
-          .font(WidgetFonts.text(12))
-          .foregroundColor(palette.secondary)
-          .lineLimit(2)
+          WidgetLink(destination: data.met == nil ? data.networkURL : data.scanURL) {
+            SoftPanel(
+              symbol: "person.2",
+              text: data.met == nil
+                ? "The people you meet show here."
+                : "Scan someone’s code to save them. They show here.",
+              action: data.met == nil ? nil : "Scan ›", palette: palette)
+          }
+          .padding(.bottom, 2)
         } else {
           ForEach(Array(people.enumerated()), id: \.offset) { _, person in
             WidgetLink(destination: person.url) {

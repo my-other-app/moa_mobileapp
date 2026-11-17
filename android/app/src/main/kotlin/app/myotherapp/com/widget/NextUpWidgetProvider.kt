@@ -107,8 +107,9 @@ class NextUpWidgetProvider : HomeWidgetProvider() {
 
   /**
    * Large: up to three events not over yet, soonest first. Each row opens its own ticket (or the
-   * event, for a registration under review); the first has "Show ticket". Fewer than three leave
-   * room for "Find more events". Nothing coming up, or signed out: the message, as medium.
+   * event, for a registration under review); the first has "Show ticket". Fewer than three: a soft
+   * panel with "Find more events" in the others' place. Nothing coming up, or signed out: the
+   * message, as medium.
    */
   private fun renderLarge(context: Context, data: NextUpData, now: Long): RemoteViews {
     val views = RemoteViews(context.packageName, R.layout.widget_next_up_large)
@@ -134,11 +135,7 @@ class NextUpWidgetProvider : HomeWidgetProvider() {
     for (row in 0 until LARGE_ROWS) {
       val ids = LARGE_ROW_IDS[row]
       val item = items.getOrNull(row)
-      views.setViewVisibility(ids.row, if (item == null) View.INVISIBLE else View.VISIBLE)
-      if (row > 0) {
-        views.setViewVisibility(
-            LARGE_DIVIDER_IDS[row - 1], if (item == null) View.INVISIBLE else View.VISIBLE)
-      }
+      views.setViewVisibility(ids.row, if (item == null) View.GONE else View.VISIBLE)
       if (item == null) continue
       setDateBlock(context, views, ids.date, item, large = false)
       views.setTextViewText(ids.whenLine, largeWhen(context, item, now, first = row == 0))
@@ -148,6 +145,13 @@ class NextUpWidgetProvider : HomeWidgetProvider() {
       views.setTextViewText(ids.place, place ?: "")
       views.setOnClickPendingIntent(ids.row, open(context, item.link))
     }
+    // Fewer than three: a soft panel offers more, in the place of those missing.
+    val findMore = open(context, NextUpData.FIND_EVENTS_LINK)
+    views.setViewVisibility(R.id.next_up_rest, if (items.size > 1) View.VISIBLE else View.GONE)
+    views.setViewVisibility(R.id.next_up_more, if (items.size == 1) View.VISIBLE else View.GONE)
+    views.setViewVisibility(R.id.next_up_more_small, if (items.size == 2) View.VISIBLE else View.GONE)
+    views.setOnClickPendingIntent(R.id.next_up_more, findMore)
+    views.setOnClickPendingIntent(R.id.next_up_more_small, findMore)
     val first = items.first()
     if (first.underReview) {
       views.setViewVisibility(R.id.next_up_show_ticket, View.GONE)
@@ -157,12 +161,6 @@ class NextUpWidgetProvider : HomeWidgetProvider() {
     } else {
       views.setViewVisibility(R.id.next_up_review, View.GONE)
       views.setViewVisibility(R.id.next_up_show_ticket, View.VISIBLE)
-    }
-    if (items.size < LARGE_ROWS) {
-      views.setViewVisibility(R.id.next_up_more, View.VISIBLE)
-      views.setOnClickPendingIntent(R.id.next_up_more, open(context, NextUpData.FIND_EVENTS_LINK))
-    } else {
-      views.setViewVisibility(R.id.next_up_more, View.GONE)
     }
     return views
   }
@@ -297,6 +295,5 @@ class NextUpWidgetProvider : HomeWidgetProvider() {
                 R.id.next_up_row_2, R.id.next_up_row_2_date, R.id.next_up_row_2_when,
                 R.id.next_up_row_2_name, R.id.next_up_row_2_place),
         )
-    private val LARGE_DIVIDER_IDS = listOf(R.id.next_up_divider_1, R.id.next_up_divider_2)
   }
 }

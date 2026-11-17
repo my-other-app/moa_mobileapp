@@ -30,4 +30,5 @@
     <string name="next_up_brand">MyOtherApp</string>
     <string name="next_up_date_unknown">Date to be announced</string>
     <string name="next_up_find_more">Find more events ›</string>
+    <string name="next_up_nothing_else">Nothing else booked yet</string>
 </resources>

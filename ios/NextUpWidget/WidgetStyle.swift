@@ -209,6 +209,37 @@ struct Pill: View {
   }
 }
 
+/// The soft ground a large widget fills its empty space with: a symbol, a
+/// line saying what goes there, and what to do.
+struct SoftPanel: View {
+  let symbol: String
+  let text: String
+  var action: String? = nil
+  let palette: WidgetPalette
+
+  var body: some View {
+    VStack(spacing: 6) {
+      Image(systemName: symbol)
+        .font(.system(size: 20, weight: .regular))
+        .foregroundColor(palette.secondary)
+      Text(text)
+        .font(WidgetFonts.text(12))
+        .multilineTextAlignment(.center)
+        .lineLimit(2)
+        .foregroundColor(palette.secondary)
+      if let action = action {
+        Text(action)
+          .font(WidgetFonts.text(12, .semibold))
+          .lineLimit(1)
+          .foregroundColor(palette.accent)
+      }
+    }
+    .padding(12)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(palette.soft))
+  }
+}
+
 extension View {
   /// A lock-screen widget's ground: none of its own (the lock screen draws
   /// it); iOS 17 asks every widget to name one.

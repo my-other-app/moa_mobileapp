@@ -107,7 +107,7 @@ class NetworkingWidgetProvider : HomeWidgetProvider() {
 
   /**
    * Large: the medium's top, then "Recently met" -- [rows] people at most -- and the notes still to
-   * write. Signed out: the top alone, asking the person to sign in.
+   * write. Nobody to show (signed out too): a soft panel saying who goes there.
    */
   private fun renderLarge(context: Context, drawn: Drawn, rows: Int): RemoteViews {
     val data = drawn.data
@@ -123,18 +123,30 @@ class NetworkingWidgetProvider : HomeWidgetProvider() {
       views.setViewVisibility(R.id.networking_placeholder, View.VISIBLE)
     }
     fillMedium(context, views, data, hasQr)
-    if (!data.signedIn) {
-      views.setViewVisibility(R.id.networking_met, View.GONE)
-      return views
-    }
     views.setViewVisibility(R.id.networking_met, View.VISIBLE)
 
-    val people = data.recentlyMet(rows)
+    // Nobody to show (signed out, not read yet, nobody saved): a soft panel says who goes here.
+    val people = if (data.signedIn) data.recentlyMet(rows) else emptyList()
     views.setViewVisibility(R.id.networking_met_empty, if (people.isEmpty()) View.VISIBLE else View.GONE)
     views.setTextViewText(
         R.id.networking_met_empty,
         context.getString(
-            if (data.met == null) R.string.networking_met_unknown else R.string.networking_met_empty))
+            when {
+              !data.signedIn -> R.string.networking_met_signed_out
+              data.met == null -> R.string.networking_met_unknown
+              else -> R.string.networking_met_empty
+            }))
+    if (people.isEmpty()) {
+      views.setOnClickPendingIntent(
+          R.id.networking_met_empty,
+          open(
+              context,
+              when {
+                !data.signedIn -> data.qrLink
+                data.met == null -> data.networkLink
+                else -> data.scanLink
+              }))
+    }
     for (row in MET_ROW_IDS.indices) {
       val ids = MET_ROW_IDS[row]
       val person = people.getOrNull(row)
@@ -168,7 +180,7 @@ class NetworkingWidgetProvider : HomeWidgetProvider() {
       views.setOnClickPendingIntent(ids.row, open(context, person.link))
     }
 
-    val noNote = data.noNote ?: 0
+    val noNote = if (data.signedIn) data.noNote ?: 0 else 0
     if (noNote > 0) {
       views.setViewVisibility(R.id.networking_no_note, View.VISIBLE)
       views.setTextViewText(

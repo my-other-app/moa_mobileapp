@@ -126,10 +126,12 @@ struct NetworkingContent: View {
   var body: some View {
     if !data.signedIn {
       if size == .large {
-        VStack(spacing: 0) {
+        VStack(spacing: 12) {
           NetworkingSignedOut(medium: true, palette: palette)
             .frame(height: 132)
-          Spacer(minLength: 0)
+          SoftPanel(
+            symbol: "person.2", text: "Sign in to see the people you meet here.",
+            palette: palette)
         }
       } else {
         NetworkingSignedOut(medium: size != .small, palette: palette)

@@ -4,8 +4,8 @@ import SwiftUI
 /// the medium widget's look -- the date, when, the name, the time and the
 /// place, and "Show ticket" (or what stands in for it); the two after it a
 /// smaller date and one line each. Each row opens its own ticket (or the
-/// event, for a registration under review); fewer than three leave room for
-/// "Find events".
+/// event, for a registration under review); fewer than three leave a soft
+/// panel, "Nothing else booked yet · Find more events".
 struct LargeEventsView: View {
   let items: [NextUpItem]
   let now: Date
@@ -32,13 +32,15 @@ struct LargeEventsView: View {
           LaterEventRow(item: item, now: now, palette: palette)
         }
       }
-      Spacer(minLength: 0)
       if items.count < NextUpContent.largeRows {
         WidgetLink(destination: URL(string: NextUpData.findEventsLink)!) {
-          Text("Find more events ›")
-            .font(WidgetFonts.text(12, .semibold))
-            .foregroundColor(palette.accent)
+          SoftPanel(
+            symbol: "calendar", text: "Nothing else booked yet", action: "Find more events ›",
+            palette: palette)
         }
+        .padding(.top, 12)
+      } else {
+        Spacer(minLength: 0)
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
