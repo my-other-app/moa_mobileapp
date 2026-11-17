@@ -6,6 +6,15 @@
 <resources>
     <color name="networking_soft">#F3F3F3</color>
     <color name="networking_glyph">#5F6773</color>
+    <!-- "Recently met": the circles behind people's initials, in the app's
+         teal, pale yellow, ink and soft grey (the app gives each person one,
+         0-3). The letters on them are white, ink, white, ink in both
+         themes; only the circles change (values-night). -->
+    <color name="networking_met_fill_0">#17A58F</color>
+    <color name="networking_met_fill_1">#F9FFA1</color>
+    <color name="networking_met_fill_2">#2C333D</color>
+    <color name="networking_met_fill_3">#F3F3F3</color>
+    <color name="networking_met_outline">#1F2C333D</color>
 
     <string name="networking_label">Networking</string>
     <string name="networking_widget_description">Your QR code to share, and quick scan.</string>
@@ -21,4 +30,8 @@
     <string name="networking_qr_description">Your QR code</string>
     <string name="networking_open_my_qr">Open My QR</string>
     <string name="networking_sample_name" translatable="false">Your name</string>
+    <string name="networking_recently_met">Recently met</string>
+    <string name="networking_met_empty">Scan someone’s code to save them. They show here.</string>
+    <string name="networking_met_unknown">The people you meet show here.</string>
+    <string name="networking_no_note">%1$d without a note yet ›</string>
 </resources>

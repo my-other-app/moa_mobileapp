@@ -17,6 +17,10 @@ data class NextUpData(
   /** The event shown at [now]: the first one not over yet. */
   fun nextAt(now: Long): NextUpItem? = items.firstOrNull { !it.isOverAt(now) }
 
+  /** The events not over yet at [now], soonest first, at most [limit]: the large widget's rows. */
+  fun upcomingAt(now: Long, limit: Int): List<NextUpItem> =
+      if (state != UPCOMING) emptyList() else items.filter { !it.isOverAt(now) }.take(limit)
+
   companion object {
     /** The key the app keeps the JSON under (NextUpKind.dataKey). */
     const val DATA_KEY = "next_up"

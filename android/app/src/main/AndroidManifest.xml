@@ -175,6 +175,37 @@
               android:resource="@xml/networking_widget_info" />
       </receiver>
 
+      <!-- The Quick Settings tiles (tiles/PageTiles.kt, docs/HOME_WIDGETS.md):
+           "Scan" and "My QR" open the app on those pages, through the same
+           links as the widgets' taps. People add them from the tiles'
+           editor; on a locked phone it unlocks first. -->
+      <service
+          android:name=".tiles.ScanTileService"
+          android:exported="true"
+          android:icon="@drawable/ic_tile_scan"
+          android:label="@string/tile_scan_label"
+          android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+          <intent-filter>
+              <action android:name="android.service.quicksettings.action.QS_TILE" />
+          </intent-filter>
+          <meta-data
+              android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+              android:value="false" />
+      </service>
+      <service
+          android:name=".tiles.MyQrTileService"
+          android:exported="true"
+          android:icon="@drawable/ic_tile_qr"
+          android:label="@string/tile_my_qr_label"
+          android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+          <intent-filter>
+              <action android:name="android.service.quicksettings.action.QS_TILE" />
+          </intent-filter>
+          <meta-data
+              android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+              android:value="false" />
+      </service>
+
       <!-- Redraws "Next up" when its "Today" / "Tomorrow" changes (midnight
            in India, an event starting or ending): home_widget's scheduler,
            re-armed after a restart or an app update. -->
