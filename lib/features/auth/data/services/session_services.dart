@@ -9,8 +9,10 @@ import 'package:finnet/core/cache/session_caches.dart';
 import 'package:finnet/core/services/notification_service.dart';
 import 'package:finnet/core/services/opened_push_lines.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
+import 'package:finnet/features/home_widget/data/networking_store.dart';
 import 'package:finnet/features/home_widget/data/next_up_store.dart';
 import 'package:finnet/features/home_widget/presentation/home_widget_sync.dart';
+import 'package:finnet/features/home_widget/presentation/networking_widget_sync.dart';
 import 'package:finnet/features/live/data/live_identity.dart';
 import 'package:finnet/features/profile/data/datasources/certificate_pin_store.dart';
 import 'package:finnet/features/volunteer/data/saved_scans.dart';
@@ -146,13 +148,14 @@ final sessionRevokerProvider = Provider<SessionRevoker>(
 /// Everything kept on the phone about the person: cleared at sign-out, when
 /// the server ends the session, and at sign-in (so a second account never
 /// sees the first one's tickets, registrations, profile, certificates,
-/// PDFs or pictures -- nor the home-screen widget their next event). Posters
-/// and other public pictures stay. Quiz players go at the end of a session
-/// only.
+/// PDFs or pictures -- nor the home-screen widgets their next event or QR).
+/// Posters and other public pictures stay. Quiz players go at the end of a
+/// session only.
 final sessionCachesProvider = Provider<SessionCaches>((ref) {
   final tickets = ref.watch(savedTicketsLocalDataSourceProvider);
   final pins = ref.watch(certificatePinStoreProvider);
   final widgets = ref.watch(nextUpStoreProvider);
+  final networking = ref.watch(networkingStoreProvider);
   return SessionCaches({
     'saved answers': () => ApiCache.instance.clear(),
     'saved tickets': tickets.clear,
@@ -173,6 +176,9 @@ final sessionCachesProvider = Provider<SessionCaches>((ref) {
     // The "Next up" home-screen widget: "Sign in to see your next event",
     // not the last person's event.
     'home screen widget': () => showSignedOutOnWidgets(widgets),
+    // The "Networking" widget: "Sign in to share your QR" -- the last
+    // person's code, name and count gone.
+    'networking widget': () => showSignedOutOnNetworkingWidget(networking),
   }, atSessionEnd: {
     // Who this phone is in a live room, and each quiz's player: the next
     // person to sign in is a new player, never the last one's.

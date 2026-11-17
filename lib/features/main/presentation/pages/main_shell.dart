@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/features/events/presentation/widgets/saved_tickets_sync.dart';
 import 'package:finnet/features/home_widget/presentation/home_widget_sync.dart';
+import 'package:finnet/features/home_widget/presentation/networking_widget_sync.dart';
 import 'package:finnet/features/main/presentation/providers/navigation_index_provider.dart';
 import 'package:finnet/features/main/presentation/widgets/personal_data_sync.dart';
 import 'package:finnet/features/network/presentation/providers/network_saver.dart';
@@ -83,11 +84,16 @@ class _MainShellState extends ConsumerState<MainShell> {
       backgroundColor: Colors.white,
       // The signed-in screens: while they are up, the tickets on the phone
       // are kept current for the door, the notification switches and the
-      // inbox are read ahead of the screens that show them, and the "Next
-      // up" home-screen widget follows the tickets.
+      // inbox are read ahead of the screens that show them, and the
+      // home-screen widgets follow: "Next up" the tickets, "Networking" the
+      // person's QR, name and network.
       body: SavedTicketsSync(
         child: PersonalDataSync(
-          child: HomeWidgetSyncScope(child: SafeArea(child: widget.child)),
+          child: HomeWidgetSyncScope(
+            child: NetworkingWidgetSyncScope(
+              child: SafeArea(child: widget.child),
+            ),
+          ),
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(

@@ -17,7 +17,7 @@ import WidgetKit
 /// (`/events/{id}/ticket`), which the app reads as its own page (Flutter
 /// deep linking): the ticket's code is never here.
 struct NextUpWidget: Widget {
-  /// The kind the app reloads (HomeWidgetNextUpStore.iOSKind).
+  /// The kind the app reloads (NextUpKind.iOSKind in Dart).
   let kind = "NextUpWidget"
 
   var body: some WidgetConfiguration {

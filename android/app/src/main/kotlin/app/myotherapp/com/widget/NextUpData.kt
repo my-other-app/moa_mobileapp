@@ -18,7 +18,7 @@ data class NextUpData(
   fun nextAt(now: Long): NextUpItem? = items.firstOrNull { !it.isOverAt(now) }
 
   companion object {
-    /** The key the app keeps the JSON under (NextUpStore.dataKey). */
+    /** The key the app keeps the JSON under (NextUpKind.dataKey). */
     const val DATA_KEY = "next_up"
 
     const val SIGNED_OUT = "signed_out"

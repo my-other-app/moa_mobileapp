@@ -178,7 +178,11 @@ class _MyQrPageState extends ConsumerState<MyQrPage>
     if (sure != true || !mounted) return;
     setState(() => _replacing = true);
     try {
-      await ref.read(profilesApiProvider).replaceQr();
+      final known = ref.read(lastKnownQrProvider.notifier);
+      final fresh = await ref.read(profilesApiProvider).replaceQr();
+      // The old code stopped working: the home-screen widget gets the new
+      // one at once, before My QR reads it back.
+      if (known.mounted) known.state = fresh;
       ref.invalidate(myQrProvider);
       if (mounted) showToast(context, 'You have a new code.');
     } catch (e) {
