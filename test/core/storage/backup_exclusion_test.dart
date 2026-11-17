@@ -90,6 +90,8 @@ void main() {
       ('file', 'gate_queue'),
       ('file', 'documents'),
       ('file', 'network_saves.json'),
+      // What the home-screen widgets show (home_widget's preferences).
+      ('sharedpref', 'HomeWidgetPreferences.xml'),
       ('root', 'app_flutter'),
     ];
 
