@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +21,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late Animation<double> _logoScaleAnimation;
   late Animation<double> _logoOpacityAnimation;
   late Animation<double> _pulseAnimation;
+
+  /// Listening for the stored session to be read; closed once it is, or
+  /// with the screen.
+  ProviderSubscription<AuthState>? _waitingForAuth;
 
   @override
   void initState() {
@@ -57,31 +63,29 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _pulseController.repeat(reverse: true);
   }
 
+  /// Routes as soon as the stored session has been read -- two keychain
+  /// reads, normally done before the first frame -- with no fixed wait:
+  /// the volunteer reopening the scanner, or someone opening a ticket from
+  /// a push at the door, used to wait 1.5 s on this screen every time.
+  ///
+  /// No time limit either. A limit used to send a signed-in person to
+  /// onboarding when the keychain was slow; until the session is read the
+  /// router keeps everyone here anyway.
   Future<void> _initializeAndNavigate() async {
-    // Wait for animations
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    if (!mounted) return;
-
-    // Wait for auth to be initialized (with timeout)
-    int attempts = 0;
-    const maxAttempts = 20; // 10 seconds max wait
-    while (attempts < maxAttempts) {
-      final authState = ref.read(authStateProvider);
-      if (authState.isInitialized) {
-        break;
-      }
-      await Future.delayed(const Duration(milliseconds: 500));
-      attempts++;
-      debugPrint('Splash: Waiting for auth... attempt $attempts');
-    }
+    final ready = Completer<void>();
+    _waitingForAuth = ref.listenManual<AuthState>(authStateProvider,
+        (_, auth) {
+      if (auth.isInitialized && !ready.isCompleted) ready.complete();
+    }, fireImmediately: true);
+    await ready.future;
+    _waitingForAuth?.close();
+    _waitingForAuth = null;
 
     if (!mounted) return;
 
     // Check auth state and navigate
     final authState = ref.read(authStateProvider);
-    debugPrint(
-        'Splash: Auth initialized=${authState.isInitialized}, authenticated=${authState.isAuthenticated}');
+    debugPrint('Splash: authenticated=${authState.isAuthenticated}');
 
     if (authState.isAuthenticated) {
       // User is logged in, go to home
@@ -113,6 +117,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   void dispose() {
+    _waitingForAuth?.close();
     _logoController.dispose();
     _pulseController.dispose();
     super.dispose();

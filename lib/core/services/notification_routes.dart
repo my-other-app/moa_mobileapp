@@ -33,6 +33,8 @@
 /// | `answers_needed` (`url`)             | the missing-answers screen,  |
 /// |                                      | by the personal link         |
 /// | `support_reply` (`case_id`)          | the help request's thread    |
+/// | `network_saves` (`event_id`)         | who saved them, to save back |
+/// | `network_recap` (`event_id`)         | the Network tab at the event |
 ///
 /// A push carries its event as the string `event_id`; an inbox line as its
 /// `event` (and the push's data beside it).
@@ -43,13 +45,16 @@ import 'package:finnet/features/events/domain/missing_answers.dart';
 import 'package:finnet/features/events/domain/registration_request.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/live/live_locations.dart';
+import 'package:finnet/features/network/domain/network_links.dart';
 import 'package:finnet/features/support/domain/support.dart';
 
 export 'package:finnet/features/support/domain/support.dart'
     show supportReplyType;
 
-export 'package:finnet/features/social/domain/share_kit.dart'
-    show shareKitType;
+export 'package:finnet/features/social/domain/share_kit.dart' show shareKitType;
+
+export 'package:finnet/features/network/domain/network_links.dart'
+    show networkSavesType, networkRecapType;
 
 /// The pushes (and inbox lines) that open an event's live room.
 const liveRoomTypes = {
@@ -197,6 +202,10 @@ String? notificationRoute(
     // (support-leads-contract.md). Never the event, even with one named.
     return supportReplyRoute(data);
   }
+  // Feature 4: "Ananya and 3 others saved your profile at DevFest", and
+  // the morning-after "You met 12 people at DevFest".
+  final network = networkPushRoute(type, eventId);
+  if (network != null) return network;
   if (type == answersNeededType) {
     // The missing-answers screen, by the push's personal link; without one,
     // the event.

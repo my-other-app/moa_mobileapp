@@ -98,18 +98,26 @@ class FakeSessionRevoker implements SessionRevoker {
 
 /// A JWT-shaped token whose payload carries [sid]. Unsigned: the app never
 /// checks the signature, only reads which session the token belongs to.
-String tokenWithSid(String? sid) {
+String tokenWithSid(String? sid, {int userId = 7}) {
   String part(Map<String, Object> json) =>
       base64Url.encode(utf8.encode(jsonEncode(json))).replaceAll('=', '');
   return [
     part({'alg': 'HS256', 'typ': 'JWT'}),
     part({
-      'user_id': 7,
+      'user_id': userId,
       'token_type': 'access_token',
       if (sid != null) 'sid': sid,
     }),
     'signature',
   ].join('.');
+}
+
+/// Counts how often the account's unsent work was asked to go.
+class FakeUnsentWork implements UnsentWork {
+  int sends = 0;
+
+  @override
+  Future<void> send() async => sends++;
 }
 
 /// Counts how often everything kept about the person was cleared.
@@ -118,6 +126,12 @@ class FakeSessionCaches extends SessionCaches {
 
   int cleared = 0;
 
+  /// How many of [cleared] were at a sign-in.
+  int atSignIn = 0;
+
   @override
-  Future<void> clearAll() async => cleared++;
+  Future<void> clearAll({bool signingIn = false}) async {
+    cleared++;
+    if (signingIn) atSignIn++;
+  }
 }

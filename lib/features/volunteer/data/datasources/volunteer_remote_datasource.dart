@@ -21,13 +21,14 @@ class VolunteerRemoteDataSourceImpl implements VolunteerRemoteDataSource {
 
   VolunteerRemoteDataSourceImpl(this._dio);
 
+  /// One row that can't be read is left out; the rest are the list.
   @override
   Future<List<VolunteerEvent>> myEvents() async {
-    final response =
-        await _dio.get<List<dynamic>>('/events/volunteer/my-events');
-    return (response.data ?? const [])
-        .whereType<Map<String, dynamic>>()
+    final response = await _dio.get<dynamic>('/events/volunteer/my-events');
+    final rows = response.data;
+    return (rows is List ? rows : const [])
         .map(VolunteerEvent.fromJson)
+        .whereType<VolunteerEvent>()
         .toList();
   }
 }

@@ -313,9 +313,7 @@ void main() {
       await again.remove(7, ['a', 'b']);
       expect(await again.all(7), isEmpty);
       expect(await again.all(8), hasLength(1));
-
-      await again.clear();
-      expect(await again.all(8), isEmpty);
+      expect(await again.events(), [8]);
     });
 
     test('scans saved at once are all kept', () async {

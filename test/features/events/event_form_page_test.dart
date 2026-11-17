@@ -11,6 +11,7 @@ import 'package:finnet/features/payments/data/repositories/payment_repository_im
 import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
+import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -49,7 +50,8 @@ final _typed = [
 Future<List<Object?>> _pump(WidgetTester tester,
     {List<AdditionalDetail>? questions,
     Widget? form,
-    bool signedIn = true}) async {
+    bool signedIn = true,
+    UserProfile profile = testProfile}) async {
   tester.view.physicalSize = const Size(800, 3200);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -81,7 +83,8 @@ Future<List<Object?>> _pump(WidgetTester tester,
   ]);
   await tester.pumpWidget(ProviderScope(
     overrides: [
-      profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+      profileRepositoryProvider
+          .overrideWithValue(FakeProfileRepository()..profile = profile),
       paymentRepositoryProvider.overrideWithValue(FakePaymentRepository()),
       isAuthenticatedProvider.overrideWithValue(signedIn),
     ],
@@ -445,6 +448,31 @@ void main() {
       expect(find.text('Enter a phone number.'), findsOneWidget);
       expect(find.text('Enter a number.'), findsOneWidget);
       expect(api.sent('POST', '/events/registration/7/register'), isEmpty);
+    });
+
+    testWidgets(
+        "an account's email with a + tag and a long TLD registers: it used "
+        'to be refused as not valid', (tester) async {
+      api.on('POST', '/events/registration/7/register', {
+        'event_id': 7,
+        'event_name': 'Hack Night',
+        'event_registration_id': 'reg-1',
+        'pay_amount': 0,
+        'ticket_id': 'T-1',
+        'event_datetime': '2030-12-01T10:00:00Z',
+        'full_name': 'Asha Menon',
+      });
+      await _pump(tester,
+          questions: const [],
+          profile: testProfile.copyWith(email: 'asha+devfest@college.academy'));
+
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Please enter a valid email'), findsNothing);
+      final sent = api.sent('POST', '/events/registration/7/register').single;
+      expect((sent.data as Map)['email'], 'asha+devfest@college.academy');
+      expect(find.text('Registered!'), findsOneWidget);
     });
 
     test('typedAnswerProblem matches the website', () {

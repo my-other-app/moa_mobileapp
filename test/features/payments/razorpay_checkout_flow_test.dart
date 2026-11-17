@@ -4,6 +4,8 @@ import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
 import 'package:finnet/features/payments/data/datasources/payment_remote_datasource.dart';
+import 'package:finnet/features/payments/payment_confirmation.dart';
+import 'package:finnet/features/payments/presentation/confirming_payment.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -135,8 +137,8 @@ void main() {
     });
 
     testWidgets(
-        'a payment the server could not verify is not shown as paid',
-        (tester) async {
+        'a payment the server refused to verify is not shown as paid, and '
+        'not offered again: it is being confirmed', (tester) async {
       FakeRazorpaySheet(razorpayPaid).install(tester);
       api
         ..on('GET', '/events/info/7', paidEventInfo(isPaid: false))
@@ -147,12 +149,111 @@ void main() {
       await _pumpEvent(tester);
 
       await tester.tap(find.text('FINISH PAYMENT'));
-      await _settle(tester);
+      await _settle(tester, 300);
 
+      // Not asked again: asking again won't change a refusal.
       expect(api.sent('POST', '/payments/verify'), hasLength(1));
       expect(find.text('Payment received. Your ticket is ready.'),
           findsNothing);
-      expect(find.text('FINISH PAYMENT'), findsOneWidget);
+      await tester.tap(find.byKey(ConfirmingPaymentDialog.okKey));
+      await _settle(tester);
+      expect(find.byKey(IndividualEventPage.checkPaymentKey), findsOneWidget);
+      expect(find.text('FINISH PAYMENT'), findsNothing);
+    });
+
+    testWidgets(
+        'paid on Razorpay, the server down for a moment: verify is asked '
+        'again, and the ticket shows', (tester) async {
+      FakeRazorpaySheet(razorpayPaid).install(tester);
+      api
+        ..on('GET', '/events/info/7', paidEventInfo(isPaid: false))
+        ..on('GET', '/events/info/7', paidEventInfo(isPaid: true))
+        ..on('POST', '/payments/orders', paymentOrderBody())
+        ..on('POST', '/payments/verify', {'message': 'Bad gateway'},
+            status: 502)
+        ..on('POST', '/payments/verify', {'status': 'paid'});
+      await _pumpEvent(tester);
+
+      await tester.tap(find.text('FINISH PAYMENT'));
+      await _settle(tester);
+      // Said while it is asked again.
+      expect(find.text(ConfirmingPaymentDialog.title), findsOneWidget);
+      await _settle(tester, 40);
+
+      expect(api.sent('POST', '/payments/verify'), hasLength(2));
+      expect(find.text('Payment received. Your ticket is ready.'),
+          findsOneWidget);
+      expect(find.text('VIEW TICKET'), findsOneWidget);
+    });
+
+    testWidgets(
+        "paid on Razorpay and the server can't be reached at all: \"we're "
+        'confirming your payment", Check payment instead of Finish payment, '
+        'and the ticket once it is confirmed', (tester) async {
+      final sheet = FakeRazorpaySheet(razorpayPaid)..install(tester);
+      api
+        ..on('GET', '/events/info/7', paidEventInfo(isPaid: false))
+        ..on('POST', '/payments/orders', paymentOrderBody())
+        ..on('POST', '/payments/verify', {'message': 'Unavailable'},
+            status: 503);
+      await _pumpEvent(tester);
+
+      await tester.tap(find.text('FINISH PAYMENT'));
+      await _settle(tester, 600);
+
+      // Asked four times (1 s, 3 s, 8 s apart), then the registration read.
+      expect(api.sent('POST', '/payments/verify'), hasLength(4));
+      expect(find.text(paymentConfirmingMessage), findsOneWidget);
+      expect(find.textContaining('try again'), findsNothing);
+      await tester.tap(find.byKey(ConfirmingPaymentDialog.okKey));
+      await _settle(tester);
+
+      expect(find.byKey(IndividualEventPage.confirmingPaymentKey),
+          findsOneWidget);
+      expect(find.text('FINISH PAYMENT'), findsNothing);
+
+      // Not there yet: Check payment says so, and stays.
+      api.on('GET', '/events/info/7', paidEventInfo(isPaid: true));
+      await tester.tap(find.byKey(IndividualEventPage.checkPaymentKey));
+      await _settle(tester);
+      expect(find.byKey(IndividualEventPage.checkPaymentKey), findsOneWidget);
+      expect(find.text(paymentConfirmingMessage), findsWidgets);
+      // The note it showed goes.
+      await _settle(tester, 120);
+
+      // The webhook got there: Check payment shows the ticket.
+      await tester.tap(find.byKey(IndividualEventPage.checkPaymentKey));
+      await _settle(tester);
+      expect(find.text('VIEW TICKET'), findsOneWidget);
+      expect(find.byKey(IndividualEventPage.checkPaymentKey), findsNothing);
+      expect(sheet.opened, hasLength(1), reason: 'never paid twice');
+    });
+
+    testWidgets(
+        'a registration removed before the payment went through says it is '
+        'being refunded (409 REGISTRATION_REMOVED)', (tester) async {
+      FakeRazorpaySheet(razorpayPaid).install(tester);
+      api
+        ..on('GET', '/events/info/7', paidEventInfo(isPaid: false))
+        ..on('POST', '/payments/orders', paymentOrderBody())
+        ..on(
+            'POST',
+            '/payments/verify',
+            {
+              'message': 'This registration was cancelled before the payment '
+                  'went through. The payment is being refunded in full.',
+              'error_code': 'REGISTRATION_REMOVED',
+            },
+            status: 409);
+      await _pumpEvent(tester);
+
+      await tester.tap(find.text('FINISH PAYMENT'));
+      await _settle(tester);
+
+      expect(api.sent('POST', '/payments/verify'), hasLength(1));
+      expect(find.textContaining('refunded in full'), findsOneWidget);
+      expect(find.text('Payment received. Your ticket is ready.'),
+          findsNothing);
     });
   });
 
@@ -178,6 +279,13 @@ void main() {
           builder: (_, state) {
             went.add(state.uri.path);
             return const Scaffold(body: Text('Registered!'));
+          },
+        ),
+        GoRoute(
+          path: '/events/:id',
+          builder: (_, state) {
+            went.add(state.uri.path);
+            return const Scaffold(body: Text('The event'));
           },
         ),
       ]);
@@ -245,6 +353,51 @@ void main() {
       expect(api.sent('POST', '/payments/verify'), isEmpty);
       expect(went, isEmpty);
       expect(find.text('Continue'), findsOneWidget);
+    });
+
+    testWidgets(
+        "paid on Razorpay and never confirmed: the form is left for the "
+        'event, never Continue to pay again', (tester) async {
+      final sheet = FakeRazorpaySheet(razorpayPaid)..install(tester);
+      registersOwing250();
+      api
+        ..on('POST', '/payments/orders', paymentOrderBody())
+        ..on('POST', '/payments/verify', {'message': 'Unavailable'},
+            status: 503)
+        ..on('GET', '/events/info/7', paidEventInfo(isPaid: false));
+      final went = await pumpForm(tester);
+
+      await tester.tap(find.text('Continue'));
+      // Timed pumps: the form's button spins until the dialog is read.
+      await _settle(tester, 600);
+
+      expect(find.text(paymentConfirmingMessage), findsOneWidget);
+      await tester.tap(find.byKey(ConfirmingPaymentDialog.okKey));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Payment not completed. Your place is held — tap '
+          'Continue to pay.'), findsNothing);
+      expect(went, ['/events/7']);
+      expect(find.text('The event'), findsOneWidget);
+      expect(sheet.opened, hasLength(1));
+    });
+
+    testWidgets(
+        'paid on Razorpay, verify failed, the webhook already in: the '
+        'success screen', (tester) async {
+      FakeRazorpaySheet(razorpayPaid).install(tester);
+      registersOwing250();
+      api
+        ..on('POST', '/payments/orders', paymentOrderBody())
+        ..on('POST', '/payments/verify', {'message': 'Unavailable'},
+            status: 503)
+        ..on('GET', '/events/info/7', paidEventInfo(isPaid: true));
+      final went = await pumpForm(tester);
+
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(went, ['/events/registration-success']);
     });
   });
 }

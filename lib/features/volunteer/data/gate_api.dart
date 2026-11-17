@@ -51,6 +51,11 @@ class GateApi {
   }
 
   /// The server's answer to each of [scans], with the scan as saved.
+  ///
+  /// Read one answer at a time. An answer for a scan that wasn't sent is
+  /// left out; one this build can't read (no outcome it knows) comes back
+  /// [ReplayedScan.askedAgain], as does one the server marks `retry`, so
+  /// the scan stays on the phone rather than being dropped unread.
   Future<List<ReplayedScan>> scanBatch(
       int eventId, List<QueuedScan> scans) async {
     final r = await _dio.post<dynamic>('${_gate(eventId)}/scan-batch', data: {
@@ -59,13 +64,22 @@ class GateApi {
     final saved = {for (final s in scans) s.clientRef: s};
     return [
       for (final row in jsonObjects(_map(r.data)['results']))
-        if (jsonString(row['client_ref']) case final ref?)
-          ReplayedScan(
-            clientRef: ref,
-            result: GateScanResult.fromJson(_map(row['response'])),
-            scan: saved[ref],
-          ),
+        if (jsonString(row['client_ref']) case final ref?
+            when saved.containsKey(ref))
+          _replayed(ref, row, saved[ref]),
     ];
+  }
+
+  ReplayedScan _replayed(
+      String ref, Map<String, dynamic> row, QueuedScan? scan) {
+    final response = jsonObject(row['response']);
+    final known = ScanOutcome.tryParse(response?['outcome']) != null;
+    return ReplayedScan(
+      clientRef: ref,
+      result: GateScanResult.fromJson(response ?? const {}),
+      scan: scan,
+      askedAgain: !known || (jsonBool(row['retry']) ?? false),
+    );
   }
 
   Future<List<GateAttendee>> search(int eventId, String query) async {

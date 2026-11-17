@@ -2,8 +2,20 @@
 <!-- Auto Backup on Android 11 and earlier. The session lives in
      flutter_secure_storage's two preference files, encrypted with a key that
      never leaves this phone's keystore: restored on another phone they could
-     not be read. Left out, a restored app simply starts signed out. -->
+     not be read. Left out, a restored app simply starts signed out.
+
+     Also left out, as they are personal and the app makes them again:
+     - gate_queue: a volunteer's unsent door scans (other people's ticket
+       codes). They stay on this phone until they are sent;
+     - documents: the person's kept tickets and certificates;
+     - network_saves.json: people saved while offline, not yet sent;
+     - app_flutter: the documents folder, where older builds kept tickets
+       and push pictures. -->
 <full-backup-content>
     <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
     <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+    <exclude domain="file" path="gate_queue" />
+    <exclude domain="file" path="documents" />
+    <exclude domain="file" path="network_saves.json" />
+    <exclude domain="root" path="app_flutter" />
 </full-backup-content>

@@ -79,9 +79,17 @@ class _FakeRepository implements ThreadRepository {
   Future<Result<Poll>> vote(String threadId, String optionId) =>
       (voteAnswer ??= Completer()).future;
 
+  /// Pages of comments by their `after`; [comments] is the first page
+  /// when none is set for it.
+  final Map<String?, Result<CommentPage>> commentPages = {};
+  final List<String?> commentAfters = [];
+
   @override
-  Future<Result<List<ThreadComment>>> getComments(String threadId) async =>
-      comments;
+  Future<Result<CommentPage>> getComments(String threadId,
+      {String? after}) async {
+    commentAfters.add(after);
+    return commentPages[after] ?? comments.map(CommentPage.new);
+  }
 
   @override
   Future<Result<ThreadComment>> addComment(String threadId, String body) async {
@@ -360,6 +368,76 @@ void main() {
       expect(state.thread?.id, 't1');
       expect(state.comments.map((c) => c.id), ['c1', 'c2']);
       expect(state.isRemoved, isFalse);
+    });
+
+    test(
+        'more comments: the next page goes under those shown, until the '
+        'last', () async {
+      final repo = _FakeRepository()
+        ..commentPages[null] = Either.right(
+            CommentPage([_comment('c1'), _comment('c2')], next: 'k2'))
+        ..commentPages['k2'] = Either.right(
+            CommentPage([_comment('c2'), _comment('c3')], next: null));
+      final container = _container(repo);
+      final sub = container.listen(threadDetailProvider('t1'), (_, __) {});
+      addTearDown(sub.close);
+      await _settle();
+      final notifier = container.read(threadDetailProvider('t1').notifier);
+      expect(container.read(threadDetailProvider('t1')).commentsNext, 'k2');
+
+      expect(await notifier.loadMoreComments(), isNull);
+
+      final state = container.read(threadDetailProvider('t1'));
+      // A row both pages held (one posted between the reads) shows once.
+      expect(state.comments.map((c) => c.id), ['c1', 'c2', 'c3']);
+      expect(state.commentsNext, isNull);
+      expect(state.loadingMoreComments, isFalse);
+
+      // The last page is in: nothing more is asked for.
+      await notifier.loadMoreComments();
+      expect(repo.commentAfters, [null, 'k2']);
+    });
+
+    test('a comment posted before the rest are read stays last', () async {
+      final repo = _FakeRepository()
+        ..commentPages[null] =
+            Either.right(CommentPage([_comment('c1')], next: 'k2'))
+        ..commentPages['k2'] = Either.right(CommentPage([_comment('c2')]))
+        ..added = Either.right(_comment('mine', authorId: 1));
+      final container = _container(repo);
+      final sub = container.listen(threadDetailProvider('t1'), (_, __) {});
+      addTearDown(sub.close);
+      await _settle();
+      final notifier = container.read(threadDetailProvider('t1').notifier);
+
+      await notifier.addComment('hello');
+      await notifier.loadMoreComments();
+
+      expect(container.read(threadDetailProvider('t1')).comments.map((c) => c.id),
+          ['c1', 'c2', 'mine']);
+    });
+
+    test('a page that fails leaves the list, and the way to try again',
+        () async {
+      final repo = _FakeRepository()
+        ..commentPages[null] =
+            Either.right(CommentPage([_comment('c1')], next: 'k2'))
+        ..commentPages['k2'] =
+            Either.left(const ServerFailure(message: 'offline'));
+      final container = _container(repo);
+      final sub = container.listen(threadDetailProvider('t1'), (_, __) {});
+      addTearDown(sub.close);
+      await _settle();
+
+      final failure = await container
+          .read(threadDetailProvider('t1').notifier)
+          .loadMoreComments();
+
+      expect(failure, isA<ServerFailure>());
+      final state = container.read(threadDetailProvider('t1'));
+      expect(state.comments.map((c) => c.id), ['c1']);
+      expect(state.commentsNext, 'k2');
+      expect(state.loadingMoreComments, isFalse);
     });
 
     test('a 404 means the post was removed', () async {

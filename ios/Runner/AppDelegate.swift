@@ -33,6 +33,9 @@ import FirebaseMessaging
     if let registrar = self.registrar(forPlugin: "AppIconBadge") {
       AppIconBadge.register(with: registrar)
     }
+    if let registrar = self.registrar(forPlugin: "BackupExclusion") {
+      BackupExclusion.register(with: registrar)
+    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
@@ -90,6 +93,48 @@ enum AppIconBadge {
       // Deprecated from iOS 17, which never reaches this branch.
       UIApplication.shared.applicationIconBadgeNumber = count
       result(nil)
+    }
+  }
+}
+
+// MARK: - Folders left out of backups
+/// Marks a folder or file of the app's own as not to be backed up to iCloud
+/// or a computer, from Dart (lib/core/storage/backup_exclusion.dart): a
+/// volunteer's unsent door scans, the person's kept tickets and
+/// certificates. A folder marked this way is left out with everything in
+/// it. Only paths inside the app's own container are accepted.
+enum BackupExclusion {
+  static let channelName = "finnet/backup"
+
+  static func register(with registrar: FlutterPluginRegistrar) {
+    let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger())
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "exclude" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      guard let path = call.arguments as? String else {
+        result(FlutterError(code: "bad_path", message: "exclude takes a path, a string", details: nil))
+        return
+      }
+      exclude(path, result: result)
+    }
+  }
+
+  private static func exclude(_ path: String, result: @escaping FlutterResult) {
+    let home = URL(fileURLWithPath: NSHomeDirectory()).resolvingSymlinksInPath().path
+    var url = URL(fileURLWithPath: path).resolvingSymlinksInPath()
+    guard url.path.hasPrefix(home + "/") else {
+      result(FlutterError(code: "outside_app", message: "not one of the app's own files", details: nil))
+      return
+    }
+    var values = URLResourceValues()
+    values.isExcludedFromBackup = true
+    do {
+      try url.setResourceValues(values)
+      result(nil)
+    } catch {
+      result(FlutterError(code: "exclude_failed", message: error.localizedDescription, details: nil))
     }
   }
 }

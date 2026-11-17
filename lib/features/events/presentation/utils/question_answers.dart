@@ -1,3 +1,4 @@
+import 'package:finnet/core/utils/email_address.dart';
 import 'package:intl/intl.dart';
 
 /// How an organiser's question is answered on the registration form.
@@ -98,7 +99,6 @@ String dateTimeLabel(DateTime moment) =>
 // server's words for them (`app/api/events/registration/answers.py`), so a
 // typo is caught here rather than refused after sending.
 
-final _email = RegExp(r'^[^\s@]+@[^\s@.]+(\.[^\s@.]+)*\.[^\s@.]{2,}$');
 final _number = RegExp(r'^-?\d+([.,]\d+)?$');
 
 bool _looksLikeUrl(String text) {
@@ -119,7 +119,7 @@ String? typedAnswerProblem(String fieldType, String value) {
   if (v.isEmpty) return null;
   switch (fieldType.trim().toLowerCase()) {
     case 'email':
-      return _email.hasMatch(v)
+      return looksLikeEmail(v)
           ? null
           : 'Enter an email address, like name@example.com.';
     case 'url':

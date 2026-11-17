@@ -25,6 +25,7 @@ import 'package:finnet/features/events/presentation/providers/event_page_provide
 import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:finnet/shared/utils/external_links.dart';
+import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:apple_passkit/apple_passkit.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/shared/motion.dart';
@@ -1055,6 +1056,9 @@ class _TicketViewPageState extends State<TicketViewPage>
               bytes,
               fit: BoxFit.contain,
               width: double.infinity,
+              // Decoded at the width it is drawn, not the render's own
+              // (often print size); never larger than it came.
+              cacheWidth: screenDecodeWidth(context),
               gaplessPlayback: true,
             ),
             Positioned.fill(

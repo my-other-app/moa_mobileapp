@@ -4,6 +4,7 @@
 // the app rather than on the website, and gone at sign-out.
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -359,8 +360,10 @@ void main() {
 
       // And it is drawn: at the render's own shape.
       await tester.runAsync(() async {
-        await precacheImage(MemoryImage(_render),
-            tester.element(find.byType(RenderedDocumentImage)));
+        final context = tester.element(find.byType(RenderedDocumentImage));
+        await precacheImage(
+            RenderedDocumentImage.sizedFor(context, MemoryImage(_render)),
+            context);
         await Future<void>.delayed(const Duration(milliseconds: 100));
       });
       await tester.pump();
@@ -397,6 +400,28 @@ void main() {
       expect(shownBytes(tester), _render);
       expect(find.byKey(CertificateRender.offlineNoticeKey), findsOneWidget);
       expect(find.byType(CertificatePreview), findsNothing);
+    });
+
+    testWidgets(
+        "never saved, and the server too busy to draw it (503 RENDER_BUSY): "
+        "the app's drawing, said to be a preview -- not \"once you're "
+        'online"', (tester) async {
+      final busy = DioException(
+        requestOptions: RequestOptions(path: '/events/certificates/x/image'),
+        response: Response(
+          requestOptions: RequestOptions(path: '/events/certificates/x/image'),
+          statusCode: 503,
+          data: utf8.encode('{"message":"Busy","error_code":"RENDER_BUSY"}'),
+        ),
+        type: DioExceptionType.badResponse,
+      );
+      final documents = _Documents(answer: () async => throw busy);
+      await pump(tester, documents);
+
+      expect(find.byType(CertificatePreview), findsOneWidget);
+      expect(find.text(CertificateRender.failedPreviewNotice), findsOneWidget);
+      expect(find.text(CertificateRender.offlinePreviewNotice), findsNothing);
+      expect(find.byKey(CertificateRender.refusedKey), findsNothing);
     });
 
     testWidgets("never saved and offline: the app's drawing, marked as a "

@@ -31,8 +31,9 @@ abstract class ThreadRepository {
   /// Vote on a poll; voting again moves the vote. Answers with the poll.
   Future<Result<Poll>> vote(String threadId, String optionId);
 
-  /// The comments under a post, oldest first.
-  Future<Result<List<ThreadComment>>> getComments(String threadId);
+  /// The comments under a post, oldest first, a page at a time: the first
+  /// page, or the one after [after] (a page's `next`).
+  Future<Result<CommentPage>> getComments(String threadId, {String? after});
 
   /// Comment on a post.
   Future<Result<ThreadComment>> addComment(String threadId, String body);

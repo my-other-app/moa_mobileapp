@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// The bottom bar's selected tab: 0 home, 1 events, 2 clubs, 3 profile.
+/// The bottom bar's selected tab: 0 home, 1 events, 2 network, 3 clubs,
+/// 4 profile.
 ///
 /// The one tab index in the app. There used to be three: the bar read this,
 /// sign-out reset `bottomNavIndexProvider`, and `currentTabProvider` was

@@ -37,6 +37,7 @@ final _png = base64Decode(
 class _Renderer implements HttpClientAdapter {
   bool offline = false;
   int? status;
+  String body = '{"message":"no"}';
   String? etag = '"v1"';
   final requests = <RequestOptions>[];
 
@@ -53,7 +54,7 @@ class _Renderer implements HttpClientAdapter {
     }
     final refused = status;
     if (refused != null) {
-      return ResponseBody.fromString('{"message":"no"}', refused, headers: {
+      return ResponseBody.fromString(body, refused, headers: {
         'content-type': ['application/json'],
       });
     }
@@ -145,6 +146,29 @@ void main() {
       expect(offline.current, isFalse);
       expect(renderer.requests.last.extra['noRetry'], isTrue,
           reason: 'no second try at the door');
+    });
+
+    test(
+        'the server too busy to draw it (503 RENDER_BUSY): the kept design, '
+        'asked once; none kept, the error for the screen', () async {
+      renderer
+        ..status = 503
+        ..body = '{"message":"Busy","error_code":"RENDER_BUSY"}';
+      await expectLater(
+          images.fetch('MOA-1'),
+          throwsA(isA<DioException>().having(
+              DocumentCache.renderBusy, 'render busy', isTrue)));
+
+      renderer.status = null;
+      await images.fetch('MOA-1');
+      renderer.status = 503;
+      final asked = renderer.requests.length;
+      final busy = await images.fetch('MOA-1');
+
+      expect(busy.bytes, _png);
+      expect(busy.current, isFalse);
+      expect(renderer.requests.length, asked + 1, reason: 'no second try');
+      expect(status.isOffline, isFalse, reason: 'the server answered');
     });
 
     test('revalidated by its ETag: a 304 keeps the copy', () async {
@@ -345,6 +369,44 @@ void main() {
       expect(find.byKey(TicketViewPage.qrKeyFor('MOA-1')), findsNothing);
       expect(images.forgotten, ['MOA-1']);
       expect(images.fetches, 0);
+      await finish(tester);
+    });
+
+    DioException renderBusy() => DioException(
+          requestOptions: RequestOptions(path: '/events/tickets/MOA-1/image'),
+          response: Response(
+            requestOptions: RequestOptions(path: '/events/tickets/MOA-1/image'),
+            statusCode: 503,
+            data: utf8.encode(
+                '{"message":"Busy","error_code":"RENDER_BUSY"}'),
+          ),
+          type: DioExceptionType.badResponse,
+        );
+
+    testWidgets(
+        'never fetched, and the server too busy to draw it (503 '
+        'RENDER_BUSY): the drawn card, as for any other failure',
+        (tester) async {
+      final images = _Images(answer: () => Future.error(renderBusy()));
+      await pump(tester, images);
+
+      expect(find.byKey(TicketViewPage.renderedKey), findsNothing);
+      expect(find.byKey(TicketViewPage.qrKeyFor('MOA-1')), findsOneWidget);
+      expect(find.byKey(TicketViewPage.revokedKey), findsNothing);
+      // Online: no "offline" note over it.
+      expect(find.byKey(TicketViewPage.offlineNoticeKey), findsNothing);
+      expect(images.forgotten, isEmpty, reason: 'not a refusal');
+      await finish(tester);
+    });
+
+    testWidgets('kept, and the server too busy: the kept design stays',
+        (tester) async {
+      final images = _Images(kept: _png, answer: () => Future.error(renderBusy()));
+      await pump(tester, images);
+
+      expect(find.byKey(TicketViewPage.renderedKey), findsOneWidget);
+      expect(find.byKey(TicketViewPage.qrKeyFor('MOA-1')), findsNothing);
+      expect(images.forgotten, isEmpty);
       await finish(tester);
     });
 

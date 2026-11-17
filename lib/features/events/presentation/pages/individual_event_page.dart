@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatf
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/features/payments/payment_confirmation.dart';
+import 'package:finnet/features/payments/presentation/confirming_payment.dart';
 import 'package:finnet/shared/widgets/rating_stars.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
@@ -59,6 +61,7 @@ import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/widgets/networking/people_like_you_card.dart';
+import 'package:finnet/features/network/presentation/widgets/at_event_qr_row.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/core/network/network_status.dart';
@@ -131,6 +134,10 @@ class IndividualEventPage extends ConsumerStatefulWidget {
 
   /// The line by the register button on an event whose club reviews every
   /// registration.
+  /// A payment the server is still confirming: its note, and Check payment.
+  static const confirmingPaymentKey = ValueKey('event-confirming-payment');
+  static const checkPaymentKey = ValueKey('event-check-payment');
+
   static const approvalNoteKey = ValueKey('event-approval-note');
 
   /// Over [approvalNoteKey]'s line, when the person has registered: "Your
@@ -258,6 +265,11 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
 
   /// A payment for the registration is under way.
   bool _paying = false;
+
+  /// Razorpay took a payment for the registration and the server hasn't
+  /// confirmed it yet: the page says so and offers to check, never to pay
+  /// again. Gone once a read shows it paid.
+  bool _confirmingPayment = false;
 
   /// Opened from "Finish payment" on a list: start paying once loaded, once.
   bool _finishPaymentOnLoad = false;
@@ -414,7 +426,10 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       poll: () => liveSource.fetchBanner(_idOrZero),
       parse: LiveFeed.tryParse,
       onData: (feed) {
-        if (mounted) setState(() => live = feed);
+        // A poll every 30 s around the event, and stream snapshots while
+        // it is live: most say what the strip shows already, and redrawing
+        // this whole page for them was wasted.
+        if (mounted && feed != live) setState(() => live = feed);
       },
       // As the website: a stream only while the event is happening.
       shouldStream: (feed) => feed.isEventLive,
@@ -569,6 +584,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       isAttended = status == RegistrationStatus.attended;
       isRegistered = status != RegistrationStatus.none;
       awaitingPayment = status == RegistrationStatus.awaitingPayment;
+      // Confirmed: nothing to wait for any more.
+      if (!awaitingPayment) _confirmingPayment = false;
       ticketRevoked = eventInfo.ticketRevoked;
       _networking = raw['networking'] is bool ? raw['networking'] as bool : null;
       registrationId = eventInfo.registrationId;
@@ -666,6 +683,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           email: email,
           phone: phone,
           sellable: _sellable,
+          whileConfirming: (confirming) =>
+              showConfirmingPayment(context, confirming),
         ),
       ).run(
         eventId: _idOrZero,
@@ -694,6 +713,16 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                   'Payment not completed. Your registration is saved — tap Finish payment to try again.'),
             ),
           );
+        case FinishPaymentResult.confirming:
+          setState(() => _confirmingPayment = true);
+          await _fetchData();
+        case FinishPaymentResult.removed:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content:
+                    Text(outcome.message ?? registrationRemovedMessage)),
+          );
+          await _fetchData();
         case FinishPaymentResult.needsForm:
           await _openRegistrationForm();
         case FinishPaymentResult.closed:
@@ -738,6 +767,10 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
       },
     );
     if (!mounted) return;
+    // The form left a payment the server is still confirming.
+    if (result == paymentConfirmingResult) {
+      setState(() => _confirmingPayment = true);
+    }
     await _fetchData();
     if (!mounted) return;
     if (result == RegistrationAction.viewTicket && isRegistered) {
@@ -2157,6 +2190,14 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
               durationHours: duration,
               revoked: _ticketRevoked,
             ),
+            // At the venue: My QR, and saving the people met here.
+            AtEventQrRow(
+              eventId: _eventId,
+              status: _status,
+              startsAt: eventDateTime,
+              durationHours: duration,
+              revoked: _ticketRevoked,
+            ),
 
             const SizedBox(height: 16),
             // Info Grid.
@@ -2593,6 +2634,9 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     }
     final String banner;
     final String? blocked;
+    if (_confirmingPayment) {
+      return _buildConfirmingPaymentSheet();
+    }
     if (_paymentClosed) {
       banner = 'Registration closed before your payment went through';
       blocked = 'REGISTRATION CLOSED';
@@ -2651,6 +2695,71 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           const SizedBox(height: 10),
         ],
       ),
+    );
+  }
+
+  /// A payment Razorpay took and the server hasn't confirmed yet: what is
+  /// happening, and a way to read the registration again -- not to pay.
+  Widget _buildConfirmingPaymentSheet() {
+    return Container(
+      key: IndividualEventPage.confirmingPaymentKey,
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F0FE),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              paymentConfirmingMessage,
+              style: TextStyle(fontSize: 12, color: Color(0xFF1E3A8A)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              key: IndividualEventPage.checkPaymentKey,
+              onPressed: _checkingPayment ? null : _checkPayment,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2C333D),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: _checkingPayment
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('CHECK PAYMENT'),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+
+  bool _checkingPayment = false;
+
+  /// "Check payment": the event read again. Paid now, the ticket shows;
+  /// not yet, it says so.
+  Future<void> _checkPayment() async {
+    setState(() => _checkingPayment = true);
+    try {
+      await _fetchData();
+    } finally {
+      if (mounted) setState(() => _checkingPayment = false);
+    }
+    if (!mounted || !awaitingPayment) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text(paymentConfirmingMessage)),
     );
   }
 

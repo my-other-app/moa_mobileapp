@@ -1,7 +1,8 @@
 import 'package:equatable/equatable.dart';
 
 /// What can be reported: the server's `target_type`.
-enum ReportTargetType { thread, comment, user, club }
+/// `profile` is a person's public profile (Feature 4), by their user id.
+enum ReportTargetType { thread, comment, user, club, profile }
 
 /// Why something is reported: the server's `reason`.
 ///
@@ -35,6 +36,10 @@ class ReportTarget extends Equatable {
 
   factory ReportTarget.user(int userId) =>
       ReportTarget(ReportTargetType.user, '$userId');
+
+  /// A public profile: what it shows -- its links, projects, words.
+  factory ReportTarget.profile(int userId) =>
+      ReportTarget(ReportTargetType.profile, '$userId');
 
   @override
   List<Object?> get props => [type, id];

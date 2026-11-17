@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/app/app.dart';
+import 'package:finnet/app/release_logging.dart';
 import 'package:finnet/app/start_up.dart';
 import 'package:finnet/app/session_scope.dart';
 import 'package:finnet/core/cache/api_cache.dart';
@@ -11,10 +12,16 @@ import 'package:finnet/core/cache/image_caches.dart';
 import 'package:finnet/core/network/interceptors/app_version_interceptor.dart';
 import 'package:finnet/core/services/analytics_service.dart';
 import 'package:finnet/core/services/notification_service.dart';
+import 'package:finnet/core/services/push_pictures.dart';
+import 'package:finnet/core/storage/backup_exclusion.dart';
+import 'package:finnet/core/storage/keychain_start_up.dart';
 import 'package:finnet/features/discover/data/datasources/discover_place_store.dart';
 import 'package:finnet/firebase_options.dart';
 
 void main() async {
+  // Nothing the app logs reaches a release build's device log.
+  silenceDebugPrintInRelease();
+
   // Errors are reported from three places, all through
   // AnalyticsService.crashReporter (Crashlytics, as the person chose in
   // Settings, with emails, phone numbers and tokens taken out):
@@ -22,6 +29,13 @@ void main() async {
   // AnalyticsService.initialize, and this zone for whatever runs in it.
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Before anything reads the session or sends a request. On an iPhone, a
+    // new install starts with an empty keychain (deleting the app does not
+    // empty it), and entries older builds wrote move to "this phone only".
+    // An update keeps its session. See KeychainStartUp.
+    final keychain = await KeychainStartUp.runForApp();
+    debugPrint('Keychain at start-up: ${keychain.name}');
 
     // This build's version, for X-App-Version on every request. Started
     // first and never waited on here; a request made before it is read
@@ -71,6 +85,11 @@ void main() async {
     unawaited(DocumentCache.instance.trim());
     // Saved answers past their week, or over their caps, go the same way.
     unawaited(ApiCache.instance.prune());
+    // Pictures of pushes shown over a day ago, and older builds' ones.
+    unawaited(PushPictures.instance.prune());
+    // Door scans, kept tickets and offline saves out of iCloud backups,
+    // for the folders older builds made.
+    unawaited(BackupExclusion.instance.excludeKnown());
   }, (error, stack) {
     // An error nothing in the zone caught.
     debugPrint('Uncaught async error: $error');

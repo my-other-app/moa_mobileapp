@@ -122,6 +122,40 @@ void main() {
     expect(find.text('Unpin'), findsOneWidget);
   });
 
+  testWidgets(
+      'odd rows: a string id is read, a row without an id is skipped, '
+      'and nothing breaks the tab', (tester) async {
+    api
+      ..on('GET', _pinned, _page(const []))
+      ..on('GET', _following, _page([
+            {..._club(14, 'Lens Club'), 'id': '14', 'is_hidden': 1},
+            {'name': 'No Id Club'},
+            {..._club(15, 'Quiz Club'), 'name': 7, 'followers_count': 2.0},
+          ]));
+    await _pumpTab(tester);
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Lens Club'), findsOneWidget);
+    expect(find.text('No Id Club'), findsNothing);
+    expect(find.text('7'), findsOneWidget);
+  });
+
+  testWidgets('a long list of followed clubs is built as it scrolls',
+      (tester) async {
+    api
+      ..on('GET', _pinned, _page(const []))
+      ..on('GET', _following,
+          _page([for (var i = 1; i <= 200; i++) _club(i, 'Club $i')]));
+    await _pumpTab(tester);
+
+    expect(find.text('Club 1'), findsOneWidget);
+    expect(find.textContaining('Club ').evaluate().length, lessThan(60));
+
+    await tester.scrollUntilVisible(find.text('Club 200'), 1500,
+        scrollable: find.byType(Scrollable).first, maxScrolls: 200);
+    expect(find.text('Club 200'), findsOneWidget);
+  });
+
   testWidgets('no pinned clubs: no PINNED row', (tester) async {
     api
       ..on('GET', _pinned, _page(const []))

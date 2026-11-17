@@ -249,6 +249,33 @@ void main() {
         expect(authRedirect(_signedOut, '/speakers/ananya-iyer'), isNull);
       });
 
+      test('a profile and a personal QR open over Home, signed out too', () {
+        expect(nameOf('/u/ananya'), 'publicProfile');
+        expect(matchOf('/u/ananya').pathParameters['handle'], 'ananya');
+        expect(nameOf('/p/abcdefghjk'), 'profileCode');
+        for (final location in ['/u/ananya', '/p/abcdefghjk']) {
+          final shell = matchOf(location).matches.first as ShellRouteMatch;
+          expect(shell.matches.first.route,
+              isA<GoRoute>().having((r) => r.path, 'path', '/'));
+          expect(authRedirect(_signedOut, location), isNull);
+        }
+      });
+
+      test('the Network tab and its pages ask for an account', () {
+        expect(nameOf('/network'), AppRoutes.network);
+        expect(nameOf('/network/scan'), 'savePersonScan');
+        expect(nameOf('/network/saved-me'), 'savedMe');
+        expect(nameOf('/network/5'), 'networkPerson');
+        expect(nameOf('/profile/qr'), 'myQr');
+        expect(nameOf('/profile/public'), 'editPublicProfile');
+        expect(nameOf('/profile/public/preview'), 'strangerPreview');
+        expect(authRedirect(_signedOut, '/network?event=9'),
+            '/auth/onboarding?from=%2Fnetwork%3Fevent%3D9');
+        expect(authRedirect(_signedOut, '/profile/qr'),
+            '/auth/onboarding?from=%2Fprofile%2Fqr');
+        expect(authRedirect(_signedIn, '/network'), isNull);
+      });
+
       test('a post, a ticket and a certificate open by their ids', () {
         expect(nameOf('/threads/7d0f3c2a-1111-4c4c-9a9a-000000000001'),
             AppRoutes.threadDetail);

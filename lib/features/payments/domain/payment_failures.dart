@@ -67,6 +67,15 @@ const registrationNotFoundCode = 'REGISTRATION_NOT_FOUND';
 /// The server's `error_code` for a payment it can't find at Razorpay.
 const paymentNotFoundCode = 'PAYMENT_NOT_FOUND';
 
+/// The server's `error_code` when a payment came in for a registration the
+/// organiser had removed (409, from `/payments/verify`): the payment is
+/// recorded and refunded in full.
+const registrationRemovedCode = 'REGISTRATION_REMOVED';
+
+/// The server's `error_code` for too many payment checks in a short time
+/// (429): the payment itself is applied anyway, by Razorpay's webhook.
+const rateLimitedCode = 'RATE_LIMITED';
+
 /// The `code` of [InAppSaleBlockedFailure].
 const inAppSaleBlockedCode = 'IN_APP_SALE_BLOCKED';
 
@@ -105,6 +114,12 @@ String paymentFailureMessage(Failure failure) {
     case paymentNotFoundCode:
       return "We couldn't confirm that payment yet. If money left your account, "
           "it will show here once it's confirmed.";
+    case registrationRemovedCode:
+      return 'This registration was cancelled before the payment went '
+          'through. The payment is being refunded in full.';
+    case rateLimitedCode:
+      return 'Too many payment checks in a short time. Wait a minute and '
+          'try again.';
     case alreadyPaidCode:
       return const AlreadyPaidFailure().message;
     case nothingToPayCode:

@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/api/api_helper.dart';
+import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/clubs/data/club_follow_service.dart';
 import 'package:finnet/features/topics/domain/topic_emoji.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
@@ -148,12 +151,7 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
       endpoint = '/clubs/unfollow/${widget.id}';
     }
 
-    if (widget.isFollowing != _isFollowing) {
-      _followersCount = widget.followersCount;
-    } else {
-      _followersCount =
-          _isFollowing ? widget.followersCount - 1 : widget.followersCount + 1;
-    }
+    final asked = !_isFollowing;
 
     try {
       Response<dynamic> res = await APIService.instance.request(
@@ -161,10 +159,16 @@ class _ExploreMoreClubCardState extends State<ExploreMoreClubCard> {
           // A follow is credited to the club's tracking link, if one
           // opened the app.
           query: _isFollowing ? null : trackingQuery());
-      // Assuming the API returns a JSON with an "is_following" boolean field:
+      // The card may have gone while the server answered.
+      if (!mounted) return;
+      // What the server says now; a body without it, the change asked for.
+      final following =
+          jsonBool(jsonObject(res.data)?['is_following']) ?? asked;
       setState(() {
-        _isFollowing = res.data['is_following'] as bool;
-        _followersCount;
+        _isFollowing = following;
+        // The count the card was shown with, moved by the change since.
+        final moved = following == widget.isFollowing ? 0 : (following ? 1 : -1);
+        _followersCount = math.max(0, widget.followersCount + moved);
       });
     } catch (e) {
       // Handle error (for example, show a SnackBar)

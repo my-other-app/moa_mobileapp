@@ -186,12 +186,17 @@ class AnalyticsService implements CollectionControl {
   }
 }
 
-/// [endpoint] without its query string or fragment: `/events/list` for
-/// `/events/list?search=x`, and the path of a full URL.
+/// [endpoint] without its query string or fragment -- `/events/list` for
+/// `/events/list?search=x`, and the path of a full URL -- and with the
+/// secrets and the people in it templated: `/events/tickets/:code/image`,
+/// `/waitlist/offers/:token/claim`, `/profiles/:handle`. A 404 on a stale
+/// ticket or an expired offer is common, and each one's address went to
+/// Crashlytics and Analytics with its working code in it.
 @visibleForTesting
 String apiPathOf(String endpoint) {
   final cut = endpoint.indexOf(RegExp('[?#]'));
   final bare = cut < 0 ? endpoint : endpoint.substring(0, cut);
   final uri = Uri.tryParse(bare);
-  return uri != null && uri.hasScheme ? uri.path : bare;
+  final path = uri != null && uri.hasScheme ? uri.path : bare;
+  return redactSecretPaths(redactPersonalPaths(path));
 }

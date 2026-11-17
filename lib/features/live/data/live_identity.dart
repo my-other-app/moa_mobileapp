@@ -11,6 +11,9 @@ abstract class LiveStore {
   Future<String?> read(String key);
   Future<void> write(String key, String value);
   Future<void> delete(String key);
+
+  /// Every key kept, this class's and others'.
+  Future<Iterable<String>> keys();
 }
 
 class SecureLiveStore implements LiveStore {
@@ -26,6 +29,9 @@ class SecureLiveStore implements LiveStore {
 
   @override
   Future<void> delete(String key) => _storage.delete(key: key);
+
+  @override
+  Future<Iterable<String>> keys() async => (await _storage.readAll()).keys;
 }
 
 class MemoryLiveStore implements LiveStore {
@@ -39,6 +45,9 @@ class MemoryLiveStore implements LiveStore {
 
   @override
   Future<void> delete(String key) async => values.remove(key);
+
+  @override
+  Future<Iterable<String>> keys() async => List.of(values.keys);
 }
 
 /// Who this phone is in a live room, for someone without an account.
@@ -51,13 +60,15 @@ class MemoryLiveStore implements LiveStore {
 /// server then counts the account instead -- one vote across their phones.
 ///
 /// The player each quiz gave back is kept per event, so leaving the quiz and
-/// coming back is "back in as Asha", not a second player.
+/// coming back is "back in as Asha", not a second player. Both go when the
+/// session ends ([forgetAll]): the next person to sign in on the phone is a
+/// new player, not the last one.
 class LiveIdentity {
   LiveIdentity(this._store, {Random? random})
       : _random = random ?? Random.secure();
 
   static const installKeyName = 'live_install_key';
-  static String playerKeyName(int eventId) => 'live_player_$eventId';
+  static String playerKeyName(int eventId) => '$_playerPrefix$eventId';
 
   final LiveStore _store;
   final Random _random;
@@ -103,6 +114,27 @@ class LiveIdentity {
       await _store.delete(playerKeyName(eventId));
     } catch (_) {}
   }
+
+  /// Forget who this phone was: the install's key and every quiz's player.
+  /// At sign-out, and when the server ends the session. The next room call
+  /// makes a new key.
+  Future<void> forgetAll() async {
+    _key = null;
+    Iterable<String> kept = const [];
+    try {
+      kept = await _store.keys();
+    } catch (_) {}
+    for (final name in [
+      installKeyName,
+      ...kept.where((k) => k.startsWith(_playerPrefix)),
+    ]) {
+      try {
+        await _store.delete(name);
+      } catch (_) {}
+    }
+  }
+
+  static const _playerPrefix = 'live_player_';
 
   static const _alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
 

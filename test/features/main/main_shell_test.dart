@@ -15,10 +15,15 @@ import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/profile/domain/repositories/profile_repository.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/sign_out.dart';
+import 'package:finnet/features/volunteer/data/gate_api.dart';
+import 'package:finnet/features/volunteer/data/gate_models.dart';
+import 'package:finnet/features/volunteer/data/scan_queue.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+
+import '../volunteer/volunteer_fakes.dart';
 
 const _signedIn = AuthState(accessToken: 'token', isInitialized: true);
 const _signedOut = AuthState(isInitialized: true);
@@ -126,12 +131,20 @@ void main() {
   late _Auth auth;
   late GoRouter router;
   late ProviderContainer container;
+  late MemoryScanQueueStore doorQueue;
+  late FakeGateApi door;
 
-  /// The four tabs in the shell, as the app's router has them.
+  setUp(() {
+    doorQueue = MemoryScanQueueStore();
+    door = FakeGateApi();
+  });
+
+  /// The five tabs in the shell, as the app's router has them.
   Future<void> pumpShell(WidgetTester tester,
       {AuthState session = _signedOut,
       String start = '/',
-      int index = 0}) async {
+      int index = 0,
+      bool followLocation = false}) async {
     tester.view
       ..physicalSize = const Size(1080, 2400)
       ..devicePixelRatio = 3;
@@ -139,10 +152,13 @@ void main() {
     auth = _Auth(session);
     router = GoRouter(initialLocation: start, routes: [
       ShellRoute(
-        builder: (_, __, child) => MainShell(child: child),
+        // As the app's router has it, when [followLocation].
+        builder: (_, state, child) => MainShell(
+            location: followLocation ? state.uri.path : null, child: child),
         routes: [
           GoRoute(path: '/', builder: (_, __) => const _Tab('home')),
           GoRoute(path: '/events', builder: (_, __) => const _Tab('events')),
+          GoRoute(path: '/network', builder: (_, __) => const _Tab('network')),
           GoRoute(path: '/clubs', builder: (_, __) => const _Tab('clubs')),
           GoRoute(path: '/profile', builder: (_, __) => const _Tab('profile')),
         ],
@@ -157,6 +173,8 @@ void main() {
         pushSettingsRepositoryProvider.overrideWithValue(_NoSwitches()),
         notificationRepositoryProvider.overrideWithValue(_EmptyInbox()),
         profileRepositoryProvider.overrideWithValue(_Profiles()),
+        scanQueueStoreProvider.overrideWithValue(doorQueue),
+        gateApiProvider.overrideWithValue(door),
       ],
       child: MaterialApp.router(routerConfig: router),
     ));
@@ -170,13 +188,15 @@ void main() {
 
   String here() => router.routerDelegate.currentConfiguration.uri.path;
 
-  testWidgets('four tabs -- Home, Events, Clubs and Profile -- Home lit first',
+  testWidgets(
+      'five tabs -- Home, Events, Network, Clubs and Profile -- Home lit first',
       (tester) async {
     await pumpShell(tester);
 
     final bar =
         tester.widget<BottomNavigationBar>(find.byType(BottomNavigationBar));
-    expect(bar.items.map((i) => i.label), ['Home', 'Events', 'Clubs', 'Profile']);
+    expect(bar.items.map((i) => i.label),
+        ['Home', 'Events', 'Network', 'Clubs', 'Profile']);
     expect(lit(tester), 0);
     expect(find.text('the home tab'), findsOneWidget);
   });
@@ -185,9 +205,10 @@ void main() {
     await pumpShell(tester, session: _signedIn);
 
     for (final (label, path, page, index) in [
-      ('Clubs', '/clubs', 'the clubs tab', 2),
+      ('Clubs', '/clubs', 'the clubs tab', 3),
       ('Events', '/events', 'the events tab', 1),
-      ('Profile', '/profile', 'the profile tab', 3),
+      ('Network', '/network', 'the network tab', 2),
+      ('Profile', '/profile', 'the profile tab', 4),
       ('Home', '/', 'the home tab', 0),
     ]) {
       await tester.tap(find.text(label));
@@ -200,21 +221,37 @@ void main() {
     }
   });
 
+  testWidgets('a link or a push that opens a tab lights it', (tester) async {
+    await pumpShell(tester, session: _signedIn, followLocation: true);
+    expect(lit(tester), 0);
+
+    // The recap push: the Network tab at an event.
+    router.go('/network?event=9');
+    await tester.pumpAndSettle();
+    expect(find.text('the network tab'), findsOneWidget);
+    expect(lit(tester), 2);
+    expect(container.read(navigationIndexProvider), 2);
+
+    router.go('/profile');
+    await tester.pumpAndSettle();
+    expect(lit(tester), 4);
+  });
+
   testWidgets('tapping the tab already open stays on it', (tester) async {
-    await pumpShell(tester, start: '/clubs', index: 2);
+    await pumpShell(tester, start: '/clubs', index: 3);
     await tester.tap(find.text('Clubs'));
     await tester.pumpAndSettle();
 
     expect(here(), '/clubs');
-    expect(lit(tester), 2);
+    expect(lit(tester), 3);
   });
 
   testWidgets(
       'logging out from Profile asks first, then ends the session with Home '
       'the tab to come back to', (tester) async {
-    await pumpShell(tester, session: _signedIn, start: '/profile', index: 3);
+    await pumpShell(tester, session: _signedIn, start: '/profile', index: 4);
     await tester.pump();
-    expect(lit(tester), 3);
+    expect(lit(tester), 4);
     expect(find.text('Asha Menon'), findsOneWidget);
 
     await tester.tap(find.text('Log out'));
@@ -232,7 +269,7 @@ void main() {
 
   testWidgets('cancelling the log-out leaves things as they were',
       (tester) async {
-    await pumpShell(tester, session: _signedIn, start: '/profile', index: 3);
+    await pumpShell(tester, session: _signedIn, start: '/profile', index: 4);
     await tester.tap(find.text('Log out'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('CANCEL'));
@@ -240,6 +277,97 @@ void main() {
 
     expect(auth.logouts, 0);
     expect(container.read(isAuthenticatedProvider), isTrue);
-    expect(lit(tester), 3);
+    expect(lit(tester), 4);
+  });
+
+  group('door scans not sent yet', () {
+    Future<void> saveTwo() async {
+      for (final (event, ref) in [(7, 'ref-a-xxxxxxxx'), (8, 'ref-b-xxxxxxxx')]) {
+        await doorQueue.add(QueuedScan(
+            eventId: event,
+            code: 'MOA-AAAAA-BBBB$event',
+            clientRef: ref,
+            scannedAt: DateTime.utc(2026, 11, 28, 9)));
+      }
+    }
+
+    Future<void> logOut(WidgetTester tester) async {
+      await pumpShell(tester, session: _signedIn, start: '/profile', index: 4);
+      await tester.tap(find.text('Log out'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('are said before signing out, never deleted: sign out anyway '
+        'keeps them on the phone', (tester) async {
+      await saveTwo();
+      await logOut(tester);
+
+      expect(find.text('LOG OUT?'), findsNothing);
+      expect(find.text("2 door scans haven't been sent yet"), findsOneWidget);
+      expect(find.text(UnsentScansDialog.message), findsOneWidget);
+
+      await tester.tap(find.byKey(UnsentScansDialog.signOutKey));
+      await tester.pumpAndSettle();
+
+      expect(auth.logouts, 1);
+      expect(await doorQueue.count(), 2);
+      expect(door.batches, isEmpty);
+    });
+
+    testWidgets('Cancel stays signed in, with the scans', (tester) async {
+      await saveTwo();
+      await logOut(tester);
+
+      await tester.tap(find.byKey(UnsentScansDialog.cancelKey));
+      await tester.pumpAndSettle();
+
+      expect(auth.logouts, 0);
+      expect(container.read(isAuthenticatedProvider), isTrue);
+      expect(await doorQueue.count(), 2);
+    });
+
+    testWidgets('Send now sends every event\'s, then signs out', (tester) async {
+      await saveTwo();
+      await logOut(tester);
+
+      await tester.tap(find.byKey(UnsentScansDialog.sendNowKey));
+      await tester.pumpAndSettle();
+
+      expect(door.batches.map((b) => b.single.clientRef),
+          ['ref-a-xxxxxxxx', 'ref-b-xxxxxxxx']);
+      expect(await doorQueue.count(), 0);
+      expect(auth.logouts, 1);
+    });
+
+    testWidgets('Send now with no signal says so, and asks again',
+        (tester) async {
+      await saveTwo();
+      door.batchError = noSignal('/scan-batch');
+      await logOut(tester);
+
+      await tester.tap(find.byKey(UnsentScansDialog.sendNowKey));
+      await tester.pumpAndSettle();
+
+      expect(auth.logouts, 0);
+      expect(find.text(UnsentScansDialog.stillLeft(2)), findsOneWidget);
+      // No signal for the first event: the second isn't tried.
+      expect(door.batches, hasLength(1));
+
+      await tester.tap(find.byKey(UnsentScansDialog.signOutKey));
+      await tester.pumpAndSettle();
+      expect(auth.logouts, 1);
+      expect(await doorQueue.count(), 2);
+    });
+
+    testWidgets('one scan: said in the singular', (tester) async {
+      await doorQueue.add(QueuedScan(
+          eventId: 7,
+          code: 'MOA-AAAAA-BBBBB',
+          clientRef: 'ref-a-xxxxxxxx',
+          scannedAt: DateTime.utc(2026, 11, 28, 9)));
+      await logOut(tester);
+
+      expect(find.text("1 door scan hasn't been sent yet"), findsOneWidget);
+    });
   });
 }

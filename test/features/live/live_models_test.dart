@@ -218,10 +218,36 @@ void main() {
       final key = await LiveIdentity(_BrokenStore()).installKey();
       expect(LiveIdentity.validKey(key), isTrue);
     });
+
+    test('forgetAll: the install key and every quiz player go, and the next '
+        'room call is someone new', () async {
+      final store = MemoryLiveStore()..values['access_token'] = 'kept';
+      final id = LiveIdentity(store, random: Random(1));
+      final before = await id.installKey();
+      await id.savePlayer(
+          const QuizPlayer(eventId: 7, playerKey: 'k1', name: 'Asha'));
+      await id.savePlayer(
+          const QuizPlayer(eventId: 9, playerKey: 'k2', name: 'Asha'));
+
+      await id.forgetAll();
+
+      expect(store.values.keys, ['access_token']);
+      expect(await id.player(7), isNull);
+      expect(await id.player(9), isNull);
+      final after = await id.installKey();
+      expect(after, isNot(before));
+      expect(store.values[LiveIdentity.installKeyName], after);
+    });
+
+    test('forgetAll on storage that fails does not throw', () async {
+      await LiveIdentity(_BrokenStore()).forgetAll();
+    });
   });
 }
 
 class _BrokenStore implements LiveStore {
+  @override
+  Future<Iterable<String>> keys() => throw StateError('no');
   @override
   Future<void> delete(String key) => throw StateError('no');
   @override

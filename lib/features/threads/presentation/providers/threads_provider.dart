@@ -468,6 +468,12 @@ class ThreadDetailState {
   final bool commentsLoading;
   final String? commentsError;
 
+  /// The cursor of the next page of comments; null once all are here.
+  final String? commentsNext;
+
+  /// The next page of comments is being read.
+  final bool loadingMoreComments;
+
   /// A comment is on its way.
   final bool isPosting;
 
@@ -482,6 +488,8 @@ class ThreadDetailState {
     this.comments = const [],
     this.commentsLoading = false,
     this.commentsError,
+    this.commentsNext,
+    this.loadingMoreComments = false,
     this.isPosting = false,
     this.deleting = const {},
   });
@@ -496,6 +504,8 @@ class ThreadDetailState {
     bool? commentsLoading,
     String? commentsError,
     bool clearCommentsError = false,
+    String? Function()? commentsNext,
+    bool? loadingMoreComments,
     bool? isPosting,
     Set<String>? deleting,
   }) {
@@ -508,6 +518,8 @@ class ThreadDetailState {
       commentsLoading: commentsLoading ?? this.commentsLoading,
       commentsError:
           clearCommentsError ? null : (commentsError ?? this.commentsError),
+      commentsNext: commentsNext == null ? this.commentsNext : commentsNext(),
+      loadingMoreComments: loadingMoreComments ?? this.loadingMoreComments,
       isPosting: isPosting ?? this.isPosting,
       deleting: deleting ?? this.deleting,
     );
@@ -583,8 +595,50 @@ class ThreadDetailNotifier extends StateNotifier<ThreadDetailState>
         commentsLoading: false,
         commentsError: failure.message,
       ),
-      (comments) =>
-          state = state.copyWith(commentsLoading: false, comments: comments),
+      (page) {
+        _posted.clear();
+        state = state.copyWith(
+          commentsLoading: false,
+          comments: page.comments,
+          commentsNext: () => page.next,
+        );
+      },
+    );
+  }
+
+  /// Comments posted here since the first page was read. Oldest first, so
+  /// they belong after every page still to come, and stay at the end as
+  /// pages are added.
+  final _posted = <String>{};
+
+  /// The next page of comments, after those shown -- "Show more comments".
+  /// A failure leaves the list as it is, the button there to try again.
+  Future<Failure?> loadMoreComments() async {
+    final after = state.commentsNext;
+    if (after == null || state.loadingMoreComments) return null;
+    state = state.copyWith(loadingMoreComments: true);
+    final result = await repository.getComments(threadId, after: after);
+    if (!mounted) return null;
+    return result.fold(
+      (failure) {
+        state = state.copyWith(loadingMoreComments: false);
+        return failure;
+      },
+      (page) {
+        final shown = {for (final c in state.comments) c.id};
+        final older = state.comments.where((c) => !_posted.contains(c.id));
+        final posted = state.comments.where((c) => _posted.contains(c.id));
+        state = state.copyWith(
+          loadingMoreComments: false,
+          comments: [
+            ...older,
+            ...page.comments.where((c) => !shown.contains(c.id)),
+            ...posted,
+          ],
+          commentsNext: () => page.next,
+        );
+        return null;
+      },
     );
   }
 
@@ -617,6 +671,7 @@ class ThreadDetailNotifier extends StateNotifier<ThreadDetailState>
         final thread = state.thread?.copyWith(
           comments: (state.thread?.comments ?? 0) + 1,
         );
+        _posted.add(comment.id);
         state = state.copyWith(
           isPosting: false,
           comments: [...state.comments, comment],

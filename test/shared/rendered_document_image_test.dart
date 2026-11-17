@@ -40,8 +40,10 @@ void main() {
       // While it loads: the drawn stand-in, at the classic shape.
       expect(find.text('drawn'), findsOneWidget);
 
+      final context = tester.element(find.text('drawn'));
       await tester.runAsync(() => precacheImage(
-          MemoryImage(bytes), tester.element(find.text('drawn'))));
+          RenderedDocumentImage.sizedFor(context, MemoryImage(bytes)),
+          context));
       await tester.pump();
       await tester.pump();
 
@@ -54,6 +56,42 @@ void main() {
           ))
           .aspectRatio;
       expect(ratio, closeTo(300 / 400, 0.001));
+    });
+
+    testWidgets(
+        'a print-size render is decoded at the screen\'s width, keeping its '
+        'shape', (tester) async {
+      // An A4 page at 150 dpi: wider than any phone draws it.
+      final bytes = (await tester.runAsync(() => _png(1240, 1754)))!;
+      await tester.pumpWidget(MaterialApp(
+        home: Center(
+          child: RenderedDocumentImage(
+            url: 'https://api.test/events/certificates/MOA-1/image',
+            image: MemoryImage(bytes),
+            placeholder: const Text('drawn'),
+          ),
+        ),
+      ));
+      final context = tester.element(find.text('drawn'));
+      final sized = RenderedDocumentImage.sizedFor(context, MemoryImage(bytes));
+      await tester.runAsync(() => precacheImage(sized, context));
+      await tester.pump();
+      await tester.pump();
+
+      final shown =
+          tester.widget<Image>(find.byKey(RenderedDocumentImage.imageKey));
+      final media =
+          MediaQuery.of(tester.element(find.byKey(RenderedDocumentImage.imageKey)));
+      expect(shown.image, isA<ResizeImage>());
+      expect((shown.image as ResizeImage).width,
+          (media.size.width * media.devicePixelRatio).ceil().clamp(0, 2048));
+      final ratio = tester
+          .widget<AspectRatio>(find.ancestor(
+            of: find.byKey(RenderedDocumentImage.imageKey),
+            matching: find.byType(AspectRatio),
+          ))
+          .aspectRatio;
+      expect(ratio, closeTo(1240 / 1754, 0.01));
     });
 
     testWidgets('no address: the stand-in, for good', (tester) async {

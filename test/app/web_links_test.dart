@@ -88,6 +88,12 @@ void main() {
           '/speakers/ananya-iyer?ref=ig');
       expect(at('https://myotherapp.in/speakers'), isNull);
       expect(at('https://myotherapp.in/speakers/claim'), isNull);
+      // Feature 4: a profile, a personal QR, the recap's link.
+      expect(at('https://myotherapp.in/u/ananya'), '/u/ananya');
+      expect(at('https://myotherapp.in/u/ananya?save=1'), '/u/ananya?save=1');
+      expect(at('https://myotherapp.in/p/abcdefghjk'), '/p/abcdefghjk');
+      expect(at('https://myotherapp.in/network?event=9'), '/network?event=9');
+      expect(at('https://myotherapp.in/u/a/b'), isNull);
       expect(at('https://myotherapp.in/speakers/claim/tok-1'), isNull);
       expect(at('https://myotherapp.in/speakers/a/b'), isNull);
     });

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:finnet/shared/utils/image_url.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/common/models/events/cohost_model.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/core/utils/json_read.dart';
+import 'package:finnet/features/clubs/domain/club_summary.dart';
 import 'package:finnet/features/events/domain/registration_status.dart'
     show isAwaitingPayment;
 import 'package:finnet/shared/widgets/event_card.dart' show PaymentDueBadge;
@@ -248,7 +248,8 @@ class EventSearchDelegate extends SearchDelegate<String> {
               borderRadius: BorderRadius.circular(8),
             )
           : null,
-      title: Text(event['name'] ?? 'Unnamed Event'),
+      title: Text(
+          event is Map ? jsonText(event['name'], 'Unnamed Event') : 'Unnamed Event'),
       subtitle: Text(_clubNameOf(event)),
       // A registration whose fee is still owed says so, as its card does.
       trailing: _awaitsPayment(event)
@@ -260,13 +261,17 @@ class EventSearchDelegate extends SearchDelegate<String> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                event['category']?['name'] ?? '',
+                event is Map
+                    ? jsonText(jsonObject(event['category'])?['name'])
+                    : '',
                 style: const TextStyle(fontSize: 12),
               ),
             ),
       onTap: () {
+        final id = event is Map ? jsonInt(event['id']) : null;
+        if (id == null) return;
         close(context, '');
-        context.push('/events/${event['id']}');
+        context.push('/events/$id');
       },
     );
   }
@@ -406,19 +411,22 @@ class ClubSearchDelegate extends SearchDelegate<String> {
     );
   }
 
-  Widget _buildClubTile(BuildContext context, dynamic club) {
+  Widget _buildClubTile(BuildContext context, dynamic item) {
+    // Read once: a row that is not a club (no id) is not shown.
+    final club = ClubSummary.fromJson(item);
+    if (club == null) return const SizedBox.shrink();
     return ListTile(
-      leading: _clubAvatar(imageUrlFrom(club['logo'])),
-      title: Text(club['name'] ?? 'Unnamed Club'),
-      subtitle: Text('${club['followers_count'] ?? 0} followers'),
+      leading: _clubAvatar(club.logoUrl),
+      title: Text(club.name.isEmpty ? 'Unnamed Club' : club.name),
+      subtitle: Text('${club.followersCount} followers'),
       onTap: () {
         close(context, '');
         context.push(
-          '/clubs/${club['id']}',
+          '/clubs/${club.id}',
           extra: {
-            'clubId': club['id'],
-            'clubSlug': club['slug'] ?? '',
-            'clubname': club['name'] ?? '',
+            'clubId': club.id,
+            'clubSlug': club.slug,
+            'clubname': club.name,
           },
         );
       },

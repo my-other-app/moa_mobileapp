@@ -258,6 +258,10 @@ class NotificationModel {
         return '📝';
       case supportReplyType:
         return '🛟';
+      case networkSavesType:
+        return '👋';
+      case networkRecapType:
+        return '🤝';
       default:
         return '🔔';
     }

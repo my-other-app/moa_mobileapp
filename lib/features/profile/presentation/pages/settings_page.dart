@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/utils/error_utils.dart';
@@ -220,7 +221,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             DioMethod.delete,
           );
 
-          if (res.statusCode == 200 || res.data['success'] == true) {
+          if (res.statusCode == 200 ||
+              jsonObject(res.data)?['success'] == true) {
             // Use Riverpod for logout
             ref.read(profileProvider.notifier).clearProfile();
             await ref.read(authStateProvider.notifier).logout();

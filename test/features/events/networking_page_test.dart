@@ -126,6 +126,27 @@ void main() {
       expect(find.text('Also here'), findsNothing);
     });
 
+    testWidgets(
+        'a full hall: cards are built as they scroll into view, all of '
+        'them reachable', (tester) async {
+      useFakeApi().on(
+          'GET',
+          '/events/7/networking',
+          _answer([
+            _person(1, 'Shares 1', shared: ['AI']),
+            for (var i = 2; i <= 300; i++) _person(i, 'Guest $i'),
+          ]));
+      await _pumpNetworking(tester);
+
+      expect(find.text('Shares 1'), findsOneWidget);
+      // Only a screenful (and the list's cache) is built, not 300 cards.
+      expect(find.textContaining('Guest ').evaluate().length, lessThan(40));
+
+      await tester.scrollUntilVisible(find.text('Guest 300'), 2000,
+          scrollable: find.byType(Scrollable).first, maxScrolls: 200);
+      expect(find.text('Guest 300'), findsOneWidget);
+    });
+
     testWidgets('pull to refresh brings in who arrived since', (tester) async {
       final api = useFakeApi()
         ..on('GET', '/events/7/networking', _answer(const []))

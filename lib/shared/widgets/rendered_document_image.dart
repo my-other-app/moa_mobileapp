@@ -34,6 +34,13 @@ class RenderedDocumentImage extends StatefulWidget {
   /// The picture itself, once loaded.
   static const imageKey = ValueKey('rendered-document-image');
 
+  /// [image] decoded no wider than the screen ([screenDecodeWidth]), as
+  /// every picture from an address is: a print-resolution render (an A4
+  /// certificate at 300 dpi is 2480 x 3508, about 35 MB decoded) is drawn
+  /// at the phone's own size, never larger than it came.
+  static ImageProvider sizedFor(BuildContext context, ImageProvider image) =>
+      ResizeImage.resizeIfNeeded(screenDecodeWidth(context), null, image);
+
   @override
   State<RenderedDocumentImage> createState() => _RenderedDocumentImageState();
 }
@@ -85,12 +92,14 @@ class _RenderedDocumentImageState extends State<RenderedDocumentImage> {
       _failed = true;
       return;
     }
-    final provider = _provider ??= widget.image ??
-        appImageProvider(
-          widget.url.trim(),
-          privacy: widget.privacy,
-          decodeWidth: screenDecodeWidth(context),
-        );
+    final given = widget.image;
+    final provider = _provider ??= given != null
+        ? RenderedDocumentImage.sizedFor(context, given)
+        : appImageProvider(
+            widget.url.trim(),
+            privacy: widget.privacy,
+            decodeWidth: screenDecodeWidth(context),
+          );
     final stream = provider.resolve(createLocalImageConfiguration(context));
     final current = _stream;
     if (current != null && identical(current.key, stream.key)) return;

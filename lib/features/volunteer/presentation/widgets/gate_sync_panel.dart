@@ -5,6 +5,13 @@ import 'package:finnet/features/volunteer/presentation/widgets/gate_outcome_card
 
 String _scans(int n) => n == 1 ? '1 scan' : '$n scans';
 
+/// "it", "them" or "2 of them": the scans the server asked for again, of
+/// those saved.
+String _which(int retrying, int queued) {
+  if (retrying < queued) return '$retrying of them';
+  return queued == 1 ? 'it' : 'them';
+}
+
 /// The saved scans: how many wait, and what the server said of those it
 /// has taken. Every guest behind them was let in at the time, so the ones
 /// it refused are listed by name, each with why, until "Done".
@@ -12,6 +19,7 @@ class GateSyncPanel extends StatelessWidget {
   const GateSyncPanel({
     super.key,
     required this.queued,
+    this.retrying = 0,
     required this.offline,
     required this.syncing,
     this.syncError,
@@ -24,6 +32,10 @@ class GateSyncPanel extends StatelessWidget {
   static const doneKey = ValueKey('gate-report-done');
 
   final int queued;
+
+  /// Of [queued], those the server asked for again: it couldn't record
+  /// them yet, and this phone sends them again by itself.
+  final int retrying;
   final bool offline;
   final bool syncing;
   final String? syncError;
@@ -61,6 +73,10 @@ class GateSyncPanel extends StatelessWidget {
     } else if (offline) {
       text = 'No signal. ${_scans(queued)} saved on this phone, sent '
           "when it's back.";
+    } else if (retrying > 0) {
+      text = '${_scans(queued)} saved on this phone, still to send. '
+          "The server couldn't record ${_which(retrying, queued)} yet; this "
+          'phone tries again by itself, so keep the app open.';
     } else {
       text = '${_scans(queued)} saved on this phone, waiting to be sent.';
     }

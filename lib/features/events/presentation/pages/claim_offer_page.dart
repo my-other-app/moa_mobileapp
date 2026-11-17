@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import 'package:finnet/features/payments/payment_confirmation.dart';
+import 'package:finnet/features/payments/presentation/confirming_payment.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
@@ -57,6 +59,11 @@ class ClaimOfferPage extends ConsumerStatefulWidget {
   /// A confirmed registration's "Pay ₹199 by {time} to get your ticket."
   static const payByKey = ValueKey('claim-offer-pay-by');
 
+  /// A payment the server is still confirming: its note, and Check
+  /// payment in place of Pay.
+  static const confirmingKey = ValueKey('claim-offer-confirming');
+  static const checkPaymentKey = ValueKey('claim-offer-check-payment');
+
   @override
   ConsumerState<ClaimOfferPage> createState() => _ClaimOfferPageState();
 }
@@ -72,6 +79,9 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
   String? _problem;
   String? _emailError;
   bool _busy = false;
+
+  /// Razorpay took the payment and the server hasn't confirmed it yet.
+  bool _confirming = false;
   RegistrationResult? _result;
   final _email = TextEditingController();
 
@@ -172,14 +182,18 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
           "We couldn't start the payment. Try again in a moment.");
       return;
     }
+    final eventId = result.eventId ?? offer.eventId;
     final paid = await RegistrationCheckout.pay(
       repository: ref.read(paymentRepositoryProvider),
-      eventId: result.eventId ?? offer.eventId,
+      eventId: eventId,
       registrationId: registrationId,
       name: result.fullName ?? offer.fullName,
       email: result.email ?? '',
       phone: result.phone ?? '',
       sellable: _sellable,
+      isPaidNow: _paidNow(eventId),
+      whileConfirming: (confirming) =>
+          showConfirmingPayment(context, confirming),
     );
     if (!mounted) return;
     if (paid.isLeft) {
@@ -191,16 +205,45 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
       showPaymentFailure(context, failure);
       return;
     }
-    if (!paid.right) {
-      final until = offer.expiresAt;
-      final what = offer.fromApproval ? 'ticket' : 'place';
-      setState(() => _problem = until == null
-          ? 'Payment not completed. Your $what is still held: tap Pay to try again.'
-          : 'Payment not completed. Your $what is held until '
-              '${_when(until)}: tap Pay to try again.');
+    switch (paid.right) {
+      case CheckoutResult.paid:
+        _finish(result);
+      case CheckoutResult.notCompleted:
+        final until = offer.expiresAt;
+        final what = offer.fromApproval ? 'ticket' : 'place';
+        setState(() => _problem = until == null
+            ? 'Payment not completed. Your $what is still held: tap Pay to try again.'
+            : 'Payment not completed. Your $what is held until '
+                '${_when(until)}: tap Pay to try again.');
+      case CheckoutResult.confirming:
+        // Razorpay took it; the server confirms it by itself. Pay is not
+        // offered again: Check payment reads the registration instead.
+        setState(() => _confirming = true);
+      case CheckoutResult.removed:
+        setState(() => _problem = registrationRemovedMessage);
+    }
+  }
+
+  /// [eventId]'s registration as the server has it now: paid or not.
+  PaidCheck _paidNow(int eventId) => registrationPaidNow(eventId);
+
+  /// "Check payment": paid now, the ticket; not yet, it says so again.
+  Future<void> _checkPayment() async {
+    final result = _result;
+    final offer = _offer;
+    if (result == null || offer == null || _busy) return;
+    setState(() => _busy = true);
+    final paid = await _paidNow(result.eventId ?? offer.eventId)();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (paid == true) {
+      setState(() => _confirming = false);
+      _finish(result);
       return;
     }
-    _finish(result);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text(paymentConfirmingMessage)),
+    );
   }
 
   void _finish(RegistrationResult result) {
@@ -619,7 +662,30 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
               ..._payOnWebsite()
             else if (offer.needsPayment && !_sellable)
               const IosSaleBlockedNotice()
-            else ...[
+            else if (_confirming) ...[
+              Text(
+                paymentConfirmingMessage,
+                key: ClaimOfferPage.confirmingKey,
+                style: const TextStyle(fontSize: 14, color: Color(0xFF1E3A8A)),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                key: ClaimOfferPage.checkPaymentKey,
+                onPressed: _busy ? null : _checkPayment,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _ink,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: _busy
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('CHECK PAYMENT'),
+              ),
+            ] else ...[
               FilledButton(
                 key: ClaimOfferPage.claimKey,
                 onPressed: _busy ? null : _claim,

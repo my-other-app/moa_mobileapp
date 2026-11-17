@@ -5,6 +5,8 @@
 /// one odd value must not lose the answer at the door.
 library;
 
+import 'dart:math';
+
 import 'package:finnet/common/models/events/event_model.dart';
 import 'package:finnet/core/utils/json_read.dart';
 
@@ -251,9 +253,15 @@ enum ScanOutcome {
   const ScanOutcome(this.value);
   final String value;
 
-  static ScanOutcome parse(Object? value) =>
-      ScanOutcome.values.firstWhere((o) => o.value == '$value',
-          orElse: () => ScanOutcome.invalid);
+  static ScanOutcome parse(Object? value) => tryParse(value) ?? invalid;
+
+  /// The outcome [value] names, or null for one this build doesn't know.
+  static ScanOutcome? tryParse(Object? value) {
+    for (final o in values) {
+      if (o.value == '$value') return o;
+    }
+    return null;
+  }
 }
 
 /// The hint on an INVALID scan of an admission number (the number printed
@@ -275,6 +283,7 @@ class GateScanResult {
     this.replayed = false,
     this.hint,
     this.error,
+    this.retry = false,
   });
 
   factory GateScanResult.fromJson(Map<String, dynamic> json) {
@@ -291,6 +300,7 @@ class GateScanResult {
       replayed: jsonBool(json['replayed']) ?? false,
       hint: jsonString(json['hint']),
       error: jsonString(json['error']),
+      retry: jsonBool(json['retry']) ?? false,
     );
   }
 
@@ -309,6 +319,12 @@ class GateScanResult {
   /// A scan of the offline queue the server could not take at all.
   final String? error;
 
+  /// The server could not record this saved scan just now (it failed on
+  /// its side, not on the ticket) and asks for it again. It comes as
+  /// INVALID, which is then no answer about the ticket. Never sent by a
+  /// server from before.
+  final bool retry;
+
   bool get admitted => outcome == ScanOutcome.checkedIn;
 
   /// The same answer, about [who].
@@ -323,6 +339,7 @@ class GateScanResult {
         replayed: replayed,
         hint: hint,
         error: error,
+        retry: retry,
       );
 
   /// An admission number, not a ticket: who holds it, to check in by hand.
@@ -342,7 +359,15 @@ class QueuedScan {
     required this.clientRef,
     required this.scannedAt,
     this.door,
+    this.attempts = 0,
+    this.retryAt,
   });
+
+  /// The waits between asks for the same scan again: 15 s, doubling, at
+  /// most 5 minutes -- as the club dashboard's console waits (moa_web
+  /// `gate/lib/queue.ts`).
+  static const retryFirst = Duration(seconds: 15);
+  static const retryMax = Duration(minutes: 5);
 
   static QueuedScan? fromJson(Object? json) {
     final o = jsonObject(json);
@@ -357,6 +382,8 @@ class QueuedScan {
       clientRef: ref,
       scannedAt: at,
       door: jsonString(o['door']),
+      attempts: jsonInt(o['attempts']) ?? 0,
+      retryAt: jsonDate(o['retry_at']),
     );
   }
 
@@ -366,9 +393,42 @@ class QueuedScan {
   final DateTime scannedAt;
   final String? door;
 
+  /// How often the server has asked for this scan again.
+  final int attempts;
+
+  /// Not sent again before this, unless the volunteer says "Send now":
+  /// the wait grows with each ask.
+  final DateTime? retryAt;
+
+  /// Whether it may be sent at [now]: never asked for again, or its wait
+  /// is over.
+  bool isDue(DateTime now) {
+    final at = retryAt;
+    return at == null || !at.isAfter(now);
+  }
+
+  /// The same scan with one more ask counted, not sent again before its
+  /// next wait is over.
+  QueuedScan askedAgainAt(DateTime now) {
+    final n = attempts + 1;
+    final shift = min(n - 1, 16);
+    final wait = Duration(seconds: retryFirst.inSeconds << shift);
+    return QueuedScan(
+      eventId: eventId,
+      code: code,
+      clientRef: clientRef,
+      scannedAt: scannedAt,
+      door: door,
+      attempts: n,
+      retryAt: now.add(wait > retryMax ? retryMax : wait),
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'event_id': eventId,
         ...toBody(),
+        if (attempts > 0) 'attempts': attempts,
+        if (retryAt != null) 'retry_at': retryAt!.toUtc().toIso8601String(),
       };
 
   /// What `/gate/scan` and `/gate/scan-batch` take (`ScanBody`).
@@ -382,12 +442,26 @@ class QueuedScan {
 
 /// One answer of `/gate/scan-batch`, with the scan as it was saved.
 class ReplayedScan {
-  const ReplayedScan(
-      {required this.clientRef, required this.result, this.scan});
+  const ReplayedScan({
+    required this.clientRef,
+    required this.result,
+    this.scan,
+    this.askedAgain = false,
+  });
 
   final String clientRef;
   final GateScanResult result;
   final QueuedScan? scan;
+
+  /// No answer about the ticket yet: the server asked for the scan again
+  /// (`retry: true`, on the answer or beside it), or answered in a way
+  /// this build can't read (an outcome it doesn't know). The scan stays on
+  /// the phone and is sent again later. Every other answer is final, a
+  /// refusal too.
+  final bool askedAgain;
+
+  /// Whether this answer settles the scan: it leaves the phone.
+  bool get isFinal => !askedAgain && !result.retry;
 }
 
 /// What one guest is owed of one item (`MerchStatusRow`).

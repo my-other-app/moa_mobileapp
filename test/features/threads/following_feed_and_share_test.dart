@@ -73,8 +73,9 @@ class _FakeRepository implements ThreadRepository {
       Either.right(_post(threadId));
 
   @override
-  Future<Result<List<ThreadComment>>> getComments(String threadId) async =>
-      Either.right(const []);
+  Future<Result<CommentPage>> getComments(String threadId,
+          {String? after}) async =>
+      Either.right(const CommentPage([]));
 
   @override
   Future<Result<LikeResult>> toggleLike(String threadId) async {
