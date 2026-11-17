@@ -10,6 +10,8 @@
 		06220F9CC01AB513AF6D3AC4 /* NextUpWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886E9B8C656AB34966A9F573 /* NextUpWidget.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		1613FB2DC5735BD694EA476D /* NetworkingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E186445132BE6A39710B07 /* NetworkingData.swift */; };
+		19F70A1EF8F762C372F74759 /* NextUpLargeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F50A86B53FF58AA780B5726 /* NextUpLargeView.swift */; };
+		1D762EDA5B22EA0FC81172FB /* Controls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B8DCC8A13E80B209F37B68E /* Controls.swift */; };
 		2CBF392059B3AA3658450ED0 /* DMSans-VariableFont_opsz,wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0DC7D22275947C017B9D1167 /* DMSans-VariableFont_opsz,wght.ttf */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
@@ -20,16 +22,22 @@
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		8A309201070D5FF8C5CF6ACA /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF98546FFB2D2FAD99E722A9 /* Pods_Runner.framework */; };
+		8AD5BC50CA4BD9FBCBC09269 /* MyQrLockWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3DB373D42818BA4BB348E53 /* MyQrLockWidget.swift */; };
+		93917BC58F7F4F93E916F290 /* WidgetPhotoFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE53FC0BA0E8320D42FA995A /* WidgetPhotoFiles.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		9C6CAADB00556E7A83B81C33 /* WidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77B49A596A417F60AF14D5E2 /* WidgetBundle.swift */; };
 		B904A7B0264EAD77C895F58B /* BebasNeue-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 05DE2A46DBE76C9E6CFFC437 /* BebasNeue-Regular.ttf */; };
+		BF6366D5A18108BBAD511A33 /* NextUpLockScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508B96BC04D9E8D54FC8834C /* NextUpLockScreen.swift */; };
 		C10C9E3BE398B9842915240D /* NextUpWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6CED9272D5C3D82764360B78 /* NextUpWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DD32F83D085D6B70E14602E0 /* ControlIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4A8A100118D740C36F02E4 /* ControlIntents.swift */; };
 		E09654B0338BE004B398FBA1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BEE9493D6EDAE88B6917813C /* PrivacyInfo.xcprivacy */; };
 		E27198AB7C075D9640E41BBB /* WidgetStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4AFD4C01285D54911776F4A /* WidgetStyle.swift */; };
 		E377F0E5A497BA7F9D712FED /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = D5509856805C8AC9D05F643D /* GoogleService-Info.plist */; };
+		E52F573075AD8C9302E07F62 /* ControlIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4A8A100118D740C36F02E4 /* ControlIntents.swift */; };
 		E997177A564B1A32E52C359E /* QRCode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DFCA5C3503E7E8592525382 /* QRCode.swift */; };
+		F65A48982F3615EBF8B297AC /* NetworkingLargeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8697E72BD01201D316B5C7D8 /* NetworkingLargeView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -83,17 +91,21 @@
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		33E68BFC5C61D9E0676A9321 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		4B8DCC8A13E80B209F37B68E /* Controls.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Controls.swift; sourceTree = "<group>"; };
 		4DFCA5C3503E7E8592525382 /* QRCode.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QRCode.swift; sourceTree = "<group>"; };
+		508B96BC04D9E8D54FC8834C /* NextUpLockScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextUpLockScreen.swift; sourceTree = "<group>"; };
 		5A1C0DE0A11CE00000000002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		69E4BA4F13EBBAEC001E2F45 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		6CED9272D5C3D82764360B78 /* NextUpWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NextUpWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6DD6D37215A433193CE97BA3 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
+		6F50A86B53FF58AA780B5726 /* NextUpLargeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextUpLargeView.swift; sourceTree = "<group>"; };
 		72E186445132BE6A39710B07 /* NetworkingData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NetworkingData.swift; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		77B49A596A417F60AF14D5E2 /* WidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetBundle.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+		8697E72BD01201D316B5C7D8 /* NetworkingLargeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NetworkingLargeView.swift; sourceTree = "<group>"; };
 		886E9B8C656AB34966A9F573 /* NextUpWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextUpWidget.swift; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
@@ -105,13 +117,16 @@
 		9EE1E6E0020AB6B29EBDE750 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		A71A87833875C747F2FC913B /* NextUpWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = NextUpWidget.entitlements; sourceTree = "<group>"; };
 		B06FA9697F12E6412F93F051 /* NetworkingWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NetworkingWidget.swift; sourceTree = "<group>"; };
+		B3DB373D42818BA4BB348E53 /* MyQrLockWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MyQrLockWidget.swift; sourceTree = "<group>"; };
 		B4AFD4C01285D54911776F4A /* WidgetStyle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetStyle.swift; sourceTree = "<group>"; };
+		BE53FC0BA0E8320D42FA995A /* WidgetPhotoFiles.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetPhotoFiles.swift; sourceTree = "<group>"; };
 		BEE9493D6EDAE88B6917813C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		C414A4F2A96AFFDBA81E4BAE /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D47863803556781FBE01205E /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		D5509856805C8AC9D05F643D /* GoogleService-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Runner/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		D704C22FE45B3A7AB1BF1CA8 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		E80B2644EE3133EC390E5D56 /* NextUpWidget.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = NextUpWidget.xcconfig; sourceTree = "<group>"; };
+		EB4A8A100118D740C36F02E4 /* ControlIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ControlIntents.swift; sourceTree = "<group>"; };
 		F7C8E4A92C8D3E5100123456 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		FF5CE995FE26053CD831AD92 /* NextUpData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextUpData.swift; sourceTree = "<group>"; };
 		FF98546FFB2D2FAD99E722A9 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -173,6 +188,13 @@
 				B06FA9697F12E6412F93F051 /* NetworkingWidget.swift */,
 				72E186445132BE6A39710B07 /* NetworkingData.swift */,
 				4DFCA5C3503E7E8592525382 /* QRCode.swift */,
+				6F50A86B53FF58AA780B5726 /* NextUpLargeView.swift */,
+				508B96BC04D9E8D54FC8834C /* NextUpLockScreen.swift */,
+				8697E72BD01201D316B5C7D8 /* NetworkingLargeView.swift */,
+				BE53FC0BA0E8320D42FA995A /* WidgetPhotoFiles.swift */,
+				B3DB373D42818BA4BB348E53 /* MyQrLockWidget.swift */,
+				4B8DCC8A13E80B209F37B68E /* Controls.swift */,
+				EB4A8A100118D740C36F02E4 /* ControlIntents.swift */,
 			);
 			name = NextUpWidget;
 			path = NextUpWidget;
@@ -513,6 +535,7 @@
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+				E52F573075AD8C9302E07F62 /* ControlIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -527,6 +550,13 @@
 				5D8E677AD8200BDF3CB122FD /* NetworkingWidget.swift in Sources */,
 				1613FB2DC5735BD694EA476D /* NetworkingData.swift in Sources */,
 				E997177A564B1A32E52C359E /* QRCode.swift in Sources */,
+				19F70A1EF8F762C372F74759 /* NextUpLargeView.swift in Sources */,
+				BF6366D5A18108BBAD511A33 /* NextUpLockScreen.swift in Sources */,
+				F65A48982F3615EBF8B297AC /* NetworkingLargeView.swift in Sources */,
+				93917BC58F7F4F93E916F290 /* WidgetPhotoFiles.swift in Sources */,
+				8AD5BC50CA4BD9FBCBC09269 /* MyQrLockWidget.swift in Sources */,
+				1D762EDA5B22EA0FC81172FB /* Controls.swift in Sources */,
+				DD32F83D085D6B70E14602E0 /* ControlIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

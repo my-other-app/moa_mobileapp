@@ -15,7 +15,8 @@
 #   1. Raises the app's iOS deployment target to 14.0 where it is lower:
 #      WidgetKit, and the home_widget plugin, need iOS 14. (Every iPhone
 #      that runs iOS 13 can run iOS 14.) The Podfile says the same.
-#   2. Adds the NextUpWidget group with its Swift files, Info.plist,
+#   2. Adds the NextUpWidget group with its Swift files (the controls'
+#      intents, ControlIntents.swift, to Runner as well), Info.plist,
 #      entitlements (the App Group), privacy manifest and xcconfig, and the
 #      app's two fonts (DM Sans, Bebas Neue), referenced where they are in
 #      assets/fonts/ and copied into the extension (Info.plist UIAppFonts).
@@ -40,8 +41,15 @@ EMBED_PHASE = 'Embed Foundation Extensions'
 
 SOURCES = %w[
   WidgetBundle.swift WidgetStyle.swift NextUpWidget.swift NextUpData.swift
-  NetworkingWidget.swift NetworkingData.swift QRCode.swift
+  NextUpLargeView.swift NextUpLockScreen.swift
+  NetworkingWidget.swift NetworkingData.swift NetworkingLargeView.swift
+  QRCode.swift WidgetPhotoFiles.swift MyQrLockWidget.swift
+  Controls.swift ControlIntents.swift
 ].freeze
+# Built into the app as well: the controls' intents, which the system runs
+# in the app's process when they open it (Apple asks for an intent that
+# opens its app to be in both targets).
+APP_SOURCES = %w[ControlIntents.swift].freeze
 RESOURCES = %w[PrivacyInfo.xcprivacy].freeze
 # The app's fonts, from assets/fonts/ (the files Flutter bundles): one copy
 # in the repository, copied into the extension at build time.
@@ -117,6 +125,13 @@ end
 SOURCES.each do |file|
   ref = file_refs[file]
   widget.source_build_phase.add_file_reference(ref, true)
+end
+APP_SOURCES.each do |file|
+  ref = file_refs[file]
+  next if runner.source_build_phase.files_references.include?(ref)
+
+  runner.source_build_phase.add_file_reference(ref, true)
+  log "Runner compiles #{file}"
 end
 RESOURCES.each do |file|
   ref = file_refs[file]

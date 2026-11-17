@@ -10,5 +10,7 @@ BIN="$(mktemp -d)/render"
 xcrun swiftc -O -target arm64-apple-macosx14.0 -o "$BIN" \
   "$ROOT/tool/widget_previews/main.swift" "$ROOT/tool/widget_previews/PreviewData.swift" \
   "$W/WidgetStyle.swift" "$W/NextUpWidget.swift" "$W/NextUpData.swift" \
-  "$W/NetworkingWidget.swift" "$W/NetworkingData.swift" "$W/QRCode.swift"
+  "$W/NextUpLargeView.swift" "$W/NextUpLockScreen.swift" \
+  "$W/NetworkingWidget.swift" "$W/NetworkingData.swift" "$W/NetworkingLargeView.swift" \
+  "$W/QRCode.swift" "$W/WidgetPhotoFiles.swift"
 "$BIN" "$ROOT/assets/fonts" "$OUT"

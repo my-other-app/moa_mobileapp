@@ -54,8 +54,14 @@ struct NextUpData: Decodable {
 
   /// The event shown at [now]: the first one not over yet.
   func next(at now: Date) -> NextUpItem? {
-    guard state == NextUpData.upcomingState else { return nil }
-    return items.first { !$0.isOver(at: now) }
+    upcoming(at: now, limit: 1).first
+  }
+
+  /// The events not over yet at [now], soonest first, at most [limit]: the
+  /// large widget's rows.
+  func upcoming(at now: Date, limit: Int) -> [NextUpItem] {
+    guard state == NextUpData.upcomingState, limit > 0 else { return [] }
+    return Array(items.filter { !$0.isOver(at: now) }.prefix(limit))
   }
 
   /// What a tap opens when no event is shown.
@@ -152,6 +158,37 @@ enum IndiaClock {
     }
   }
 
+  /// The lock screen's one line: "DevFest · in 2 days", "DevFest · today
+  /// 9:30 am", "DevFest · tomorrow", "DevFest · now".
+  static func inlineLine(_ item: NextUpItem, at now: Date) -> String {
+    "\(item.name) · \(shortWhen(item, at: now))"
+  }
+
+  /// [whenLine] for the end of a short line: "in 2 days", "today 9:30 am",
+  /// "tomorrow", "now", "date to be announced" (the line above the clock
+  /// has room for little more than the name).
+  static func shortWhen(_ item: NextUpItem, at now: Date) -> String {
+    guard let start = item.startsAt else { return "date to be announced" }
+    let nowMs = millis(now)
+    if nowMs >= start { return "now" }
+    let days = day(of: start) - day(of: nowMs)
+    let time = item.time ?? ""
+    switch days {
+    case ...0: return time.isEmpty ? "today" : "today \(time)"
+    case 1: return "tomorrow"
+    default: return "in \(days) days"
+    }
+  }
+
+  /// What the lock screen's round widget shows for [item] at [now].
+  static func circleFace(_ item: NextUpItem, at now: Date) -> CircleFace {
+    guard let start = item.startsAt else { return .undated }
+    let nowMs = millis(now)
+    if nowMs >= start { return .now }
+    if day(of: start) == day(of: nowMs) { return .countdown(to: date(start)) }
+    return .day(day: item.day ?? "", month: item.month ?? "")
+  }
+
   /// The moments after [now] when the widget looks different on its own,
   /// within [days] days: each midnight in India, and each event's start
   /// and end.
@@ -174,4 +211,14 @@ enum IndiaClock {
     }
     return moments.sorted().map(date)
   }
+}
+
+/// The lock screen's round "Next up": the day of the month (a calendar
+/// leaf), a countdown on the day itself (the system runs it), "now" once it
+/// has started, or a ticket while the club hasn't set a date.
+enum CircleFace: Equatable {
+  case day(day: String, month: String)
+  case countdown(to: Date)
+  case now
+  case undated
 }

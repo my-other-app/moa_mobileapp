@@ -7,11 +7,13 @@ import WidgetKit
 /// signed out.
 ///
 /// The app writes what to show into the App Group (NextUpData); this lays
-/// it out, small (the date and the name) or medium (adds the time, the
-/// place and "Show ticket"), and works out the line that depends on the
-/// clock on India's clock. The timeline has an entry for each moment that
-/// line changes -- every midnight in India, each event's start and end --
-/// and the app reloads it whenever what it shows changes.
+/// it out, small (the date and the name), medium (adds the time, the place
+/// and "Show ticket") or large (the next three, the first with "Show
+/// ticket"), and on the lock screen (iOS 16) as a line, a card or a round
+/// date; it works out the line that depends on the clock on India's clock.
+/// The timeline has an entry for each moment that line changes -- every
+/// midnight in India, each event's start and end -- and the app reloads it
+/// whenever what it shows changes.
 ///
 /// A tap opens the website's address for the event's ticket
 /// (`/events/{id}/ticket`), which the app reads as its own page (Flutter
@@ -26,7 +28,19 @@ struct NextUpWidget: Widget {
     }
     .configurationDisplayName("Next up")
     .description("Your next event: its date, time and place. Tap to open your ticket.")
-    .supportedFamilies([.systemSmall, .systemMedium])
+    .supportedFamilies(NextUpWidget.families)
+  }
+
+  /// The home screen's three sizes, and from iOS 16 the lock screen's
+  /// three shapes.
+  static var families: [WidgetFamily] {
+    var families: [WidgetFamily] = [.systemSmall, .systemMedium, .systemLarge]
+    #if os(iOS)
+      if #available(iOSApplicationExtension 16.0, *) {
+        families += [.accessoryRectangular, .accessoryInline, .accessoryCircular]
+      }
+    #endif
+    return families
   }
 }
 
@@ -68,12 +82,42 @@ struct NextUpView: View {
   @Environment(\.colorScheme) private var scheme
 
   var body: some View {
-    let palette = WidgetPalette.of(scheme)
-    NextUpContent(
-      data: entry.data, now: entry.date, medium: family == .systemMedium, palette: palette
-    )
-    .widgetURL(entry.data.next(at: entry.date)?.url ?? entry.data.messageLink)
-    .widgetBackground(palette.background)
+    let link = entry.data.next(at: entry.date)?.url ?? entry.data.messageLink
+    if let shape = accessoryShape {
+      if #available(iOSApplicationExtension 16.0, macOS 13.0, *) {
+        NextUpAccessory(data: entry.data, now: entry.date, shape: shape)
+          .widgetURL(link)
+          .accessoryBackground()
+      }
+    } else {
+      let palette = WidgetPalette.of(scheme)
+      NextUpContent(data: entry.data, now: entry.date, size: size, palette: palette)
+        .widgetURL(link)
+        .widgetBackground(palette.background)
+    }
+  }
+
+  private var size: WidgetSize {
+    switch family {
+    case .systemMedium: return .medium
+    case .systemLarge: return .large
+    default: return .small
+    }
+  }
+
+  /// The lock screen's shape, when it is drawn there.
+  private var accessoryShape: AccessoryShape? {
+    #if os(iOS)
+      if #available(iOSApplicationExtension 16.0, *) {
+        switch family {
+        case .accessoryCircular: return .circular
+        case .accessoryRectangular: return .rectangular
+        case .accessoryInline: return .inline
+        default: return nil
+        }
+      }
+    #endif
+    return nil
   }
 }
 
@@ -82,21 +126,28 @@ struct NextUpView: View {
 struct NextUpContent: View {
   let data: NextUpData
   let now: Date
-  let medium: Bool
+  let size: WidgetSize
   let palette: WidgetPalette
 
   var body: some View {
-    if let item = data.next(at: now) {
-      if medium {
-        MediumEventView(item: item, now: now, palette: palette)
-      } else {
+    if size == .large, !data.upcoming(at: now, limit: 1).isEmpty {
+      LargeEventsView(
+        items: data.upcoming(at: now, limit: NextUpContent.largeRows), now: now, palette: palette)
+    } else if let item = data.next(at: now) {
+      if size == .small {
         SmallEventView(item: item, now: now, palette: palette)
+      } else {
+        MediumEventView(item: item, now: now, palette: palette)
       }
     } else {
       MessageView(
-        signedOut: data.state == NextUpData.signedOutState, medium: medium, palette: palette)
+        signedOut: data.state == NextUpData.signedOutState, medium: size != .small,
+        palette: palette)
     }
   }
+
+  /// How many events the large widget lists.
+  static let largeRows = 3
 }
 
 /// The date block: weekday, day, month, in Bebas Neue.

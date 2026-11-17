@@ -48,6 +48,34 @@ struct WidgetPalette {
   }
 }
 
+extension WidgetPalette {
+  /// The circle behind someone's initials on "Recently met", by the colour
+  /// the app gave them (0-3): the app's teal, pale yellow, ink and soft
+  /// grey. In the dark theme the ink and the grey are lighter, to stand off
+  /// the ground; the letters are the same in both themes.
+  static func circle(_ index: Int, _ scheme: ColorScheme) -> (fill: Color, ink: Color) {
+    let dark = scheme == .dark
+    switch ((index % 4) + 4) % 4 {
+    case 0: return (Color(hex: 0x17A58F), .white)
+    case 1: return (Color(hex: 0xF9FFA1), Color(hex: 0x2C333D))
+    case 2: return (Color(hex: dark ? 0x4A5361 : 0x2C333D), .white)
+    default: return (Color(hex: dark ? 0xB9C0C9 : 0xF3F3F3), Color(hex: 0x2C333D))
+    }
+  }
+}
+
+/// A widget's size, as the views lay it out (WidgetFamily on the phone;
+/// named here so the Mac previews can draw each).
+enum WidgetSize {
+  case small, medium, large
+}
+
+/// The lock screen's widget shapes (iOS 16), named apart from WidgetFamily
+/// for the same reason.
+enum AccessoryShape {
+  case circular, rectangular, inline
+}
+
 extension Color {
   init(hex: UInt32) {
     self.init(
@@ -182,6 +210,31 @@ struct Pill: View {
 }
 
 extension View {
+  /// A lock-screen widget's ground: none of its own (the lock screen draws
+  /// it); iOS 17 asks every widget to name one.
+  @ViewBuilder
+  func accessoryBackground() -> some View {
+    if #available(iOSApplicationExtension 17.0, macOS 14.0, *) {
+      containerBackground(for: .widget) { Color.clear }
+    } else {
+      self
+    }
+  }
+
+  /// Drawn in the lock screen's accent where it tints widgets (iOS 16).
+  @ViewBuilder
+  func accentable() -> some View {
+    #if os(iOS)
+      if #available(iOSApplicationExtension 16.0, *) {
+        widgetAccentable()
+      } else {
+        self
+      }
+    #else
+      self
+    #endif
+  }
+
   /// The widget's ground: iOS 17's container background (which keeps the
   /// system's margins), or a padded background before it.
   @ViewBuilder
