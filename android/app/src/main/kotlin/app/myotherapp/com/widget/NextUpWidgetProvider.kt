@@ -139,16 +139,24 @@ class NextUpWidgetProvider : HomeWidgetProvider() {
       medium: Boolean,
       now: Long,
   ) {
-    if (item.day == null) {
-      // No date yet.
-      views.setTextViewText(R.id.next_up_weekday, "")
-      views.setTextViewText(R.id.next_up_day, "—")
-      views.setTextViewText(R.id.next_up_month, "TBA")
-    } else {
-      views.setTextViewText(R.id.next_up_weekday, item.weekday ?: "")
-      views.setTextViewText(R.id.next_up_day, item.day)
-      views.setTextViewText(R.id.next_up_month, item.month ?: "")
-    }
+    // The date block, in Bebas Neue (WidgetType): "SAT / 28 / NOV", or "— / TBA" with no date yet.
+    val dated = item.day != null
+    views.setImageViewBitmap(
+        R.id.next_up_date,
+        WidgetType.dateBlock(
+            context,
+            weekday = if (dated) item.weekday ?: "" else "",
+            day = item.day ?: "—",
+            month = if (dated) item.month ?: "" else "TBA",
+            large = medium,
+            color = context.getColor(R.color.next_up_date_ink),
+        ),
+    )
+    views.setContentDescription(
+        R.id.next_up_date,
+        if (dated) item.date ?: listOfNotNull(item.weekday, item.day, item.month).joinToString(" ")
+        else context.getString(R.string.next_up_date_unknown),
+    )
     views.setTextViewText(R.id.next_up_name, item.name)
     views.setTextViewText(R.id.next_up_when, IndiaClock.whenLine(item, now))
     if (!medium) {

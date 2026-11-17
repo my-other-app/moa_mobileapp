@@ -16,46 +16,20 @@
         android:orientation="horizontal"
         android:visibility="gone">
 
-        <LinearLayout
+        <!-- Weekday, day and month in Bebas Neue: drawn by the provider
+             (WidgetType.dateBlock), as a widget's text can't take the
+             app's font. -->
+        <ImageView
+            android:id="@+id/next_up_date"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@drawable/widget_next_up_date"
-            android:gravity="center_horizontal"
-            android:minWidth="56dp"
-            android:orientation="vertical"
+            android:contentDescription="@string/next_up_date_unknown"
             android:paddingLeft="8dp"
-            android:paddingTop="6dp"
+            android:paddingTop="8dp"
             android:paddingRight="8dp"
-            android:paddingBottom="6dp">
-
-            <TextView
-                android:id="@+id/next_up_weekday"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-medium"
-                android:includeFontPadding="false"
-                android:textColor="@color/next_up_date_ink"
-                android:textSize="10sp" />
-
-            <TextView
-                android:id="@+id/next_up_day"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-condensed"
-                android:includeFontPadding="false"
-                android:textColor="@color/next_up_date_ink"
-                android:textSize="26sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/next_up_month"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-medium"
-                android:includeFontPadding="false"
-                android:textColor="@color/next_up_date_ink"
-                android:textSize="10sp" />
-        </LinearLayout>
+            android:paddingBottom="7dp"
+            android:scaleType="center" />
 
         <LinearLayout
             android:layout_width="0dp"

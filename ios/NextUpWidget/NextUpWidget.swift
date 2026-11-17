@@ -16,13 +16,6 @@ import WidgetKit
 /// A tap opens the website's address for the event's ticket
 /// (`/events/{id}/ticket`), which the app reads as its own page (Flutter
 /// deep linking): the ticket's code is never here.
-@main
-struct NextUpWidgetBundle: WidgetBundle {
-  var body: some Widget {
-    NextUpWidget()
-  }
-}
-
 struct NextUpWidget: Widget {
   /// The kind the app reloads (HomeWidgetNextUpStore.iOSKind).
   let kind = "NextUpWidget"
@@ -66,49 +59,6 @@ struct NextUpProvider: TimelineProvider {
   }
 }
 
-// MARK: - Colours
-
-/// The app's colours: ink #2C333D, the tabs' pale yellow #F9FFA1, the
-/// icon's teal #17A58F. Dark: the ink as the ground, the yellow as accent.
-struct NextUpPalette {
-  let background: Color
-  let ink: Color
-  let secondary: Color
-  let accent: Color
-  let dateFill: Color
-  let dateInk: Color
-  let pillFill: Color
-  let pillInk: Color
-  let pillOutline: Color
-  let reviewFill: Color
-  let reviewInk: Color
-
-  static func of(_ scheme: ColorScheme) -> NextUpPalette {
-    scheme == .dark
-      ? NextUpPalette(
-        background: Color(hex: 0x2C333D), ink: .white, secondary: Color(hex: 0xB9C0C9),
-        accent: Color(hex: 0xF9FFA1), dateFill: Color(hex: 0x17A58F), dateInk: .white,
-        pillFill: Color(hex: 0xF9FFA1), pillInk: Color(hex: 0x2C333D),
-        pillOutline: Color(hex: 0xF9FFA1), reviewFill: Color(hex: 0x3B4350),
-        reviewInk: Color(hex: 0xF9FFA1))
-      : NextUpPalette(
-        background: .white, ink: Color(hex: 0x2C333D), secondary: Color(hex: 0x5F6773),
-        accent: Color(hex: 0x127F6E), dateFill: Color(hex: 0x17A58F), dateInk: .white,
-        pillFill: Color(hex: 0xF9FFA1), pillInk: Color(hex: 0x2C333D),
-        pillOutline: Color(hex: 0x2C333D), reviewFill: Color(hex: 0xF3F3F3),
-        reviewInk: Color(hex: 0x2C333D))
-  }
-}
-
-extension Color {
-  init(hex: UInt32) {
-    self.init(
-      red: Double((hex >> 16) & 0xFF) / 255,
-      green: Double((hex >> 8) & 0xFF) / 255,
-      blue: Double(hex & 0xFF) / 255)
-  }
-}
-
 // MARK: - Views
 
 struct NextUpView: View {
@@ -118,55 +68,69 @@ struct NextUpView: View {
   @Environment(\.colorScheme) private var scheme
 
   var body: some View {
-    let palette = NextUpPalette.of(scheme)
-    let item = entry.data.next(at: entry.date)
-    Group {
-      if let item = item {
-        if family == .systemMedium {
-          MediumEventView(item: item, now: entry.date, palette: palette)
-        } else {
-          SmallEventView(item: item, now: entry.date, palette: palette)
-        }
-      } else {
-        MessageView(
-          signedOut: entry.data.state == NextUpData.signedOutState,
-          medium: family == .systemMedium, palette: palette)
-      }
-    }
-    .widgetURL(item?.url ?? entry.data.messageLink)
-    .nextUpBackground(palette.background)
+    let palette = WidgetPalette.of(scheme)
+    NextUpContent(
+      data: entry.data, now: entry.date, medium: family == .systemMedium, palette: palette
+    )
+    .widgetURL(entry.data.next(at: entry.date)?.url ?? entry.data.messageLink)
+    .widgetBackground(palette.background)
   }
 }
 
-/// The date block: weekday, day, month.
+/// What the widget shows, for a size: apart from the environment so the
+/// previews can draw each size and theme.
+struct NextUpContent: View {
+  let data: NextUpData
+  let now: Date
+  let medium: Bool
+  let palette: WidgetPalette
+
+  var body: some View {
+    if let item = data.next(at: now) {
+      if medium {
+        MediumEventView(item: item, now: now, palette: palette)
+      } else {
+        SmallEventView(item: item, now: now, palette: palette)
+      }
+    } else {
+      MessageView(
+        signedOut: data.state == NextUpData.signedOutState, medium: medium, palette: palette)
+    }
+  }
+}
+
+/// The date block: weekday, day, month, in Bebas Neue.
 struct DateBlock: View {
   let item: NextUpItem
   let large: Bool
-  let palette: NextUpPalette
+  let palette: WidgetPalette
 
   var body: some View {
-    VStack(spacing: 0) {
+    VStack(spacing: large ? -4 : -2) {
       Text(item.day == nil ? "" : (item.weekday ?? ""))
-        .font(.system(size: large ? 10 : 9, weight: .semibold))
+        .font(WidgetFonts.display(large ? 14 : 12))
       Text(item.day ?? "—")
-        .font(.system(size: large ? 26 : 20, weight: .bold, design: .rounded))
+        .font(WidgetFonts.display(large ? 38 : 30))
         .minimumScaleFactor(0.6)
       Text(item.day == nil ? "TBA" : (item.month ?? ""))
-        .font(.system(size: large ? 10 : 9, weight: .semibold))
+        .font(WidgetFonts.display(large ? 14 : 12))
     }
     .lineLimit(1)
     .foregroundColor(palette.dateInk)
-    .frame(minWidth: large ? 52 : 42)
+    .frame(minWidth: large ? 54 : 44)
     .padding(.horizontal, large ? 6 : 4)
-    .padding(.vertical, large ? 6 : 4)
+    .padding(.top, large ? 6 : 5)
+    .padding(.bottom, large ? 5 : 4)
     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(palette.dateFill))
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(item.date ?? "Date to be announced")
   }
 }
 
 struct SmallEventView: View {
   let item: NextUpItem
   let now: Date
-  let palette: NextUpPalette
+  let palette: WidgetPalette
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -174,7 +138,7 @@ struct SmallEventView: View {
         DateBlock(item: item, large: false, palette: palette)
         Spacer(minLength: 0)
         Text(item.underReview ? (item.badge ?? "Under review") : "Next up")
-          .font(.system(size: 10, weight: .semibold))
+          .font(WidgetFonts.text(10, .semibold))
           .textCase(.uppercase)
           .multilineTextAlignment(.trailing)
           .lineLimit(2)
@@ -182,11 +146,11 @@ struct SmallEventView: View {
       }
       Spacer(minLength: 6)
       Text(item.name)
-        .font(.system(size: 15, weight: .semibold))
+        .font(WidgetFonts.text(15, .semibold))
         .lineLimit(2)
         .foregroundColor(palette.ink)
       Text(IndiaClock.whenLine(item, at: now))
-        .font(.system(size: 12))
+        .font(WidgetFonts.text(12))
         .lineLimit(1)
         .foregroundColor(palette.secondary)
         .padding(.top, 2)
@@ -198,7 +162,7 @@ struct SmallEventView: View {
 struct MediumEventView: View {
   let item: NextUpItem
   let now: Date
-  let palette: NextUpPalette
+  let palette: WidgetPalette
 
   private var details: String {
     [item.time, item.place ?? item.club].compactMap { $0 }.joined(separator: " · ")
@@ -209,16 +173,16 @@ struct MediumEventView: View {
       DateBlock(item: item, large: true, palette: palette)
       VStack(alignment: .leading, spacing: 2) {
         Text(IndiaClock.whenLine(item, at: now))
-          .font(.system(size: 12, weight: .semibold))
+          .font(WidgetFonts.text(12, .semibold))
           .lineLimit(1)
           .foregroundColor(palette.accent)
         Text(item.name)
-          .font(.system(size: 16, weight: .semibold))
+          .font(WidgetFonts.text(16, .semibold))
           .lineLimit(2)
           .foregroundColor(palette.ink)
         if !details.isEmpty {
           Text(details)
-            .font(.system(size: 12))
+            .font(WidgetFonts.text(12))
             .lineLimit(1)
             .foregroundColor(palette.secondary)
         }
@@ -243,16 +207,16 @@ struct MediumEventView: View {
 struct MessageView: View {
   let signedOut: Bool
   let medium: Bool
-  let palette: NextUpPalette
+  let palette: WidgetPalette
 
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
       Text("MyOtherApp")
-        .font(.system(size: 10, weight: .semibold))
+        .font(WidgetFonts.text(10, .semibold))
         .textCase(.uppercase)
         .foregroundColor(palette.accent)
       Text(signedOut ? "Sign in to see your next event" : "Nothing coming up yet")
-        .font(.system(size: medium ? 17 : 15, weight: .semibold))
+        .font(WidgetFonts.text(medium ? 17 : 15, .semibold))
         .lineLimit(3)
         .foregroundColor(palette.ink)
       Spacer(minLength: 6)
@@ -261,36 +225,5 @@ struct MessageView: View {
         ink: palette.pillInk, outline: palette.pillOutline)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-  }
-}
-
-struct Pill: View {
-  let text: String
-  let fill: Color
-  let ink: Color
-  let outline: Color?
-
-  var body: some View {
-    Text(text)
-      .font(.system(size: 12, weight: .semibold))
-      .lineLimit(1)
-      .foregroundColor(ink)
-      .padding(.horizontal, 12)
-      .padding(.vertical, 5)
-      .background(Capsule().fill(fill))
-      .overlay(Capsule().stroke(outline ?? .clear, lineWidth: 1))
-  }
-}
-
-extension View {
-  /// The widget's ground: iOS 17's container background (which keeps the
-  /// system's margins), or a padded background before it.
-  @ViewBuilder
-  func nextUpBackground(_ color: Color) -> some View {
-    if #available(iOSApplicationExtension 17.0, *) {
-      containerBackground(for: .widget) { color }
-    } else {
-      padding(14).background(color)
-    }
   }
 }

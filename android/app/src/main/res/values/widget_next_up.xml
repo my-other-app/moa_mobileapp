@@ -26,4 +26,5 @@
     <string name="next_up_nothing">Nothing coming up yet</string>
     <string name="next_up_find_events">Find events</string>
     <string name="next_up_brand">MyOtherApp</string>
+    <string name="next_up_date_unknown">Date to be announced</string>
 </resources>

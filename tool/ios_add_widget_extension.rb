@@ -1,8 +1,9 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Adds the "Next up" WidgetKit extension (ios/NextUpWidget/) to
-# ios/Runner.xcodeproj, and embeds it in the app. See docs/HOME_WIDGETS.md.
+# Adds the home-screen widgets' WidgetKit extension (ios/NextUpWidget/: "Next
+# up" and "Networking", one WidgetBundle) to ios/Runner.xcodeproj, and embeds
+# it in the app. See docs/HOME_WIDGETS.md.
 #
 #   ruby tool/ios_add_widget_extension.rb
 #
@@ -15,7 +16,9 @@
 #      WidgetKit, and the home_widget plugin, need iOS 14. (Every iPhone
 #      that runs iOS 13 can run iOS 14.) The Podfile says the same.
 #   2. Adds the NextUpWidget group with its Swift files, Info.plist,
-#      entitlements (the App Group), privacy manifest and xcconfig.
+#      entitlements (the App Group), privacy manifest and xcconfig, and the
+#      app's two fonts (DM Sans, Bebas Neue), referenced where they are in
+#      assets/fonts/ and copied into the extension (Info.plist UIAppFonts).
 #   3. Adds the NextUpWidget app-extension target: bundle id
 #      app.myotherapp.in.NextUpWidget, Runner's development team,
 #      automatic signing, iPhone only, iOS 14.0.
@@ -35,8 +38,14 @@ APP_GROUP = 'group.app.myotherapp.in'
 MIN_IOS = '14.0'
 EMBED_PHASE = 'Embed Foundation Extensions'
 
-SOURCES = %w[NextUpWidget.swift NextUpData.swift].freeze
+SOURCES = %w[
+  WidgetBundle.swift WidgetStyle.swift NextUpWidget.swift NextUpData.swift
+].freeze
 RESOURCES = %w[PrivacyInfo.xcprivacy].freeze
+# The app's fonts, from assets/fonts/ (the files Flutter bundles): one copy
+# in the repository, copied into the extension at build time.
+FONTS = %w[DMSans-VariableFont_opsz,wght.ttf BebasNeue-Regular.ttf].freeze
+FONTS_DIR = '../assets/fonts'
 OTHER_FILES = %w[Info.plist NextUpWidget.entitlements NextUpWidget.xcconfig].freeze
 
 def log(message)
@@ -110,6 +119,19 @@ SOURCES.each do |file|
 end
 RESOURCES.each do |file|
   ref = file_refs[file]
+  widget.resources_build_phase.add_file_reference(ref, true)
+end
+
+# The fonts: a Fonts group whose files are referenced from the project's
+# folder (ios/), so the one copy in assets/fonts/ is used.
+fonts_group = group.children.find { |g| g.display_name == 'Fonts' } ||
+              group.new_group('Fonts')
+FONTS.each do |file|
+  path = File.join(FONTS_DIR, file)
+  abort "Missing #{path} (from ios/)" unless File.exist?(File.join(ROOT, 'ios', path))
+  ref = fonts_group.files.find { |f| f.path == path } ||
+        fonts_group.new_reference(path, :project)
+  ref.name = file
   widget.resources_build_phase.add_file_reference(ref, true)
 end
 

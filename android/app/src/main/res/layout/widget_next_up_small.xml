@@ -21,46 +21,20 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
-            <LinearLayout
+            <!-- Weekday, day and month in Bebas Neue: drawn by the provider
+                 (WidgetType.dateBlock), as a widget's text can't take the
+                 app's font. -->
+            <ImageView
+                android:id="@+id/next_up_date"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/widget_next_up_date"
-                android:gravity="center_horizontal"
-                android:minWidth="44dp"
-                android:orientation="vertical"
+                android:contentDescription="@string/next_up_date_unknown"
                 android:paddingLeft="6dp"
-                android:paddingTop="3dp"
+                android:paddingTop="5dp"
                 android:paddingRight="6dp"
-                android:paddingBottom="4dp">
-
-                <TextView
-                    android:id="@+id/next_up_weekday"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif-medium"
-                    android:includeFontPadding="false"
-                    android:textColor="@color/next_up_date_ink"
-                    android:textSize="9sp" />
-
-                <TextView
-                    android:id="@+id/next_up_day"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif-condensed"
-                    android:includeFontPadding="false"
-                    android:textColor="@color/next_up_date_ink"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/next_up_month"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif-medium"
-                    android:includeFontPadding="false"
-                    android:textColor="@color/next_up_date_ink"
-                    android:textSize="9sp" />
-            </LinearLayout>
+                android:paddingBottom="4dp"
+                android:scaleType="center" />
 
             <TextView
                 android:id="@+id/next_up_label"

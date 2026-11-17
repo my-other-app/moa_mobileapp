@@ -20,6 +20,11 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>DMSans-VariableFont_opsz,wght.ttf</string>
+		<string>BebasNeue-Regular.ttf</string>
+	</array>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>
