@@ -7,5 +7,6 @@ import WidgetKit
 struct MyOtherAppWidgets: WidgetBundle {
   var body: some Widget {
     NextUpWidget()
+    NetworkingWidget()
   }
 }

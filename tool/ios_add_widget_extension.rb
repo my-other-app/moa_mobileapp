@@ -40,6 +40,7 @@ EMBED_PHASE = 'Embed Foundation Extensions'
 
 SOURCES = %w[
   WidgetBundle.swift WidgetStyle.swift NextUpWidget.swift NextUpData.swift
+  NetworkingWidget.swift NetworkingData.swift QRCode.swift
 ].freeze
 RESOURCES = %w[PrivacyInfo.xcprivacy].freeze
 # The app's fonts, from assets/fonts/ (the files Flutter bundles): one copy

@@ -9,11 +9,13 @@
 /* Begin PBXBuildFile section */
 		06220F9CC01AB513AF6D3AC4 /* NextUpWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886E9B8C656AB34966A9F573 /* NextUpWidget.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		1613FB2DC5735BD694EA476D /* NetworkingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E186445132BE6A39710B07 /* NetworkingData.swift */; };
 		2CBF392059B3AA3658450ED0 /* DMSans-VariableFont_opsz,wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0DC7D22275947C017B9D1167 /* DMSans-VariableFont_opsz,wght.ttf */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		42DF90A9B928AF07F493B801 /* NextUpData.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF5CE995FE26053CD831AD92 /* NextUpData.swift */; };
 		5A1C0DE0A11CE00000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5A1C0DE0A11CE00000000002 /* PrivacyInfo.xcprivacy */; };
+		5D8E677AD8200BDF3CB122FD /* NetworkingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B06FA9697F12E6412F93F051 /* NetworkingWidget.swift */; };
 		6AE14A0C939B7132D242CBF9 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 33E68BFC5C61D9E0676A9321 /* Pods_RunnerTests.framework */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
@@ -27,6 +29,7 @@
 		E09654B0338BE004B398FBA1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BEE9493D6EDAE88B6917813C /* PrivacyInfo.xcprivacy */; };
 		E27198AB7C075D9640E41BBB /* WidgetStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4AFD4C01285D54911776F4A /* WidgetStyle.swift */; };
 		E377F0E5A497BA7F9D712FED /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = D5509856805C8AC9D05F643D /* GoogleService-Info.plist */; };
+		E997177A564B1A32E52C359E /* QRCode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DFCA5C3503E7E8592525382 /* QRCode.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -80,10 +83,12 @@
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		33E68BFC5C61D9E0676A9321 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		4DFCA5C3503E7E8592525382 /* QRCode.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QRCode.swift; sourceTree = "<group>"; };
 		5A1C0DE0A11CE00000000002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		69E4BA4F13EBBAEC001E2F45 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		6CED9272D5C3D82764360B78 /* NextUpWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NextUpWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6DD6D37215A433193CE97BA3 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
+		72E186445132BE6A39710B07 /* NetworkingData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NetworkingData.swift; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		77B49A596A417F60AF14D5E2 /* WidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetBundle.swift; sourceTree = "<group>"; };
@@ -99,6 +104,7 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9EE1E6E0020AB6B29EBDE750 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		A71A87833875C747F2FC913B /* NextUpWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = NextUpWidget.entitlements; sourceTree = "<group>"; };
+		B06FA9697F12E6412F93F051 /* NetworkingWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NetworkingWidget.swift; sourceTree = "<group>"; };
 		B4AFD4C01285D54911776F4A /* WidgetStyle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetStyle.swift; sourceTree = "<group>"; };
 		BEE9493D6EDAE88B6917813C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		C414A4F2A96AFFDBA81E4BAE /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -164,6 +170,9 @@
 				77B49A596A417F60AF14D5E2 /* WidgetBundle.swift */,
 				B4AFD4C01285D54911776F4A /* WidgetStyle.swift */,
 				57A4E2253926AE8CF6330D4E /* Fonts */,
+				B06FA9697F12E6412F93F051 /* NetworkingWidget.swift */,
+				72E186445132BE6A39710B07 /* NetworkingData.swift */,
+				4DFCA5C3503E7E8592525382 /* QRCode.swift */,
 			);
 			name = NextUpWidget;
 			path = NextUpWidget;
@@ -515,6 +524,9 @@
 				42DF90A9B928AF07F493B801 /* NextUpData.swift in Sources */,
 				9C6CAADB00556E7A83B81C33 /* WidgetBundle.swift in Sources */,
 				E27198AB7C075D9640E41BBB /* WidgetStyle.swift in Sources */,
+				5D8E677AD8200BDF3CB122FD /* NetworkingWidget.swift in Sources */,
+				1613FB2DC5735BD694EA476D /* NetworkingData.swift in Sources */,
+				E997177A564B1A32E52C359E /* QRCode.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

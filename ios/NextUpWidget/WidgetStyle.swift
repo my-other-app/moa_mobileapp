@@ -161,16 +161,23 @@ struct Pill: View {
   let fill: Color
   let ink: Color
   let outline: Color?
+  /// An SF Symbol before the words ("Scan").
+  var symbol: String? = nil
 
   var body: some View {
-    Text(text)
-      .font(WidgetFonts.text(12, .semibold))
-      .lineLimit(1)
-      .foregroundColor(ink)
-      .padding(.horizontal, 12)
-      .padding(.vertical, 5)
-      .background(Capsule().fill(fill))
-      .overlay(Capsule().stroke(outline ?? .clear, lineWidth: 1))
+    HStack(spacing: 5) {
+      if let symbol = symbol {
+        Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
+      }
+      Text(text)
+        .font(WidgetFonts.text(12, .semibold))
+        .lineLimit(1)
+    }
+    .foregroundColor(ink)
+    .padding(.horizontal, 12)
+    .padding(.vertical, 5)
+    .background(Capsule().fill(fill))
+    .overlay(Capsule().stroke(outline ?? .clear, lineWidth: 1))
   }
 }
 
