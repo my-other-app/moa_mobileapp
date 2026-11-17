@@ -314,4 +314,43 @@ void main() {
       expect(item['when'], 'Date to be announced');
     });
   });
+
+  test(
+      'the large widget\'s three rows come from the same items: a date '
+      'block, a name, a time and a place each, and nothing new', () {
+    final next = _nextUp(tickets: [
+      _ticket(1, startsAt: _in(26), name: 'DevFest'),
+      _ticket(2, startsAt: _in(50), name: 'Hack Night', online: true),
+      _ticket(3, startsAt: _in(74), name: 'Design Jam'),
+      _ticket(4, startsAt: _in(98), name: 'Flutter Meetup'),
+    ]);
+    final items =
+        (next.toJson(_now)['items'] as List).cast<Map<String, Object?>>();
+    // Four, so three are left to show when the first one ends.
+    expect(items, hasLength(4));
+    const allowed = {
+      'event_id',
+      'name',
+      'starts_at',
+      'ends_at',
+      'weekday',
+      'day',
+      'month',
+      'time',
+      'date',
+      'place',
+      'club',
+      'review',
+      'badge',
+      'when',
+      'link',
+    };
+    for (final item in items.take(3)) {
+      expect(item.keys.toSet().difference(allowed), isEmpty);
+      for (final key in ['weekday', 'day', 'month', 'name', 'time', 'place']) {
+        expect(item[key], isNotNull, reason: key);
+      }
+    }
+    expect(items[1]['place'], 'Online');
+  });
 }

@@ -57,7 +57,16 @@ const _link = 'https://myotherapp.in/p/abcdefghjk';
 const _newLink = 'https://myotherapp.in/p/mnpqrstuvw';
 
 /// Everything the widget's JSON may hold (docs/HOME_WIDGETS.md).
-const _allowed = {'v', 'state', 'name', 'profile_link', 'network', 'links'};
+const _allowed = {
+  'v',
+  'state',
+  'name',
+  'profile_link',
+  'network',
+  'met',
+  'no_note',
+  'links',
+};
 
 final _signedIn = StateProvider<bool>((ref) => true);
 
@@ -332,9 +341,13 @@ void main() {
       await pump(tester, placed: true);
 
       expect(api.sent('GET', '/me/qr'), hasLength(1));
+      // One read of the network answers the count and "Recently met": its
+      // first page, last met first.
       final counts = api.sent('GET', '/network');
       expect(counts, hasLength(1));
-      expect(counts.single.queryParameters['page_size'], 1);
+      expect(counts.single.queryParameters['sort'], 'met');
+      expect(counts.single.queryParameters['page'], 1);
+      expect(counts.single.queryParameters['page_size'], 50);
       expect(profiles.asked, 1);
 
       expect(store.last['state'], 'ready');

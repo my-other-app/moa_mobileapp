@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:finnet/core/error/either.dart';
 import 'package:finnet/core/services/analytics_service.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/home_widget/data/networking_store.dart';
+import 'package:finnet/features/home_widget/data/widget_photos.dart';
+import 'package:finnet/features/home_widget/presentation/widget_photos_setting.dart';
 import 'package:finnet/features/notifications/data/repositories/push_settings_repository_impl.dart';
 import 'package:finnet/features/notifications/domain/entities/push_switches.dart';
 import 'package:finnet/features/notifications/domain/repositories/push_settings_repository.dart';
@@ -27,6 +31,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../events/events_fakes.dart' show useFakeApi;
+import '../home_widget/widget_fakes.dart';
 import '../threads/moderation_fakes.dart';
 
 const _profile = UserProfile(
@@ -131,10 +136,15 @@ Future<List<Uri>> _pump(WidgetTester tester,
     CollectionControl? control,
     UserProfile profile = _profile,
     List<VolunteerEvent> volunteering = const [],
-    List<ShareKitEvent> shareKits = const []}) async {
+    List<ShareKitEvent> shareKits = const [],
+    WidgetPhotoStore? photos,
+    MemoryWidgetStore? networking}) async {
   final opened = <Uri>[];
   await tester.pumpWidget(ProviderScope(
     overrides: [
+      widgetPhotoStoreProvider.overrideWithValue(photos ?? MemoryPhotoStore()),
+      networkingStoreProvider
+          .overrideWithValue(networking ?? MemoryWidgetStore()),
       privacyChoicesStoreProvider
           .overrideWithValue(privacy ?? _MemoryChoices()),
       collectionControlProvider
@@ -226,9 +236,9 @@ void main() {
         const PushSwitches(clubs: true, topics: true, platform: false));
     await _pump(tester, pushSettings: settings);
 
-    // The three notification switches, and the two privacy ones: the
-    // app's own switch, not Material's.
-    expect(find.byType(AppToggle), findsNWidgets(5));
+    // The three notification switches, the two privacy ones and the
+    // widgets' photos: the app's own switch, not Material's.
+    expect(find.byType(AppToggle), findsNWidgets(6));
     expect(find.byType(Switch), findsNothing);
     expect(find.text('Event Notification'), findsOneWidget);
     expect(find.text('Club Updates'), findsOneWidget);
@@ -357,6 +367,7 @@ void main() {
           'Announcements',
           'Usage Analytics',
           'Crash Reports',
+          'Show people’s photos in widgets',
           'Verify Email',
           'Volunteer Check-in',
           'Share Kits',
@@ -590,6 +601,49 @@ void main() {
       _tall(tester);
       await _pump(tester);
       expect(find.text('Show me in People Like You'), findsNothing);
+    });
+  });
+
+  group('the widgets\' photos', () {
+    testWidgets('off to begin with, with what it does', (tester) async {
+      _tall(tester);
+      await _pump(tester);
+
+      expect(find.text('Show people’s photos in widgets'), findsOneWidget);
+      expect(on(tester, 'settings-widget-photos'), isFalse);
+      expect(find.textContaining('Off, it shows their initials'),
+          findsOneWidget);
+    });
+
+    testWidgets('turned on: kept on the phone', (tester) async {
+      _tall(tester);
+      final photos = MemoryPhotoStore();
+      await _pump(tester, photos: photos);
+
+      await _tap(tester, 'settings-widget-photos');
+      await tester.pump();
+
+      expect(on(tester, 'settings-widget-photos'), isTrue);
+      expect(photos.on, isTrue);
+    });
+
+    testWidgets('turned off: every photo deleted, the widget drawn again',
+        (tester) async {
+      _tall(tester);
+      final photos = MemoryPhotoStore()..on = true;
+      await photos.save('networking_photo_5', 'f', Uint8List(3));
+      final networking = MemoryWidgetStore();
+      await _pump(tester, photos: photos, networking: networking);
+      expect(on(tester, 'settings-widget-photos'), isTrue);
+
+      await _tap(tester, 'settings-widget-photos');
+      await tester.pump();
+
+      expect(on(tester, 'settings-widget-photos'), isFalse);
+      expect(photos.on, isFalse);
+      expect(photos.files, isEmpty);
+      expect(networking.redraws, 1);
+      expect(WidgetPhotosRow.rowKey.value, 'settings-widget-photos');
     });
   });
 }

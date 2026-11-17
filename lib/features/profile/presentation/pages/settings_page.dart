@@ -7,6 +7,7 @@ import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/auth/presentation/widgets/email_verification_banner.dart';
+import 'package:finnet/features/home_widget/presentation/widget_photos_setting.dart';
 import 'package:finnet/features/notifications/presentation/widgets/push_switches_section.dart';
 import 'package:finnet/features/profile/presentation/pages/settings/blocked_users_page.dart';
 import 'package:finnet/features/profile/presentation/pages/settings/change_password_page.dart';
@@ -82,6 +83,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           // Usage analytics and crash reports: on until turned off, kept on
           // this phone, applied at once and at every start.
           const PrivacySwitchesSection(),
+
+          // Whether the Networking widget's "Recently met" shows people's
+          // photos (off: their initials). Kept on this phone; off again at
+          // sign-out.
+          const WidgetPhotosRow(),
 
           ...dividedRows([
             // Only for an email/password account that has not verified yet:

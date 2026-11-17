@@ -92,6 +92,9 @@ void main() {
       ('file', 'network_saves.json'),
       // What the home-screen widgets show (home_widget's preferences).
       ('sharedpref', 'HomeWidgetPreferences.xml'),
+      // The Networking widget's photos, when turned on (home_widget's
+      // files; on an iPhone they are in the App Group's container).
+      ('file', 'home_widget'),
       ('root', 'app_flutter'),
     ];
 
@@ -123,7 +126,7 @@ void main() {
     test('the store\'s entry names match the rules', () {
       expect(BackupExclusion.supportEntries, [
         for (final (domain, path) in excluded)
-          if (domain == 'file') path
+          if (domain == 'file' && path != 'home_widget') path
       ]);
     });
   });
