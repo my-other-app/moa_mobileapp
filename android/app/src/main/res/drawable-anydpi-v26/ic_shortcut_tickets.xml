@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- An app shortcut's icon on Android 8 and later: the glyph on the
+     app's pale yellow; the launcher masks it to its shape. The glyph
+     fills the middle 40 of the 108 dp (the shortcut icon guidelines'
+     24 dp glyph on a 44 dp circle). -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/shortcut_background" />
+    <foreground>
+        <inset
+            android:drawable="@drawable/ic_shortcut_glyph_tickets"
+            android:inset="34dp" />
+    </foreground>
+</adaptive-icon>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- An app shortcut's icon on Android 7.1: the glyph on a pale yellow
+     circle (48 dp, a 44 dp circle, a 24 dp glyph). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="48dp"
+        android:height="48dp">
+        <inset android:inset="2dp">
+            <shape android:shape="oval">
+                <solid android:color="@color/shortcut_background" />
+            </shape>
+        </inset>
+    </item>
+    <item
+        android:width="48dp"
+        android:height="48dp">
+        <inset
+            android:drawable="@drawable/ic_shortcut_glyph_scan"
+            android:inset="12dp" />
+    </item>
+</layer-list>

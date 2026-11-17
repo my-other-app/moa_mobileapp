@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app's shortcuts: touch and hold the icon (AppShortcuts.kt,
+     docs/HOME_WIDGETS.md). Each opens the website's address in its _link,
+     which the app's router reads as its own page (web_links.dart), signing
+     in first where the page needs an account. The same four, with the same
+     links, are the iPhone's quick actions (ios/Runner/Info.plist). -->
+<resources>
+    <color name="shortcut_background">#F9FFA1</color>
+    <color name="shortcut_glyph">#2C333D</color>
+
+    <string name="shortcut_scan_short">Scan</string>
+    <string name="shortcut_scan_long">Scan someone\'s QR</string>
+    <string name="shortcut_scan_link" translatable="false">https://myotherapp.in/network/scan</string>
+
+    <string name="shortcut_my_qr_short">My QR</string>
+    <string name="shortcut_my_qr_long">Show my QR code</string>
+    <string name="shortcut_my_qr_link" translatable="false">https://myotherapp.in/profile/qr</string>
+
+    <string name="shortcut_network_short">Network</string>
+    <string name="shortcut_network_long">People I\'ve met</string>
+    <string name="shortcut_network_link" translatable="false">https://myotherapp.in/network</string>
+
+    <string name="shortcut_tickets_short">My tickets</string>
+    <string name="shortcut_tickets_long">My events and tickets</string>
+    <string name="shortcut_tickets_link" translatable="false">https://myotherapp.in/me/tickets</string>
+</resources>
