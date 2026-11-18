@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "For you", the events widget (docs/HOME_WIDGETS.md): its words. Its
+     colours are Next up's (values/widget_next_up.xml, and values-night/). -->
+<resources>
+    <string name="for_you_widget_label">For you</string>
+    <string name="for_you_widget_description">Events this week: in your topics and near you.</string>
+    <string name="for_you_label">For you</string>
+    <string name="for_you_see_all">See all ›</string>
+    <string name="for_you_nothing">Nothing on this week yet</string>
+    <string name="for_you_nothing_more">New events show here as clubs add them.</string>
+    <string name="for_you_all_for_now">That’s what’s on for now</string>
+</resources>

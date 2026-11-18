@@ -186,7 +186,7 @@ struct ForYouItem {
 
 /// Where the widget asks the front page again: the public API, the city's
 /// point, the person's topics (by id).
-struct ForYouAsk {
+struct ForYouAsk: Equatable {
   let api: String
   var topics: [Int] = []
   var city: String? = nil
@@ -456,12 +456,18 @@ enum ForYouFetch {
         result = ForYouData(
           header: data.header, items: data.items, ask: data.ask,
           fetchedAt: IndiaClock.millis(now), etag: data.etag)
-        result.write()
       } else if status == 200, let body = body,
         let fresh = ForYouPicker.picked(body, for: data, now: now, etag: etag)
       {
         result = fresh
+      }
+      // Kept -- unless the app wrote meanwhile for someone else (a sign-out,
+      // another city): theirs stands.
+      let current = ForYouData.read()
+      if result.fetchedAt != data.fetchedAt && current.ask == data.ask {
         result.write()
+      } else if current.ask != data.ask {
+        result = current
       }
       var done: [(ForYouData) -> Void] = []
       queue.sync {
