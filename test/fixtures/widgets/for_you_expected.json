@@ -1,0 +1,386 @@
+{
+  "now": 1795494600000,
+  "cases": [
+    {
+      "name": "topics",
+      "topics": [
+        3
+      ],
+      "header": "For you",
+      "items": [
+        {
+          "id": 101,
+          "name": "Flutter Kochi Meetup",
+          "starts_at": 1795609800000,
+          "ends_at": 1795618800000,
+          "weekday": "WED",
+          "day": "25",
+          "month": "NOV",
+          "time": "6:00 pm",
+          "date": "Wed, 25 Nov",
+          "club": "Kochi Coders",
+          "place": "Maker Space, Kochi",
+          "link": "https://myotherapp.in/events/flutter-kochi-meetup"
+        },
+        {
+          "id": 105,
+          "name": "Hack Night 04",
+          "starts_at": 1795872600000,
+          "ends_at": 1795887000000,
+          "weekday": "SAT",
+          "day": "28",
+          "month": "NOV",
+          "time": "7:00 pm",
+          "date": "Sat, 28 Nov",
+          "club": "Kochi Coders",
+          "place": "Kochi Coders' Loft",
+          "link": "https://myotherapp.in/events/hack-night-04"
+        },
+        {
+          "id": 103,
+          "name": "Design Systems 101",
+          "starts_at": 1795671000000,
+          "ends_at": 1795678200000,
+          "weekday": "THU",
+          "day": "26",
+          "month": "NOV",
+          "time": "11:00 am",
+          "date": "Thu, 26 Nov",
+          "club": "Pixel Guild",
+          "place": "Online",
+          "link": "https://myotherapp.in/events/design-systems-101"
+        },
+        {
+          "id": 104,
+          "name": "Trivandrum Startup Mixer",
+          "starts_at": 1795779000000,
+          "ends_at": 1795789800000,
+          "weekday": "FRI",
+          "day": "27",
+          "month": "NOV",
+          "time": "5:00 pm",
+          "date": "Fri, 27 Nov",
+          "club": "Founders Circle",
+          "place": "Technopark",
+          "link": "https://myotherapp.in/events/trivandrum-startup-mixer"
+        },
+        {
+          "id": 107,
+          "name": "DevFest Kochi",
+          "starts_at": 1795838400000,
+          "ends_at": 1795869000000,
+          "weekday": "SAT",
+          "day": "28",
+          "month": "NOV",
+          "time": "9:30 am",
+          "date": "Sat, 28 Nov",
+          "club": "GDG Kochi",
+          "place": "Le Méridien, Kochi",
+          "link": "https://myotherapp.in/events/devfest-kochi"
+        },
+        {
+          "id": 108,
+          "name": "AI Summit",
+          "starts_at": 1797049800250,
+          "ends_at": 1797078600000,
+          "weekday": "SAT",
+          "day": "12",
+          "month": "DEC",
+          "time": "10:00 am",
+          "date": "Sat, 12 Dec",
+          "club": "ML Bangalore",
+          "place": "Bengaluru",
+          "link": "https://myotherapp.in/events/ai-summit"
+        }
+      ]
+    },
+    {
+      "name": "no topics",
+      "topics": [],
+      "header": "This week near you",
+      "items": [
+        {
+          "id": 105,
+          "name": "Hack Night 04",
+          "starts_at": 1795872600000,
+          "ends_at": 1795887000000,
+          "weekday": "SAT",
+          "day": "28",
+          "month": "NOV",
+          "time": "7:00 pm",
+          "date": "Sat, 28 Nov",
+          "club": "Kochi Coders",
+          "place": "Kochi Coders' Loft",
+          "link": "https://myotherapp.in/events/hack-night-04"
+        },
+        {
+          "id": 101,
+          "name": "Flutter Kochi Meetup",
+          "starts_at": 1795609800000,
+          "ends_at": 1795618800000,
+          "weekday": "WED",
+          "day": "25",
+          "month": "NOV",
+          "time": "6:00 pm",
+          "date": "Wed, 25 Nov",
+          "club": "Kochi Coders",
+          "place": "Maker Space, Kochi",
+          "link": "https://myotherapp.in/events/flutter-kochi-meetup"
+        },
+        {
+          "id": 103,
+          "name": "Design Systems 101",
+          "starts_at": 1795671000000,
+          "ends_at": 1795678200000,
+          "weekday": "THU",
+          "day": "26",
+          "month": "NOV",
+          "time": "11:00 am",
+          "date": "Thu, 26 Nov",
+          "club": "Pixel Guild",
+          "place": "Online",
+          "link": "https://myotherapp.in/events/design-systems-101"
+        },
+        {
+          "id": 104,
+          "name": "Trivandrum Startup Mixer",
+          "starts_at": 1795779000000,
+          "ends_at": 1795789800000,
+          "weekday": "FRI",
+          "day": "27",
+          "month": "NOV",
+          "time": "5:00 pm",
+          "date": "Fri, 27 Nov",
+          "club": "Founders Circle",
+          "place": "Technopark",
+          "link": "https://myotherapp.in/events/trivandrum-startup-mixer"
+        },
+        {
+          "id": 107,
+          "name": "DevFest Kochi",
+          "starts_at": 1795838400000,
+          "ends_at": 1795869000000,
+          "weekday": "SAT",
+          "day": "28",
+          "month": "NOV",
+          "time": "9:30 am",
+          "date": "Sat, 28 Nov",
+          "club": "GDG Kochi",
+          "place": "Le Méridien, Kochi",
+          "link": "https://myotherapp.in/events/devfest-kochi"
+        },
+        {
+          "id": 108,
+          "name": "AI Summit",
+          "starts_at": 1797049800250,
+          "ends_at": 1797078600000,
+          "weekday": "SAT",
+          "day": "12",
+          "month": "DEC",
+          "time": "10:00 am",
+          "date": "Sat, 12 Dec",
+          "club": "ML Bangalore",
+          "place": "Bengaluru",
+          "link": "https://myotherapp.in/events/ai-summit"
+        }
+      ]
+    },
+    {
+      "name": "design topic",
+      "topics": [
+        5
+      ],
+      "header": "For you",
+      "items": [
+        {
+          "id": 103,
+          "name": "Design Systems 101",
+          "starts_at": 1795671000000,
+          "ends_at": 1795678200000,
+          "weekday": "THU",
+          "day": "26",
+          "month": "NOV",
+          "time": "11:00 am",
+          "date": "Thu, 26 Nov",
+          "club": "Pixel Guild",
+          "place": "Online",
+          "link": "https://myotherapp.in/events/design-systems-101"
+        },
+        {
+          "id": 105,
+          "name": "Hack Night 04",
+          "starts_at": 1795872600000,
+          "ends_at": 1795887000000,
+          "weekday": "SAT",
+          "day": "28",
+          "month": "NOV",
+          "time": "7:00 pm",
+          "date": "Sat, 28 Nov",
+          "club": "Kochi Coders",
+          "place": "Kochi Coders' Loft",
+          "link": "https://myotherapp.in/events/hack-night-04"
+        },
+        {
+          "id": 101,
+          "name": "Flutter Kochi Meetup",
+          "starts_at": 1795609800000,
+          "ends_at": 1795618800000,
+          "weekday": "WED",
+          "day": "25",
+          "month": "NOV",
+          "time": "6:00 pm",
+          "date": "Wed, 25 Nov",
+          "club": "Kochi Coders",
+          "place": "Maker Space, Kochi",
+          "link": "https://myotherapp.in/events/flutter-kochi-meetup"
+        },
+        {
+          "id": 104,
+          "name": "Trivandrum Startup Mixer",
+          "starts_at": 1795779000000,
+          "ends_at": 1795789800000,
+          "weekday": "FRI",
+          "day": "27",
+          "month": "NOV",
+          "time": "5:00 pm",
+          "date": "Fri, 27 Nov",
+          "club": "Founders Circle",
+          "place": "Technopark",
+          "link": "https://myotherapp.in/events/trivandrum-startup-mixer"
+        },
+        {
+          "id": 107,
+          "name": "DevFest Kochi",
+          "starts_at": 1795838400000,
+          "ends_at": 1795869000000,
+          "weekday": "SAT",
+          "day": "28",
+          "month": "NOV",
+          "time": "9:30 am",
+          "date": "Sat, 28 Nov",
+          "club": "GDG Kochi",
+          "place": "Le Méridien, Kochi",
+          "link": "https://myotherapp.in/events/devfest-kochi"
+        },
+        {
+          "id": 108,
+          "name": "AI Summit",
+          "starts_at": 1797049800250,
+          "ends_at": 1797078600000,
+          "weekday": "SAT",
+          "day": "12",
+          "month": "DEC",
+          "time": "10:00 am",
+          "date": "Sat, 12 Dec",
+          "club": "ML Bangalore",
+          "place": "Bengaluru",
+          "link": "https://myotherapp.in/events/ai-summit"
+        }
+      ]
+    },
+    {
+      "name": "popular only",
+      "topics": [],
+      "header": "This week near you",
+      "items": [
+        {
+          "id": 107,
+          "name": "DevFest Kochi",
+          "starts_at": 1795838400000,
+          "ends_at": 1795869000000,
+          "weekday": "SAT",
+          "day": "28",
+          "month": "NOV",
+          "time": "9:30 am",
+          "date": "Sat, 28 Nov",
+          "club": "GDG Kochi",
+          "place": "Le Méridien, Kochi",
+          "link": "https://myotherapp.in/events/devfest-kochi"
+        },
+        {
+          "id": 101,
+          "name": "Flutter Kochi Meetup",
+          "starts_at": 1795609800000,
+          "ends_at": 1795618800000,
+          "weekday": "WED",
+          "day": "25",
+          "month": "NOV",
+          "time": "6:00 pm",
+          "date": "Wed, 25 Nov",
+          "club": "Kochi Coders",
+          "place": "Maker Space, Kochi",
+          "link": "https://myotherapp.in/events/flutter-kochi-meetup"
+        },
+        {
+          "id": 108,
+          "name": "AI Summit",
+          "starts_at": 1797049800250,
+          "ends_at": 1797078600000,
+          "weekday": "SAT",
+          "day": "12",
+          "month": "DEC",
+          "time": "10:00 am",
+          "date": "Sat, 12 Dec",
+          "club": "ML Bangalore",
+          "place": "Bengaluru",
+          "link": "https://myotherapp.in/events/ai-summit"
+        },
+        {
+          "id": 109,
+          "name": "Open Mic",
+          "starts_at": 1796218200000,
+          "ends_at": 1796229000000,
+          "weekday": "WED",
+          "day": "2",
+          "month": "DEC",
+          "time": "7:00 pm",
+          "date": "Wed, 2 Dec",
+          "link": "https://myotherapp.in/events/109"
+        }
+      ]
+    },
+    {
+      "name": "later only",
+      "topics": [
+        5
+      ],
+      "header": "Popular",
+      "items": [
+        {
+          "id": 108,
+          "name": "AI Summit",
+          "starts_at": 1797049800250,
+          "ends_at": 1797078600000,
+          "weekday": "SAT",
+          "day": "12",
+          "month": "DEC",
+          "time": "10:00 am",
+          "date": "Sat, 12 Dec",
+          "club": "ML Bangalore",
+          "place": "Bengaluru",
+          "link": "https://myotherapp.in/events/ai-summit"
+        },
+        {
+          "id": 109,
+          "name": "Open Mic",
+          "starts_at": 1796218200000,
+          "ends_at": 1796229000000,
+          "weekday": "WED",
+          "day": "2",
+          "month": "DEC",
+          "time": "7:00 pm",
+          "date": "Wed, 2 Dec",
+          "link": "https://myotherapp.in/events/109"
+        }
+      ]
+    },
+    {
+      "name": "nothing",
+      "topics": [
+        3
+      ],
+      "header": null,
+      "items": []
+    }
+  ]
+}

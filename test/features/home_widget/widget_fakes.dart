@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:finnet/features/home_widget/data/event_day_platform.dart';
 import 'package:finnet/features/home_widget/data/widget_photos.dart';
 import 'package:finnet/features/home_widget/data/widget_store.dart';
+import 'package:finnet/features/home_widget/domain/event_day.dart';
 
 /// A home-screen widget's storage, kept in memory.
 class MemoryWidgetStore implements WidgetStore {
@@ -82,5 +84,59 @@ class FakeThumbnails implements WidgetThumbnails {
     await gate?.future;
     if (failing.contains(url)) return null;
     return Uint8List.fromList([1, 2, 3]);
+  }
+}
+
+/// The phone's card, kept in memory: which event's is up, and every call.
+class FakeEventDayPlatform implements EventDayPlatform {
+  int? up;
+  bool allowed = true;
+  bool canShow = true;
+  final calls = <String>[];
+  final cards = <Map<String, Object?>>[];
+
+  @override
+  Future<bool> supported() async => canShow;
+
+  @override
+  Future<bool> start(EventDayCard card) async {
+    calls.add('start ${card.eventId}');
+    cards.add(card.toChannel());
+    if (!allowed) return false;
+    up = card.eventId;
+    return true;
+  }
+
+  @override
+  Future<bool> update(EventDayCard card) async {
+    calls.add('update ${card.eventId}');
+    cards.add(card.toChannel());
+    return up == card.eventId;
+  }
+
+  @override
+  Future<void> end() async {
+    calls.add('end');
+    up = null;
+  }
+
+  @override
+  Future<int?> current() async => up;
+
+  /// The person swiped the card away.
+  void putAway() => up = null;
+}
+
+class MemoryEventDayStore implements EventDayStore {
+  EventDayChoices saved = EventDayChoices.defaults;
+  int writes = 0;
+
+  @override
+  Future<EventDayChoices> read() async => saved;
+
+  @override
+  Future<void> write(EventDayChoices choices) async {
+    writes++;
+    saved = choices;
   }
 }

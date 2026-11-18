@@ -8,6 +8,7 @@ import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart'
 import 'package:finnet/features/events/presentation/providers/event_cancellation_provider.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/providers/ticket_details_provider.dart';
+import 'package:finnet/features/home_widget/presentation/event_day_sync.dart';
 
 /// The address of a ticket inside the app: `/tickets/{code}`.
 String ticketRoute(String code) => '/tickets/${Uri.encodeComponent(code)}';
@@ -52,7 +53,11 @@ class SavedTicketPage extends ConsumerWidget {
     // or refused, leaves the saved ticket's word as it was: this only ever
     // adds a revocation, never takes one away.
     final details = ref.watch(ticketDetailsProvider(code)).valueOrNull;
-    return TicketViewPage(
+    // Opening a ticket on its event's day puts the event-day card up on the
+    // lock screen (again, if the person had put it away).
+    return EventDayOnOpen(
+      eventId: ticket?.eventId,
+      child: TicketViewPage(
       ticketId: code,
       eventName: ticket?.eventName ?? 'Your ticket',
       eventDateTime: ticket?.startsAt,
@@ -70,6 +75,7 @@ class SavedTicketPage extends ConsumerWidget {
       // The club's ask for details, by the ticket's own word (it is not
       // saved: it is only there while the ask is open).
       answersNeeded: details?.answersNeeded,
+      ),
     );
   }
 }

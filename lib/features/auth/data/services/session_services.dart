@@ -9,9 +9,13 @@ import 'package:finnet/core/cache/session_caches.dart';
 import 'package:finnet/core/services/notification_service.dart';
 import 'package:finnet/core/services/opened_push_lines.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
+import 'package:finnet/features/discover/presentation/providers/discover_place_provider.dart';
+import 'package:finnet/features/home_widget/data/for_you_store.dart';
 import 'package:finnet/features/home_widget/data/networking_store.dart';
 import 'package:finnet/features/home_widget/data/next_up_store.dart';
 import 'package:finnet/features/home_widget/data/widget_photos.dart';
+import 'package:finnet/features/home_widget/presentation/event_day_sync.dart';
+import 'package:finnet/features/home_widget/presentation/for_you_widget_sync.dart';
 import 'package:finnet/features/home_widget/presentation/home_widget_sync.dart';
 import 'package:finnet/features/home_widget/presentation/networking_widget_sync.dart';
 import 'package:finnet/features/live/data/live_identity.dart';
@@ -149,8 +153,9 @@ final sessionRevokerProvider = Provider<SessionRevoker>(
 /// Everything kept on the phone about the person: cleared at sign-out, when
 /// the server ends the session, and at sign-in (so a second account never
 /// sees the first one's tickets, registrations, profile, certificates,
-/// PDFs or pictures -- nor the home-screen widgets their next event, QR or
-/// the people they met).
+/// PDFs or pictures -- nor the home-screen widgets their next event, QR,
+/// the people they met or their topics, nor the lock screen their event's
+/// card).
 /// Posters and other public pictures stay. Quiz players go at the end of a
 /// session only.
 final sessionCachesProvider = Provider<SessionCaches>((ref) {
@@ -159,6 +164,8 @@ final sessionCachesProvider = Provider<SessionCaches>((ref) {
   final widgets = ref.watch(nextUpStoreProvider);
   final networking = ref.watch(networkingStoreProvider);
   final photos = ref.watch(widgetPhotosProvider);
+  final forYou = ref.watch(forYouStoreProvider);
+  final eventDay = ref.watch(eventDayCardsProvider);
   return SessionCaches({
     'saved answers': () => ApiCache.instance.clear(),
     'saved tickets': tickets.clear,
@@ -185,6 +192,14 @@ final sessionCachesProvider = Provider<SessionCaches>((ref) {
     // Its "Recently met" photos, and the switch that allowed them: the next
     // person to sign in starts with initials.
     'widget photos': () => clearWidgetPhotos(photos),
+    // The "For you" events widget: asked again without the last person's
+    // topics (the events are public; the place is the phone's).
+    'events widget': () => showSignedOutOnForYouWidget(forYou,
+        api: ref.read(forYouApiBaseProvider),
+        place: ref.read(discoverPlaceProvider)),
+    // The event-day card on the lock screen: taken down, and the events it
+    // was put up for forgotten.
+    'event-day card': eventDay.forget,
   }, atSessionEnd: {
     // Who this phone is in a live room, and each quiz's player: the next
     // person to sign in is a new player, never the last one's.

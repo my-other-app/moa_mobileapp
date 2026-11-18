@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/features/events/presentation/widgets/saved_tickets_sync.dart';
+import 'package:finnet/features/home_widget/presentation/event_day_sync.dart';
+import 'package:finnet/features/home_widget/presentation/for_you_widget_sync.dart';
 import 'package:finnet/features/home_widget/presentation/home_widget_sync.dart';
 import 'package:finnet/features/home_widget/presentation/networking_widget_sync.dart';
 import 'package:finnet/features/main/presentation/providers/navigation_index_provider.dart';
@@ -86,12 +88,17 @@ class _MainShellState extends ConsumerState<MainShell> {
       // are kept current for the door, the notification switches and the
       // inbox are read ahead of the screens that show them, and the
       // home-screen widgets follow: "Next up" the tickets, "Networking" the
-      // person's QR, name and network.
+      // person's QR, name and network, "For you" the discover front page;
+      // and on an event's day its card goes up on the lock screen.
       body: SavedTicketsSync(
         child: PersonalDataSync(
           child: HomeWidgetSyncScope(
             child: NetworkingWidgetSyncScope(
-              child: SafeArea(child: widget.child),
+              child: ForYouWidgetSyncScope(
+                child: EventDaySyncScope(
+                  child: SafeArea(child: widget.child),
+                ),
+              ),
             ),
           ),
         ),
