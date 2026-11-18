@@ -3,6 +3,10 @@
   "cases": [
     {
       "name": "topics",
+      "keep": {
+        "week": true,
+        "popular": null
+      },
       "topics": [
         3
       ],
@@ -96,6 +100,10 @@
     },
     {
       "name": "no topics",
+      "keep": {
+        "week": true,
+        "popular": null
+      },
       "topics": [],
       "header": "This week near you",
       "items": [
@@ -187,6 +195,10 @@
     },
     {
       "name": "design topic",
+      "keep": {
+        "week": true,
+        "popular": null
+      },
       "topics": [
         5
       ],
@@ -280,6 +292,10 @@
     },
     {
       "name": "popular only",
+      "keep": {
+        "week": false,
+        "popular": null
+      },
       "topics": [],
       "header": "This week near you",
       "items": [
@@ -341,6 +357,13 @@
     },
     {
       "name": "later only",
+      "keep": {
+        "week": false,
+        "popular": [
+          108,
+          109
+        ]
+      },
       "topics": [
         5
       ],
@@ -376,6 +399,10 @@
     },
     {
       "name": "nothing",
+      "keep": {
+        "week": false,
+        "popular": []
+      },
       "topics": [
         3
       ],

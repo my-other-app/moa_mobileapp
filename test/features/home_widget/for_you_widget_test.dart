@@ -60,36 +60,41 @@ const _topKeys = {
   'fetched_at',
 };
 
-/// The cases the three sides are held to.
-List<Map<String, Object?>> _cases(DiscoverHome home) {
-  Map<String, Object?> run(String name, DiscoverHome h, List<int> topics) {
-    final pick = pickFromHome(h, ForYouAsk(api: _api, topics: topics), _now);
-    return {
-      'name': name,
-      'topics': topics,
-      'header': pick.header?.words,
-      'items': [for (final e in pick.events) e.toJson()],
-    };
-  }
+/// The cases the three sides are held to: each names the front page's
+/// lists it keeps (all of `this_week` and `near` or none; `popular`, all or
+/// the ids given) and the person's topics.
+const _caseInputs = [
+  ('topics', true, null, [3]),
+  ('no topics', true, null, <int>[]),
+  ('design topic', true, null, [5]),
+  ('popular only', false, null, <int>[]),
+  ('later only', false, [108, 109], [5]),
+  ('nothing', false, <int>[], [3]),
+];
 
-  return [
-    run('topics', home, [3]),
-    run('no topics', home, []),
-    run('design topic', home, [5]),
-    run('popular only',
-        DiscoverHome(where: home.where, popular: home.popular), []),
-    run(
-        'later only',
-        DiscoverHome(
+List<Map<String, Object?>> _cases(DiscoverHome home) => [
+      for (final (name, week, popular, topics) in _caseInputs)
+        () {
+          final h = DiscoverHome(
             where: home.where,
+            thisWeek: week ? home.thisWeek : const [],
+            near: week ? home.near : const [],
             popular: [
               for (final e in home.popular)
-                if (e.id == 108 || e.id == 109) e,
-            ]),
-        [5]),
-    run('nothing', const DiscoverHome(), [3]),
-  ];
-}
+                if (popular == null || popular.contains(e.id)) e,
+            ],
+          );
+          final pick =
+              pickFromHome(h, ForYouAsk(api: _api, topics: topics), _now);
+          return <String, Object?>{
+            'name': name,
+            'keep': {'week': week, 'popular': popular},
+            'topics': topics,
+            'header': pick.header?.words,
+            'items': [for (final e in pick.events) e.toJson()],
+          };
+        }(),
+    ];
 
 class _Profiles extends FakeProfileRepository {
   _Profiles(List<int> topics) {

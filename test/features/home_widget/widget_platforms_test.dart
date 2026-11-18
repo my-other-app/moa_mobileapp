@@ -160,25 +160,41 @@ void main() {
     test('every Swift file is in the Xcode script; the intents in the app too',
         () {
       final script = read('tool/ios_add_widget_extension.rb');
-      final listed = RegExp(r'SOURCES = %w\[(.*?)\]', dotAll: true)
-          .firstMatch(script)![1]!
-          .split(RegExp(r'\s+'))
-          .where((f) => f.isNotEmpty)
-          .toSet();
+      final listed =
+          RegExp(r'^SOURCES = %w\[(.*?)\]', dotAll: true, multiLine: true)
+              .firstMatch(script)![1]!
+              .split(RegExp(r'\s+'))
+              .where((f) => f.isNotEmpty)
+              .toSet();
       final files = Directory(swift)
           .listSync()
           .map((f) => f.uri.pathSegments.last)
           .where((f) => f.endsWith('.swift'))
           .toSet();
       expect(listed, files);
-      expect(script, contains('APP_SOURCES = %w[ControlIntents.swift]'));
-      final project = read('ios/Runner.xcodeproj/project.pbxproj');
       expect(
-          '/* ControlIntents.swift in Sources */ = {isa = PBXBuildFile'
+          script,
+          contains(
+              'APP_SOURCES = %w[ControlIntents.swift EventDayAttributes.swift]'));
+      expect(script, contains('RUNNER_SOURCES = %w[EventDayActivities.swift]'));
+      final project = read('ios/Runner.xcodeproj/project.pbxproj');
+      for (final shared in [
+        'ControlIntents.swift',
+        'EventDayAttributes.swift'
+      ]) {
+        expect(
+            '/* $shared in Sources */ = {isa = PBXBuildFile'
+                .allMatches(project)
+                .length,
+            2,
+            reason: '$shared: built into the extension and the app');
+      }
+      expect(
+          '/* EventDayActivities.swift in Sources */ = {isa = PBXBuildFile'
               .allMatches(project)
               .length,
-          2,
-          reason: 'built into the extension and the app');
+          1,
+          reason: 'the app alone starts the Live Activity');
     });
   });
 }

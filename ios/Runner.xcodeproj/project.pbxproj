@@ -10,24 +10,30 @@
 		06220F9CC01AB513AF6D3AC4 /* NextUpWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886E9B8C656AB34966A9F573 /* NextUpWidget.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		1613FB2DC5735BD694EA476D /* NetworkingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E186445132BE6A39710B07 /* NetworkingData.swift */; };
+		193866E997B21AA1E827BDC3 /* EventDayLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0792FC66787ACEB091FEEF8 /* EventDayLiveActivity.swift */; };
 		19F70A1EF8F762C372F74759 /* NextUpLargeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F50A86B53FF58AA780B5726 /* NextUpLargeView.swift */; };
 		1D762EDA5B22EA0FC81172FB /* Controls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B8DCC8A13E80B209F37B68E /* Controls.swift */; };
+		215D2F188A688C2A80D2A117 /* EventDayAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF47854AAB1BF6F24A83570C /* EventDayAttributes.swift */; };
 		2CBF392059B3AA3658450ED0 /* DMSans-VariableFont_opsz,wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0DC7D22275947C017B9D1167 /* DMSans-VariableFont_opsz,wght.ttf */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		42DF90A9B928AF07F493B801 /* NextUpData.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF5CE995FE26053CD831AD92 /* NextUpData.swift */; };
 		5A1C0DE0A11CE00000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5A1C0DE0A11CE00000000002 /* PrivacyInfo.xcprivacy */; };
 		5D8E677AD8200BDF3CB122FD /* NetworkingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B06FA9697F12E6412F93F051 /* NetworkingWidget.swift */; };
+		5E21287D23CC919F2B66EA70 /* ForYouData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 330EC97ADCBDCB79CFCB7FD6 /* ForYouData.swift */; };
 		6AE14A0C939B7132D242CBF9 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 33E68BFC5C61D9E0676A9321 /* Pods_RunnerTests.framework */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		8A309201070D5FF8C5CF6ACA /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF98546FFB2D2FAD99E722A9 /* Pods_Runner.framework */; };
 		8AD5BC50CA4BD9FBCBC09269 /* MyQrLockWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3DB373D42818BA4BB348E53 /* MyQrLockWidget.swift */; };
+		8DE3060AFC8DD7A1B1636828 /* EventDayViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 181F584EC35DE5BF7383913B /* EventDayViews.swift */; };
 		93917BC58F7F4F93E916F290 /* WidgetPhotoFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE53FC0BA0E8320D42FA995A /* WidgetPhotoFiles.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		9C6CAADB00556E7A83B81C33 /* WidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77B49A596A417F60AF14D5E2 /* WidgetBundle.swift */; };
+		A25C1400D145508A41183544 /* EventDayActivities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61F9997E86875670356CD308 /* EventDayActivities.swift */; };
+		A5FC8F86E17B8EB91DAB36E6 /* EventDayAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF47854AAB1BF6F24A83570C /* EventDayAttributes.swift */; };
 		B904A7B0264EAD77C895F58B /* BebasNeue-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 05DE2A46DBE76C9E6CFFC437 /* BebasNeue-Regular.ttf */; };
 		BF6366D5A18108BBAD511A33 /* NextUpLockScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508B96BC04D9E8D54FC8834C /* NextUpLockScreen.swift */; };
 		C10C9E3BE398B9842915240D /* NextUpWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6CED9272D5C3D82764360B78 /* NextUpWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -36,6 +42,7 @@
 		E27198AB7C075D9640E41BBB /* WidgetStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4AFD4C01285D54911776F4A /* WidgetStyle.swift */; };
 		E377F0E5A497BA7F9D712FED /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = D5509856805C8AC9D05F643D /* GoogleService-Info.plist */; };
 		E52F573075AD8C9302E07F62 /* ControlIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4A8A100118D740C36F02E4 /* ControlIntents.swift */; };
+		E533D1F39FA11E7F71F5526E /* ForYouWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE10837C9C96FE929C531D5 /* ForYouWidget.swift */; };
 		E997177A564B1A32E52C359E /* QRCode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DFCA5C3503E7E8592525382 /* QRCode.swift */; };
 		F65A48982F3615EBF8B297AC /* NetworkingLargeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8697E72BD01201D316B5C7D8 /* NetworkingLargeView.swift */; };
 /* End PBXBuildFile section */
@@ -86,7 +93,10 @@
 		0DC7D22275947C017B9D1167 /* DMSans-VariableFont_opsz,wght.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = "DMSans-VariableFont_opsz,wght.ttf"; path = "../assets/fonts/DMSans-VariableFont_opsz,wght.ttf"; sourceTree = SOURCE_ROOT; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		181F584EC35DE5BF7383913B /* EventDayViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventDayViews.swift; sourceTree = "<group>"; };
+		2FE10837C9C96FE929C531D5 /* ForYouWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ForYouWidget.swift; sourceTree = "<group>"; };
 		3262F5A850BB34D5868C5325 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
+		330EC97ADCBDCB79CFCB7FD6 /* ForYouData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ForYouData.swift; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		33E68BFC5C61D9E0676A9321 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -95,6 +105,7 @@
 		4DFCA5C3503E7E8592525382 /* QRCode.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QRCode.swift; sourceTree = "<group>"; };
 		508B96BC04D9E8D54FC8834C /* NextUpLockScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextUpLockScreen.swift; sourceTree = "<group>"; };
 		5A1C0DE0A11CE00000000002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		61F9997E86875670356CD308 /* EventDayActivities.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventDayActivities.swift; sourceTree = "<group>"; };
 		69E4BA4F13EBBAEC001E2F45 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		6CED9272D5C3D82764360B78 /* NextUpWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NextUpWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6DD6D37215A433193CE97BA3 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
@@ -127,6 +138,8 @@
 		D704C22FE45B3A7AB1BF1CA8 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		E80B2644EE3133EC390E5D56 /* NextUpWidget.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = NextUpWidget.xcconfig; sourceTree = "<group>"; };
 		EB4A8A100118D740C36F02E4 /* ControlIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ControlIntents.swift; sourceTree = "<group>"; };
+		EF47854AAB1BF6F24A83570C /* EventDayAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventDayAttributes.swift; sourceTree = "<group>"; };
+		F0792FC66787ACEB091FEEF8 /* EventDayLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventDayLiveActivity.swift; sourceTree = "<group>"; };
 		F7C8E4A92C8D3E5100123456 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		FF5CE995FE26053CD831AD92 /* NextUpData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextUpData.swift; sourceTree = "<group>"; };
 		FF98546FFB2D2FAD99E722A9 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -195,6 +208,11 @@
 				B3DB373D42818BA4BB348E53 /* MyQrLockWidget.swift */,
 				4B8DCC8A13E80B209F37B68E /* Controls.swift */,
 				EB4A8A100118D740C36F02E4 /* ControlIntents.swift */,
+				330EC97ADCBDCB79CFCB7FD6 /* ForYouData.swift */,
+				2FE10837C9C96FE929C531D5 /* ForYouWidget.swift */,
+				EF47854AAB1BF6F24A83570C /* EventDayAttributes.swift */,
+				181F584EC35DE5BF7383913B /* EventDayViews.swift */,
+				F0792FC66787ACEB091FEEF8 /* EventDayLiveActivity.swift */,
 			);
 			name = NextUpWidget;
 			path = NextUpWidget;
@@ -266,6 +284,7 @@
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				F7C8E4A92C8D3E5100123456 /* Runner.entitlements */,
 				5A1C0DE0A11CE00000000002 /* PrivacyInfo.xcprivacy */,
+				61F9997E86875670356CD308 /* EventDayActivities.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -536,6 +555,8 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				E52F573075AD8C9302E07F62 /* ControlIntents.swift in Sources */,
+				A5FC8F86E17B8EB91DAB36E6 /* EventDayAttributes.swift in Sources */,
+				A25C1400D145508A41183544 /* EventDayActivities.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -557,6 +578,11 @@
 				8AD5BC50CA4BD9FBCBC09269 /* MyQrLockWidget.swift in Sources */,
 				1D762EDA5B22EA0FC81172FB /* Controls.swift in Sources */,
 				DD32F83D085D6B70E14602E0 /* ControlIntents.swift in Sources */,
+				5E21287D23CC919F2B66EA70 /* ForYouData.swift in Sources */,
+				E533D1F39FA11E7F71F5526E /* ForYouWidget.swift in Sources */,
+				215D2F188A688C2A80D2A117 /* EventDayAttributes.swift in Sources */,
+				8DE3060AFC8DD7A1B1636828 /* EventDayViews.swift in Sources */,
+				193866E997B21AA1E827BDC3 /* EventDayLiveActivity.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
