@@ -1,13 +1,20 @@
-# Home-screen widgets and the icon's shortcuts
+# Home-screen widgets, the event-day card and the icon's shortcuts
 
-The app has two home-screen widgets on Android and iOS, lock-screen
-widgets on the iPhone, **Scan** and **My QR** buttons for the phone's own
-quick places, and four shortcuts on its icon:
+The app has three home-screen widgets on Android and iOS, lock-screen
+widgets on the iPhone, an **event-day card** on the lock screen, **Scan**
+and **My QR** buttons for the phone's own quick places, and four shortcuts
+on its icon:
 
 * **Next up** – the person's next event (small, medium); the next three
   (large); on the iPhone's lock screen as a card, a line or a round date.
 * **Networking** – their QR code to share, and a quick way to scan someone
   (small, medium); large adds **Recently met**, the people they met last.
+* **For you** – events this week, the person's topics first, then near
+  them, then the platform's popular ones (medium: two; large: four).
+* **The event-day card** – on the day of an event they hold a ticket for:
+  the name, a countdown to the start, the venue and **Show ticket**. A Live
+  Activity on the iPhone (lock screen and Dynamic Island), an ongoing
+  notification on Android.
 * **My QR** on the iPhone's lock screen – a round button that opens the code
   (no code is drawn there).
 * **Controls** (iPhone, iOS 18) and **Quick Settings tiles** (Android):
@@ -20,6 +27,8 @@ quick places, and four shortcuts on its icon:
 | Next up, small / medium / large | iOS 14 | 2×2 / 4×2 / about 4×4 | Home screen → Add widget |
 | Next up, lock screen (card, line, round) | iOS 16 | – | Lock screen → Customize → Add widgets |
 | Networking, small / medium / large | iOS 14 | 2×2 / 4×2 / about 4×4 | Home screen → Add widget |
+| For you, medium / large | iOS 14 | 4×2 / about 4×4 | Home screen → Add widget |
+| Event-day card | iOS 16.1 (Live Activity) | Android 7+ (ongoing notification) | Nothing: it comes by itself on the day (Settings → "Event-day card on the lock screen" turns it off) |
 | My QR, lock screen (round) | iOS 16 | – | Lock screen → Customize → Add widgets |
 | Scan, My QR controls | iOS 18 | – | Control Center, the lock screen's buttons, the Action button |
 | Scan, My QR tiles | – | Android 7+ | Quick Settings → Edit |
@@ -128,6 +137,154 @@ once (well inside its bitmap budget, with the 370 px code).
   share, and quick scan."** Android places it at 2×2; widen it to about 4
   cells for the medium layout, and make it about 4×4 for the large one.
 * My QR is the app's `/profile/qr` (`myQrLocation`).
+
+## For you
+
+What is on **this week** – the events in the next seven days, the
+person's **topics** first, then those **near them**, then the rest, each in
+date order – and, when that is not enough, the platform's **popular**
+events (the person's topics first). Nothing over is listed, each event
+once.
+
+| Size | Shows |
+| --- | --- |
+| Medium (4×2) | The header, **See all ›**, and two events |
+| Large (about 4×4) | The header, **See all ›**, and four events; with fewer, a soft panel "That's what's on for now · Find more events ›" |
+| Nothing on (any size) | "Nothing on this week yet", "New events show here as clubs add them.", **Find events** |
+
+Each row: the date (weekday, day, month in Bebas Neue, a smaller block than
+Next up's), the event's name, and "6:00 pm · Kochi Coders · Maker Space,
+Kochi" (the time in India, the club, the venue or **Online**). No pictures:
+the date block is the row's mark.
+
+* **A row** opens that event's page in the app
+  (`https://myotherapp.in/events/{slug}`, `/events/{slug}`); **See all**
+  and the rest of the widget open the events directory (`/events`, the
+  app's Find events). No sign-in is needed for either.
+* **The header** says why the events are there: **For you** when one of
+  the first four is in the person's topics; **This week near you** when
+  none is but one is in person within 50 km of their place this week;
+  **This week**; or **Popular** when there is nothing this week.
+* **Few events** (the platform today): it lists what there is this week,
+  fills up with the popular ones, and with nothing at all shows the calm
+  "Find events" face.
+* Signed out it works the same, without topics.
+* Gallery: **"For you"** / "Events this week: in your topics and near you."
+  Android places it at 4×2; make it about 4×4 for the large one.
+
+### Where the events come from
+
+The **public discover front page**, `GET /api/v1/discover/home` – what the
+app's Home tab shows and the website's front page: no sign-in token, the
+same answer for anyone at that place (its shared part is kept a minute on
+the server), an ETag on every answer (an unchanged page comes back as a
+304 of a few hundred bytes), and a rate limit of 120 a minute per address.
+Its `this_week` (8, by date), `near` (in person within 50 km of the point
+asked about) and `popular` (8) lists carry each event's topics, so the
+person's topics are matched on the phone. **No new backend endpoint**.
+
+* **The app** writes the list whenever it reads the front page
+  (`discoverHomeProvider`: the Home tab, pull to refresh, back online,
+  another city picked) – and, while a For you widget is on a home screen,
+  reads it for the widget at start-up if the Home tab hasn't – with the
+  person's topics (their interests' topics, from their account) and the
+  place the discover lists use (the city they picked, else the one the
+  server guessed from the connection). So the widget is right after any
+  app open. With no For you widget placed, nothing is read or written for
+  it.
+* **The widget itself**, while the app is closed, asks the same page every
+  **three hours** with the stored place and picks by the same rules:
+  * iOS: the `TimelineProvider` reads it when the timeline is asked for and
+    the list is three hours old (or was never read), then asks to be asked
+    again three hours after the read (`.after`) – about eight reloads a
+    day, well inside WidgetKit's budget; after a failed read, in 30
+    minutes. Entries at each listed event's end drop it when it is over.
+  * Android: `ForYouRefreshWorker` through **WorkManager** (already in the
+    app through home_widget 0.10.0; the same version, 2.11.2, is now named
+    in `build.gradle` so the app's code can use it – nothing new in the
+    APK): a periodic job every three hours, only on a network, booked
+    while a widget is placed and cancelled when the last is removed, plus a
+    one-off read when what is kept is old (placed before the app was
+    opened, after a sign-out). A redraw is booked for the next listed
+    event's end.
+  * Both send the last answer's ETag (`If-None-Match`) and only ever ask
+    over **https**; a read the app overtook meanwhile (a sign-out, another
+    city) is dropped.
+* **Sign-out** writes the list again without the person's topics (the
+  widget asks the page itself on its next draw); the place stays, as it
+  does for the discover lists.
+* The rules live in three languages (`pickForYou` in
+  `lib/features/home_widget/domain/events_for_you.dart`, `ForYouPicker` in
+  `ForYouData.swift` and `ForYouData.kt`). One front page
+  (`test/fixtures/widgets/for_you_home.json`) and what the Dart rules pick
+  from it (`for_you_expected.json`, held by the Dart tests) check all three:
+  the Kotlin JVM tests and `tool/widget_checks/run.sh` (Swift) must pick
+  exactly the same events with the same fields.
+
+## The event-day card
+
+On the day of an event the person holds a ticket for, a card on the lock
+screen:
+
+| | Before the start | From the start | After the end |
+| --- | --- | --- | --- |
+| **iPhone** (Live Activity, iOS 16.1) | "Starts in 2:15:04" (a countdown the system runs), the name, "9:30 am · Le Méridien, Kochi", **Show ticket ›** | "Started 9:30 am", **Now**, "Until 5:30 pm · venue", Show ticket | Gone (see below: by itself when the app ran during the event; else at the next app run, "Over" meanwhile) |
+| **Dynamic Island** | Compact: a ticket and the countdown; minimal: the ticket; expanded: "Starts in" and the countdown, the name, the time and venue, Show ticket | "Now" | Gone |
+| **Android** (ongoing notification) | The name, "Starts at 9:30 am · venue", a Chronometer counting down to the start, **Show ticket** | "Happening now · until 5:30 pm · venue" | Gone |
+
+**Show ticket** (and a tap on the card) opens the ticket's page in the app
+(`https://myotherapp.in/events/{id}/ticket`, which finds the ticket on the
+phone; signed out, sign-in comes first) through the link path every
+widget, shortcut and control uses. The card carries the event's id, name,
+venue, start, end and time of day – **never the ticket's code, its QR or
+its link**.
+
+**When it comes.** From **eight hours before the start** until the end
+(a Live Activity stays up at most eight hours, so one started earlier
+would be gone by the start): when the app opens (or comes back to the
+front) in that window, and when the person opens that ticket. One at a
+time: the soonest event, or the one whose ticket was just opened. A card
+the person put away is not put back by opening the app again – only by
+opening the ticket. It is brought up to date whenever the app runs
+(a new venue or time, "started"); it goes when the ticket goes (revoked,
+the event called off), at sign-out, and when the switch is turned off.
+Events with no length are taken to last four hours.
+
+**How it moves on with the app closed** (no push):
+
+* iPhone: the countdown is a system timer (`Text(timerInterval:)`). From
+  iOS 16.2 the card's content goes **stale at the start**, which it draws
+  as started (16.1 shows the countdown at 0:00 until the app runs). When
+  the app runs during the event and the end is within four hours, the
+  Live Activity is ended and kept on the lock screen **until the end**, when
+  the system takes it away; after the end the app ends it at once. Left
+  alone, the system ends any Live Activity after eight hours (and clears it
+  from the lock screen within four more).
+* Android: an alarm at the start redraws it as happening now, one at the
+  end takes it away, and the notification's own timeout (Android 8+) does
+  too. Inexact alarms (`setAndAllowWhileIdle`; no exact-alarm permission):
+  "Happening now" may come a few minutes late.
+
+**Settings → "Event-day card on the lock screen"** (on by default; only on
+a phone that can show it – iOS 16.1+ and every Android): off takes the
+card down at once and none comes; on again, today's card can come again.
+It belongs to the phone (kept through sign-outs, in the app's own
+`event_day.json`, not the widgets' storage), with the events whose card was
+put up (forgotten at sign-out).
+
+* **iPhone**: also off when the person turns Live Activities off for the
+  app (Settings → MyOtherApp → Live Activities); nothing is shown then.
+  `NSSupportsLiveActivities` is in the app's Info.plist; the
+  `ActivityConfiguration` is in the one widget extension.
+* **Android**: shown on its own channel, **"Event day"** (default
+  importance, no sound or vibration, shown on the lock screen in full),
+  only where the app may notify (Android 13's permission, the app's
+  notifications and the channel all on); the app asks for the permission
+  after sign-in, as for pushes.
+* **Later (needs push)**: a volunteer's live door count on the card, or
+  anything else that changes during the event, needs ActivityKit push
+  updates (a push token per activity, sent by the server) – out of scope
+  here.
 
 ## My QR on the lock screen (iPhone)
 
@@ -240,14 +397,26 @@ the network's size (knownNetwork…)  ─┼─▶ NetworkingWidgetSyncScope ─
 the page last met first (knownRecent…)┤   (main shell)                 + WidgetPhotos ──▶ home_widget/networking_photo_<id>.png
 "Show people's photos" (Settings)   ─┤                                                  (only when turned on)
 signed in? a widget placed?         ─┘
+
+the discover front page (discoverHomeProvider) ─┐
+the person's topics, the kept place            ─┼─▶ ForYouWidgetSyncScope ─▶ pickFromHome ──▶ JSON "events_for_you"
+a For you widget placed?                       ─┘
                                                          │
              home_widget: saveWidgetData(key) / saveFile + updateWidget
                Android: SharedPreferences "HomeWidgetPreferences", files/home_widget/
                iOS:     UserDefaults(suiteName: group.app.myotherapp.in), its container's home_widget/
                                                          │
-      Android: NextUpWidgetProvider / NetworkingWidgetProvider (RemoteViews)
-      iOS:     NextUpWidget / NetworkingWidget / MyQrLockWidget + the controls
+      Android: NextUpWidgetProvider / NetworkingWidgetProvider / ForYouWidgetProvider (RemoteViews)
+               + ForYouRefreshWorker (WorkManager: GET /discover/home every 3 h)
+      iOS:     NextUpWidget / NetworkingWidget / ForYouWidget (its timeline reads
+               /discover/home every 3 h) / MyQrLockWidget + the controls
                (WidgetKit, one WidgetBundle)
+
+saved tickets, signed in?, the switch ─▶ EventDaySyncScope / EventDayOnOpen ─▶ EventDayCards
+                                          (main shell)       (a ticket opened)        │
+                                                                      channel finnet/event_day
+                                     iOS: EventDayActivities (Runner) ─▶ Live Activity (EventDayLiveActivity, the extension)
+                                     Android: EventDayNotifications ─▶ ongoing notification, "Event day" channel
 ```
 
 * **Dart** (`lib/features/home_widget/`)
@@ -274,6 +443,18 @@ signed in? a widget placed?         ─┘
     main shell.
   * `presentation/widget_photos_setting.dart` – the Settings switch
     (`widgetPhotosSettingProvider`, `WidgetPhotosRow`).
+  * `domain/events_for_you.dart` – `pickForYou` / `pickFromHome` (what For
+    you lists, and its header), `ForYouAsk` (where the widget asks again),
+    `ForYouSnapshot` and its JSON; `data/for_you_store.dart` (`ForYouKind`);
+    `presentation/for_you_widget_sync.dart` – `ForYouWidgetSync`, its
+    scope, `showSignedOutOnForYouWidget`.
+  * `domain/event_day.dart` – `EventDayCard` (what the card is given),
+    `eventDayCardsDue`, `eventDayCardToShow` (which, one at a time);
+    `data/event_day_platform.dart` – the channel and the switch's file;
+    `presentation/event_day_sync.dart` – `EventDayCards` (puts the card up,
+    updates it, takes it down), the Settings row (`EventDayRow`),
+    `EventDaySyncScope` (main shell) and `EventDayOnOpen` (around a
+    ticket's screen).
 * **When Next up is written**: app start (once the saved tickets are read);
   resume; a registration; a ticket gone from the server's list (on the next
   refresh of the saved tickets); a registration sent for review or
@@ -299,9 +480,15 @@ signed in? a widget placed?         ─┘
   notes (each reads the network again) and read again at most every 10
   minutes on a return. With photos on, the pictures come from the app's
   private picture cache (already there when the Network tab showed them).
-* **Sign-out** (and a session the server ended, and sign-in) writes both
-  widgets' signed-out state through `SessionCaches`, deletes the photos and
-  turns the photos switch off, with everything else kept about the person.
+* **When For you is written**: whenever the front page is read
+  (above), only while a For you widget is on a home screen; and by the
+  widget itself every three hours.
+* **Sign-out** (and a session the server ended, and sign-in) writes the
+  widgets' signed-out state through `SessionCaches` (Next up and
+  Networking: signed out; For you: asked again without the topics),
+  deletes the photos and turns the photos switch off, and takes the
+  event-day card down (forgetting the events it was put up for), with
+  everything else kept about the person.
 * **The taps** open the website's address, e.g.
   `https://myotherapp.in/events/12/ticket` or
   `https://myotherapp.in/profile/qr`. Both apps hand it to Flutter's deep
@@ -403,6 +590,49 @@ the picture's address). All deleted at sign-out and when the switch goes
 off. Android leaves `home_widget/` out of its backups, as it does the
 widgets' preferences.
 
+**For you** (`events_for_you`, version 1):
+
+```json
+{
+  "v": 1,
+  "state": "events",                 // or "empty"
+  "header": "For you",               // or "This week near you", "This week", "Popular"
+  "items": [{                        // up to six, in order; the widget shows 2 or 4 not over
+    "id": 101,
+    "name": "Flutter Kochi Meetup",
+    "starts_at": 1795609800000,      // epoch ms
+    "ends_at": 1795618800000,
+    "weekday": "WED", "day": "25", "month": "NOV",
+    "time": "6:00 pm", "date": "Wed, 25 Nov",   // India time
+    "club": "Kochi Coders",
+    "place": "Maker Space, Kochi",   // or "Online"; absent if unknown
+    "link": "https://myotherapp.in/events/flutter-kochi-meetup"
+  }],
+  "see_all": "https://myotherapp.in/events",
+  "ask": {                           // where the widget asks again
+    "api": "https://api.myotherapp.in/api/v1",
+    "topics": [3],                   // the person's topics, by id; [] signed out
+    "city": "Kochi",                 // the discover lists' place
+    "lat": 9.93, "lng": 76.27        // its point, to two decimals (the city, not the phone)
+  },
+  "fetched_at": 1795494600000,       // 0: never read, the widget asks at once
+  "etag": "W/\"…\""                    // written by the widgets only
+}
+```
+
+All of it public: events anyone sees on the front page, the public API's
+address, a city and the ids of topics. **Never** a sign-in token, the
+person's name, their tickets or registrations; nothing of the front page
+the widget doesn't show (posters, going counts, fees, distances, the
+events' topics). Tests hold the fields (`for_you_widget_test.dart`,
+`phase_c_platforms_test.dart`).
+
+**The event-day card** keeps nothing in the widgets' storage. What the
+card is given (the channel's map): `event_id`, `name`, `place`,
+`starts_at`, `ends_at`, `time`, `date`, `link` (the ticket's page). The
+app's own `event_day.json` (app support folder) holds the switch and the
+ids of the events whose card was put up, each with its end.
+
 ### Keeping "Today / Tomorrow / In 3 days" right
 
 The Next up widgets compute the relative line themselves at draw time, on
@@ -424,6 +654,10 @@ same rules as `nextUpWhen` in Dart), and skip events that have ended.
 
 Networking doesn't change with the clock: one entry (iOS, `.never`), no
 periodic update (Android); the app redraws it whenever it writes.
+
+For you drops an event once it is over (iOS: a timeline entry at each
+listed event's end; Android: a redraw booked through `HomeWidgetScheduler`
+at the next end) and is read again every three hours (above).
 
 ## Fonts
 
@@ -450,8 +684,9 @@ The app's fonts are **DM Sans** (text; one variable font,
   `Context.CONTEXT_RESTRICTED` and TextView's `fontFamily` handling). Older
   versions (7.x, our minimum is 7.0) have no font resources at all. So the
   widgets' text uses `sans-serif` / `sans-serif-medium` on every version,
-  and Next up's date block – three short words – is drawn in Bebas Neue into
-  a bitmap by the provider in the app's own process (`WidgetType.kt`),
+  and Next up's date block – three short words – (and For you's smaller
+  one) is drawn in Bebas Neue into a bitmap by the provider in the app's
+  own process (`WidgetType.kt`),
   where custom typefaces work on every version; the font file is read from
   the app's Flutter assets (`flutter_assets/assets/fonts/…`), with a
   condensed bold system face as the fallback.
@@ -463,7 +698,14 @@ The app's fonts are **DM Sans** (text; one variable font,
 
 * **Android**: `android/app/src/main/kotlin/app/myotherapp/com/widget/`
   (`NextUpWidgetProvider.kt`, `NextUpData.kt`, `NetworkingWidgetProvider.kt`,
-  `NetworkingData.kt`, `QrBitmap.kt`, `WidgetType.kt`, `WidgetPhotos.kt`),
+  `NetworkingData.kt`, `QrBitmap.kt`, `WidgetType.kt`, `WidgetPhotos.kt`,
+  `ForYouWidgetProvider.kt`, `ForYouData.kt`, `ForYouRefreshWorker.kt`),
+  `eventday/` (`EventDayCard.kt`, `EventDayNotifications.kt` with
+  `EventDayReceiver`; registered on the channel in `MainActivity.kt`),
+  `res/layout/widget_for_you_{medium,large,preview}.xml`,
+  `res/xml/for_you_widget_info.xml`, `res/values/widget_for_you.xml`,
+  `res/values/event_day.xml`, the JVM tests in `android/app/src/test/`
+  (`./gradlew :app:testDebugUnitTest`),
   `tiles/PageTiles.kt` (the Quick Settings tiles),
   `AppShortcuts.kt` and `MainActivity.kt`,
   `res/layout/widget_{next_up,networking}_{small,medium,large,preview}.xml`,
@@ -475,12 +717,20 @@ The app's fonts are **DM Sans** (text; one variable font,
   receivers, the two tile services plus `RECEIVE_BOOT_COMPLETED` in
   `AndroidManifest.xml`. The Kotlin package is
   `app.myotherapp.com` (the namespace), so the Dart side names the
-  providers by their full class names. One new dependency:
+  providers by their full class names. Dependencies:
   `com.google.zxing:core` (the QR encoder; Apache 2.0, plain Java, no
-  dependencies; R8 keeps only what is used).
+  dependencies; R8 keeps only what is used); `androidx.work:work-runtime`
+  2.11.2 (already in the app through home_widget: named for For you's
+  worker); for the JVM tests only, `junit` and `org.json`.
 * **iOS**: `ios/NextUpWidget/` – `WidgetBundle.swift` (the `@main` bundle:
-  Next up, Networking, My QR on the lock screen from iOS 16.1, the two
-  controls from iOS 18), `WidgetStyle.swift` (palette, the circles'
+  Next up, Networking, For you, My QR on the lock screen and the event-day
+  Live Activity from iOS 16.1, the two controls from iOS 18),
+  `ForYouWidget.swift`, `ForYouData.swift` (For you, and its own read of
+  the front page), `EventDayAttributes.swift` (the Live Activity's
+  attributes and clock; also built into the app), `EventDayViews.swift`,
+  `EventDayLiveActivity.swift` (the lock screen's card and the Dynamic
+  Island), `ios/Runner/EventDayActivities.swift` (the app's side: starts,
+  updates and ends it), `WidgetStyle.swift` (palette, the circles'
   colours, fonts, pill), `NextUpWidget.swift`, `NextUpData.swift`,
   `NextUpLargeView.swift`, `NextUpLockScreen.swift` (the lock screen's
   views, Next up's and My QR's), `NetworkingWidget.swift`,
@@ -507,8 +757,9 @@ The app's fonts are **DM Sans** (text; one variable font,
     automatic signing, iPhone only, iOS 14.0, version and build number from
     Flutter (`FLUTTER_BUILD_NAME` / `FLUTTER_BUILD_NUMBER`, so they always
     match the app's), its Swift files and the two fonts, and builds the
-    controls' intents (`APP_SOURCES`: `ControlIntents.swift`) into Runner
-    too;
+    controls' intents and the Live Activity's attributes (`APP_SOURCES`:
+    `ControlIntents.swift`, `EventDayAttributes.swift`) into Runner too,
+    with Runner's own `EventDayActivities.swift` (`RUNNER_SOURCES`);
   * embeds it in Runner ("Embed Foundation Extensions", placed before "Thin
     Binary" – after it Xcode reports a dependency cycle) and makes Runner
     depend on it.
@@ -525,11 +776,16 @@ The app's fonts are **DM Sans** (text; one variable font,
 
 ## Owner steps (Apple) – before the next iOS release
 
-**Nothing new for Networking, the large sizes, the lock-screen widgets, the
-controls or the shortcuts**: every one is in the same extension, App ID and
-App Group as Next up; controls, app intents, lock-screen widgets and quick
-actions need no capability or entitlement. The steps below are the ones
-Next up already needs; do them once.
+**Nothing new for Networking, For you, the event-day Live Activity, the
+large sizes, the lock-screen widgets, the controls or the shortcuts**:
+every one is in the same extension, App ID and App Group as Next up.
+Controls, app intents, lock-screen widgets, quick actions and **local**
+Live Activities need no capability, entitlement or profile change; the
+Live Activity only needs `NSSupportsLiveActivities` in the app's
+Info.plist, which is there. (Live Activities updated by **push** – a later
+step – would use the app's existing Push Notifications capability and an
+APNs key on the server.) The steps below are the ones Next up already
+needs; do them once.
 
 The App Group and the extension's App ID have to exist in the Apple
 Developer account before a **release** build can be signed. Debug builds on
@@ -569,8 +825,9 @@ Until steps 1–4 are done a release archive fails to sign ("Provisioning
 profile doesn't include the com.apple.security.application-groups
 entitlement" / "No profile for app.myotherapp.in.NextUpWidget").
 
-**Android**: nothing to set up. The widgets, the tiles and the shortcuts
-ship in the app.
+**Android**: nothing to set up. The widgets, the tiles, the shortcuts and
+the event-day card (its "Event day" channel is made the first time it
+shows) ship in the app.
 
 ## Trying it
 
@@ -613,6 +870,18 @@ ship in the app.
    dark on white).
 10. Sign out: every widget asks to sign in again; "Recently met" and its
     photos are gone, and the photos switch is off.
+11. For you: Add Widget → **For you** (Medium or Large). It lists this
+    week's events (your topics first: pick interests in the app; a city
+    from Discover's place picker), each opening its page; See all opens Find
+    events. Close the app and come back three hours later: it has read the
+    front page itself.
+12. Event-day card (iOS 16.1+; a device for the Dynamic Island): register
+    for an event starting within eight hours, then open the app (or the
+    ticket): the card comes up on the lock screen with the countdown; touch
+    and hold the island for the expanded card. Swipe it away and open the
+    app: it stays away; open the ticket: it is back. At the start it says
+    "Started …" (iOS 16.2+). Settings → **Event-day card on the lock
+    screen** off: it goes at once.
 
 **Android**
 
@@ -629,6 +898,13 @@ ship in the app.
    the phone locked (it asks to unlock first): the app opens on the page.
 5. To redraw a widget while testing, open the app and leave it again: every
    resume redraws the widgets, and every change the app sees rewrites them.
+6. For you: Widgets → MyOtherApp → **For you** (4×2; about 4×4 for four).
+   Its worker runs every three hours on a network
+   (`adb shell dumpsys jobscheduler | grep -i for_you` shows it).
+7. Event-day card: as on the iPhone; it is an ongoing notification on the
+   "Event day" channel with a countdown, on the lock screen too. With the
+   app's notifications off (or Android 13's permission refused) none
+   shows. Long-press it → the channel's settings.
 
 **Relative line**: register for an event starting in a few minutes; Next up
 says "Today · …", and "Happening now" from its start (iOS at the timeline
@@ -638,8 +914,18 @@ moves on to the next event once it ends.
 ### Previews
 
 `tool/widget_previews/render.sh [out-dir]` draws the iOS widgets' views
-(both widgets, every size and state, the large ones also at an iPhone SE's
-size, and the lock screen's shapes, light and dark) to PNG on a Mac, with
-the app's fonts – a quick look without a phone. Controls are drawn by the
-system from their symbol and name, so there is nothing to preview. The
-Android layouts are checked on a phone or emulator.
+(every widget, size and state, the large ones also at an iPhone SE's
+size, the lock screen's shapes, For you with several, one and no events,
+and the event-day card's lock-screen card and Dynamic Island shapes, light
+and dark) to PNG on a Mac, with the app's fonts – a quick look without a
+phone. Controls are drawn by the system from their symbol and name, so
+there is nothing to preview. The Android layouts are checked on a phone or
+emulator.
+
+### Checks
+
+* `tool/widget_checks/run.sh` (a Mac): For you's Swift rules pick exactly
+  what the Dart rules pick from the shared front page, read the server's
+  times, keep and read back their JSON; the event-day card's clock.
+* `cd android && ./gradlew :app:testDebugUnitTest`: the same for the
+  Kotlin rules, and the card's fields and phases.
