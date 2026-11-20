@@ -156,6 +156,11 @@ class CodeNotRegistered extends CodeOutcome {
   const CodeNotRegistered();
 }
 
+/// The right code, for a task the organisers took back from this guest.
+class CodeTaskRevoked extends CodeOutcome {
+  const CodeTaskRevoked();
+}
+
 /// No signal: a code is never kept to send later (tries are counted).
 class CodeNoSignal extends CodeOutcome {
   const CodeNoSignal();
@@ -188,6 +193,8 @@ CodeOutcome codeRefusalOf(Object error) {
       return const CodeQuestClosed();
     case 'QUEST_NOT_REGISTERED':
       return const CodeNotRegistered();
+    case 'QUEST_TASK_REVOKED':
+      return const CodeTaskRevoked();
   }
   // The per-minute limit on every request, without the quest's own code.
   if (statusCodeOf(error) == 429) return const CodeLocked();

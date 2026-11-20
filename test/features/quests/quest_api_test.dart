@@ -144,6 +144,7 @@ void main() {
           await refused('QUEST_CODE_LOCKED', 429, {'retry_after': 600});
       expect((locked as CodeLocked).retryAfter, const Duration(minutes: 10));
       expect(await refused('QUEST_CLOSED', 409), isA<CodeQuestClosed>());
+      expect(await refused('QUEST_TASK_REVOKED', 409), isA<CodeTaskRevoked>());
       expect(
           await refused('QUEST_NOT_REGISTERED', 403), isA<CodeNotRegistered>());
       // The per-minute limit, which has no code of its own.
@@ -174,6 +175,8 @@ void main() {
               const CodeLocked(retryAfter: Duration(seconds: 90))),
           'Too many tries. Try again in 2 minutes.');
       expect(codeOutcomeMessage(const CodeNoSignal()), contains('No signal'));
+      expect(codeOutcomeMessage(const CodeTaskRevoked()),
+          contains('took that task back'));
     });
 
     test('a code is matched without spaces or case', () {

@@ -50,6 +50,9 @@ String? codeOutcomeMessage(CodeOutcome outcome, {DateTime? now}) {
       return "The quest isn't open just now.";
     case CodeNotRegistered():
       return 'Codes count for guests with a ticket to this event.';
+    case CodeTaskRevoked():
+      return 'The organisers took that task back, so the code no longer '
+          'counts for you. Ask them if that looks wrong.';
     case CodeNoSignal():
       return 'No signal. Codes need the internet: try again once you are '
           'back online.';
