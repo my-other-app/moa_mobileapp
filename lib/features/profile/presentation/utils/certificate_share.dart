@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/features/profile/data/certificate_documents.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:finnet/shared/utils/share_origin.dart';
 
 /// Whether [certificate] can be shared: only with the page the server
 /// gave it (`certificate_url`). Without one there is no share action.
@@ -39,14 +40,15 @@ typedef CertificateSharer = Future<void> Function(
 final certificateSharerProvider = Provider<CertificateSharer>(
   (ref) => (text, {subject, origin, pdfPath}) async {
     if (pdfPath == null) {
-      await Share.share(text, subject: subject, sharePositionOrigin: origin);
+      await Share.share(text,
+          subject: subject, sharePositionOrigin: anchoredShareOrigin(origin));
       return;
     }
     await Share.shareXFiles(
       [XFile(pdfPath, mimeType: 'application/pdf')],
       text: text,
       subject: subject,
-      sharePositionOrigin: origin,
+      sharePositionOrigin: anchoredShareOrigin(origin),
     );
   },
 );

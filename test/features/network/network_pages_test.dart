@@ -33,7 +33,9 @@ import 'package:finnet/features/profile/domain/repositories/profile_repository.d
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:finnet/features/threads/data/repositories/moderation_repository_impl.dart';
 import 'package:finnet/shared/utils/external_links.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -92,6 +94,12 @@ class _Harness {
   final GoRouter router;
   final shared = <String>[];
   final opened = <Uri>[];
+
+  /// The profile links handed to the share sheet, with where it pointed.
+  final links = <(String, Rect?)>[];
+
+  /// The share sheet refuses to open (as iOS does with nowhere to point).
+  bool shareFails = false;
   final light = _Light();
   final MemoryPendingSaveStore store;
 }
@@ -150,7 +158,14 @@ Future<_Harness> _pump(
         origin,
       }) async =>
           h.shared.add(fileName)),
-      profileLinkSharerProvider.overrideWithValue((text) async {}),
+      profileLinkSharerProvider.overrideWithValue((text, {origin}) async {
+        if (h.shareFails) {
+          throw PlatformException(
+              code: 'error',
+              message: 'sharePositionOrigin: argument must be set');
+        }
+        h.links.add((text, origin));
+      }),
       pendingSaveStoreProvider.overrideWithValue(h.store),
       screenLightProvider.overrideWithValue(h.light),
       atEventIdProvider.overrideWith((ref) => atEvent),
@@ -236,6 +251,74 @@ void main() {
     testWidgets('unknown, hidden or blocked: said plainly', (tester) async {
       await _pump(tester, '/u/nobody');
       expect(find.byKey(PublicProfilePage.missingKey), findsOneWidget);
+    });
+  });
+
+  group('sharing and clubs on a profile', () {
+    late RouteAdapter api;
+    setUp(() => api = useFakeApi());
+
+    testWidgets(
+        'Share profile link hands the link to the sheet, pointing at the '
+        'menu', (tester) async {
+      api.on('GET', '/profiles/ananya', publicProfileJson());
+      final h = await _pump(tester, '/u/ananya');
+
+      await tester.tap(find.byKey(PublicProfilePage.menuKey));
+      await tester.pumpAndSettle();
+      final menu = tester.getRect(find.byKey(PublicProfilePage.menuKey));
+      await tester.tap(find.text('Share profile link'));
+      await _settle(tester);
+
+      final (text, origin) = h.links.single;
+      expect(text, 'Ananya Iyer on MyOtherApp: https://myotherapp.in/u/ananya');
+      expect(origin, menu);
+    });
+
+    testWidgets("a share sheet that won't open is said, not swallowed",
+        (tester) async {
+      api.on('GET', '/profiles/ananya', publicProfileJson());
+      final h = await _pump(tester, '/u/ananya')
+        ..shareFails = true;
+
+      await tester.tap(find.byKey(PublicProfilePage.menuKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Share profile link'));
+      await _settle(tester);
+
+      expect(h.links, isEmpty);
+      expect(find.text("Couldn't open sharing. Try again."), findsOneWidget);
+    });
+
+    testWidgets('each club shows its logo, or the placeholder without one',
+        (tester) async {
+      api.on(
+          'GET',
+          '/profiles/ananya',
+          publicProfileJson(clubs: [
+            {
+              'name': 'GDG Kochi',
+              'slug': 'gdg-kochi',
+              'logo': 'https://media.myotherapp.in/clubs/logos/v-gdg.png',
+            },
+            {'name': 'Makers', 'slug': 'makers', 'logo': null},
+          ]));
+      await _pump(tester, '/u/ananya');
+
+      final gdg = find.byKey(const ValueKey('profile-club-gdg-kochi'));
+      expect(gdg, findsOneWidget);
+      expect(find.text('GDG Kochi'), findsOneWidget);
+      final logo = tester.widget<ClubLogo>(
+          find.descendant(of: gdg, matching: find.byType(ClubLogo)));
+      expect(logo.url, 'https://media.myotherapp.in/clubs/logos/v-gdg.png');
+      final makers = find.byKey(const ValueKey('profile-club-makers'));
+      expect(
+          tester
+              .widget<ClubLogo>(
+                  find.descendant(of: makers, matching: find.byType(ClubLogo)))
+              .url,
+          isNull);
+      expect(find.text('🏛️'), findsNothing);
     });
   });
 
@@ -721,6 +804,55 @@ void main() {
       h.router.go('/profile');
       await tester.pumpAndSettle();
       expect((h.light.raised, h.light.restored), (3, 3));
+    });
+
+    testWidgets(
+        'Share my profile link hands the link to the sheet, pointing at the '
+        'button', (tester) async {
+      useFakeApi()
+        ..on('GET', '/me/qr', {
+          'code': 'abcdefghjk',
+          'url': 'https://myotherapp.in/p/abcdefghjk',
+        })
+        ..on('GET', '/me/profile', myProfileJson());
+      final h = await _pump(tester, '/profile/qr');
+
+      final button = find.byKey(MyQrPage.shareKey);
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      final rect = tester.getRect(button);
+      await tester.tap(button);
+      await _settle(tester);
+
+      final (text, origin) = h.links.single;
+      expect(text, 'Find me on MyOtherApp: https://myotherapp.in/u/asha');
+      expect(origin, rect);
+      expect(origin!.isEmpty, isFalse);
+    });
+
+    testWidgets(
+        'Share with the profile not read: read again, and said when it '
+        "can't be", (tester) async {
+      final api = useFakeApi()
+        ..on('GET', '/me/qr', {
+          'code': 'abcdefghjk',
+          'url': 'https://myotherapp.in/p/abcdefghjk',
+        })
+        ..on('GET', '/me/profile', {'message': 'down'}, status: 503);
+      final h = await _pump(tester, '/profile/qr');
+      final reads = api.sent('GET', '/me/profile').length;
+
+      final button = find.byKey(MyQrPage.shareKey);
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await _settle(tester);
+
+      expect(api.sent('GET', '/me/profile').length, greaterThan(reads));
+      expect(h.links, isEmpty);
+      expect(
+          find.text("Couldn't get your profile link. Connect and try again."),
+          findsOneWidget);
     });
 
     testWidgets('scanning switched off: said, with the way back on',

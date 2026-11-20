@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/features/threads/domain/entities/thread.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:finnet/shared/utils/share_origin.dart';
 
 /// A post's page on the website: `https://myotherapp.in/threads/{id}`,
 /// which anyone can open, app or no app.
@@ -36,7 +37,7 @@ typedef ThreadSharer = Future<void> Function(
 });
 
 Future<void> _systemShare(String text, {String? subject, Rect? origin}) =>
-    Share.share(text, subject: subject, sharePositionOrigin: origin);
+    Share.share(text, subject: subject, sharePositionOrigin: anchoredShareOrigin(origin));
 
 final threadSharerProvider = Provider<ThreadSharer>((ref) => _systemShare);
 

@@ -10,6 +10,7 @@ import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/social/domain/share_kit.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/utils/share_origin.dart';
 
 final shareKitApiProvider =
     Provider<ShareKitApi>((ref) => ShareKitApi(ref.watch(dioProvider)));
@@ -72,13 +73,13 @@ typedef ShareKitSharer = Future<void> Function({
 final shareKitSharerProvider = Provider<ShareKitSharer>(
   (ref) => ({text, imagePath, origin}) async {
     if (imagePath == null) {
-      await Share.share(text ?? '', sharePositionOrigin: origin);
+      await Share.share(text ?? '', sharePositionOrigin: anchoredShareOrigin(origin));
       return;
     }
     await Share.shareXFiles(
       [XFile(imagePath, mimeType: _imageType(imagePath))],
       text: text,
-      sharePositionOrigin: origin,
+      sharePositionOrigin: anchoredShareOrigin(origin),
     );
   },
 );

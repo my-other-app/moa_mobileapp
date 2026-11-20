@@ -18,12 +18,18 @@ import 'package:finnet/features/network/presentation/widgets/profile_view.dart';
 import 'package:finnet/features/threads/domain/entities/moderation.dart';
 import 'package:finnet/features/threads/presentation/widgets/moderation_actions.dart';
 import 'package:finnet/shared/utils/external_links.dart';
+import 'package:finnet/shared/utils/share_origin.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/toast.dart';
 
-/// Hands a profile's link to the share sheet; a provider for tests.
-final profileLinkSharerProvider = Provider<Future<void> Function(String text)>(
-  (ref) => (text) => Share.share(text),
+/// Hands a profile's link to the share sheet, pointing from [origin] (the
+/// button, else the middle of the screen: iOS refuses a sheet with nothing
+/// to point at); a provider for tests.
+typedef ProfileLinkSharer = Future<void> Function(String text, {Rect? origin});
+
+final profileLinkSharerProvider = Provider<ProfileLinkSharer>(
+  (ref) => (text, {origin}) =>
+      Share.share(text, sharePositionOrigin: anchoredShareOrigin(origin)),
 );
 
 /// `/u/<handle>` (the website's address too): someone's profile, as this
@@ -55,6 +61,9 @@ class _PublicProfilePageState extends ConsumerState<PublicProfilePage> {
   /// Saved here since the page was read.
   ProfileRelation? _relation;
   bool _saving = false;
+
+  /// The menu's button: what the share sheet points from.
+  final _menuAnchor = GlobalKey();
 
   String get _handle => widget.handle.toLowerCase();
 
@@ -106,6 +115,7 @@ class _PublicProfilePageState extends ConsumerState<PublicProfilePage> {
         text: card,
         mimeType: 'text/vcard',
         subject: profile.fullName,
+        origin: shareOriginOf(_menuAnchor.currentContext),
       );
     } catch (e) {
       if (!mounted) return;
@@ -117,12 +127,25 @@ class _PublicProfilePageState extends ConsumerState<PublicProfilePage> {
     }
   }
 
+  Future<void> _shareLink(PublicProfile profile) async {
+    try {
+      await ref.read(profileLinkSharerProvider)(
+          '${profile.fullName} on MyOtherApp: ${profile.publicUri}',
+          origin: shareOriginOf(_menuAnchor.currentContext));
+    } catch (e) {
+      debugPrint('PublicProfilePage: sharing the link failed: $e');
+      if (mounted) {
+        showToast(context, "Couldn't open sharing. Try again.",
+            icon: Icons.error_outline);
+      }
+    }
+  }
+
   Future<void> _onMenu(String choice, PublicProfile profile) async {
     final userId = profile.userId;
     switch (choice) {
       case 'share':
-        await ref.read(profileLinkSharerProvider)(
-            '${profile.fullName} on MyOtherApp: ${profile.publicUri}');
+        await _shareLink(profile);
       case 'contact':
         await _saveContact(profile);
       case 'web':
@@ -163,22 +186,25 @@ class _PublicProfilePageState extends ConsumerState<PublicProfilePage> {
         foregroundColor: Colors.black,
         actions: [
           if (profile != null)
-            PopupMenuButton<String>(
-              key: PublicProfilePage.menuKey,
-              onSelected: (choice) => _onMenu(choice, profile),
-              itemBuilder: (_) => [
-                const PopupMenuItem(
-                    value: 'share', child: Text('Share profile link')),
-                if (!profile.isMe && !profile.locked)
+            KeyedSubtree(
+              key: _menuAnchor,
+              child: PopupMenuButton<String>(
+                key: PublicProfilePage.menuKey,
+                onSelected: (choice) => _onMenu(choice, profile),
+                itemBuilder: (_) => [
                   const PopupMenuItem(
-                      value: 'contact', child: Text('Save contact card')),
-                const PopupMenuItem(
-                    value: 'web', child: Text('Open on the website')),
-                if (!profile.isMe && profile.userId != null) ...[
-                  const PopupMenuItem(value: 'report', child: Text('Report')),
-                  const PopupMenuItem(value: 'block', child: Text('Block')),
+                      value: 'share', child: Text('Share profile link')),
+                  if (!profile.isMe && !profile.locked)
+                    const PopupMenuItem(
+                        value: 'contact', child: Text('Save contact card')),
+                  const PopupMenuItem(
+                      value: 'web', child: Text('Open on the website')),
+                  if (!profile.isMe && profile.userId != null) ...[
+                    const PopupMenuItem(value: 'report', child: Text('Report')),
+                    const PopupMenuItem(value: 'block', child: Text('Block')),
+                  ],
                 ],
-              ],
+              ),
             ),
         ],
       ),

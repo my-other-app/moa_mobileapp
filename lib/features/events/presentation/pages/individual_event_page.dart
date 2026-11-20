@@ -80,6 +80,7 @@ import 'package:finnet/features/events/presentation/widgets/ticketing/ticket_typ
 import 'package:finnet/features/events/presentation/widgets/ticketing/waitlist_widgets.dart';
 import 'package:finnet/shared/widgets/event_card.dart'
     show EventCard, EventCardStatus;
+import 'package:finnet/shared/utils/share_origin.dart';
 
 /// The `status` a card sends in its extras for an event that has already
 /// happened and that this person attended -- whether or not a certificate
@@ -877,8 +878,8 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     await Share.share(
       name == null || name!.isEmpty ? link : '$name\n$link',
       subject: name,
-      sharePositionOrigin:
-          box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+      sharePositionOrigin: anchoredShareOrigin(
+          box == null ? null : box.localToGlobal(Offset.zero) & box.size),
     );
   }
 
