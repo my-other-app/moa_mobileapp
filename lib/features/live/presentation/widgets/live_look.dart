@@ -91,6 +91,7 @@ class LiveLook {
     required this.id,
     this.custom = false,
     this.page = LiveColors.wash,
+    this.drawsPage = false,
     this.backdrop = 'color',
     this.background,
     this.gradient,
@@ -132,6 +133,10 @@ class LiveLook {
   /// `gradient` or `image` (over [page], which shows while a picture loads
   /// or when it cannot).
   final Color page;
+
+  /// The page is the theme's (`guest.background: theme`), not the room's
+  /// own: what sits on it takes [onPage].
+  final bool drawsPage;
   final String backdrop;
   final Color? background;
   final LiveGradient? gradient;
@@ -203,6 +208,7 @@ class LiveLook {
       id: 'theme:${state.version ?? identityHashCode(state)}',
       custom: true,
       page: t.drawsBackground ? t.background : LiveColors.wash,
+      drawsPage: t.drawsBackground,
       backdrop: t.drawsBackground ? t.backgroundKind : 'color',
       background: t.background,
       gradient: t.gradient,

@@ -375,7 +375,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
           liveRegion: true,
           child: Text(_state.answerError!,
               style: TextStyle(
-                  color: LiveLook.of(context).custom
+                  color: LiveLook.of(context).drawsPage
                       ? LiveLook.of(context).onPage
                       : LiveColors.wrong)),
         ),
@@ -800,7 +800,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
     if (q.answered) {
       return QuizVerdict(
         text: 'Answer locked in',
-        tone: LiveColors.deep,
+        tone: LiveLook.of(context).accent,
         icon: Icons.lock_outline_rounded,
         note: quiz.waitingForReveal
             ? 'The host will show the answer in a moment.'

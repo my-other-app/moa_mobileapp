@@ -147,6 +147,94 @@ void main() {
     expect(server.sent.last.data, {'option_key': 'b'});
   });
 
+  test('every live call says it knows this release; the streams too',
+      () async {
+    server.answers['GET /events/7/live'] = (200, roomJson());
+    server.answers['GET /events/7/live/quiz/play'] = (200, quizJson());
+    server.answers['POST /events/7/live/quiz/answer'] =
+        (200, {'correct': null, 'points': null, 'score': 0, 'answered': true});
+    server.answers['POST /events/7/live/polls/p1/respond'] =
+        (200, pollJson(myResponse: 'Dosa'));
+    server.answers['POST /live/quiz/join'] =
+        (201, {'event_id': 7, 'player_key': 'k', 'name': 'Asha'});
+    server.answers['POST /events/7/live/questions'] =
+        (201, questionJson('q9'));
+    server.answers['POST /events/7/live/questions/q1/vote'] =
+        (200, {'votes': 1, 'voted': true});
+    server.answers['GET /events/7/live/theme/public'] = (
+      200,
+      {'custom': true, 'theme': themeJson(), 'version': 'v1'}
+    );
+    final api = DioLiveRoomApi(dioFor(_SignedOut()), LiveIdentity(store));
+    await api.fetchRoom(7);
+    await api.playState(7, 'p');
+    await api.answer(7, 'p', const OptionAnswer('a'));
+    await api.respond(7, 'p1', const PollAnswer.value('Dosa'));
+    await api.joinQuiz('482913', 'Asha');
+    await api.ask(7, 'Is there pizza?');
+    await api.vote(7, 'q1');
+    final theme = await api.fetchTheme(7);
+    await api.openRoomStream(7);
+    await api.openQuizStream(7, 'p');
+    expect(server.sent, hasLength(10));
+    for (final r in server.sent) {
+      expect(r.headers[liveVersionHeader], '2', reason: r.path);
+    }
+    final streams = server.sent.where((r) => r.path.endsWith('/stream'));
+    expect(streams.map((r) => r.queryParameters['v']), ['2', '2']);
+    expect(streams.map((r) => r.queryParameters['view']), ['room', 'quiz']);
+    expect(theme!.version, 'v1');
+    expect(server.sent[7].path, '/events/7/live/theme/public');
+  });
+
+  test('answers and poll responses go in their kind\'s shape; a team with '
+      'the join', () async {
+    server.answers['POST /events/7/live/quiz/answer'] =
+        (200, {'correct': null, 'points': null, 'score': 0, 'answered': true});
+    server.answers['POST /events/7/live/polls/p1/respond'] =
+        (200, pollJson(myResponse: 'x'));
+    server.answers['POST /live/quiz/join'] = (
+      201,
+      {
+        'event_id': 7,
+        'player_key': 'k',
+        'name': 'Asha',
+        'team': {'key': 'red', 'name': 'Red Rockets', 'color': '#E11D48'},
+        'tag': '7F2',
+      }
+    );
+    final api = DioLiveRoomApi(dioFor(_SignedOut()), LiveIdentity(store));
+    await api.answer(7, 'p', const OptionsAnswer(['a', 'c']));
+    await api.answer(7, 'p', const TextAnswer(' Sao Paulo '));
+    await api.answer(7, 'p', const OrderAnswer(['c', 'a', 'b']));
+    await api.respond(7, 'p1', const PollAnswer(values: ['Tea', 'Juice']));
+    await api.respond(7, 'p1', const PollAnswer(order: ['B', 'A']));
+    await api.respond(7, 'p1', const PollAnswer(value: 'Loved it', name: 'Asha'));
+    final player = await api.joinQuiz('482913', 'Asha', team: 'red');
+    expect(server.sent.map((r) => r.data).toList(), [
+      {'option_keys': ['a', 'c']},
+      {'text': 'Sao Paulo'},
+      {'order': ['c', 'a', 'b']},
+      {'values': ['Tea', 'Juice']},
+      {'order': ['B', 'A']},
+      {'value': 'Loved it', 'name': 'Asha'},
+      {
+        'code': '482913',
+        'name': 'Asha',
+        'player_key': 'installkey1234567890',
+        'team': 'red',
+      },
+    ]);
+    expect(player.team!.name, 'Red Rockets');
+    expect(player.tag, '7F2');
+  });
+
+  test('a server from before themes: the theme read fails, nothing else',
+      () async {
+    final api = DioLiveRoomApi(dioFor(_SignedOut()), LiveIdentity(store));
+    await expectLater(api.fetchTheme(7), throwsA(isA<DioException>()));
+  });
+
   test('a slug is looked up; an id is not', () async {
     server.answers['GET /events/info/hack-night'] = (200, {'id': 68});
     final api = DioLiveRoomApi(dioFor(_SignedOut()), LiveIdentity(store));
