@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'package:finnet/shared/utils/share_origin.dart';
+
 /// Hands a text file -- contact cards, a spreadsheet -- to the phone's
 /// share sheet, from where it goes to Contacts, Files or anywhere else. A
 /// provider so a test can see what would have been shared.
@@ -36,7 +38,7 @@ final textFileSharerProvider = Provider<TextFileSharer>(
       await Share.shareXFiles(
         [XFile(file.path, mimeType: mimeType, name: fileName)],
         subject: subject,
-        sharePositionOrigin: origin,
+        sharePositionOrigin: anchoredShareOrigin(origin),
       );
     } finally {
       try {

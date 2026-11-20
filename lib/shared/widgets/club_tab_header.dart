@@ -4,6 +4,7 @@ import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/shared/utils/share_links.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:finnet/shared/utils/share_origin.dart';
 
 class CustomTab extends StatelessWidget {
   final String tabTitle;
@@ -163,8 +164,8 @@ class _ClubTabHeaderState extends State<ClubTabHeader>
         subject: name.isEmpty ? null : name,
         // iPad presents the sheet as a popover, which needs somewhere to
         // point; without an origin it throws instead of opening.
-        sharePositionOrigin:
-            box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+        sharePositionOrigin: anchoredShareOrigin(
+            box == null ? null : box.localToGlobal(Offset.zero) & box.size),
       );
     } catch (e) {
       debugPrint('Club share failed: $e');

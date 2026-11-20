@@ -18,6 +18,7 @@ import 'package:finnet/features/network/presentation/pages/public_profile_page.d
 import 'package:finnet/features/network/presentation/providers/my_profile_provider.dart';
 import 'package:finnet/features/network/presentation/providers/network_providers.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/shared/utils/share_origin.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/toast.dart';
 
@@ -65,6 +66,7 @@ class MyQrPage extends ConsumerStatefulWidget {
   const MyQrPage({super.key});
 
   static const qrKey = ValueKey('my-qr-code');
+  static const shareKey = ValueKey('my-qr-share');
   static const replaceKey = ValueKey('my-qr-replace');
   static const scanningOffKey = ValueKey('my-qr-scanning-off');
 
@@ -191,6 +193,35 @@ class _MyQrPageState extends ConsumerState<MyQrPage>
       }
     } finally {
       if (mounted) setState(() => _replacing = false);
+    }
+  }
+
+  /// Shares the person's profile link, pointing the sheet at [button].
+  /// Their profile is read first if it has not been (offline at first,
+  /// say): the link needs their handle.
+  Future<void> _shareLink(BuildContext button) async {
+    var handle = ref.read(myProfileProvider).profile?.handle;
+    if (handle == null) {
+      await ref.read(myProfileProvider.notifier).load();
+      handle = ref.read(myProfileProvider).profile?.handle;
+    }
+    if (!mounted) return;
+    if (handle == null) {
+      showToast(
+          context, "Couldn't get your profile link. Connect and try again.",
+          icon: Icons.error_outline);
+      return;
+    }
+    try {
+      await ref.read(profileLinkSharerProvider)(
+          'Find me on MyOtherApp: ${publicProfileUri(handle)}',
+          origin: button.mounted ? shareOriginOf(button) : null);
+    } catch (e) {
+      debugPrint('MyQrPage: sharing the link failed: $e');
+      if (mounted) {
+        showToast(context, "Couldn't open sharing. Try again.",
+            icon: Icons.error_outline);
+      }
     }
   }
 
@@ -338,17 +369,17 @@ class _MyQrPageState extends ConsumerState<MyQrPage>
           label: const Text('Scan theirs'),
         ),
         const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: handle == null
-              ? null
-              : () => ref.read(profileLinkSharerProvider)(
-                  'Find me on MyOtherApp: ${publicProfileUri(handle)}'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.ink,
-            minimumSize: const Size.fromHeight(50),
+        Builder(
+          builder: (button) => OutlinedButton.icon(
+            key: MyQrPage.shareKey,
+            onPressed: () => _shareLink(button),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.ink,
+              minimumSize: const Size.fromHeight(50),
+            ),
+            icon: const Icon(Icons.share_outlined),
+            label: const Text('Share my profile link'),
           ),
-          icon: const Icon(Icons.share_outlined),
-          label: const Text('Share my profile link'),
         ),
         if (_replacing)
           const Padding(

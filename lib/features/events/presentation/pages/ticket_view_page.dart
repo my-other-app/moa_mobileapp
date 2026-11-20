@@ -29,6 +29,7 @@ import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:apple_passkit/apple_passkit.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/shared/motion.dart';
+import 'package:finnet/shared/utils/share_origin.dart';
 
 /// Premium ticket page with stunning glow effects and Apple Wallet-like design.
 class TicketViewPage extends StatefulWidget {
@@ -443,7 +444,7 @@ class _TicketViewPageState extends State<TicketViewPage>
       final result = await Share.shareXFiles(
         [XFile(filePath, mimeType: 'application/pdf')],
         text: '🎟️ Here is my ticket for ${widget.eventName}!',
-        sharePositionOrigin: shareOrigin,
+        sharePositionOrigin: anchoredShareOrigin(shareOrigin),
       );
 
       if (result.status == ShareResultStatus.dismissed) {
@@ -481,7 +482,7 @@ class _TicketViewPageState extends State<TicketViewPage>
         '📅 $_formattedDate • $_formattedTime\n'
         '📍 ${widget.locationName ?? "TBA"}\n\n'
         '$_ticketWebUrl',
-        sharePositionOrigin: fallbackOrigin,
+        sharePositionOrigin: anchoredShareOrigin(fallbackOrigin),
       );
     } finally {
       if (mounted) setState(() => _isDownloading = false);

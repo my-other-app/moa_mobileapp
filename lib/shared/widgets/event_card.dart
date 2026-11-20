@@ -21,6 +21,7 @@ import 'package:finnet/shared/widgets/high_demand_chip.dart';
 import 'package:finnet/shared/widgets/svg_icon.dart';
 import 'package:finnet/shared/widgets/pressable.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:finnet/shared/utils/share_origin.dart';
 
 /// Status type for event cards
 enum EventCardStatus {
@@ -634,8 +635,8 @@ class EventCard extends StatelessWidget {
       await Share.share(
         name.isEmpty ? url : '$name on MyOtherApp: $url',
         subject: name.isEmpty ? null : name,
-        sharePositionOrigin:
-            box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+        sharePositionOrigin: anchoredShareOrigin(
+            box == null ? null : box.localToGlobal(Offset.zero) & box.size),
       );
     } catch (e) {
       debugPrint('Event share failed: $e');

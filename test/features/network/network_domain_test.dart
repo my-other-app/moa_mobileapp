@@ -30,6 +30,35 @@ void main() {
       expect(p.publicUri.toString(), 'https://myotherapp.in/u/ananya');
     });
 
+    test("each club with its logo: a link, the sizes' map, or none", () {
+      final p = PublicProfile.fromJson(publicProfileJson(clubs: [
+        {
+          'name': 'GDG Kochi',
+          'slug': 'gdg-kochi',
+          'logo': 'https://media.myotherapp.in/clubs/logos/v-gdg.png',
+        },
+        {
+          'name': 'Makers',
+          'slug': 'makers',
+          'logo': {
+            'thumbnail': 'https://media.myotherapp.in/m.thumbnail.png',
+            'original': 'https://media.myotherapp.in/m.png',
+          },
+        },
+        // An older server: no logo at all.
+        {'name': 'Hack Club', 'slug': 'hack-club'},
+        {'name': '  ', 'slug': 'nameless'},
+      ]))!;
+      final clubs = p.achievements.clubs!;
+      expect(clubs.map((c) => c.name), ['GDG Kochi', 'Makers', 'Hack Club']);
+      expect(clubs.map((c) => c.logo), [
+        'https://media.myotherapp.in/clubs/logos/v-gdg.png',
+        'https://media.myotherapp.in/m.thumbnail.png',
+        null,
+      ]);
+      expect(clubs.first.route, '/clubs/gdg-kochi');
+    });
+
     test('a private one seen by a stranger is locked until they save back', () {
       final stranger =
           PublicProfile.fromJson(publicProfileJson(private: true))!;
