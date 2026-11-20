@@ -504,8 +504,11 @@ class _QuizPageState extends ConsumerState<QuizPage>
             child: const Text('Leaderboard',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
           ),
-          const Text('Tied players share a place.',
-              style: TextStyle(fontSize: 12.5, color: LiveColors.muted)),
+          Text(
+              quiz.tiesByTime
+                  ? 'Equal scores: the faster answers go first.'
+                  : 'Tied players share a place.',
+              style: const TextStyle(fontSize: 12.5, color: LiveColors.muted)),
           QuizLeaderboard(
             board: quiz.leaderboard,
             me: quiz.name,
@@ -547,6 +550,13 @@ class _QuizPageState extends ConsumerState<QuizPage>
               alignment: Alignment.centerLeft,
               child: QuizTeamChip(team: quiz.team!, prefix: 'Your team:'),
             ),
+          ],
+          if (quiz.anonymousScreen && quiz.tag != null) ...[
+            const SizedBox(height: 10),
+            Text('You are Player ${quiz.tag} on the screen.',
+                key: const ValueKey('quiz-tag'),
+                style: const TextStyle(
+                    fontSize: 14.5, fontWeight: FontWeight.w600)),
           ],
           const SizedBox(height: 14),
           const LiveWaiting(

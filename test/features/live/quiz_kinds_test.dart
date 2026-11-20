@@ -439,6 +439,47 @@ void main() {
     await leave(tester);
   });
 
+  testWidgets('a theme without the podium: the first three as rows; an '
+      'anonymous screen\'s tag; ties by time said', (tester) async {
+    api.themeAnswer = {
+      'custom': true,
+      'version': 'v1',
+      'theme': themeJson(board: {
+        'size': 5,
+        'podium': false,
+        'animate': false,
+        'own_rank': true
+      }),
+    };
+    api.quizStates
+      ..add({
+        ...v2QuizJson(phase: 'lobby', index: -1),
+        'anonymous_screen': true,
+      })
+      ..add({
+        ...v2QuizJson(
+          status: 'ended',
+          phase: 'ended',
+          score: 900,
+          rank: 2,
+          name: 'Asha Menon',
+          board: [
+            {'rank': 1, 'name': 'Ravi', 'score': 1200},
+            {'rank': 2, 'name': 'Asha Menon', 'score': 900},
+          ],
+        ),
+        'ties': 'time',
+      });
+    await pumpQuiz(tester);
+    expect(find.text('You are Player 7F2 on the screen.'), findsOneWidget);
+    await nextRead(tester);
+    expect(find.byKey(const ValueKey('board-Ravi')), findsOneWidget,
+        reason: 'a row, not a step of the podium');
+    expect(find.text('Equal scores: the faster answers go first.'),
+        findsOneWidget);
+    await leave(tester);
+  });
+
   testWidgets('a hidden clock is not drawn; the time still runs out',
       (tester) async {
     api.themeAnswer = {

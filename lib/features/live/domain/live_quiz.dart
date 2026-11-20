@@ -534,6 +534,8 @@ class QuizState {
     this.streak = 0,
     this.themeVersion,
     this.overall,
+    this.anonymousScreen = false,
+    this.tiesByTime = false,
   });
 
   /// `draft`, `live` or `ended`.
@@ -577,6 +579,14 @@ class QuizState {
 
   /// The board across the event's rounds, when the server sends it.
   final List<BoardEntry>? overall;
+
+  /// The big screen shows players by their [tag], not their names (read
+  /// when the server says so).
+  final bool anonymousScreen;
+
+  /// Equal scores are split by answer time (`ties: "time"`, when the server
+  /// says so); otherwise tied players share a place.
+  final bool tiesByTime;
 
   bool get ended => status == 'ended';
   bool get live => status == 'live';
@@ -639,6 +649,8 @@ class QuizState {
         streak: streak,
         themeVersion: themeVersion,
         overall: overall,
+        anonymousScreen: anonymousScreen,
+        tiesByTime: tiesByTime,
       );
 
   static QuizState? tryParse(Object? json) {
@@ -675,6 +687,8 @@ class QuizState {
       streak: _int(json['streak']),
       themeVersion: _str(json['theme_version']),
       overall: overall is List ? BoardEntry.listOf(overall) : null,
+      anonymousScreen: json['anonymous_screen'] == true,
+      tiesByTime: json['ties'] == 'time',
     );
   }
 }
