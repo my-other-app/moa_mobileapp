@@ -179,6 +179,25 @@ void main() {
       expect(q.unlockedRewards, isEmpty);
     });
 
+    test('one handed over stays, even if its milestone was withdrawn', () {
+      final json = questJson(
+          tier1Unlocked: true, tier1Claim: claimJson(status: 'collected'));
+      final tier1 = (json['milestones'] as List).first as Map<String, dynamic>;
+      tier1['unlocked'] = false;
+      final q = Quest.fromJson(json, eventId: 1);
+      expect(q.unlockedRewards.single.reward.claim?.status,
+          QuestClaimStatus.collected);
+    });
+
+    test('a tick taken back by the organisers is said', () {
+      final task = QuestTask.fromJson({
+        ...taskJson('t', kind: 'manual', title: 'Hackathon'),
+        'me': {'count': 0, 'done': false, 'revoked': true},
+      })!;
+      expect(task.done, isFalse);
+      expect(task.me?.revoked, isTrue);
+    });
+
     test('several desks, or none named', () {
       final two = Quest.fromJson(
           questJson(collectAt: [

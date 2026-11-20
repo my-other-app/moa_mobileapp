@@ -280,6 +280,9 @@ class _QuestCardState extends ConsumerState<QuestCard>
           ? 'Marked done by the organisers'
           : null;
     }
+    if (task.me?.revoked ?? false) {
+      return 'Not counted: the organisers took this one back';
+    }
     final now = _now();
     switch (task.windowAt(now)) {
       case QuestTaskWindow.notYet:

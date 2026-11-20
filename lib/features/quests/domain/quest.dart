@@ -102,6 +102,7 @@ class QuestTaskProgress {
     this.done = false,
     this.doneAt,
     this.source,
+    this.revoked = false,
   });
 
   final int count;
@@ -111,6 +112,10 @@ class QuestTaskProgress {
   /// How it was ticked (`grant` when the organiser did); informational.
   final String? source;
 
+  /// The organisers took the tick back: it counts again only when they
+  /// give it.
+  final bool revoked;
+
   static QuestTaskProgress? fromJson(Object? value) {
     final json = jsonObject(value);
     if (json == null) return null;
@@ -119,6 +124,7 @@ class QuestTaskProgress {
       done: jsonBool(json['done']) ?? false,
       doneAt: jsonDate(json['done_at']),
       source: _text(json['source']),
+      revoked: jsonBool(json['revoked']) ?? false,
     );
   }
 }
@@ -599,12 +605,15 @@ class Quest {
     return '$more to unlock ${next.title}';
   }
 
-  /// The rewards the guest has, newest milestone last.
+  /// The rewards the guest has, newest milestone last: those of the
+  /// milestones unlocked, and any already handed over (kept, even if the
+  /// milestone was later withdrawn).
   List<UnlockedReward> get unlockedRewards => [
         for (final m in milestones)
-          if (m.unlocked)
-            for (final r in m.shownRewards)
-              if (r.claim != null) (milestone: m, reward: r),
+          for (final r in m.shownRewards)
+            if (r.claim != null &&
+                (m.unlocked || r.claim!.status == QuestClaimStatus.collected))
+              (milestone: m, reward: r),
       ];
 
   /// Where rewards are collected: "the Swag desk", "Swag desk or Hall B";

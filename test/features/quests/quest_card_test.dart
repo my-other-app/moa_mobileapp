@@ -251,6 +251,22 @@ void main() {
       expect(h.ticketOpened, 1);
     });
 
+    testWidgets('a tick the organisers took back is said', (tester) async {
+      useFakeApi().on(
+          'GET',
+          '/events/1/quest',
+          questJson(tasks: [
+            {
+              ...taskJson('t-hack', kind: 'manual', title: 'Submit your hack'),
+              'me': {'count': 0, 'done': false, 'revoked': true},
+            },
+          ]));
+      await _pump(tester);
+      expect(find.text('Not counted: the organisers took this one back'),
+          findsOneWidget);
+      expect(find.byKey(QuestCard.actionKey('t-hack')), findsNothing);
+    });
+
     testWidgets('a task not open yet says when, with no button',
         (tester) async {
       useFakeApi().on(
