@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/network/dio_client.dart';
 import 'package:finnet/features/volunteer/domain/entities/volunteer_event.dart';
 
@@ -22,9 +23,16 @@ class VolunteerRemoteDataSourceImpl implements VolunteerRemoteDataSource {
   VolunteerRemoteDataSourceImpl(this._dio);
 
   /// One row that can't be read is left out; the rest are the list.
+  ///
+  /// Saved on the phone (encrypted, as the person's, and kept while the
+  /// session lasts): the list is the way to the door scanner, and a venue
+  /// with no signal must not hide it once it has been read online. With no
+  /// answer, the saved copy is the answer; the server's is always taken
+  /// when it comes.
   @override
   Future<List<VolunteerEvent>> myEvents() async {
-    final response = await _dio.get<dynamic>('/events/volunteer/my-events');
+    final response = await _dio.get<dynamic>('/events/volunteer/my-events',
+        options: Options(extra: CachePolicy.personalKept.extra));
     final rows = response.data;
     return (rows is List ? rows : const [])
         .map(VolunteerEvent.fromJson)

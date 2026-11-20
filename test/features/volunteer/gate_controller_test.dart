@@ -1,6 +1,7 @@
 import 'package:finnet/core/network/network_status.dart';
 import 'dart:async';
 
+import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/features/volunteer/data/gate_models.dart';
 import 'package:finnet/features/volunteer/data/saved_scans.dart';
 import 'package:finnet/features/volunteer/data/scan_queue.dart';
@@ -156,6 +157,37 @@ void main() {
       await door.scan('MOA-4KD9W-22XQZ');
 
       expect(door.state.queued, 1);
+    });
+
+    test(
+        'a slow answer (nothing back before the timeout) is saved too, and '
+        'the replay of the same scan the server took meanwhile is an '
+        'admission, not a problem', () async {
+      await door.start();
+      // What the app's error interceptor hands on when the connection
+      // opened and no answer came in time: the scan may well have landed.
+      api.scanAnswers.add(DioException(
+        requestOptions: RequestOptions(path: '/scan'),
+        type: DioExceptionType.receiveTimeout,
+        error: const ApiException(
+            message: 'timed out', type: ApiExceptionType.timeout),
+      ));
+
+      await door.scan('MOA-4KD9W-22XQZ');
+
+      expect(door.state.card!.card.tone, GateTone.unverified);
+      expect(door.state.queued, 1);
+      final ref = api.scans.single.clientRef;
+
+      // The server had recorded it under this very client ref.
+      api.batchAnswer = (s) => scanned(ScanOutcome.checkedIn,
+          who: guest(ticket: s.code), replayed: s.clientRef == ref);
+      await door.drain();
+
+      expect(api.batches.single.single.clientRef, ref);
+      expect(door.state.queued, 0);
+      expect(door.state.report!.admitted, 1);
+      expect(door.state.report!.problems, isEmpty);
     });
 
     test('typed text that is not a ticket code is refused, not saved',
