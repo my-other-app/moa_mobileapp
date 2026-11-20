@@ -839,6 +839,7 @@ class _Histogram extends StatelessWidget {
     final look = LiveLook.of(context);
     final top = bars.map((b) => b.count).fold(0, math.max);
     return Semantics(
+      container: true,
       label: 'Scores: ${bars.map((b) => '${b.label}, ${_shown(b, settings)}').join('; ')}',
       child: ExcludeSemantics(
         child: Column(

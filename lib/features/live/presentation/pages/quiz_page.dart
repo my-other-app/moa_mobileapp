@@ -52,6 +52,11 @@ class _QuizPageState extends ConsumerState<QuizPage>
   bool _namePrefilled = false;
   String? _codePrefilled;
 
+  /// The look the page is drawn in, worked out in [build]: the methods
+  /// below build under the page's scope but run with the page's own
+  /// context, which is above it.
+  LiveLook _look = LiveLook.standard;
+
   /// The question last announced to a screen reader, and whether it was
   /// paused when it was.
   String? _announced;
@@ -172,7 +177,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
   @override
   Widget build(BuildContext context) {
     final title = _state.quiz?.title ?? widget.eventName;
-    final look = LiveLook.from(_state.theme ?? widget.theme);
+    final look = _look = LiveLook.from(_state.theme ?? widget.theme);
     return LiveThemed(
       look: look,
       child: Scaffold(
@@ -237,7 +242,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
   }
 
   Widget _join(QuizCubit cubit) {
-    final look = LiveLook.of(context);
+    final look = _look;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -375,8 +380,8 @@ class _QuizPageState extends ConsumerState<QuizPage>
           liveRegion: true,
           child: Text(_state.answerError!,
               style: TextStyle(
-                  color: LiveLook.of(context).drawsPage
-                      ? LiveLook.of(context).onPage
+                  color: _look.drawsPage
+                      ? _look.onPage
                       : LiveColors.wrong)),
         ),
       ));
@@ -411,7 +416,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
   }
 
   Widget _finished(QuizState quiz) {
-    final look = LiveLook.of(context);
+    final look = _look;
     final rank = quiz.rank;
     final between = quiz.ended && quiz.moreRounds;
     final overall = quiz.overall;
@@ -515,7 +520,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
   }
 
   Widget _lobby(QuizState quiz) {
-    final look = LiveLook.of(context);
+    final look = _look;
     return LiveCard(
       live: true,
       child: Column(
@@ -564,7 +569,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
   /// "Question 3 of 10", the round, and what it is worth when that is not
   /// the usual.
   Widget _header(QuizState quiz, QuizQuestion q) {
-    final look = LiveLook.of(context);
+    final look = _look;
     final points = q.effectivePoints;
     final badges = <String>[
       if (q.doublePoints) 'Double points',
@@ -598,7 +603,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
   }
 
   List<Widget> _question(QuizCubit cubit, QuizState quiz, QuizQuestion q) {
-    final look = LiveLook.of(context);
+    final look = _look;
     final left = _state.left;
     final timeUp = left <= 0;
     final paused = quiz.isPaused;
@@ -766,7 +771,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
     if (q.kind == QuizKind.poll && q.answered) {
       return QuizVerdict(
         text: revealed ? 'Thanks for answering' : 'Answer locked in',
-        tone: LiveLook.of(context).accent,
+        tone: _look.accent,
         icon: revealed ? Icons.how_to_vote_rounded : Icons.lock_outline_rounded,
         note: revealed && q.counts.isEmpty
             ? 'A poll: no points. The room’s answers are on the screen.'
@@ -800,7 +805,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
     if (q.answered) {
       return QuizVerdict(
         text: 'Answer locked in',
-        tone: LiveLook.of(context).accent,
+        tone: _look.accent,
         icon: Icons.lock_outline_rounded,
         note: quiz.waitingForReveal
             ? 'The host will show the answer in a moment.'

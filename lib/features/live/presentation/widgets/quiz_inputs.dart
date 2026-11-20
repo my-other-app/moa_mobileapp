@@ -796,6 +796,7 @@ class QuizTeamChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final colour = _teamColour(team) ?? LiveColors.muted;
     return Semantics(
+      container: true,
       label: '$prefix ${team.name}',
       excludeSemantics: true,
       child: Container(

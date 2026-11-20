@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/core/network/sse/sse_transport.dart';
 import 'package:finnet/features/live/data/live_room_api.dart';
@@ -513,4 +515,18 @@ Map<String, dynamic> mediaJson([String name = 'logo']) => {
       'width': 1080,
       'height': 1080,
     };
+
+
+/// A picture that is still on its way: nothing reaches a platform channel.
+class SlowImages extends Fake implements BaseCacheManager {
+  @override
+  Stream<FileResponse> getFileStream(String url,
+          {String? key, Map<String, String>? headers, bool? withProgress}) =>
+      StreamController<FileResponse>().stream;
+
+  @override
+  Future<FileInfo?> getFileFromCache(String key,
+          {bool ignoreMemCache = false}) async =>
+      null;
+}
 
