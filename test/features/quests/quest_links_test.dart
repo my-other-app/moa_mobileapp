@@ -5,8 +5,10 @@ import 'package:finnet/core/services/notification_service.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/notifications/data/models/notification_model.dart';
 import 'package:finnet/features/quests/quest_links.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 /// An auth state set by hand, without the real notifier's storage read.
 class _FakeAuth extends StateNotifier<AuthState> implements AuthStateNotifier {
@@ -73,10 +75,75 @@ void main() {
     });
 
     test('a quest\'s "meet people": the scanner, at the event', () {
+      // The website's Quests card: the Network address, asking to scan.
+      expect(at('https://myotherapp.in/network?event=1&scan=1'),
+          '/network/scan?event=1');
+      expect(at('https://myotherapp.in/network?scan=1&event=1'),
+          '/network/scan?event=1');
+      expect(at('https://myotherapp.in/network?event=1&scan=true'),
+          '/network/scan?event=1');
+      expect(at('https://myotherapp.in/network?scan=1'), '/network/scan');
+      expect(at('/network?event=1&scan=1'), '/network/scan?event=1');
       expect(at('https://myotherapp.in/network/scan?event=1'),
           '/network/scan?event=1');
       expect(at('https://myotherapp.in/network/scan'), '/network/scan');
       expect(at('https://myotherapp.in/network/other'), isNull);
+    });
+
+    test('plain /network is the Network tab, as before', () {
+      expect(at('https://myotherapp.in/network'), '/network');
+      expect(at('https://myotherapp.in/network?event=9'), '/network?event=9');
+      expect(at('https://myotherapp.in/network?event=9&scan=0'),
+          '/network?event=9&scan=0');
+    });
+  });
+
+  group('the website\'s scan link, through the router', () {
+    late ProviderContainer container;
+
+    GoRouter routerWith(AuthState auth) {
+      container = ProviderContainer(overrides: [
+        authStateProvider.overrideWith((ref) => _FakeAuth(auth)),
+        routerObserversProvider.overrideWithValue(const []),
+      ]);
+      addTearDown(container.dispose);
+      return container.read(routerProvider);
+    }
+
+    /// Where the router ends up for [location], redirects and all.
+    Future<RouteMatchList> resolve(
+        WidgetTester tester, GoRouter router, String location) async {
+      await tester.pumpWidget(const SizedBox());
+      final context = tester.element(find.byType(SizedBox));
+      return Future.value(router.configuration.redirect(
+        context,
+        router.configuration.findMatch(Uri.parse(location)),
+        redirectHistory: [],
+      ));
+    }
+
+    const link = 'https://myotherapp.in/network?event=1&scan=1';
+
+    testWidgets('signed in: the scanner, with the event', (tester) async {
+      final router =
+          routerWith(const AuthState(accessToken: 't', isInitialized: true));
+      final match = await resolve(tester, router, link);
+      expect(match.isError, isFalse);
+      expect(match.uri.toString(), '/network/scan?event=1');
+      expect(match.last.route.name, 'savePersonScan');
+      // Plain /network is still the tab.
+      final tab =
+          await resolve(tester, router, 'https://myotherapp.in/network');
+      expect(tab.uri.toString(), '/network');
+      expect(tab.last.route.name, AppRoutes.network);
+    });
+
+    testWidgets('signed out: sign in, then back to the scanner',
+        (tester) async {
+      final router = routerWith(const AuthState(isInitialized: true));
+      final match = await resolve(tester, router, link);
+      expect(match.uri.path, '/auth/onboarding');
+      expect(match.uri.queryParameters['from'], '/network/scan?event=1');
     });
   });
 

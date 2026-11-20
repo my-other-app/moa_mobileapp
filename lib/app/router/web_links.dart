@@ -36,7 +36,8 @@ import 'package:finnet/core/config/app_config.dart';
 /// | `/u/{handle}`                    | a person's profile                    |
 /// | `/p/{code}`                      | a personal QR: the profile, with Save |
 /// | `/network?event=`                | the Network tab (the recap's link)    |
-/// | `/network/scan?event=`           | the scanner, at the event (a quest)   |
+/// | `/network?event=&scan=1`,        | the scanner, at the event: a quest's  |
+/// | `/network/scan?event=`           | "Meet 5 people" on the website        |
 ///
 /// The app's own `/events` and `/clubs` are the person's events and clubs
 /// (the tabs); the website's are the directories, which is why a link is
@@ -155,9 +156,17 @@ String? webLocation(Uri uri) {
       return rest.length == 1 ? at('/p/${one(rest.first)}') : null;
     case 'network':
       // The recap's "See who you met" (`?event=`): the Network tab. A
-      // quest's "Meet 5 people" on the website (`/network/scan?event=`):
-      // the scanner, at its event.
-      if (rest.isEmpty) return at('/network');
+      // quest's "Meet 5 people" on the website (`?event=&scan=1`, or
+      // `/network/scan?event=`): the scanner, at its event -- so each save
+      // there moves the quest's count.
+      if (rest.isEmpty) {
+        if (!_asksToScan(query['scan'])) return at('/network');
+        final kept = {...query}..remove('scan');
+        return Uri(
+                path: '/network/scan',
+                queryParameters: kept.isEmpty ? null : kept)
+            .toString();
+      }
       return rest.length == 1 && rest.first.toLowerCase() == 'scan'
           ? at('/network/scan')
           : null;
@@ -204,6 +213,10 @@ String? webLocation(Uri uri) {
   }
   return null;
 }
+
+/// A link's `scan` asks for the scanner: `1` or `true`.
+bool _asksToScan(String? value) =>
+    const {'1', 'true'}.contains(value?.trim().toLowerCase());
 
 /// The website's "give your ticket back" page (`/tickets/cancel?t=...`),
 /// which the app hands to the browser rather than showing a ticket.
