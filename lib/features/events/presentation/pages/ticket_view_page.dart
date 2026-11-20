@@ -24,6 +24,7 @@ import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/presentation/providers/event_page_provider.dart';
 import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
+import 'package:finnet/features/quests/presentation/widgets/quest_card.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:apple_passkit/apple_passkit.dart';
@@ -751,6 +752,17 @@ class _TicketViewPageState extends State<TicketViewPage>
                         _buildTicketTypeLine(widget.ticketType!),
                       const SizedBox(height: 28),
                       _buildActionButtons(),
+                      // The event's quest, when it runs one: the guest's
+                      // tasks and rewards ("collect at the swag desk").
+                      if (widget.eventId case final eventId?) ...[
+                        const SizedBox(height: 20),
+                        QuestCard(
+                          eventId: eventId,
+                          eventName: widget.eventName,
+                          style: QuestCardStyle.dark,
+                          onlyWhenTakingPart: true,
+                        ),
+                      ],
                     ],
                   ],
                 ),

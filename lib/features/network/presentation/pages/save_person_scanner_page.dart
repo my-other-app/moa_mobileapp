@@ -10,6 +10,8 @@ import 'package:finnet/features/network/domain/network.dart';
 import 'package:finnet/features/network/domain/network_links.dart';
 import 'package:finnet/features/network/presentation/providers/network_saver.dart';
 import 'package:finnet/features/network/presentation/widgets/save_outcome_card.dart';
+import 'package:finnet/features/quests/presentation/providers/quest_provider.dart';
+import 'package:finnet/features/quests/presentation/widgets/quest_scan_progress.dart';
 
 /// The camera, as the scanner page draws it: a function of what to call
 /// with each code read. A test puts a button in its place.
@@ -115,6 +117,13 @@ class _SavePersonScannerPageState extends ConsumerState<SavePersonScannerPage>
       unawaited(HapticFeedback.mediumImpact());
     } else {
       unawaited(HapticFeedback.heavyImpact());
+    }
+    // A meeting at an event with a quest: its "meet people" count follows.
+    final eventId = widget.eventId;
+    if (eventId != null &&
+        attempt is Saved &&
+        (attempt.result.created || attempt.result.newEncounter)) {
+      ref.read(questProvider(eventId).notifier).afterNetworkSave();
     }
     setState(() {
       _attempt = attempt;
@@ -227,6 +236,9 @@ class _SavePersonScannerPageState extends ConsumerState<SavePersonScannerPage>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // The quest's "Meet 5 people": 3 of 5 met.
+                  if (widget.eventId case final eventId?)
+                    QuestScanProgress(eventId: eventId),
                   if (attempt != null)
                     SaveOutcomeCard(
                       key: ValueKey('save-card-$_seq'),
