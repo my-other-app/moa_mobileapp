@@ -33,6 +33,7 @@ import 'package:finnet/features/profile/domain/repositories/profile_repository.d
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:finnet/features/threads/data/repositories/moderation_repository_impl.dart';
 import 'package:finnet/shared/utils/external_links.dart';
+import 'package:finnet/shared/widgets/app_select.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
@@ -446,6 +447,22 @@ void main() {
       await tester.tap(find.byKey(NetworkPage.mutualKey));
       await _settle(tester);
       expect(api.sent('GET', '/network').last.queryParameters['mutual'], true);
+    });
+
+    testWidgets(
+        'sort is a chip opening the picker, the current order ticked; the '
+        'pick is asked of the server', (tester) async {
+      api.on('GET', '/network', networkListJson([networkPersonJson()]));
+      await _pump(tester, '/network');
+      expect(find.text('Sort: Newest'), findsOneWidget);
+      await tester.tap(find.byKey(NetworkPage.sortKey));
+      await tester.pumpAndSettle();
+      expect(find.text('SORT BY'), findsOneWidget);
+      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('network-sort-name')));
+      await _settle(tester);
+      expect(api.sent('GET', '/network').last.queryParameters['sort'], 'name');
+      expect(find.text('Sort: A to Z'), findsOneWidget);
     });
 
     testWidgets("the recap's link: who was met at the event", (tester) async {
@@ -983,7 +1000,7 @@ void main() {
       await _pump(tester, '/profile/public');
       await tester.tap(find.descendant(
           of: find.byKey(const ValueKey('visibility-links')),
-          matching: find.byType(DropdownButton<Audience>)));
+          matching: find.byType(AppSelectPill<Audience>)));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Only me').last);
       await _settle(tester);

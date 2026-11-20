@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:finnet/features/auth/presentation/widgets/six_digit_code_field.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The second step of signing in, for an account with two-step
 /// verification on: the six digits from the authenticator app, or one of
@@ -166,7 +167,7 @@ class _TwoStepSheetState extends State<TwoStepSheet> {
                     ? const SizedBox(
                         width: 24,
                         height: 24,
-                        child: CircularProgressIndicator(
+                        child: AppSpinner(
                             strokeWidth: 2, color: Colors.white),
                       )
                     : const Text(

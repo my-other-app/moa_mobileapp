@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:finnet/features/payments/payment_confirmation.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// Shows [ConfirmingPaymentDialog] while [work] -- confirming a payment
 /// Razorpay took -- runs, and answers what it came to. Paid or removed
@@ -67,7 +68,7 @@ class ConfirmingPaymentDialog extends StatelessWidget {
                 Text(stillConfirming ? paymentConfirmingMessage : waiting),
                 if (waitingNow) ...[
                   const SizedBox(height: 20),
-                  const Center(child: CircularProgressIndicator()),
+                  const Center(child: AppSpinner()),
                 ],
               ],
             ),

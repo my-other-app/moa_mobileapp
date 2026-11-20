@@ -15,6 +15,8 @@ import 'package:finnet/features/events/presentation/providers/event_cancellation
 import 'package:finnet/features/events/presentation/providers/registration_requests_provider.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/widgets/approval/waiting_requests_section.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 class UpcomingEventsPage extends ConsumerStatefulWidget {
   const UpcomingEventsPage({super.key});
@@ -130,7 +132,7 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
       // those.
       return Container(
         color: Colors.white,
-        child: RefreshIndicator(
+        child: AppRefresh(
           onRefresh: _refreshAll,
           child: ListView(
             primary: true,
@@ -152,7 +154,7 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
     final header = waiting.isEmpty && declined.isEmpty ? 0 : 1;
     return NotificationListener<ScrollNotification>(
       onNotification: onFeedScroll,
-      child: RefreshIndicator(
+      child: AppRefresh(
         onRefresh: _refreshAll,
         child: ListView.separated(
           primary: true,
@@ -180,7 +182,7 @@ class _UpcomingEventsPageState extends ConsumerState<UpcomingEventsPage>
               return const Center(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
-                  child: CircularProgressIndicator(),
+                  child: AppSpinner(),
                 ),
               );
             }

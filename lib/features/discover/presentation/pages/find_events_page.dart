@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/features/discover/domain/discover_days.dart';
 import 'package:finnet/features/discover/domain/entities/discover_results.dart';
 import 'package:finnet/features/discover/domain/entities/discover_where.dart';
@@ -21,6 +20,8 @@ import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/entrance.dart';
 import 'package:finnet/shared/widgets/fade_switch.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
+import 'package:finnet/shared/widgets/app_chip.dart';
 
 const _ink = Color(0xFF1E1E1E);
 
@@ -332,13 +333,10 @@ class _CategoryChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (categories.isEmpty) return const SizedBox.shrink();
-    Widget chip(int? id, String label, {Key? key}) => ChoiceChip(
+    Widget chip(int? id, String label, {Key? key}) => AppChip(
           key: key,
-          label: Text(label, style: const TextStyle(fontSize: 13)),
+          label: label,
           selected: selected == id,
-          selectedColor: AppColors.paleYellow,
-          visualDensity: VisualDensity.compact,
-          side: const BorderSide(color: AppColors.border, width: 0.5),
           onSelected: (_) => onChanged(selected == id ? null : id),
         );
     return SizedBox(
@@ -404,7 +402,7 @@ class _Results extends ConsumerWidget {
     // Near, and the server knew where: the list is about that place.
     final near = filters.isNear && where.isPlaced;
     if (state.items.isEmpty) {
-      return RefreshIndicator(
+      return AppRefresh(
         onRefresh: notifier.refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -443,7 +441,7 @@ class _Results extends ConsumerWidget {
             ? 'within ${filters.radiusKm} km'
             : nearPhrase(where);
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: notifier.refresh,
       child: EntranceScope(
           child: ListView.builder(

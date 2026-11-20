@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:finnet/features/threads/presentation/providers/threads_provider.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The row under the last post of a list: the next page asked for as it
 /// comes into view, a spinner while it loads, a retry when it failed.
@@ -63,7 +64,7 @@ class _ThreadListFooterState extends State<ThreadListFooter> {
         child: SizedBox(
           width: 24,
           height: 24,
-          child: CircularProgressIndicator(
+          child: AppSpinner(
             strokeWidth: 2,
             color: ThreadCard.ink,
           ),

@@ -8,6 +8,7 @@ import 'package:finnet/features/live/presentation/widgets/live_widgets.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// The event's live room, in the app: the organiser's updates, the poll
 /// that is up, questions from the floor, and the way into the quiz.
@@ -222,7 +223,7 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage>
       if (room.earlier.isNotEmpty) EarlierUpdates(updates: room.earlier),
       if (room.isEmpty) _EmptyRoom(closed: room.isClosed),
     ];
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: cubit.refresh,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),

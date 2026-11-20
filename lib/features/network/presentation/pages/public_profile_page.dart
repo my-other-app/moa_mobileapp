@@ -19,8 +19,11 @@ import 'package:finnet/features/threads/domain/entities/moderation.dart';
 import 'package:finnet/features/threads/presentation/widgets/moderation_actions.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/utils/share_origin.dart';
+import 'package:finnet/shared/widgets/app_actions_sheet.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// Hands a profile's link to the share sheet, pointing from [origin] (the
 /// button, else the middle of the screen: iOS refuses a sheet with nothing
@@ -188,20 +191,34 @@ class _PublicProfilePageState extends ConsumerState<PublicProfilePage> {
           if (profile != null)
             KeyedSubtree(
               key: _menuAnchor,
-              child: PopupMenuButton<String>(
+              child: AppMenuButton<String>(
                 key: PublicProfilePage.menuKey,
+                title: profile.fullName,
                 onSelected: (choice) => _onMenu(choice, profile),
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
-                      value: 'share', child: Text('Share profile link')),
+                actions: () => [
+                  const AppAction(
+                      value: 'share',
+                      label: 'Share profile link',
+                      icon: Icons.link_rounded),
                   if (!profile.isMe && !profile.locked)
-                    const PopupMenuItem(
-                        value: 'contact', child: Text('Save contact card')),
-                  const PopupMenuItem(
-                      value: 'web', child: Text('Open on the website')),
+                    const AppAction(
+                        value: 'contact',
+                        label: 'Save contact card',
+                        icon: Icons.contact_page_outlined),
+                  const AppAction(
+                      value: 'web',
+                      label: 'Open on the website',
+                      icon: Icons.open_in_new_rounded),
                   if (!profile.isMe && profile.userId != null) ...[
-                    const PopupMenuItem(value: 'report', child: Text('Report')),
-                    const PopupMenuItem(value: 'block', child: Text('Block')),
+                    const AppAction(
+                        value: 'report',
+                        label: 'Report',
+                        icon: Icons.flag_outlined),
+                    const AppAction(
+                        value: 'block',
+                        label: 'Block',
+                        icon: Icons.block,
+                        destructive: true),
                   ],
                 ],
               ),
@@ -210,7 +227,7 @@ class _PublicProfilePageState extends ConsumerState<PublicProfilePage> {
       ),
       body: lookup.when(
         loading: () => const Center(
-            child: CircularProgressIndicator(
+            child: AppSpinner(
                 strokeWidth: 2, color: AppColors.ink)),
         error: (e, _) => ErrorView(
           message: extractErrorMessage(e,
@@ -228,7 +245,7 @@ class _PublicProfilePageState extends ConsumerState<PublicProfilePage> {
   Widget _page(PublicProfile profile) {
     final relation = _relation ?? profile.relation;
     final shown = profile.copyWith(relation: relation);
-    return RefreshIndicator(
+    return AppRefresh(
       color: AppColors.ink,
       onRefresh: () async {
         setState(() => _relation = null);

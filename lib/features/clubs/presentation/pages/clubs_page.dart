@@ -24,6 +24,7 @@ import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_filter_bar.dart';
 import 'package:finnet/features/clubs/presentation/pages/pinned_clubs_section.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// Clubs Page with dynamic filter chips.
 class ClubsPage extends ConsumerStatefulWidget {
@@ -203,7 +204,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage>
 
     // One scroll, in slivers: the top as one box, then each followed club
     // built as it scrolls into view.
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _refresh,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),

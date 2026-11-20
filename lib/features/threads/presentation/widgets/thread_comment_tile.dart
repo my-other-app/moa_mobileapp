@@ -3,6 +3,8 @@ import 'package:finnet/core/themes/color_resources.dart';
 import 'package:finnet/core/utils/time_ago.dart';
 import 'package:finnet/features/threads/domain/entities/thread_comment.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_actions_sheet.dart';
 
 /// One comment under a post: who wrote it (with a "Club" badge when it was
 /// the club), when, and what they said -- a delete button on your own, and
@@ -100,7 +102,7 @@ class ThreadCommentTile extends StatelessWidget {
             child: isDeleting
                 ? const Padding(
                     padding: EdgeInsets.all(11),
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: AppSpinner(strokeWidth: 2),
                   )
                 : IconButton(
                     tooltip: 'Delete comment',
@@ -141,12 +143,10 @@ class _CommentMenu extends StatelessWidget {
     return SizedBox(
       width: 40,
       height: 40,
-      child: PopupMenuButton<_CommentAction>(
+      child: AppMenuButton<_CommentAction>(
         key: const ValueKey('comment-more'),
         tooltip: 'More options',
-        padding: EdgeInsets.zero,
-        icon: Icon(Icons.more_horiz, size: 20, color: Colors.grey[700]),
-        color: Colors.white,
+        icon: Icon(Icons.more_horiz_rounded, size: 20, color: Colors.grey[700]),
         onSelected: (action) {
           switch (action) {
             case _CommentAction.report:
@@ -155,16 +155,19 @@ class _CommentMenu extends StatelessWidget {
               onBlock?.call();
           }
         },
-        itemBuilder: (_) => [
+        actions: () => [
           if (onReport != null)
-            const PopupMenuItem(
+            const AppAction(
               value: _CommentAction.report,
-              child: Text('Report comment'),
+              label: 'Report comment',
+              icon: Icons.flag_outlined,
             ),
           if (onBlock != null)
-            PopupMenuItem(
+            AppAction(
               value: _CommentAction.block,
-              child: Text('Block $authorName'),
+              label: 'Block $authorName',
+              icon: Icons.block,
+              destructive: true,
             ),
         ],
       ),

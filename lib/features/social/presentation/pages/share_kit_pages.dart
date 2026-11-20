@@ -11,6 +11,9 @@ import 'package:finnet/features/social/domain/share_kit.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
+import 'package:finnet/shared/widgets/app_share_button.dart';
 
 PreferredSizeWidget _bar(String title) => AppBar(
       title: Text(title,
@@ -42,7 +45,7 @@ class ShareKitsPage extends ConsumerWidget {
       appBar: _bar('SHARE KITS'),
       body: kits.when(
         loading: () => const Center(
-          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
+          child: AppSpinner(strokeWidth: 2, color: AppColors.ink),
         ),
         error: (e, _) => ErrorView(
           message: extractErrorMessage(e),
@@ -61,7 +64,7 @@ class ShareKitsPage extends ConsumerWidget {
                   ),
                 ),
               )
-            : RefreshIndicator(
+            : AppRefresh(
                 color: AppColors.ink,
                 onRefresh: () => ref.refresh(shareKitsProvider.future),
                 child: ListView.separated(
@@ -127,7 +130,7 @@ class ShareKitPage extends ConsumerWidget {
       appBar: _bar('SHARE KIT'),
       body: kit.when(
         loading: () => const Center(
-          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
+          child: AppSpinner(strokeWidth: 2, color: AppColors.ink),
         ),
         error: (e, _) => ErrorView(
           message: extractErrorMessage(e,
@@ -262,7 +265,7 @@ class _PostCard extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         textStyle: const TextStyle(fontSize: 15)),
                     onPressed: () => shareKitPost(buttonContext, ref, post),
-                    icon: const Icon(Icons.ios_share, size: 18),
+                    icon: const AppShareIcon(size: 18),
                     label: const Text('Share'),
                   ),
                 ),

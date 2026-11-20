@@ -36,6 +36,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/auth_fakes.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 const _base = 'https://api.test/api/v1';
 
@@ -324,7 +325,7 @@ void main() {
 
       expect(find.text('Hack Night starts soon'), findsOneWidget);
       expect(find.textContaining('Error'), findsNothing);
-      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byType(AppSpinner), findsNothing);
 
       await finish(tester);
     });

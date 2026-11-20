@@ -6,6 +6,8 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/home/presentation/pages/home_page_tabs/no_following_club_page.dart';
 import 'package:finnet/shared/widgets/entrance.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 class FollowingEventsPage extends StatefulWidget {
   const FollowingEventsPage({super.key});
@@ -74,7 +76,7 @@ class _FollowingEventsPageState extends State<FollowingEventsPage>
     return NotificationListener<ScrollNotification>(
       onNotification: onFeedScroll,
       child: EntranceScope(
-        child: RefreshIndicator(
+        child: AppRefresh(
           onRefresh: fetchFirstPage,
           child: ListView.separated(
             primary: true,
@@ -94,7 +96,7 @@ class _FollowingEventsPageState extends State<FollowingEventsPage>
                 return const Center(
                   child: Padding(
                     padding: EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(),
+                    child: AppSpinner(),
                   ),
                 );
               }

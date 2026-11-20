@@ -143,7 +143,7 @@ void main() {
       final shared = _record(tester, _share, (_) => 'shared');
       await _pumpTicket(tester, startsAt: _startsAt);
 
-      await tester.tap(find.byIcon(Icons.share_outlined));
+      await tester.tap(find.byKey(TicketViewPage.shareKey));
       await _settle(tester);
 
       expect(pdfs.fetched.single.$1, '/events/tickets/T-1/pdf');
@@ -162,7 +162,7 @@ void main() {
       final shared = _record(tester, _share, (_) => 'shared');
       await _pumpTicket(tester, startsAt: _startsAt);
 
-      await tester.tap(find.byIcon(Icons.share_outlined));
+      await tester.tap(find.byKey(TicketViewPage.shareKey));
       await _settle(tester);
 
       expect(

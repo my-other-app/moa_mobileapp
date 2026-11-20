@@ -16,6 +16,7 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/shared/widgets/entrance.dart';
 import 'package:finnet/shared/widgets/fade_switch.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// Posts from the clubs you follow, newest first -- `/following/posts`,
 /// from the Clubs tab. The website's "From the clubs" shows every club;
@@ -73,7 +74,7 @@ class _Feed extends ConsumerWidget {
     }
     return FadeSwitch(
       phase: ScreenPhase.content,
-      child: RefreshIndicator(
+      child: AppRefresh(
         color: ThreadCard.ink,
         onRefresh: () async {
           final error = await notifier.refresh();

@@ -10,6 +10,7 @@ import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/shared/widgets/pressable.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// The counts under a topic: "12 upcoming events · 30 clubs"; null when
 /// the server did not count.
@@ -67,7 +68,7 @@ class TopicsPage extends ConsumerWidget {
         ),
       );
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: () => ref.refresh(topicDirectoryProvider.future),
         child: ListView.separated(
           key: const ValueKey('topics-list'),

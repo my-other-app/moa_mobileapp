@@ -13,6 +13,7 @@ import 'package:finnet/features/auth/presentation/pages/onboarding_details_page.
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/topics/presentation/widgets/interest_tags.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// Edit Profile Page - fully migrated to Riverpod.
 class EditProfilePage extends ConsumerStatefulWidget {
@@ -423,7 +424,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             ? const SizedBox(
                 width: 24,
                 height: 24,
-                child: CircularProgressIndicator(
+                child: AppSpinner(
                     color: Colors.white, strokeWidth: 2),
               )
             : const Text(

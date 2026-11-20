@@ -6,6 +6,7 @@ import 'package:finnet/features/auth/data/services/email_verification_service.da
 import 'package:finnet/features/auth/presentation/cubits/email_verification_cubit.dart';
 import 'package:finnet/features/auth/presentation/widgets/six_digit_code_field.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// "Verify your email": the six-digit code sent to the address an
 /// email/password account signed up with.
@@ -292,7 +293,7 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
                 ? const SizedBox(
                     width: 24,
                     height: 24,
-                    child: CircularProgressIndicator(
+                    child: AppSpinner(
                         strokeWidth: 2, color: Colors.white),
                   )
                 : const Text(
@@ -317,7 +318,7 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
         child: SizedBox(
           width: 18,
           height: 18,
-          child: CircularProgressIndicator(strokeWidth: 2, color: _accent),
+          child: AppSpinner(strokeWidth: 2, color: _accent),
         ),
       );
     }

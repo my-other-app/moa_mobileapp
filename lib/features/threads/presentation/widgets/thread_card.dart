@@ -7,6 +7,8 @@ import 'package:finnet/shared/widgets/animated_count.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/pressable.dart';
+import 'package:finnet/shared/widgets/app_actions_sheet.dart';
+import 'package:finnet/shared/widgets/app_share_button.dart';
 
 /// A club's post, as a card: who posted and when, what they said, the photo
 /// and the poll if there is one, and the like and comment counts.
@@ -206,17 +208,16 @@ class _PostMenu extends StatelessWidget {
     return SizedBox(
       width: 40,
       height: 40,
-      child: PopupMenuButton<_PostAction>(
+      child: AppMenuButton<_PostAction>(
         key: const ValueKey('thread-more'),
         tooltip: 'More options',
-        padding: EdgeInsets.zero,
-        icon: const Icon(Icons.more_horiz, color: ThreadCard.ink),
-        color: Colors.white,
+        color: ThreadCard.ink,
         onSelected: (_) => onReport(),
-        itemBuilder: (_) => const [
-          PopupMenuItem(
+        actions: () => const [
+          AppAction(
             value: _PostAction.report,
-            child: Text('Report post'),
+            label: 'Report post',
+            icon: Icons.flag_outlined,
           ),
         ],
       ),
@@ -580,7 +581,7 @@ class _Actions extends StatelessWidget {
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                     child:
-                        Icon(Icons.ios_share, size: 22, color: ThreadCard.ink),
+                        AppShareIcon(size: 22, color: ThreadCard.ink),
                   ),
                 ),
               ),

@@ -14,6 +14,7 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/shared/widgets/entrance.dart';
 import 'package:finnet/shared/widgets/fade_switch.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// The THREADS tab on a club's page: what the club has posted, pinned first
 /// then newest, a page at a time.
@@ -68,7 +69,7 @@ class _ClubThreadsPageState extends ConsumerState<ClubThreadsPage>
       body = ErrorView(message: state.error, onRetry: notifier.load);
     } else {
       phase = ScreenPhase.content;
-      body = RefreshIndicator(
+      body = AppRefresh(
         color: ThreadCard.ink,
         onRefresh: () async {
           final error = await notifier.refresh();

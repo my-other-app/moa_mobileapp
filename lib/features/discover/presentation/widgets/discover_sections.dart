@@ -12,6 +12,7 @@ import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/shared/widgets/poster_hero.dart';
 
 export 'package:finnet/shared/widgets/section_header.dart' show SeeAllLink;
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// A titled block on a discover screen, with "See all" when there is more.
 ///
@@ -382,7 +383,7 @@ class _PagedFooterState extends State<PagedFooter> {
         child: SizedBox(
           width: 24,
           height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
+          child: AppSpinner(strokeWidth: 2),
         ),
       ),
     );

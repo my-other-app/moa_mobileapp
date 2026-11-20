@@ -6,6 +6,8 @@ import 'package:finnet/features/topics/presentation/widgets/browse_by_topic_row.
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/shared/widgets/entrance.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 class ForYouEventsPage extends StatefulWidget {
   const ForYouEventsPage({super.key});
@@ -93,7 +95,7 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
     return NotificationListener<ScrollNotification>(
       onNotification: onFeedScroll,
       child: EntranceScope(
-          child: RefreshIndicator(
+          child: AppRefresh(
         onRefresh: fetchFirstPage,
         child: ListView.separated(
           // Use primary: true to cooperate with NestedScrollView
@@ -119,7 +121,7 @@ class _ForYouEventsPageState extends State<ForYouEventsPage>
               return const Center(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
-                  child: CircularProgressIndicator(),
+                  child: AppSpinner(),
                 ),
               );
             }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:finnet/common/models/events/store_model.dart';
 import 'package:finnet/shared/widgets/quantity_stepper.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/app_chip.dart';
 
 /// The shelf on the registration form: each item with its price, a size
 /// where it has sizes, and a count. The picks go with the registration and
@@ -121,13 +122,12 @@ class _ItemRow extends StatelessWidget {
                 runSpacing: 6,
                 children: [
                   for (final v in item.variants)
-                    ChoiceChip(
-                      label: Text(v.left <= 5 ? '${v.label} · ${v.left} left' : v.label),
+                    AppChip(
+                      label: v.left <= 5 ? '${v.label} · ${v.left} left' : v.label,
                       selected: pick.variantId == v.id,
                       onSelected: v.left <= 0
                           ? null
                           : (on) => onPick(on ? pick.copyWith(variantId: v.id, qty: pick.qty == 0 ? 1 : pick.qty) : pick.copyWith(clearVariant: true, qty: 0)),
-                      selectedColor: const Color(0xFF17A58F).withValues(alpha: 0.18),
                     ),
                 ],
               ),

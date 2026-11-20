@@ -11,6 +11,8 @@ import 'package:finnet/features/topics/presentation/providers/topics_provider.da
 import 'package:finnet/features/topics/presentation/widgets/topic_filter_bar.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// The query `/events/list` gets for upcoming events under [filter],
 /// matching [search], a page from [offset].
@@ -364,7 +366,7 @@ class _ExploreEventsPageState extends ConsumerState<ExploreEventsPage> {
 
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
-      child: RefreshIndicator(
+      child: AppRefresh(
         onRefresh: _fetch,
         child: ListView.separated(
           padding: const EdgeInsets.all(16),
@@ -383,7 +385,7 @@ class _ExploreEventsPageState extends ConsumerState<ExploreEventsPage> {
               return const Center(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
-                  child: CircularProgressIndicator(),
+                  child: AppSpinner(),
                 ),
               );
             }

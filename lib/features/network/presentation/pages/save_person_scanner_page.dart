@@ -10,6 +10,7 @@ import 'package:finnet/features/network/domain/network.dart';
 import 'package:finnet/features/network/domain/network_links.dart';
 import 'package:finnet/features/network/presentation/providers/network_saver.dart';
 import 'package:finnet/features/network/presentation/widgets/save_outcome_card.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The camera, as the scanner page draws it: a function of what to call
 /// with each code read. A test puts a button in its place.
@@ -215,7 +216,7 @@ class _SavePersonScannerPageState extends ConsumerState<SavePersonScannerPage>
               top: 0,
               left: 0,
               right: 0,
-              child: LinearProgressIndicator(minHeight: 3),
+              child: AppProgressBar(minHeight: 3),
             ),
           Positioned(
             left: 12,

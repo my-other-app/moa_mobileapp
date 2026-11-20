@@ -5,6 +5,7 @@ import 'package:finnet/features/auth/presentation/cubits/password_reset_cubit.da
     show PasswordResetCopy, minPasswordLength;
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// Settings -> Change Password, for an account that signs in with an email
 /// and a password: the current one, then the new one twice, with the rules
@@ -211,7 +212,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
+                        child: AppSpinner(
                             strokeWidth: 2, color: Colors.white),
                       )
                     : const Text('Change password'),

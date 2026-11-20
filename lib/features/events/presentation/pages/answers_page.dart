@@ -17,6 +17,7 @@ import 'package:finnet/features/events/presentation/utils/site_links.dart';
 import 'package:finnet/features/events/presentation/widgets/question_fields.dart';
 import 'package:finnet/features/events/presentation/widgets/revealed_question.dart';
 import 'package:finnet/shared/widgets/event_poster_image.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// `/answers/{eventId}/{ref}?k=…`: the details a club asked this person for
 /// after changing its sign-up questions (feature-register
@@ -321,7 +322,7 @@ class _AnswersPageState extends ConsumerState<AnswersPage> {
     final form = _form;
     switch (_view) {
       case _View.loading:
-        return const Center(child: CircularProgressIndicator());
+        return const Center(child: AppSpinner());
       case _View.invalid:
         return _Message(
           key: AnswersPage.invalidKey,
@@ -591,7 +592,7 @@ class _AnswersPageState extends ConsumerState<AnswersPage> {
                     ? const SizedBox(
                         width: 22,
                         height: 22,
-                        child: CircularProgressIndicator(
+                        child: AppSpinner(
                             color: Colors.white, strokeWidth: 2.5),
                       )
                     : const Text(

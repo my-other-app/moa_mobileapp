@@ -10,6 +10,8 @@ import 'package:finnet/features/support/presentation/providers/support_providers
 import 'package:finnet/features/support/presentation/support_routes.dart';
 import 'package:finnet/features/support/presentation/widgets/support_widgets.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// My requests (`/profile/help/requests`): what the person asked the
 /// support desk, newest first, with where each stands and a dot for a
@@ -39,7 +41,7 @@ class MyRequestsPage extends ConsumerWidget {
       ]),
       body: requests.when(
         loading: () => const Center(
-          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
+          child: AppSpinner(strokeWidth: 2, color: AppColors.ink),
         ),
         error: (e, _) => ErrorView(
           message: extractErrorMessage(e,
@@ -49,7 +51,7 @@ class MyRequestsPage extends ConsumerWidget {
         data: (list) {
           if (list == null) return const EmailSupportView();
           if (list.isEmpty) return const _Empty();
-          return RefreshIndicator(
+          return AppRefresh(
             color: AppColors.ink,
             onRefresh: () => ref.refresh(myRequestsProvider.future),
             child: ListView.separated(

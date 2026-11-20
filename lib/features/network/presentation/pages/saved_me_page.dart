@@ -12,6 +12,8 @@ import 'package:finnet/features/network/presentation/providers/network_saver.dar
 import 'package:finnet/features/network/presentation/widgets/profile_view.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// `/network/saved-me`: who saved the person and hasn't been saved back
 /// -- what the batched "saved your profile" push opens -- each with Save
@@ -134,9 +136,9 @@ class _SavedMePageState extends ConsumerState<SavedMePage> {
                       ref.invalidate(savedMeProvider(widget.eventId)),
                 )
               : const Center(
-                  child: CircularProgressIndicator(
+                  child: AppSpinner(
                       strokeWidth: 2, color: AppColors.ink))
-          : RefreshIndicator(
+          : AppRefresh(
               color: AppColors.ink,
               onRefresh: () async {
                 setState(_savedBack.clear);

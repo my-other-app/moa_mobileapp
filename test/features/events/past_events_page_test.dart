@@ -123,7 +123,7 @@ void main() {
       expect(find.text('VIEW CERTIFICATE'), findsOneWidget);
       expect(find.text('VIEW EVENT'), findsOneWidget);
       // A past event is not shared from here.
-      expect(find.byIcon(Icons.share_outlined), findsNothing);
+      expect(find.byKey(const ValueKey('event-share')), findsNothing);
     });
 
     testWidgets('VIEW CERTIFICATE opens the certificate inside the app',

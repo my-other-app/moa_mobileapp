@@ -6,6 +6,8 @@ import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:finnet/features/profile/data/datasources/badge_remote_datasource.dart';
 import 'package:finnet/features/profile/domain/entities/profile_badge.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// My Badges: the badges the server has awarded, and the ones still to
 /// earn, each saying what earns it (`GET /badges/me`,
@@ -34,7 +36,7 @@ class MyBadgesPage extends ConsumerWidget {
       body: shelf.when(
         // Kept while it is read again (pull to refresh): no flash.
         skipLoadingOnRefresh: true,
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: AppSpinner()),
         error: (e, _) => Padding(
           padding: const EdgeInsets.all(16),
           child: ErrorView(
@@ -43,7 +45,7 @@ class MyBadgesPage extends ConsumerWidget {
             onRetry: () => ref.invalidate(myBadgesProvider),
           ),
         ),
-        data: (shelf) => RefreshIndicator(
+        data: (shelf) => AppRefresh(
           onRefresh: () => ref.refresh(myBadgesProvider.future),
           child: _Shelf(shelf: shelf),
         ),

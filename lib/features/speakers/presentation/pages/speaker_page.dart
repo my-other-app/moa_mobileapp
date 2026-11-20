@@ -18,6 +18,8 @@ import 'package:finnet/shared/widgets/pressable.dart';
 import 'package:finnet/shared/widgets/swap_label.dart';
 import 'package:finnet/shared/widgets/toast.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// A speaker's page, by slug: the profile, or -- for a merged one -- the
 /// profile it was merged into (one hop). Read again when the person signs
@@ -128,7 +130,7 @@ class _SpeakerPageState extends ConsumerState<SpeakerPage> {
       ),
       body: lookup.when(
         loading: () => const Center(
-          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
+          child: AppSpinner(strokeWidth: 2, color: AppColors.ink),
         ),
         error: (e, _) => ErrorView(
           message: extractErrorMessage(e,
@@ -147,7 +149,7 @@ class _SpeakerPageState extends ConsumerState<SpeakerPage> {
     final following = _following ?? profile.following;
     final followers = _followers ?? profile.followersCount;
     final photo = profile.photo;
-    return RefreshIndicator(
+    return AppRefresh(
       color: AppColors.ink,
       onRefresh: () async {
         setState(() {

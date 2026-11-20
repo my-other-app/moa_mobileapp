@@ -8,6 +8,8 @@ import 'package:finnet/features/events/presentation/utils/event_feed.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// Page to display club's events (past or upcoming).
 ///
@@ -314,7 +316,7 @@ class _ClubEventsPageState extends ConsumerState<ClubEventsPage> {
       );
     }
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _refresh,
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
@@ -332,7 +334,7 @@ class _ClubEventsPageState extends ConsumerState<ClubEventsPage> {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(16.0),
-                child: CircularProgressIndicator(),
+                child: AppSpinner(),
               ),
             );
           }

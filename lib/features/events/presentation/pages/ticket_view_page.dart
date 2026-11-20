@@ -30,6 +30,8 @@ import 'package:apple_passkit/apple_passkit.dart';
 import 'package:finnet/core/config/app_config.dart';
 import 'package:finnet/shared/motion.dart';
 import 'package:finnet/shared/utils/share_origin.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_share_button.dart';
 
 /// Premium ticket page with stunning glow effects and Apple Wallet-like design.
 class TicketViewPage extends StatefulWidget {
@@ -96,6 +98,9 @@ class TicketViewPage extends StatefulWidget {
 
   /// Asking the server again over the kept design.
   static const refreshingKey = ValueKey('ticket-refreshing');
+
+  /// The app bar's share button.
+  static const shareKey = ValueKey('ticket-share');
 
   /// The note shown while offline.
   static const offlineNoticeKey = ValueKey('ticket-offline-notice');
@@ -642,7 +647,7 @@ class _TicketViewPageState extends State<TicketViewPage>
                 Expanded(
                   child: _buildDialogButton(
                     'Share Ticket',
-                    Icons.share,
+                    null,
                     () {
                       Navigator.pop(ctx);
                       _shareTicket();
@@ -659,7 +664,8 @@ class _TicketViewPageState extends State<TicketViewPage>
     );
   }
 
-  Widget _buildDialogButton(String label, IconData icon, VoidCallback onTap,
+  /// [icon] null: the app's share icon.
+  Widget _buildDialogButton(String label, IconData? icon, VoidCallback onTap,
       {bool isPrimary = false}) {
     return GestureDetector(
       onTap: onTap,
@@ -672,8 +678,12 @@ class _TicketViewPageState extends State<TicketViewPage>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon,
-                size: 18, color: isPrimary ? Colors.black : Colors.white),
+            if (icon == null)
+              AppShareIcon(
+                  size: 18, color: isPrimary ? Colors.black : Colors.white)
+            else
+              Icon(icon,
+                  size: 18, color: isPrimary ? Colors.black : Colors.white),
             const SizedBox(width: 8),
             Text(
               label,
@@ -900,7 +910,9 @@ class _TicketViewPageState extends State<TicketViewPage>
       elevation: 0,
       centerTitle: true,
       leading: _buildAppBarButton(
-          Icons.arrow_back_ios_new, () => Navigator.pop(context)),
+          const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+          () => Navigator.pop(context),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip),
       title: Column(
         children: [
           Text(
@@ -915,24 +927,37 @@ class _TicketViewPageState extends State<TicketViewPage>
         ],
       ),
       actions: [
-        if (!_void) _buildAppBarButton(Icons.share_outlined, _shareTicket),
+        if (!_void)
+          _buildAppBarButton(
+              const AppShareIcon(color: Colors.white, size: 18), _shareTicket,
+              tooltip: 'Share ticket', key: TicketViewPage.shareKey),
         const SizedBox(width: 8),
       ],
     );
   }
 
-  Widget _buildAppBarButton(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.all(8),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white.withAlpha(10),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withAlpha(20)),
+  Widget _buildAppBarButton(Widget icon, VoidCallback onTap,
+      {required String tooltip, Key? key}) {
+    return Semantics(
+      button: true,
+      label: tooltip,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: tooltip,
+        child: GestureDetector(
+          key: key,
+          onTap: onTap,
+          child: Container(
+            margin: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(10),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withAlpha(20)),
+            ),
+            child: icon,
+          ),
         ),
-        child: Icon(icon, color: Colors.white, size: 18),
       ),
     );
   }
@@ -986,7 +1011,7 @@ class _TicketViewPageState extends State<TicketViewPage>
               child: const SizedBox(
                 width: 14,
                 height: 14,
-                child: CircularProgressIndicator(
+                child: AppSpinner(
                   strokeWidth: 2,
                   color: Colors.white,
                 ),
@@ -1011,7 +1036,7 @@ class _TicketViewPageState extends State<TicketViewPage>
             child: SizedBox(
               width: 28,
               height: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
+              child: AppSpinner(strokeWidth: 2.5, color: _accentYellow),
             ),
           ),
         ),
@@ -1598,7 +1623,7 @@ class _WalletButton extends StatelessWidget {
                 const SizedBox(
                   width: 22,
                   height: 22,
-                  child: CircularProgressIndicator(
+                  child: AppSpinner(
                       strokeWidth: 2.5, color: Colors.black),
                 )
               else

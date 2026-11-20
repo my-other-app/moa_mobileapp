@@ -16,6 +16,7 @@ import 'package:finnet/features/topics/presentation/widgets/topic_filter_bar.dar
 import 'package:finnet/shared/widgets/explore_more_club_card.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/core/utils/error_utils.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// The query `/clubs/list` gets for clubs at [organizationId], under
 /// [filter], matching [search].
@@ -401,7 +402,7 @@ class _ExploreMoreClubsPageState extends ConsumerState<ExploreMoreClubsPage> {
       );
     }
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _fetchData,
       child: ListView.separated(
         padding: const EdgeInsets.all(16),

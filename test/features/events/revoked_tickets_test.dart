@@ -210,7 +210,7 @@ void main() {
             reason: 'nor the rendered ticket, which carries a QR');
         expect(find.text('Download'), findsNothing);
         expect(find.text('Add to Wallet'), findsNothing);
-        expect(find.byIcon(Icons.share_outlined), findsNothing);
+        expect(find.byKey(TicketViewPage.shareKey), findsNothing);
         expect(api.requests, isEmpty, reason: 'nothing to fetch');
         // Its probe timer, stopped inside the test's own clock.
         status.dispose();
@@ -261,7 +261,7 @@ void main() {
           reason: 'nor the picture it was holding a moment ago');
       expect(find.text('Download'), findsNothing);
       expect(find.text('Calendar'), findsNothing);
-      expect(find.byIcon(Icons.share_outlined), findsNothing);
+      expect(find.byKey(TicketViewPage.shareKey), findsNothing);
       expect(images.kept, isNot(contains('MOA-AAAAA-BBBB7')),
           reason: 'and the copy kept on the phone goes with it');
     });

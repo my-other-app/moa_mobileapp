@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 const _ink = Color(0xFF2C333D);
 
@@ -227,7 +228,7 @@ class _DiscountCodeFieldState extends State<DiscountCodeField> {
                     child: SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: AppSpinner(strokeWidth: 2),
                     ),
                   )
                 : TextButton(

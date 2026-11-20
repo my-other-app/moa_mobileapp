@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/shared/utils/image_url.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The signed-in person's picture, in a circle [size] across: wherever the
 /// app shows them their own face -- the Profile header, Edit Profile (where
@@ -90,7 +91,7 @@ class MyPicture extends ConsumerWidget {
                 child: Center(
                   child: SizedBox.square(
                     dimension: size / 3,
-                    child: const CircularProgressIndicator(
+                    child: const AppSpinner(
                         strokeWidth: 2, color: Colors.white),
                   ),
                 ),

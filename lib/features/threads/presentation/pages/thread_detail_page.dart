@@ -19,6 +19,9 @@ import 'package:finnet/shared/widgets/confirmation_dialog.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/shared/widgets/fade_switch.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
+import 'package:finnet/shared/widgets/app_share_button.dart';
 
 /// One club post with its comments -- `/threads/:threadId`.
 ///
@@ -75,7 +78,7 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
               builder: (buttonContext) => IconButton(
                 key: const ValueKey('thread-detail-share'),
                 tooltip: 'Share post',
-                icon: const Icon(Icons.ios_share),
+                icon: const AppShareIcon(),
                 onPressed: () => shareThread(buttonContext, ref, state.thread!),
               ),
             ),
@@ -143,7 +146,7 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
     return Column(
       children: [
         Expanded(
-          child: RefreshIndicator(
+          child: AppRefresh(
             color: ThreadCard.ink,
             onRefresh: _notifier.load,
             child: ListView.builder(
@@ -226,7 +229,7 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
                       child: SizedBox(
                         width: 24,
                         height: 24,
-                        child: CircularProgressIndicator(
+                        child: AppSpinner(
                             strokeWidth: 2, color: ThreadCard.ink),
                       ),
                     )
@@ -253,7 +256,7 @@ class _ThreadDetailPageState extends ConsumerState<ThreadDetailPage> {
           child: SizedBox(
             width: 24,
             height: 24,
-            child: CircularProgressIndicator(
+            child: AppSpinner(
               strokeWidth: 2,
               color: ThreadCard.ink,
             ),
@@ -462,7 +465,7 @@ class _Composer extends ConsumerWidget {
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(
+                        child: AppSpinner(
                           strokeWidth: 2,
                           color: Colors.white,
                         ),

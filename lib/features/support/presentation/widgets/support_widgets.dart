@@ -10,6 +10,7 @@ import 'package:finnet/features/support/domain/support.dart';
 import 'package:finnet/features/support/presentation/providers/support_providers.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The help screens' bar: the title in capitals, as Settings has it.
 PreferredSizeWidget supportAppBar(String title, {List<Widget>? actions}) =>
@@ -313,7 +314,7 @@ class _Thumb extends StatelessWidget {
                   child: SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: AppSpinner(strokeWidth: 2),
                   ),
                 ),
               ),

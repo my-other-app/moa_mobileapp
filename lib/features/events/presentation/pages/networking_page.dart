@@ -21,6 +21,9 @@ import 'package:finnet/shared/widgets/app_network_image.dart';
 
 export 'package:finnet/features/events/domain/networking.dart'
     show NetworkingAttendee, SharedInterest;
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
+import 'package:finnet/shared/widgets/app_actions_sheet.dart';
 
 const _ink = Color(0xFF1E1E1E);
 const _muted = Color(0xFF6B6B6B);
@@ -110,7 +113,7 @@ class _NetworkingPageState extends ConsumerState<NetworkingPage> {
           style: TextStyle(fontSize: 24, fontFamily: 'BebasNeue'),
         ),
       ),
-      body: RefreshIndicator(
+      body: AppRefresh(
         onRefresh: _refresh,
         child: _body(),
       ),
@@ -130,7 +133,7 @@ class _NetworkingPageState extends ConsumerState<NetworkingPage> {
           ),
         ]);
       }
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppSpinner());
     }
 
     // The visibility the list reports is the server's latest word.
@@ -144,7 +147,7 @@ class _NetworkingPageState extends ConsumerState<NetworkingPage> {
     final people = answer.valueOrNull;
     if (people == null) {
       if (answer.hasError) return _problem(answer.error);
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppSpinner());
     }
     return _list(people);
   }
@@ -602,31 +605,22 @@ class _PersonMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     // Without an id there is no one to report or block.
     if (attendee.userId <= 0) return const SizedBox.shrink();
-    return PopupMenuButton<String>(
+    return AppMenuButton<String>(
       key: ValueKey('person-menu-${attendee.userId}'),
       tooltip: 'More for ${attendee.name}',
-      icon: const Icon(Icons.more_vert, color: Color(0xFF6B7280)),
+      title: attendee.name,
+      color: const Color(0xFF6B7280),
       onSelected: (choice) {
         if (choice == 'report') onReport();
         if (choice == 'block') onBlock();
       },
-      itemBuilder: (_) => const [
-        PopupMenuItem(
-          value: 'report',
-          child: ListTile(
-            leading: Icon(Icons.flag_outlined),
-            title: Text('Report'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        PopupMenuItem(
-          value: 'block',
-          child: ListTile(
-            leading: Icon(Icons.block),
-            title: Text('Block'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
+      actions: () => const [
+        AppAction(value: 'report', label: 'Report', icon: Icons.flag_outlined),
+        AppAction(
+            value: 'block',
+            label: 'Block',
+            icon: Icons.block,
+            destructive: true),
       ],
     );
   }

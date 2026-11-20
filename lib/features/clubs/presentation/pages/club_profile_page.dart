@@ -29,6 +29,7 @@ import 'package:finnet/shared/widgets/fade_switch.dart';
 
 export 'package:finnet/features/clubs/data/models/club_info.dart'
     show ClubInfo, ClubTeamMember, ClubPartner, Interest, Org;
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// A club's PROFILE tab: the website's club page, in the app.
 ///
@@ -226,7 +227,7 @@ class _ClubProfilePageState extends ConsumerState<ClubProfilePage> {
     final hasCollege = club.org.name.trim().isNotEmpty;
     final name = club.name.isEmpty ? 'Club' : club.name;
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: () async {
         ref.invalidate(clubInfoProvider(_key));
         try {

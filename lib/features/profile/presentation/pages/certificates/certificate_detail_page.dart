@@ -16,6 +16,7 @@ import 'package:finnet/features/profile/presentation/providers/certificates_prov
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/presentation/utils/certificate_share.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
+import 'package:finnet/shared/widgets/app_share_button.dart';
 
 /// Opens the PDF at a path in the phone's own viewer: true when one opened
 /// it. A provider so a test can see what would have been opened.
@@ -131,7 +132,7 @@ class CertificateDetailPage extends ConsumerWidget {
               builder: (buttonContext) => IconButton(
                 key: const ValueKey('certificate-share'),
                 tooltip: 'Share certificate',
-                icon: const Icon(Icons.ios_share, color: _ink),
+                icon: const AppShareIcon(color: _ink),
                 onPressed: () =>
                     shareCertificate(buttonContext, ref, certificate),
               ),

@@ -15,6 +15,7 @@ import 'package:finnet/features/network/presentation/providers/network_saver.dar
 import 'package:finnet/features/network/presentation/widgets/profile_view.dart';
 import 'package:finnet/features/network/presentation/widgets/save_outcome_card.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// Whose personal QR [code] is, as this viewer may see them. Read again
 /// when the person signs in or out.
@@ -95,7 +96,7 @@ class _CodeSavePageState extends ConsumerState<CodeSavePage> {
       ),
       body: lookup.when(
         loading: () => const Center(
-            child: CircularProgressIndicator(
+            child: AppSpinner(
                 strokeWidth: 2, color: AppColors.ink)),
         error: (e, _) => ErrorView(
           message: extractErrorMessage(e,

@@ -6,6 +6,7 @@ import 'package:finnet/core/resources/asset_resources.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/notifications/data/repositories/push_settings_repository_impl.dart';
 import 'package:finnet/shared/widgets/settings_row.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 class ClubsOptionScreen extends ConsumerStatefulWidget {
   final String clubName;
@@ -230,7 +231,7 @@ class _ClubsOptionScreenState extends ConsumerState<ClubsOptionScreen> {
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(20),
-                child: CircularProgressIndicator(),
+                child: AppSpinner(),
               ),
             )
           else

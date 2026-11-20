@@ -10,6 +10,9 @@ import 'package:finnet/features/support/domain/support.dart';
 import 'package:finnet/features/support/presentation/providers/support_providers.dart';
 import 'package:finnet/features/support/presentation/support_routes.dart';
 import 'package:finnet/features/support/presentation/widgets/support_widgets.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_chip.dart';
+import 'package:finnet/shared/widgets/app_select.dart';
 
 /// Contact us (`/profile/help/contact`): a topic, the message, up to three
 /// screenshots and, if they like, which of their events it is about. Sent
@@ -137,18 +140,10 @@ class _ContactUsPageState extends ConsumerState<ContactUsPage> {
             runSpacing: 8,
             children: [
               for (final topic in topics)
-                ChoiceChip(
+                AppChip(
                   key: ValueKey('contact-topic-${topic.key}'),
-                  label: Text(topic.label),
+                  label: topic.label,
                   selected: _topic == topic.key,
-                  showCheckmark: false,
-                  selectedColor: AppColors.paleYellow,
-                  backgroundColor: AppColors.softGrey,
-                  side: BorderSide(
-                    color: _topic == topic.key
-                        ? AppColors.ink
-                        : Colors.transparent,
-                  ),
                   onSelected: (_) => setState(() => _topic = topic.key),
                 ),
             ],
@@ -156,24 +151,20 @@ class _ContactUsPageState extends ConsumerState<ContactUsPage> {
           if (events.isNotEmpty) ...[
             const SizedBox(height: 20),
             const _Label('Is it about one of your events? (optional)'),
-            DropdownButtonFormField<int?>(
+            AppSelectField<int?>(
               key: ContactUsPage.eventKey,
-              initialValue: eventChosen ? _eventId : null,
-              isExpanded: true,
-              decoration: _boxDecoration(),
-              items: [
-                const DropdownMenuItem<int?>(
-                    value: null, child: Text('No, something else')),
+              sheetTitle: 'Which event?',
+              semanticsLabel: 'Is it about one of your events?',
+              value: eventChosen ? _eventId : null,
+              options: [
+                const AppOption<int?>(null, 'No, something else'),
                 for (final event in events)
-                  DropdownMenuItem<int?>(
-                    value: event.eventId,
-                    child: Text(
-                      event.when == null
-                          ? event.name
-                          : '${event.name} · '
-                              '${DateFormat('d MMM').format(event.when!)}',
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  AppOption<int?>(
+                    event.eventId,
+                    event.when == null
+                        ? event.name
+                        : '${event.name} · '
+                            '${DateFormat('d MMM').format(event.when!)}',
                   ),
               ],
               onChanged: (id) => setState(() => _eventId = id),
@@ -216,7 +207,7 @@ class _ContactUsPageState extends ConsumerState<ContactUsPage> {
                   ? const SizedBox(
                       width: 22,
                       height: 22,
-                      child: CircularProgressIndicator(
+                      child: AppSpinner(
                           strokeWidth: 2, color: Colors.white),
                     )
                   : const Text('SEND'),

@@ -6,6 +6,7 @@ import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:dio/dio.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// Whether creating the profile failed only because one already exists --
 /// made on an earlier try, so onboarding can carry on.
@@ -232,7 +233,7 @@ class _OnboardingDetailsPageState extends State<OnboardingDetailsPage> {
           ),
           if (_isLoading)
             const Positioned.fill(
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: AppSpinner()),
             ),
         ],
       ),

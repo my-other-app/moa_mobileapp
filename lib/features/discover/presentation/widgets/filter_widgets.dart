@@ -12,6 +12,8 @@ import 'package:finnet/features/topics/domain/entities/topic.dart';
 import 'package:finnet/features/topics/domain/topic_filter.dart';
 import 'package:finnet/features/topics/domain/topic_rules.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_filter_bar.dart';
+import 'package:finnet/shared/widgets/app_actions_sheet.dart';
+import 'package:finnet/shared/widgets/app_chip.dart';
 
 const _ink = Color(0xFF1E1E1E);
 
@@ -364,7 +366,7 @@ class _ChipRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 40,
+      height: AppChip.touch,
       child: ListView.separated(
         key: const ValueKey('active-filter-chips'),
         scrollDirection: Axis.horizontal,
@@ -386,16 +388,12 @@ class _RemovableChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InputChip(
-      label: Text(label, style: const TextStyle(fontSize: 13, color: _ink)),
-      backgroundColor: AppColors.paleYellow,
-      side: const BorderSide(color: AppColors.border, width: 0.5),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      visualDensity: VisualDensity.compact,
-      deleteIcon: const Icon(Icons.close, size: 16),
-      deleteButtonTooltipMessage: 'Remove $label',
-      onDeleted: onRemove,
-      onPressed: onRemove,
+    return AppChip(
+      label: label,
+      selected: true,
+      trailingIcon: Icons.close,
+      semanticsLabel: 'Remove $label',
+      onTap: onRemove,
     );
   }
 }
@@ -454,14 +452,12 @@ class _ChoiceSection<T> extends StatelessWidget {
             runSpacing: 8,
             children: [
               for (final (option, label) in options)
-                ChoiceChip(
+                AppChip(
                   key: keyPrefix == null
                       ? null
                       : ValueKey('$keyPrefix-${_keyOf(option)}'),
-                  label: Text(label),
+                  label: label,
                   selected: value == option,
-                  selectedColor: AppColors.paleYellow,
-                  side: const BorderSide(color: AppColors.border, width: 0.5),
                   onSelected: (_) => onChanged(option),
                 ),
             ],
@@ -578,17 +574,14 @@ class _EventFilterSheetState extends State<_EventFilterSheet> {
                     child: Wrap(
                       spacing: 8,
                       children: [
-                        ActionChip(
+                        AppChip(
                           key: const ValueKey('sheet-pick-dates'),
-                          avatar: const Icon(Icons.date_range, size: 18),
-                          label: Text(days == null
+                          icon: Icons.date_range,
+                          label: days == null
                               ? 'Pick dates…'
-                              : rangeLabel(days.from, days.to)),
-                          backgroundColor:
-                              days == null ? null : AppColors.paleYellow,
-                          side: const BorderSide(
-                              color: AppColors.border, width: 0.5),
-                          onPressed: _pickDates,
+                              : rangeLabel(days.from, days.to),
+                          selected: days != null,
+                          onTap: _pickDates,
                         ),
                       ],
                     ),
@@ -900,20 +893,20 @@ class EventSortMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<EventSort>(
+    return AppMenuButton<EventSort>(
       key: const ValueKey('discover-sort'),
       tooltip: 'Sort',
-      initialValue: _current,
+      title: 'Sort by',
       onSelected: (s) => onChanged(filters.copyWith(sort: s)),
-      itemBuilder: (_) => [
+      actions: () => [
         for (final (sort, enabled) in eventSortChoices(filters))
-          PopupMenuItem<EventSort>(
+          AppAction<EventSort>(
             key: ValueKey('discover-sort-${sort.param}'),
             value: sort,
+            label: sort.label,
             enabled: enabled,
-            child: Text(enabled
-                ? sort.label
-                : '${sort.label} · show what is near you first'),
+            selected: sort == _current,
+            subtitle: enabled ? null : 'Show what is near you first',
           ),
       ],
       child: Padding(
