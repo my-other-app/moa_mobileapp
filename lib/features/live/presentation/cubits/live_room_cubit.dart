@@ -189,8 +189,8 @@ class LiveRoomCubit {
         poll != null &&
         mine != null &&
         mine.id == poll.id &&
-        poll.myResponse == null) {
-      poll = poll.withMyResponse(mine.myResponse);
+        !poll.answered) {
+      poll = poll.withMine(mine.myResponse, mine.myValues);
     }
     _emit(_state.copyWith(
       room: room.copyWith(questions: questions, poll: () => poll),
@@ -304,36 +304,46 @@ class LiveRoomCubit {
 
   // ─── The poll ──────────────────────────────────────────────────────────
 
-  /// Answers the poll that is up, or changes the answer: a choice's label,
-  /// a word or two, or a rating from "1" to "5". True when it went.
-  Future<bool> respond(String value) async {
+  /// Answers the poll that is up with one value, or changes the answer: a
+  /// choice's label, a word or two, a rating from "1" up, a text. True when
+  /// it went.
+  Future<bool> respond(String value) =>
+      respondWith(PollAnswer.value(value.trim()));
+
+  /// Answers the poll that is up in its kind's shape (several labels for a
+  /// multiple choice, the order for a ranking). True when it went.
+  Future<bool> respondWith(PollAnswer answer) async {
     final room = _state.room;
     final poll = room?.poll;
-    final clean = value.trim();
     if (room == null || poll == null || _state.answering) return false;
-    if (!validPollAnswer(poll, clean)) {
-      _emit(_state.copyWith(
-        pollError: () =>
-            poll.isWords ? 'A word or two.' : 'Pick one of the answers.',
-      ));
+    final problem = pollAnswerProblem(poll, answer);
+    if (problem != null) {
+      _emit(_state.copyWith(pollError: () => problem));
       return false;
     }
-    final previous = poll.myResponse;
+    final previous = (poll.myResponse, poll.myValues);
+    final multi = answer.values != null || answer.order != null;
     _emit(_state.copyWith(
       answering: true,
       pollError: () => null,
-      room: room.copyWith(poll: () => poll.withMyResponse(clean)),
+      room: room.copyWith(
+          poll: () => poll.withMine(
+              multi ? answer.labels.join(',') : answer.value,
+              multi ? answer.labels : null)),
     ));
     try {
-      final back = await api.respond(eventId, poll.id, clean);
+      final back = await api.respond(eventId, poll.id, answer);
       final now = _state.room;
       final current = now?.poll;
+      final mine = back?.answered == true
+          ? back!
+          : (back ?? current)?.withMine(
+              multi ? answer.labels.join(',') : answer.value,
+              multi ? answer.labels : null);
       _emit(_state.copyWith(
         answering: false,
         room: now != null && current != null && current.id == poll.id
-            ? now.copyWith(
-                poll: () => (back ?? current).withMyResponse(
-                    back?.myResponse ?? clean))
+            ? now.copyWith(poll: () => mine)
             : now,
       ));
       return true;
@@ -345,7 +355,8 @@ class LiveRoomCubit {
         pollError: () =>
             readableError(e, fallback: 'That did not go through. Try again.'),
         room: now != null && current != null && current.id == poll.id
-            ? now.copyWith(poll: () => current.withMyResponse(previous))
+            ? now.copyWith(
+                poll: () => current.withMine(previous.$1, previous.$2))
             : now,
       ));
       return false;
@@ -354,9 +365,43 @@ class LiveRoomCubit {
 }
 
 /// What the server takes as an answer to [poll] (it says the same in a 422).
-bool validPollAnswer(LivePoll poll, String value) {
-  final v = value.trim();
-  if (poll.isChoice) return poll.choicesToShow.any((c) => c.label == v);
-  if (poll.isRating) return const {'1', '2', '3', '4', '5'}.contains(v);
-  return v.length >= 2 && v.length <= 40;
+bool validPollAnswer(LivePoll poll, String value) =>
+    pollAnswerProblem(poll, PollAnswer.value(value.trim())) == null;
+
+/// Why the server would refuse [answer] to [poll], in words to show; null
+/// when it takes it.
+String? pollAnswerProblem(LivePoll poll, PollAnswer answer) {
+  final v = answer.value?.trim();
+  if (!poll.isKnown) return 'This poll needs an update of the app.';
+  if (poll.isChoice) {
+    final labels = {for (final c in poll.choicesToShow) c.label};
+    final picks = answer.values ?? [if (v != null) v];
+    if (picks.isEmpty || !picks.every(labels.contains)) {
+      return 'Pick one of the answers.';
+    }
+    if (picks.toSet().length != picks.length ||
+        picks.length > poll.settings.maxChoices) {
+      return 'Pick up to ${poll.settings.maxChoices}.';
+    }
+    return null;
+  }
+  if (poll.isRating) {
+    final n = int.tryParse(v ?? '');
+    return n != null && n >= 1 && n <= poll.scale && '$n' == v
+        ? null
+        : 'Pick a score from 1 to ${poll.scale}.';
+  }
+  if (poll.isRanking) {
+    final order = answer.order ?? const [];
+    return order.length == poll.options.length &&
+            order.toSet().containsAll(poll.options)
+        ? null
+        : 'Put every option in order.';
+  }
+  if (poll.isText) {
+    return v != null && v.isNotEmpty && v.length <= pollTextMax
+        ? null
+        : 'Up to $pollTextMax characters.';
+  }
+  return v != null && v.length >= 2 && v.length <= 40 ? null : 'A word or two.';
 }

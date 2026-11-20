@@ -7,6 +7,7 @@ import 'package:finnet/core/network/sse/sse_transport.dart';
 import 'package:finnet/features/live/data/live_room_api.dart';
 import 'package:finnet/features/live/domain/live_quiz.dart';
 import 'package:finnet/features/live/domain/live_room.dart';
+import 'package:finnet/features/live/domain/live_theme.dart';
 
 /// An error as the app's Dio throws it: a DioException carrying the
 /// ApiException the error interceptor read.
@@ -167,10 +168,17 @@ class FakeLiveRoomApi implements LiveRoomApi {
   final List<String> votes = [];
   Object Function(String id)? voteAnswer;
 
+  /// Each poll answer as (poll, its value or its labels joined by commas).
   final List<(String, String)> responses = [];
+
+  /// Each poll answer as sent.
+  final List<PollAnswer> pollAnswers = [];
   Object Function(String pollId, String value)? respondAnswer;
 
   final List<(String, String)> joins = [];
+
+  /// The team each join asked for.
+  final List<String?> joinTeams = [];
   Object Function(String code, String name)? joinAnswer;
 
   final List<Object> quizStates = [];
@@ -178,8 +186,16 @@ class FakeLiveRoomApi implements LiveRoomApi {
   int quizStreams = 0;
   final List<String> playerKeys = [];
 
+  /// Each answer: the option's key, or the body as JSON for other kinds.
   final List<String> answers = [];
+
+  /// Each answer as sent.
+  final List<QuizResponse> quizResponses = [];
   Object Function(String key)? answerAnswer;
+
+  /// What a theme read gives (a theme's JSON, or an error); none by default.
+  Object? themeAnswer;
+  int themeReads = 0;
 
   int? resolvedId;
 
@@ -223,8 +239,11 @@ class FakeLiveRoomApi implements LiveRoomApi {
   }
 
   @override
-  Future<LivePoll?> respond(int eventId, String pollId, String value) async {
+  Future<LivePoll?> respond(
+      int eventId, String pollId, PollAnswer sent) async {
+    final value = sent.value ?? sent.labels.join(',');
     responses.add((pollId, value));
+    pollAnswers.add(sent);
     final answer = respondAnswer?.call(pollId, value) ??
         pollJson(id: pollId, myResponse: value, responses: 1);
     if (answer is Exception) throw answer;
@@ -232,8 +251,9 @@ class FakeLiveRoomApi implements LiveRoomApi {
   }
 
   @override
-  Future<QuizPlayer> joinQuiz(String code, String name) async {
+  Future<QuizPlayer> joinQuiz(String code, String name, {String? team}) async {
     joins.add((code, name));
+    joinTeams.add(team);
     final answer = joinAnswer?.call(code, name) ??
         {
           'event_id': 7,
@@ -264,12 +284,24 @@ class FakeLiveRoomApi implements LiveRoomApi {
 
   @override
   Future<AnswerResult> answer(
-      int eventId, String playerKey, String optionKey) async {
+      int eventId, String playerKey, QuizResponse response) async {
+    final optionKey = response is OptionAnswer
+        ? response.key
+        : jsonEncode(response.toJson());
     answers.add(optionKey);
+    quizResponses.add(response);
     Object answer = answerAnswer?.call(optionKey) ??
         {'correct': null, 'points': null, 'score': 0, 'answered': true};
     if (answer is Future) answer = await answer;
     if (answer is Exception) throw answer;
     return AnswerResult.fromJson(answer);
+  }
+
+  @override
+  Future<LiveThemeState?> fetchTheme(int eventId) async {
+    themeReads++;
+    final answer = themeAnswer;
+    if (answer is Exception) throw answer;
+    return LiveThemeState.fromJson(answer);
   }
 }

@@ -8,6 +8,8 @@ import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/features/events/data/datasources/live_remote_datasource.dart';
 import 'package:finnet/features/live/data/live_identity.dart';
 import 'package:finnet/features/live/data/live_room_api.dart';
+import 'package:finnet/features/live/domain/live_quiz.dart';
+import 'package:finnet/features/live/domain/live_room.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'live_fakes.dart';
@@ -114,7 +116,7 @@ void main() {
     final room = await api.fetchRoom(7);
     final asked = await api.ask(7, '  Is there pizza? ', authorName: ' ');
     final vote = await api.vote(7, 'q1');
-    final poll = await api.respond(7, 'p1', 'Dosa');
+    final poll = await api.respond(7, 'p1', const PollAnswer.value('Dosa'));
 
     expect(room!.eventId, 7);
     expect(asked.pending, isTrue);
@@ -136,7 +138,7 @@ void main() {
     final api = DioLiveRoomApi(dioFor(_SignedOut()), LiveIdentity(store));
 
     final state = await api.playState(7, 'player-1');
-    final result = await api.answer(7, 'player-1', 'b');
+    final result = await api.answer(7, 'player-1', const OptionAnswer('b'));
 
     expect(state!.title, 'Warm-up');
     expect(result.pending, isTrue);
