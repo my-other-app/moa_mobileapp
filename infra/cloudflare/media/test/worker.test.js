@@ -92,6 +92,9 @@ describe("which paths are pictures", () => {
     assert.deepEqual(pictureAt(`/clubs/logos/v-${HEX}.thumbnail.png`), { path: `clubs/logos/v-${HEX}.thumbnail.png`, versioned: true, contentType: "image/png" });
     assert.equal(pictureAt(`/clubs/covers/${LEGACY_NAME}.medium.jpg`).versioned, false);
     assert.equal(pictureAt(`/events/42/merch/${HEX}.jpeg`).contentType, "image/jpeg");
+    // A club website's library photo at one of its srcset widths, and a live room's picture.
+    assert.deepEqual(pictureAt(`/clubs/site/v-${HEX}.w480.jpg`), { path: `clubs/site/v-${HEX}.w480.jpg`, versioned: true, contentType: "image/jpeg" });
+    assert.deepEqual(pictureAt(`/events/live/v-${HEX}.thumbnail.webp`), { path: `events/live/v-${HEX}.thumbnail.webp`, versioned: true, contentType: "image/webp" });
     for (const folder of PUBLIC_FOLDERS) {
       const path = `/${folder.replace("{id}", "7")}v-${HEX}.gif`;
       assert.ok(pictureAt(path), path);
@@ -100,7 +103,8 @@ describe("which paths are pictures", () => {
 
   test("the same folders as the backend's app/core/storage/media.py PUBLIC_FOLDERS", () => {
     assert.deepEqual(PUBLIC_FOLDERS, [
-      "clubs/logos/", "clubs/covers/", "clubs/team/", "clubs/partners/", "clubs/threads/", "events/speakers/", "events/partners/", "events/posters/", "avatars/", "events/{id}/merch/",
+      "clubs/logos/", "clubs/covers/", "clubs/team/", "clubs/partners/", "clubs/threads/", "clubs/site/", "events/speakers/", "events/partners/", "events/posters/", "avatars/", "events/{id}/merch/",
+      "events/live/",
     ]);
   });
 
@@ -116,6 +120,11 @@ describe("which paths are pictures", () => {
       `/clubs/logos/nested/v-${HEX}.png`, `/clubs/logos/v-${HEX}.svg`, `/clubs/logos/v-${HEX}.html`, `/clubs/logos/v-${HEX}.PNG`,
       `/clubs/logos/v-${HEX}.png.pdf`, `/Clubs/logos/v-${HEX}.png`, `/events/seven/merch/v-${HEX}.png`, `/events/7/merch/x/v-${HEX}.png`,
       `/clubs/logos/.hidden.png`, `/clubs/logos/%E0%A4%A.png`, `//clubs/logos/v-${HEX}.png`,
+      // The new folders hold one file each, no deeper; nothing beside them by a similar name.
+      `/clubs/site/nested/v-${HEX}.png`, `/clubs/site/v-${HEX}.svg`, `/clubs/3/site/v-${HEX}.png`, `/clubs/sites/v-${HEX}.png`,
+      `/events/live/7/v-${HEX}.png`, `/events/7/live/v-${HEX}.png`, `/events/live/v-${HEX}.pdf`,
+      // Guests' poster photos and club mailboxes' files: private, never on the CDN.
+      `/guest_posters/7/${LEGACY_NAME}/photo.jpg`, `/mailbox/3/v-${HEX}.png`,
     ]) {
       assert.equal(pictureAt(path), null, path);
     }
@@ -187,6 +196,19 @@ describe("a picture", () => {
     const merch = await get(`/events/42/merch/v-${HEX}.webp`);
     assert.equal(merch.headers.get("content-type"), "image/webp");
     assert.equal(merch.headers.get("cache-control"), IMMUTABLE);
+  });
+
+  test("a club website's library photo and a live room's picture: read from S3 at the same key, kept a year", async () => {
+    objects[`clubs/site/v-${HEX}.w960.jpg`] = { body: PNG, etag: '"dd"', modified: "Fri, 13 Nov 2026 10:00:00 GMT", type: "image/jpeg" };
+    objects[`events/live/v-${HEX}.png`] = { body: PNG, etag: '"ee"', modified: "Sat, 21 Nov 2026 10:00:00 GMT", type: "image/png" };
+    const photo = await get(`/clubs/site/v-${HEX}.w960.jpg`);
+    assert.equal(photo.status, 200);
+    assert.equal(photo.headers.get("content-type"), "image/jpeg");
+    assert.equal(photo.headers.get("cache-control"), IMMUTABLE);
+    const live = await get(`/events/live/v-${HEX}.png`);
+    assert.equal(live.status, 200);
+    assert.equal(live.headers.get("cache-control"), IMMUTABLE);
+    assert.deepEqual(calls.map((c) => c.url), [`${S3}clubs/site/v-${HEX}.w960.jpg`, `${S3}events/live/v-${HEX}.png`]);
   });
 
   test("a query string is not part of the picture: one copy, one S3 read", async () => {

@@ -22,11 +22,13 @@ export const PUBLIC_FOLDERS = [
   "clubs/team/",
   "clubs/partners/",
   "clubs/threads/", // a post's image
+  "clubs/site/", // a club website's photo library
   "events/speakers/",
   "events/partners/", // an event's sponsors' and partners' logos
   "events/posters/", // event posters uploaded since Oct 2026
   "avatars/", // the stock avatars people pick from
   "events/{id}/merch/", // store and merch photos
+  "events/live/", // a live room's logo, background and poll-option pictures
 ];
 
 /** Extension → Content-Type. Never SVG: a picture from our host must not carry a script. */
