@@ -8,6 +8,7 @@ import 'package:finnet/features/network/domain/profile.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/widgets/toast.dart';
 
 const _muted = Color(0xFF6B7280);
@@ -250,7 +251,8 @@ class ProfileBody extends ConsumerWidget {
             ),
           for (final club in achievements.clubs ?? const <ProfileClub>[])
             _Fact(
-              emoji: '🏛️',
+              key: ValueKey('profile-club-${club.slug ?? club.name}'),
+              leading: ClubLogo(url: club.logo, size: 24, circle: true),
               text: club.name,
               onTap:
                   club.route == null ? null : () => context.push(club.route!),
@@ -407,9 +409,14 @@ class TagPill extends StatelessWidget {
 }
 
 class _Fact extends StatelessWidget {
-  const _Fact({required this.emoji, required this.text, this.onTap});
+  const _Fact(
+      {super.key, this.emoji, this.leading, required this.text, this.onTap})
+      : assert(emoji != null || leading != null);
 
-  final String emoji;
+  final String? emoji;
+
+  /// In place of the emoji: a club's logo.
+  final Widget? leading;
   final String text;
   final VoidCallback? onTap;
 
@@ -422,7 +429,7 @@ class _Fact extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 18)),
+            leading ?? Text(emoji!, style: const TextStyle(fontSize: 18)),
             const SizedBox(width: 10),
             Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
             if (onTap != null)

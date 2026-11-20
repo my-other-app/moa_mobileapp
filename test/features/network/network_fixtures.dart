@@ -14,6 +14,7 @@ Map<String, dynamic> publicProfileJson({
   String? phone,
   List<Map<String, dynamic>>? links,
   List<Map<String, dynamic>>? projects,
+  List<Map<String, dynamic>>? clubs,
 }) =>
     {
       'handle': handle,
@@ -65,7 +66,7 @@ Map<String, dynamic> publicProfileJson({
             'event_slug': 'hack-night'
           },
         ],
-        'clubs': null,
+        'clubs': clubs,
       },
       'contact': {'email': email, 'phone': phone},
       'hidden_sections': hidden,

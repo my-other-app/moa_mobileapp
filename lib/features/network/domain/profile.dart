@@ -346,9 +346,13 @@ class ProfileTalk {
 }
 
 class ProfileClub {
-  const ProfileClub({required this.name, this.slug});
+  const ProfileClub({required this.name, this.slug, this.logo});
   final String name;
   final String? slug;
+
+  /// The club's logo (`logo`: its thumbnail's link), or null: the row then
+  /// shows the logo placeholder.
+  final String? logo;
 
   String? get route =>
       slug == null ? null : '/clubs/${Uri.encodeComponent(slug!)}';
@@ -408,7 +412,10 @@ class ProfileAchievements {
         final name = _text(c['name']);
         return name == null
             ? null
-            : ProfileClub(name: name, slug: _text(c['slug']));
+            : ProfileClub(
+                name: name,
+                slug: _text(c['slug']),
+                logo: imageUrlFrom(c['logo']));
       }),
     );
   }
