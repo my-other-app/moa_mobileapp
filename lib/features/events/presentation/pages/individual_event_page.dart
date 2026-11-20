@@ -119,6 +119,10 @@ class IndividualEventPage extends ConsumerStatefulWidget {
   /// others, and chosen on the form.
   final int? linkedTicketTypeId;
 
+  /// Pull down: the event, its page (speakers, agenda, team) and the
+  /// rest read again from the server.
+  static const refreshKey = ValueKey('event-page-refresh');
+
   const IndividualEventPage({
     super.key,
     this.eventId,
@@ -461,6 +465,15 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
         // A call coming in, the app switcher opening: still on screen.
         break;
     }
+  }
+
+  /// Pulled down: everything on the page asked of the server again. The
+  /// website's part of the page (speakers, team, agenda's people) is read
+  /// afresh too: it is otherwise read once, when the page opens, so an
+  /// organiser's edit made while the page stayed open never showed.
+  Future<void> _refresh() async {
+    ref.invalidate(eventPageDetailsProvider(widget.ref));
+    await _fetchData();
   }
 
   /// Back online: the event again, over the saved copy shown offline. A
@@ -2059,7 +2072,12 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: RefreshIndicator(
+        key: IndividualEventPage.refreshKey,
+        color: AppColors.ink,
+        onRefresh: _refresh,
+        child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16.0).copyWith(
           bottom: 100,
         ),
@@ -2551,6 +2569,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             const SizedBox(height: 100),
           ],
         ),
+      ),
       ),
       // BottomSheet - different UI based on status
       bottomSheet: _buildBottomSheet(context),

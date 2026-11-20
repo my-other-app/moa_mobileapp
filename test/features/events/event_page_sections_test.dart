@@ -142,6 +142,43 @@ void main() {
       expect(sent.extra['skipAuth'], isTrue);
     });
 
+    testWidgets(
+        "pulling down reads the page again: an organiser's edit to a "
+        'speaker shows without leaving it', (tester) async {
+      api
+        ..on('GET', '/events/info/7', eventInfo())
+        ..on('GET', '/discover/events/7', discoverEventPage())
+        ..on(
+            'GET',
+            '/discover/events/7',
+            discoverEventPage(speakers: [
+              {
+                'id': 11,
+                'name': 'Ananya Iyer',
+                'designation': 'Research lead, Sarvam',
+                'photo': null,
+                'bio': 'Ananya builds speech models for Indian languages.',
+                'link': 'https://www.linkedin.com/in/ananya',
+              },
+            ]));
+      await _pump(tester);
+      expect(find.text('ML engineer, Sarvam'), findsOneWidget);
+      final infoReads = api.sent('GET', '/events/info/7').length;
+
+      final refresh = find.byKey(IndividualEventPage.refreshKey);
+      expect(refresh, findsOneWidget);
+      // A pull past the mark: the test's screen is tall, so the mark is far.
+      await tester.drag(find.text('Venue'), const Offset(0, 1000));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await _settle(tester);
+
+      expect(api.sent('GET', '/discover/events/7'), hasLength(2));
+      expect(api.sent('GET', '/events/info/7').length, greaterThan(infoReads));
+      expect(find.text('Research lead, Sarvam'), findsOneWidget);
+      expect(find.text('ML engineer, Sarvam'), findsNothing);
+    });
+
     testWidgets('in the website\'s order: about, speakers, agenda, venue, '
         'guidelines, team, contact, then the rails', (tester) async {
       api
