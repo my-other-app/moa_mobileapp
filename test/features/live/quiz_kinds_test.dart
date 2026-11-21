@@ -3,6 +3,7 @@ import 'package:finnet/features/live/data/live_identity.dart';
 import 'package:finnet/features/live/data/live_room_api.dart';
 import 'package:finnet/features/live/domain/live_quiz.dart';
 import 'package:finnet/features/live/presentation/pages/quiz_page.dart';
+import 'package:finnet/features/live/presentation/widgets/live_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -433,7 +434,9 @@ void main() {
     expect(a.top, b.top, reason: 'a grid');
     expect(find.byType(LinearProgressIndicator), findsOneWidget,
         reason: 'the bar clock');
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    // The ring clock is QuizClock, drawn with the app's AppSpinner since
+    // #113 (no longer a CircularProgressIndicator to look for).
+    expect(find.byType(QuizClock), findsNothing, reason: 'not the ring');
     final prompt = tester.widget<Text>(find.text('Which of these are prime?'));
     expect(prompt.style!.fontFamily, 'BebasNeue');
     await leave(tester);

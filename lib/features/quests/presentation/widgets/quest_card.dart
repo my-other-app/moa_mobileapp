@@ -18,6 +18,7 @@ import 'package:finnet/features/quests/presentation/widgets/quest_sheets.dart';
 import 'package:finnet/features/quests/quest_links.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// Where the card is drawn.
 enum QuestCardStyle {
@@ -522,15 +523,13 @@ class _QuestCardState extends ConsumerState<QuestCard>
     final p = _p;
     return [
       const SizedBox(height: 12),
-      ClipRRect(
+      AppProgressBar(
+        key: QuestCard.progressKey,
+        value: quest.progressToNext,
+        minHeight: 8,
         borderRadius: BorderRadius.circular(6),
-        child: LinearProgressIndicator(
-          key: QuestCard.progressKey,
-          value: quest.progressToNext,
-          minHeight: 8,
-          backgroundColor: p.track,
-          color: p.accent,
-        ),
+        backgroundColor: p.track,
+        color: p.accent,
       ),
       const SizedBox(height: 6),
       Text(line,
@@ -810,14 +809,12 @@ class _QuestCardState extends ConsumerState<QuestCard>
                     children: [
                       SizedBox(
                         width: 80,
-                        child: ClipRRect(
+                        child: AppProgressBar(
+                          value: task.count / task.target,
+                          minHeight: 5,
                           borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: task.count / task.target,
-                            minHeight: 5,
-                            backgroundColor: p.track,
-                            color: p.accent,
-                          ),
+                          backgroundColor: p.track,
+                          color: p.accent,
                         ),
                       ),
                       const SizedBox(width: 8),

@@ -8,6 +8,8 @@ import 'package:finnet/features/events/domain/event_page_rules.dart'
 import 'package:finnet/features/quests/domain/quest.dart';
 import 'package:finnet/features/quests/presentation/providers/quest_provider.dart';
 import 'package:finnet/features/quests/presentation/widgets/quest_card.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// `/events/{ref}/quest`: the quest in full -- every task, every milestone
 /// and its rewards, the code box -- and the leaderboard when the organiser
@@ -54,7 +56,7 @@ class QuestPage extends ConsumerWidget {
   Widget _body(BuildContext context, WidgetRef ref, int id) {
     final state = ref.watch(questProvider(id));
     if (state.quest == null && state.loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppSpinner());
     }
     if (!state.visible) {
       return _Empty(
@@ -67,7 +69,7 @@ class QuestPage extends ConsumerWidget {
     // Opened from a push, which names only the event's id: its name from
     // the event's public page.
     final name = eventName ?? ref.watch(questEventNameProvider(id)).valueOrNull;
-    return RefreshIndicator(
+    return AppRefresh(
       key: refreshKey,
       color: AppColors.ink,
       onRefresh: () async {
@@ -137,7 +139,7 @@ class _LeaderboardSection extends ConsumerWidget {
       if (board.isLoading) {
         return const Padding(
           padding: EdgeInsets.all(16),
-          child: Center(child: CircularProgressIndicator()),
+          child: Center(child: AppSpinner()),
         );
       }
       return const SizedBox.shrink();

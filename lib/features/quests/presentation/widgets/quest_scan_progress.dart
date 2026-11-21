@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:finnet/features/quests/presentation/providers/quest_provider.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// On the Network scanner opened at an event whose quest has a "meet
 /// people" task: how far the guest has got ("3 of 5 met"), brought up to
@@ -61,21 +62,19 @@ class QuestScanProgress extends ConsumerWidget {
                   key: countingKey,
                   width: 14,
                   height: 14,
-                  child: CircularProgressIndicator(
+                  child: AppSpinner(
                       strokeWidth: 2, color: Color(0xFFF9FFA1)),
                 ),
             ],
           ),
           if (!done) ...[
             const SizedBox(height: 6),
-            ClipRRect(
+            AppProgressBar(
+              value: task.count / task.target,
+              minHeight: 5,
               borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: task.count / task.target,
-                minHeight: 5,
-                backgroundColor: Colors.white24,
-                color: const Color(0xFFB8FF9F),
-              ),
+              backgroundColor: Colors.white24,
+              color: const Color(0xFFB8FF9F),
             ),
           ],
           if (state.notCounted && !state.counting && !done) ...[

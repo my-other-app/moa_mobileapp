@@ -7,6 +7,7 @@ import 'package:finnet/features/events/domain/event_page_rules.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart';
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The person's saved ticket to event [eventId] on this phone, if any: a
 /// usable one first (not revoked).
@@ -78,7 +79,7 @@ class _EventTicketPageState extends ConsumerState<EventTicketPage> {
     if (ticket != null) return SavedTicketPage(code: ticket.code);
     if (!_settled) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: AppSpinner()),
       );
     }
     final eventRef = widget.eventRef;

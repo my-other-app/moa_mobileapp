@@ -5,6 +5,7 @@ import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/features/quests/data/quest_api.dart';
 import 'package:finnet/features/quests/domain/quest.dart';
 import 'package:finnet/features/quests/presentation/providers/quest_provider.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The fewest letters a quest's code has (the server's rule): anything
 /// shorter can't be one, and isn't sent -- wrong tries are counted.
@@ -177,7 +178,7 @@ class _QuestCodeSheetState extends ConsumerState<QuestCodeSheet> {
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(
+                    child: AppSpinner(
                         strokeWidth: 2, color: Colors.white))
                 : const Text('Check code'),
           ),
@@ -289,7 +290,7 @@ class _QuestSizeSheetState extends ConsumerState<QuestSizeSheet> {
                         ? const SizedBox(
                             width: 14,
                             height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2))
+                            child: AppSpinner(strokeWidth: 2))
                         : Text(c.label),
                     selected: c.label == current,
                     onSelected: c.label == current || _saving != null
