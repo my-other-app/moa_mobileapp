@@ -123,6 +123,9 @@ flutter:
   assets:
     - assets/icons/
     - assets/images/
+    # The SIL Open Font License of each live-room face below, shipped with
+    # the fonts as the licence asks.
+    - assets/fonts/licenses/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -159,6 +162,33 @@ flutter:
     - family: Bebas Neue
       fonts:
         - asset: assets/fonts/BebasNeue-Regular.ttf
+    # The live room's other theme fonts (CONTRACT 1.5; liveFontFamily in
+    # lib/features/live/domain/live_theme.dart maps each theme key here).
+    # Google Fonts' OFL files cut to Latin + Latin Extended A/B/Additional,
+    # currency signs and arrows, hinting dropped; Inter's optical size is
+    # pinned at 14 and Noto Sans's width at 100, so each variable file keeps
+    # only its weight axis. Poppins has no variable cut: its four weights.
+    # 636 KB on disk for all four faces, 329 KB gzipped (licences:
+    # assets/fonts/licenses).
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+    - family: SpaceGrotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk-Latin-VariableFont_wght.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Latin-VariableFont_wght.ttf
+    - family: NotoSans
+      fonts:
+        - asset: assets/fonts/NotoSans-Latin-VariableFont_wght.ttf
 
   #   - family: Trajan Pro
   #     fonts:

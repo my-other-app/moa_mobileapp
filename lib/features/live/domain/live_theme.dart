@@ -133,6 +133,13 @@ class LiveGradient {
   final Color to;
   final int angle;
 
+  /// The colour at the middle of the top edge: [from] for 180° ("to the
+  /// bottom"), [to] for 0°, halfway for 90°.
+  Color get top {
+    final t = (1 + math.cos(angle * math.pi / 180)) / 2;
+    return Color.lerp(from, to, t.clamp(0.0, 1.0))!;
+  }
+
   static LiveGradient? fromJson(Object? json) {
     if (json is! Map) return null;
     final from = liveHex(json['from']), to = liveHex(json['to']);
@@ -198,7 +205,8 @@ class LiveTheme {
   final Color onAccent;
   final List<Color> onAnswers;
 
-  /// `dm_sans`, `bebas_neue`, `poppins`, `space_grotesk`.
+  /// `dm_sans`, `bebas_neue`, `poppins`, `space_grotesk` (see
+  /// [liveFontFamily] for the app's file of each).
   final String displayFont;
 
   /// `dm_sans`, `inter`, `poppins`, `noto_sans`.
@@ -362,7 +370,38 @@ class LiveThemeState {
   }
 }
 
-/// The app's bundled family for a theme font. DM Sans and Bebas Neue ship
-/// with the app; the other choices are drawn in DM Sans, the renderer's
-/// default sans (CONTRACT 1.5).
-String liveFontFamily(String key) => key == 'bebas_neue' ? 'BebasNeue' : 'DMSans';
+/// The app's bundled family for each theme font (CONTRACT 1.5). Every font
+/// the contract allows ships with the app, so a phone sets the room in the
+/// same face as the website and the big screen:
+///
+/// | theme key       | family (pubspec)  | file in assets/fonts/                      |
+/// |-----------------|-------------------|--------------------------------------------|
+/// | `dm_sans`       | `DMSans`          | DMSans-VariableFont_opsz,wght.ttf          |
+/// | `bebas_neue`    | `BebasNeue`       | BebasNeue-Regular.ttf (display only)       |
+/// | `poppins`       | `Poppins`         | Poppins-{Regular,Medium,SemiBold,Bold}.ttf |
+/// | `space_grotesk` | `SpaceGrotesk`    | SpaceGrotesk-Latin-VariableFont_wght.ttf   |
+/// | `inter`         | `Inter`           | Inter-Latin-VariableFont_wght.ttf          |
+/// | `noto_sans`     | `NotoSans`        | NotoSans-Latin-VariableFont_wght.ttf       |
+///
+/// The four extra faces are the Google Fonts files cut to Latin (with
+/// Latin Extended A, B and Additional, the currency signs and arrows), as
+/// the website serves them; a character outside that falls back to the
+/// phone's own font. Anything else is drawn in DM Sans, the room's own.
+String liveFontFamily(String key) => switch (key) {
+      'bebas_neue' => 'BebasNeue',
+      'poppins' => 'Poppins',
+      'space_grotesk' => 'SpaceGrotesk',
+      'inter' => 'Inter',
+      'noto_sans' => 'NotoSans',
+      _ => 'DMSans',
+    };
+
+/// Every family [liveFontFamily] can name.
+const liveFontFamilies = {
+  'DMSans',
+  'BebasNeue',
+  'Poppins',
+  'SpaceGrotesk',
+  'Inter',
+  'NotoSans',
+};

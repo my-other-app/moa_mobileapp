@@ -123,10 +123,18 @@ void main() {
       expect(LiveMedia.fromJson({'medium': 'javascript:alert(1)'}), isNull);
     });
 
-    test('fonts: the two the app ships, DM Sans for the rest', () {
+    test('fonts: every one the contract allows ships, DM Sans for the rest',
+        () {
+      expect(liveFontFamily('dm_sans'), 'DMSans');
       expect(liveFontFamily('bebas_neue'), 'BebasNeue');
-      for (final f in ['dm_sans', 'poppins', 'space_grotesk', 'inter', 'noto_sans']) {
-        expect(liveFontFamily(f), 'DMSans', reason: f);
+      expect(liveFontFamily('poppins'), 'Poppins');
+      expect(liveFontFamily('space_grotesk'), 'SpaceGrotesk');
+      expect(liveFontFamily('inter'), 'Inter');
+      expect(liveFontFamily('noto_sans'), 'NotoSans');
+      expect(liveFontFamily('comic_sans'), 'DMSans');
+      for (final f in ['dm_sans', 'bebas_neue', 'poppins', 'space_grotesk',
+          'inter', 'noto_sans']) {
+        expect(liveFontFamilies, contains(liveFontFamily(f)), reason: f);
       }
     });
 
