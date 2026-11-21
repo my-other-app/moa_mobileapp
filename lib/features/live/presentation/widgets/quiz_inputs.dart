@@ -12,6 +12,74 @@ const quizNeedsUpdate =
 
 // ─── An answer tile ─────────────────────────────────────────────────────
 
+/// The measures of an answer tile: [roomy] one under the other, [tight]
+/// two to a row (less padding, a smaller mark and tick, so a label keeps
+/// as much of the tile as it can).
+@immutable
+class QuizTileMetrics {
+  const QuizTileMetrics._({
+    required this.padH,
+    required this.padV,
+    required this.mark,
+    required this.markFont,
+    required this.markGap,
+    required this.icon,
+    required this.iconGap,
+    required this.fontSize,
+    required this.minHeight,
+  });
+
+  static const roomy = QuizTileMetrics._(
+    padH: 14,
+    padV: 14,
+    mark: 34,
+    markFont: 18,
+    markGap: 12,
+    icon: 26,
+    iconGap: 8,
+    fontSize: 17.5,
+    minHeight: 70,
+  );
+
+  static const tight = QuizTileMetrics._(
+    padH: 10,
+    padV: 12,
+    mark: 28,
+    markFont: 15,
+    markGap: 8,
+    icon: 22,
+    iconGap: 6,
+    fontSize: 16,
+    minHeight: 64,
+  );
+
+  final double padH;
+  final double padV;
+  final double mark;
+  final double markFont;
+  final double markGap;
+  final double icon;
+  final double iconGap;
+  final double fontSize;
+  final double minHeight;
+
+  /// The room a label has in a tile [width] wide: beside its mark (when
+  /// [marked]) and the tick, kept for whenever a tick shows (picked, right,
+  /// wrong), so a reveal never leaves a word too wide for its line.
+  double labelWidth(double width, {required bool marked}) =>
+      width - 2 * padH - (marked ? mark + markGap : 0) - (icon + iconGap);
+
+  /// The label's style as the tile draws it: the theme's body text (what a
+  /// tile's Material sets under it) in the tile's size and weight.
+  TextStyle label(BuildContext context, Color ink) =>
+      (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()).merge(
+          TextStyle(
+              fontSize: fontSize,
+              height: 1.25,
+              fontWeight: FontWeight.w700,
+              color: ink));
+}
+
 /// One answer of the question: its colour, its shape or letter (none in a
 /// plain list), its label, and how it stands: picked, the right answer, a
 /// wrong pick.
@@ -49,13 +117,14 @@ class QuizAnswerTile extends StatelessWidget {
   /// One of several picks: a box to tick rather than a button.
   final bool checkbox;
 
-  /// Two to a row: a little shorter.
+  /// Two to a row: [QuizTileMetrics.tight].
   final bool compact;
   final String rightLabel;
 
   @override
   Widget build(BuildContext context) {
     final look = LiveLook.of(context);
+    final m = compact ? QuizTileMetrics.tight : QuizTileMetrics.roomy;
     final plain = look.answerStyle == LiveAnswerStyle.plain;
     final fill = right
         ? LiveColors.right
@@ -118,9 +187,12 @@ class QuizAnswerTile extends StatelessWidget {
             key: ValueKey('answer-${option.key}'),
             onTap: enabled ? onTap : null,
             child: Container(
-              constraints: BoxConstraints(minHeight: compact ? 64 : 70),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              decoration: mine && !plain
+              constraints: BoxConstraints(minHeight: m.minHeight),
+              padding:
+                  EdgeInsets.symmetric(horizontal: m.padH, vertical: m.padV),
+              // The picked ring is drawn over the tile, not inside its
+              // padding: picking never narrows the label (or rewraps it).
+              foregroundDecoration: mine && !plain
                   ? BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: ink, width: 3),
@@ -130,41 +202,37 @@ class QuizAnswerTile extends StatelessWidget {
                 children: [
                   if (mark != null) ...[
                     Container(
-                      width: 34,
-                      height: 34,
+                      width: m.mark,
+                      height: m.mark,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: ink.withValues(alpha: 0.22),
-                        borderRadius: BorderRadius.circular(9),
+                        borderRadius: BorderRadius.circular(m.mark * 0.26),
                       ),
                       child: Text(mark,
                           style: TextStyle(
-                              fontSize: 18,
+                              fontSize: m.markFont,
                               fontWeight: look.answerStyle ==
                                       LiveAnswerStyle.letters
                                   ? FontWeight.w800
                                   : null,
                               color: ink)),
                     ),
-                    SizedBox(width: compact ? 10 : 12),
+                    SizedBox(width: m.markGap),
                   ],
                   Expanded(
                     child: Text(
                       option.label,
-                      style: TextStyle(
-                        fontSize: compact ? 16 : 17.5,
-                        height: 1.25,
-                        fontWeight: FontWeight.w700,
-                        color: ink,
-                      ),
+                      key: ValueKey('answer-label-${option.key}'),
+                      style: m.label(context, ink),
                     ),
                   ),
                   if (trailing != null)
                     Padding(
-                      padding: const EdgeInsets.only(left: 8),
+                      padding: EdgeInsets.only(left: m.iconGap),
                       child: Icon(trailing,
                           color: plain && !right && !wrong ? look.accent : ink,
-                          size: 26),
+                          size: m.icon),
                     ),
                 ],
               ),
@@ -176,28 +244,73 @@ class QuizAnswerTile extends StatelessWidget {
   }
 }
 
-/// Whether answers can go two to a row: the theme asks for a grid (or the
-/// question is true or false), and the screen and its text size leave room.
+/// Whether answers may go two to a row: the theme asks for a grid (or the
+/// question is true or false) and the phone's text is not set large (past
+/// 1.3 times, one under the other reads better). Whether the labels fit
+/// two to a row is [quizGridFits], at the width the tiles get.
 bool quizUsesGrid(BuildContext context, {required bool asked}) {
   if (!asked) return false;
   final media = MediaQuery.maybeOf(context);
   if (media == null) return true;
   final scale = media.textScaler.scale(16) / 16;
-  return scale <= 1.3 && media.size.width >= 300;
+  return scale <= 1.3;
+}
+
+/// The gap between two tiles of a row.
+const quizTileGap = 10.0;
+
+/// Whether every one of [labels] fits a tile two to a row in [width]: its
+/// longest run that may not break (a word, or one part of a hyphenated
+/// word) fits the label's line beside the mark and the tick, measured in
+/// the tile's own type at the phone's text size. A word is never split
+/// inside: when one would be, the answers go one under the other.
+bool quizGridFits(
+  BuildContext context, {
+  required List<String> labels,
+  required double width,
+  required bool marked,
+}) {
+  const m = QuizTileMetrics.tight;
+  final room = m.labelWidth((width - quizTileGap) / 2, marked: marked);
+  if (!room.isFinite || room <= 0) return false;
+  final style = m.label(context, const Color(0xFF000000));
+  final scaler = MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling;
+  final direction = Directionality.maybeOf(context) ?? TextDirection.ltr;
+  for (final label in labels) {
+    final painter = TextPainter(
+      text: TextSpan(text: label, style: style),
+      textDirection: direction,
+      textScaler: scaler,
+    )..layout();
+    // The widest piece that cannot wrap; a hair of margin for rounding.
+    final widest = painter.minIntrinsicWidth;
+    painter.dispose();
+    if (widest > room - 0.5) return false;
+  }
+  return true;
 }
 
 /// The question's answers as tiles, one under the other or two to a row.
+/// Two to a row only when [grid] asks for it and every label fits
+/// ([quizGridFits]) at the width the tiles get; their rows are as tall as
+/// their taller tile.
 class QuizTiles extends StatelessWidget {
-  const QuizTiles({super.key, required this.count, required this.tile, required this.grid});
+  const QuizTiles({
+    super.key,
+    required this.labels,
+    required this.tile,
+    required this.grid,
+  });
 
-  final int count;
+  /// The answers' labels, in order: one tile each.
+  final List<String> labels;
   final Widget Function(int i, bool compact) tile;
   final bool grid;
 
-  @override
-  Widget build(BuildContext context) {
-    if (!grid || count < 2) {
-      return Column(
+  int get count => labels.length;
+
+  Widget _column() => Column(
+        key: const ValueKey('quiz-tiles-column'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (var i = 0; i < count; i++)
@@ -207,28 +320,40 @@ class QuizTiles extends StatelessWidget {
             ),
         ],
       );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < count; i += 2)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(child: tile(i, true)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                      child: i + 1 < count
-                          ? tile(i + 1, true)
-                          : const SizedBox.shrink()),
-                ],
+
+  Widget _grid() => Column(
+        key: const ValueKey('quiz-tiles-grid'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < count; i += 2)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: tile(i, true)),
+                    const SizedBox(width: quizTileGap),
+                    Expanded(
+                        child: i + 1 < count
+                            ? tile(i + 1, true)
+                            : const SizedBox.shrink()),
+                  ],
+                ),
               ),
             ),
-          ),
-      ],
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    if (!grid || count < 2) return _column();
+    final marked = LiveLook.of(context).mark(0) != null;
+    return LayoutBuilder(
+      builder: (context, constraints) => quizGridFits(context,
+              labels: labels, width: constraints.maxWidth, marked: marked)
+          ? _grid()
+          : _column(),
     );
   }
 }
@@ -259,7 +384,7 @@ class QuizOneTapInput extends StatelessWidget {
     final rights = q.rightKeys;
     final show = revealed || q.correctKey != null;
     return QuizTiles(
-      count: q.options.length,
+      labels: [for (final o in q.options) o.label],
       grid: grid,
       tile: (i, compact) {
         final o = q.options[i];
@@ -322,7 +447,7 @@ class _QuizMultiInputState extends State<QuizMultiInput> {
                 style: TextStyle(fontSize: 13.5, color: LiveColors.muted)),
           ),
         QuizTiles(
-          count: q.options.length,
+          labels: [for (final o in q.options) o.label],
           grid: grid,
           tile: (i, compact) {
             final o = q.options[i];

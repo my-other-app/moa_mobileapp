@@ -6,8 +6,21 @@ import 'package:flutter/material.dart';
 export 'package:finnet/features/live/presentation/widgets/live_look.dart';
 export 'package:finnet/features/live/presentation/widgets/live_poll_card.dart';
 
+/// The text of every button in the room: the theme's body font (the app's
+/// DM Sans without a theme), 16 and bold, in sentence case. A button's
+/// text takes its style from the button, never the page, so it is named
+/// here; without it a button showed the app's Bebas Neue capitals, or the
+/// phone's system font when a style left the family out.
+TextStyle liveButtonText(LiveLook look, [TextStyle? overrides]) => TextStyle(
+      fontFamily: look.textFamily,
+      fontSize: 16,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.1,
+    ).merge(overrides);
+
 /// The main button of the room in its look: the app's dark button, or the
-/// theme's accent with the text that reads on it.
+/// theme's accent with the text that reads on it. [textStyle] changes the
+/// size or weight; the family stays the room's.
 ButtonStyle liveButtonStyle(
   LiveLook look, {
   Size? minimumSize,
@@ -17,7 +30,8 @@ ButtonStyle liveButtonStyle(
       backgroundColor: look.button,
       foregroundColor: look.custom ? look.onButton : null,
       minimumSize: minimumSize,
-      textStyle: textStyle,
+      textStyle: liveButtonText(
+          look, textStyle?.copyWith(fontFamily: look.textFamily)),
     );
 
 /// How long ago, in as few words as the room needs: "just now", "5 min
@@ -349,6 +363,8 @@ class LiveConnectionBar extends StatelessWidget {
                 style: TextButton.styleFrom(
                   foregroundColor: LiveColors.warnInk,
                   minimumSize: const Size(64, liveTapTarget),
+                  textStyle: liveButtonText(LiveLook.of(context),
+                      const TextStyle(fontSize: 14)),
                 ),
                 child: const Text('Retry'),
               ),
@@ -620,10 +636,10 @@ class QuizEntryCard extends StatelessWidget {
               'score most.'),
           const SizedBox(height: 14),
           FilledButton.icon(
+            key: const ValueKey('quiz-join-room'),
             onPressed: onJoin,
             icon: const Icon(Icons.play_arrow_rounded, size: 22),
-            label: const Text('Join the quiz',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            label: const Text('Join the quiz'),
             style: liveButtonStyle(look,
                 minimumSize: const Size.fromHeight(56)),
           ),
@@ -891,6 +907,7 @@ class _QuestionRow extends StatelessWidget {
                 onPressed: q.answered || busy ? null : onVote,
                 style: OutlinedButton.styleFrom(
                   padding: EdgeInsets.zero,
+                  textStyle: liveButtonText(look),
                   backgroundColor: q.voted ? look.liveCard : null,
                   side: BorderSide(
                       color: q.voted ? look.accent : LiveColors.line),

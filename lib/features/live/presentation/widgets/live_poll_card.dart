@@ -188,10 +188,12 @@ class _PollCardState extends State<PollCard> {
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: _ChoiceButton(
+            key: ValueKey('poll-choice-${choices[i].label}'),
             choice: choices[i],
             image: poll.imageOf(_optionIndex(poll, choices[i].label))?.small,
             mine: poll.mine.contains(choices[i].label),
             showResults: results && _barsInButtons,
+            compact: !_barsInButtons,
             settings: poll.settings,
             enabled: _canAnswer,
             onTap: () => widget.onAnswer(PollAnswer.value(choices[i].label)),
@@ -228,6 +230,7 @@ class _PollCardState extends State<PollCard> {
             mine: picks.contains(choices[i].label),
             checkbox: true,
             showResults: results && _barsInButtons,
+            compact: !_barsInButtons,
             settings: poll.settings,
             enabled: _canAnswer &&
                 (picks.contains(choices[i].label) || picks.length < max),
@@ -649,6 +652,7 @@ class _ChoiceButton extends StatelessWidget {
     required this.onTap,
     this.settings = const PollSettings(),
     this.checkbox = false,
+    this.compact = false,
     this.image,
   });
 
@@ -661,6 +665,10 @@ class _ChoiceButton extends StatelessWidget {
 
   /// One of several picks (a multiple choice): a box to tick.
   final bool checkbox;
+
+  /// The results are drawn under the answers (columns, a donut), never in
+  /// them: a plain row as tall as a tap needs, not a bar's.
+  final bool compact;
   final String? image;
 
   @override
@@ -694,8 +702,12 @@ class _ChoiceButton extends StatelessWidget {
         child: InkWell(
           onTap: enabled ? onTap : null,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 56),
+            constraints: BoxConstraints(
+                minHeight: compact && !showResults ? liveTapTarget + 4 : 56),
             child: Stack(
+              // The label sits in the middle of the row, however tall the
+              // row is.
+              alignment: AlignmentDirectional.centerStart,
               children: [
                 if (showResults)
                   Positioned.fill(
@@ -710,14 +722,15 @@ class _ChoiceButton extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         widthFactor: width,
                         child: Container(
-                          color: mine ? look.liveEdge : look.liveCard,
+                          key: const ValueKey('poll-bar'),
+                          color: mine ? look.barFillMine : look.barFill,
                         ),
                       ),
                     ),
                   ),
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 14, vertical: compact ? 10 : 12),
                   child: Row(
                     children: [
                       if (checkbox)

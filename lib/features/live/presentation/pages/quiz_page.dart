@@ -182,23 +182,8 @@ class _QuizPageState extends ConsumerState<QuizPage>
       look: look,
       child: Scaffold(
         backgroundColor: look.page,
-        appBar: AppBar(
-          backgroundColor: look.bar,
-          surfaceTintColor: look.bar,
-          foregroundColor: look.onBar,
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Quiz',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              if (title != null && title.isNotEmpty)
-                Text(title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, color: look.mutedOnBar)),
-            ],
-          ),
-        ),
+        extendBodyBehindAppBar: look.barOverBackdrop,
+        appBar: liveAppBar(context, look, title: 'Quiz', subtitle: title),
         body: LiveBackdrop(child: SafeArea(child: _body(context))),
       ),
     );
@@ -577,14 +562,16 @@ class _QuizPageState extends ConsumerState<QuizPage>
   }
 
   /// "Question 3 of 10", the round, and what it is worth when that is not
-  /// the usual.
+  /// the usual. A poll is worth nothing, whatever the round's points (the
+  /// server sends them for a poll too): no points on it.
   Widget _header(QuizState quiz, QuizQuestion q) {
     final look = _look;
-    final points = q.effectivePoints;
+    final scored = q.kind != QuizKind.poll;
+    final points = scored ? q.effectivePoints : null;
+    final doubled = scored && q.doublePoints;
     final badges = <String>[
-      if (q.doublePoints) 'Double points',
-      if (points != null && (points != 1000 || q.doublePoints))
-        '$points points',
+      if (doubled) 'Double points',
+      if (points != null && (points != 1000 || doubled)) '$points points',
       if (quiz.streak >= 2) '${quiz.streak} in a row',
     ];
     return Column(

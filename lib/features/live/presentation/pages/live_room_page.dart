@@ -129,25 +129,8 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage>
       look: look,
       child: Scaffold(
         backgroundColor: look.page,
-        appBar: AppBar(
-          backgroundColor: look.bar,
-          surfaceTintColor: look.bar,
-          foregroundColor: look.onBar,
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Live room',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              if (name != null)
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, color: look.mutedOnBar),
-                ),
-            ],
-          ),
-        ),
+        extendBodyBehindAppBar: look.barOverBackdrop,
+        appBar: liveAppBar(context, look, title: 'Live room', subtitle: name),
         body: LiveBackdrop(child: SafeArea(child: _body(context))),
       ),
     );

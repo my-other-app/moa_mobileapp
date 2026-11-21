@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:finnet/features/live/domain/live_theme.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// The live room's colours: the event page's LIVE NOW strip's greens, and
 /// the app's dark button. The room's own look: what an event that never
@@ -83,8 +84,11 @@ const liveLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
 ///   colours on them, as shapes, letters or a plain list, in a column or a
 ///   grid; the clock is a bar, a ring, a number or not drawn.
 /// - The display font is the question's, the join code's and the
-///   podium's; DM Sans and Bebas Neue ship with the app and the other
-///   choices draw in DM Sans (CONTRACT 1.5).
+///   podium's; the body font is everything else, the buttons and the bar
+///   at the top included. Every font the contract allows ships with the
+///   app ([liveFontFamily] has the table).
+/// - A gradient page runs on under the bar at the top, which is then
+///   see-through: no seam where the bar meets the page.
 @immutable
 class LiveLook {
   const LiveLook({
@@ -100,6 +104,7 @@ class LiveLook {
     this.onPage = LiveColors.ink,
     this.mutedOnPage = LiveColors.muted,
     this.bar = Colors.white,
+    this.barOverBackdrop = false,
     this.onBar,
     this.mutedOnBar = LiveColors.muted,
     this.liveCard = LiveColors.tint,
@@ -147,8 +152,11 @@ class LiveLook {
   final Color onPage;
   final Color mutedOnPage;
 
-  /// The bar at the top; null [onBar] is the app's own.
+  /// The bar at the top; null [onBar] is the app's own. Over a gradient
+  /// page [bar] is the gradient's top and the bar itself is see-through
+  /// ([barOverBackdrop]): the page runs on under it.
   final Color bar;
+  final bool barOverBackdrop;
   final Color? onBar;
   final Color mutedOnBar;
 
@@ -202,8 +210,18 @@ class LiveLook {
     final dot = liveEnsureContrast(t.accent, liveCard, liveGraphicContrast);
     final accent = liveEnsureContrast(t.accent, liveCard, liveTextContrast);
     final onPage = t.drawsBackground ? t.onBackground : LiveColors.ink;
-    final bar = t.drawsBackground ? t.background : white;
-    final display = liveFontFamily(t.displayFont);
+    final gradient = t.drawsBackground && t.backgroundKind == 'gradient'
+        ? t.gradient
+        : null;
+    // Under a gradient the bar shows the gradient's top; its text reads on
+    // both ends of it.
+    final bar = !t.drawsBackground
+        ? white
+        : gradient != null
+            ? gradient.top
+            : t.background;
+    final onBar = liveTextOn(
+        gradient != null ? [gradient.from, gradient.to, bar] : [bar]);
     return LiveLook(
       id: 'theme:${state.version ?? identityHashCode(state)}',
       custom: true,
@@ -219,8 +237,9 @@ class LiveLook {
       // server only vouches for that one on it.
       mutedOnPage: t.drawsBackground ? onPage : LiveColors.muted,
       bar: bar,
-      onBar: t.drawsBackground ? liveTextOn([bar]) : null,
-      mutedOnBar: t.drawsBackground ? liveTextOn([bar]) : LiveColors.muted,
+      barOverBackdrop: gradient != null,
+      onBar: t.drawsBackground ? onBar : null,
+      mutedOnBar: t.drawsBackground ? onBar : LiveColors.muted,
       liveCard: liveCard,
       liveEdge: Color.lerp(white, dot, 0.45)!,
       accent: accent,
@@ -234,7 +253,8 @@ class LiveLook {
       timer: t.timer,
       podium: t.podium,
       animate: t.animate,
-      displayFamily: display == 'DMSans' ? null : display,
+      // Always named, DM Sans too: the body font under it may be another.
+      displayFamily: liveFontFamily(t.displayFont),
       bodyFamily: liveFontFamily(t.bodyFont),
       textScale: t.textScale,
       logo: t.guestLogo ? t.logo?.forPhone : null,
@@ -251,6 +271,25 @@ class LiveLook {
 
   Color onAnswer(int i) =>
       i < onAnswers.length ? onAnswers[i] : const Color(0xFFFFFFFF);
+
+  /// The family of the room's text: the theme's body font, else the app's
+  /// own. Buttons and the bar at the top name it outright, as their text
+  /// does not take the page's default style.
+  String get textFamily => bodyFamily ?? 'DMSans';
+
+  /// A poll result's bar inside an answer, on the answer's white: plain to
+  /// see against it, the picked answer's a step stronger. The room's ink
+  /// reads on both (4.5:1).
+  Color get barFill => _barTint(0.3);
+  Color get barFillMine => _barTint(0.55);
+
+  Color _barTint(double strength) {
+    for (var t = strength; t > 0.05; t -= 0.05) {
+      final c = Color.lerp(Colors.white, dot, t)!;
+      if (liveContrast(LiveColors.ink, c) >= liveTextContrast) return c;
+    }
+    return Color.lerp(Colors.white, dot, 0.05)!;
+  }
 
   /// The mark on answer [i]: its shape or its letter; none in a plain list.
   String? mark(int i) => switch (answerStyle) {
@@ -356,10 +395,18 @@ class LiveBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final look = LiveLook.of(context);
     var body = child;
-    if (look.bodyFamily != null) {
-      body = DefaultTextStyle.merge(
-        style: TextStyle(fontFamily: look.bodyFamily),
-        child: body,
+    final family = look.bodyFamily;
+    if (family != null) {
+      // The page's text, and what takes its style from the theme rather
+      // than the page (the fields' text and labels).
+      final theme = Theme.of(context);
+      body = Theme(
+        data: theme.copyWith(
+            textTheme: theme.textTheme.apply(fontFamily: family)),
+        child: DefaultTextStyle.merge(
+          style: TextStyle(fontFamily: family),
+          child: body,
+        ),
       );
     }
     final gradient = look.gradient;
@@ -388,6 +435,89 @@ class LiveBackdrop extends StatelessWidget {
       key: const ValueKey('live-backdrop'),
       decoration: decoration,
       child: body,
+    );
+  }
+}
+
+/// The bar at the top of the room and the quiz in [look]: its name and,
+/// under it, the event's. Both lines centred where the platform centres a
+/// title (iOS), both at the start elsewhere. Over a gradient page the bar
+/// is see-through and the page runs on under it (the Scaffold sets
+/// `extendBodyBehindAppBar` from [LiveLook.barOverBackdrop]).
+AppBar liveAppBar(
+  BuildContext context,
+  LiveLook look, {
+  required String title,
+  String? subtitle,
+}) {
+  final platform = Theme.of(context).platform;
+  final centred =
+      platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
+  final over = look.barOverBackdrop;
+  final ink = look.onBar;
+  return AppBar(
+    backgroundColor: over ? Colors.transparent : look.bar,
+    surfaceTintColor: over ? Colors.transparent : look.bar,
+    scrolledUnderElevation: over ? 0 : null,
+    foregroundColor: ink,
+    systemOverlayStyle: over && ink != null
+        ? (liveLuminance(ink) > 0.5
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark)
+        : null,
+    centerTitle: centred,
+    title: LiveBarTitle(
+      title: title,
+      subtitle: subtitle,
+      centred: centred,
+      look: look,
+    ),
+  );
+}
+
+/// The bar's two lines, in the room's text font.
+class LiveBarTitle extends StatelessWidget {
+  const LiveBarTitle({
+    super.key,
+    required this.title,
+    required this.look,
+    this.subtitle,
+    this.centred = false,
+  });
+
+  final String title;
+  final String? subtitle;
+  final bool centred;
+  final LiveLook look;
+
+  @override
+  Widget build(BuildContext context) {
+    final align = centred ? TextAlign.center : TextAlign.start;
+    final sub = subtitle;
+    return Column(
+      key: const ValueKey('live-bar-title'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment:
+          centred ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            textAlign: align,
+            style: TextStyle(
+                fontFamily: look.textFamily,
+                fontSize: 18,
+                fontWeight: FontWeight.w700)),
+        if (sub != null && sub.isNotEmpty)
+          Text(
+            sub,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: align,
+            style: TextStyle(
+                fontFamily: look.textFamily,
+                fontSize: 12,
+                color: look.mutedOnBar),
+          ),
+      ],
     );
   }
 }
