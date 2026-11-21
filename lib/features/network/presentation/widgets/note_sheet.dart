@@ -7,6 +7,7 @@ import 'package:finnet/features/network/data/network_api.dart';
 import 'package:finnet/features/network/domain/network.dart';
 import 'package:finnet/features/network/presentation/providers/network_providers.dart';
 import 'package:finnet/features/network/presentation/widgets/profile_view.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// "Add a note": the owner's private note and tags for someone in their
 /// network. Answers the person as saved, or null when nothing changed.
@@ -167,7 +168,7 @@ class _NoteSheetState extends ConsumerState<NoteSheet> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(
+                      child: AppSpinner(
                           strokeWidth: 2, color: Colors.white))
                   : const Text('Save note'),
             ),

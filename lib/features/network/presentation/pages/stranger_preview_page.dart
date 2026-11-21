@@ -8,6 +8,7 @@ import 'package:finnet/features/network/presentation/providers/my_profile_provid
 import 'package:finnet/features/network/presentation/providers/network_providers.dart';
 import 'package:finnet/features/network/presentation/widgets/profile_view.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// `/profile/public/preview`: the person's profile exactly as someone they
 /// haven't saved sees it -- asked of the server as nobody, so what is
@@ -48,11 +49,11 @@ class _StrangerPreviewPageState extends ConsumerState<StrangerPreviewPage> {
       ),
       body: lookup == null
           ? const Center(
-              child: CircularProgressIndicator(
+              child: AppSpinner(
                   strokeWidth: 2, color: AppColors.ink))
           : lookup.when(
               loading: () => const Center(
-                  child: CircularProgressIndicator(
+                  child: AppSpinner(
                       strokeWidth: 2, color: AppColors.ink)),
               error: (e, _) => ErrorView(
                 message: extractErrorMessage(e,

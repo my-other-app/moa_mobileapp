@@ -10,6 +10,8 @@ import 'package:finnet/features/support/presentation/support_routes.dart';
 import 'package:finnet/features/support/presentation/widgets/support_widgets.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// Settings > Help and support (`/profile/help`): short answers to common
 /// questions, then Contact us and My requests (feature-register
@@ -36,7 +38,7 @@ class HelpPage extends ConsumerWidget {
             ? const EmailSupportView()
             : _HelpBody(answers: list),
         loading: () => const Center(
-          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
+          child: AppSpinner(strokeWidth: 2, color: AppColors.ink),
         ),
         error: (e, _) => ErrorView(
           message:
@@ -57,7 +59,7 @@ class _HelpBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return RefreshIndicator(
+    return AppRefresh(
       color: AppColors.ink,
       onRefresh: () => ref.refresh(helpAnswersProvider.future),
       child: ListView(

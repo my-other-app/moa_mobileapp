@@ -5,6 +5,7 @@ import 'package:finnet/core/storage/secure_storage_service.dart';
 import 'package:finnet/features/auth/data/services/password_reset_service.dart';
 import 'package:finnet/features/auth/presentation/cubits/password_reset_cubit.dart';
 import 'package:finnet/features/auth/presentation/widgets/six_digit_code_field.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// "Forgot your password?": a code to the address, then the code and a new
 /// password -- which signs the person in. `/auth/forgot-password`.
@@ -372,7 +373,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         child: SizedBox(
           width: 18,
           height: 18,
-          child: CircularProgressIndicator(strokeWidth: 2, color: _accent),
+          child: AppSpinner(strokeWidth: 2, color: _accent),
         ),
       );
     }
@@ -435,7 +436,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 ? const SizedBox(
                     width: 24,
                     height: 24,
-                    child: CircularProgressIndicator(
+                    child: AppSpinner(
                         strokeWidth: 2, color: Colors.white),
                   )
                 : Text(

@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'events_fakes.dart';
+import 'package:finnet/shared/widgets/app_chip.dart';
 
 /// `GET /events/7/competition/me`, as production sends it (`MyState`).
 Map<String, dynamic> myState({
@@ -361,7 +362,7 @@ void main() {
       expect(
           api.sent('DELETE', '/events/7/competition/me/slots/6'), hasLength(1));
       final taken =
-          tester.widget<ChoiceChip>(find.byKey(const ValueKey('slot-7')));
+          tester.widget<AppChip>(find.byKey(const ValueKey('slot-7')));
       expect(taken.onSelected, isNull);
     });
 

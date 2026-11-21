@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:finnet/core/utils/json_read.dart';
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/shared/motion.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 class RegSuccessfullPage extends StatefulWidget {
   final String? ticketId;
@@ -172,7 +173,7 @@ class _RegSuccessfullPageState extends State<RegSuccessfullPage>
                 const SizedBox(
                   width: 24,
                   height: 24,
-                  child: CircularProgressIndicator(
+                  child: AppSpinner(
                     strokeWidth: 2,
                     valueColor:
                         AlwaysStoppedAnimation<Color>(Color(0xFF2C333D)),

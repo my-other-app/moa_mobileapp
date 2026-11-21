@@ -13,6 +13,8 @@ import 'package:finnet/features/support/presentation/support_routes.dart';
 import 'package:finnet/features/support/presentation/widgets/support_widgets.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// One request (`/profile/help/requests/{id}`): its thread -- the
 /// person's messages and the team's replies, never the team's notes -- and
@@ -130,7 +132,7 @@ class _SupportRequestPageState extends ConsumerState<SupportRequestPage> {
       appBar: supportAppBar(number.isEmpty ? 'REQUEST' : 'REQUEST $number'),
       body: request.when(
         loading: () => const Center(
-          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
+          child: AppSpinner(strokeWidth: 2, color: AppColors.ink),
         ),
         error: (e, _) => ErrorView(
           message: extractErrorMessage(e,
@@ -149,7 +151,7 @@ class _SupportRequestPageState extends ConsumerState<SupportRequestPage> {
     return Column(
       children: [
         Expanded(
-          child: RefreshIndicator(
+          child: AppRefresh(
             color: AppColors.ink,
             onRefresh: () =>
                 ref.refresh(supportRequestProvider(widget.caseId).future),
@@ -369,7 +371,7 @@ class _ReplyBox extends ConsumerWidget {
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(
+                            child: AppSpinner(
                                 strokeWidth: 2, color: Colors.white),
                           )
                         : const Icon(Icons.send_rounded,

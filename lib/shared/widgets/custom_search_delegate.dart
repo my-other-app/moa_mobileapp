@@ -11,6 +11,7 @@ import 'package:finnet/shared/widgets/event_card.dart' show PaymentDueBadge;
 import 'package:finnet/shared/widgets/event_poster_image.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/shared/utils/latest_search.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// `/events/list` for a search, narrowed to the tab it was started from.
 ///
@@ -73,11 +74,11 @@ Widget _searchAnswerView({
           );
       if (!answer.answers(q)) {
         if (answer.items.isEmpty || answer.error != null) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: AppSpinner());
         }
         return Column(
           children: [
-            const LinearProgressIndicator(minHeight: 2),
+            const AppProgressBar(minHeight: 2),
             Expanded(child: list(answer.items)),
           ],
         );

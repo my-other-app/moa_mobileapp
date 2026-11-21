@@ -19,8 +19,11 @@ import 'package:finnet/features/network/presentation/providers/my_profile_provid
 import 'package:finnet/features/network/presentation/providers/network_providers.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/shared/utils/share_origin.dart';
+import 'package:finnet/shared/widgets/app_actions_sheet.dart';
+import 'package:finnet/shared/widgets/app_share_button.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// Turns the screen up while My QR is open, and back as it closes.
 abstract class ScreenLight {
@@ -252,15 +255,23 @@ class _MyQrPageState extends ConsumerState<MyQrPage>
         scrolledUnderElevation: 0,
         foregroundColor: Colors.black,
         actions: [
-          PopupMenuButton<String>(
+          AppMenuButton<String>(
             key: MyQrPage.replaceKey,
+            title: 'My QR',
             onSelected: (choice) {
               if (choice == 'replace') _replace();
               if (choice == 'edit') context.push(editPublicProfileLocation);
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'replace', child: Text('Replace code')),
-              PopupMenuItem(value: 'edit', child: Text('Edit my profile')),
+            actions: () => const [
+              AppAction(
+                  value: 'replace',
+                  label: 'Replace code',
+                  subtitle: 'The old one stops working',
+                  icon: Icons.autorenew_rounded),
+              AppAction(
+                  value: 'edit',
+                  label: 'Edit my profile',
+                  icon: Icons.edit_outlined),
             ],
           ),
         ],
@@ -268,7 +279,7 @@ class _MyQrPageState extends ConsumerState<MyQrPage>
       body: qr.when(
         skipLoadingOnRefresh: false,
         loading: () => const Center(
-            child: CircularProgressIndicator(
+            child: AppSpinner(
                 strokeWidth: 2, color: AppColors.ink)),
         error: (e, _) => ErrorView(
           message: extractErrorMessage(e,
@@ -377,14 +388,14 @@ class _MyQrPageState extends ConsumerState<MyQrPage>
               foregroundColor: AppColors.ink,
               minimumSize: const Size.fromHeight(50),
             ),
-            icon: const Icon(Icons.share_outlined),
+            icon: const AppShareIcon(size: 20),
             label: const Text('Share my profile link'),
           ),
         ),
         if (_replacing)
           const Padding(
             padding: EdgeInsets.only(top: 16),
-            child: LinearProgressIndicator(minHeight: 2),
+            child: AppProgressBar(minHeight: 2),
           ),
       ],
     );

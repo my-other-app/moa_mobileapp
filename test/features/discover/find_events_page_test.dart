@@ -185,9 +185,9 @@ void main() {
     await settle(tester);
 
     expect(find.byKey(const ValueKey('discover-sort-relevance')), findsNothing);
-    final distance = tester.widget<PopupMenuItem<EventSort>>(
-        find.byKey(const ValueKey('discover-sort-distance')));
-    expect(distance.enabled, isFalse);
+    final distance = tester
+        .widget<InkWell>(find.byKey(const ValueKey('discover-sort-distance')));
+    expect(distance.onTap, isNull);
 
     await tester.tap(find.byKey(const ValueKey('discover-sort-popular')));
     await settle(tester);

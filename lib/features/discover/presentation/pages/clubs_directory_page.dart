@@ -17,6 +17,7 @@ import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/entrance.dart';
 import 'package:finnet/shared/widgets/fade_switch.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 const _ink = Color(0xFF1E1E1E);
 
@@ -97,7 +98,7 @@ class _ClubsDirectoryPageState extends ConsumerState<ClubsDirectoryPage> {
       );
     } else {
       phase = ScreenPhase.content;
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: notifier.refresh,
         child: EntranceScope(
             child: ListView.separated(

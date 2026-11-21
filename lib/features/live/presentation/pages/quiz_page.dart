@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The quiz on the screen, played on the phone: join with the code and a
 /// name, then each question with its clock, the verdict, and the board.
@@ -181,11 +182,11 @@ class _QuizPageState extends ConsumerState<QuizPage>
     }
     final cubit = _cubit;
     if (cubit == null || _state.phase == QuizPhase.checking) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppSpinner());
     }
     switch (_state.phase) {
       case QuizPhase.checking:
-        return const Center(child: CircularProgressIndicator());
+        return const Center(child: AppSpinner());
       case QuizPhase.join:
         _prefillName();
         return _join(cubit);
@@ -272,7 +273,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(
+                          child: AppSpinner(
                               strokeWidth: 2, color: Colors.white),
                         )
                       : const Text('Join the quiz'),

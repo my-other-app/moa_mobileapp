@@ -4,6 +4,7 @@ import 'package:finnet/core/themes/color_resources.dart';
 import 'package:finnet/features/threads/domain/entities/moderation.dart';
 import 'package:finnet/features/threads/presentation/providers/moderation_provider.dart';
 import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// How the reasons sheet ended, when it ended with more than a dismissal.
 enum ReportSheetResult {
@@ -200,7 +201,7 @@ class _ReportSheetState extends State<ReportSheet> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
+                        child: AppSpinner(
                           strokeWidth: 2,
                           color: Colors.white,
                         ),

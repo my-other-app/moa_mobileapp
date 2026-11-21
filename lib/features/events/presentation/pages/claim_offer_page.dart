@@ -23,6 +23,7 @@ import 'package:finnet/features/payments/data/repositories/payment_repository_im
 import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
 import 'package:finnet/features/payments/domain/payment_failures.dart';
 import 'package:finnet/shared/utils/external_links.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 const _ink = Color(0xFF2C333D);
 
@@ -369,7 +370,7 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
   Widget _body(BuildContext context) {
     switch (_stage) {
       case _Stage.loading:
-        return const Center(child: CircularProgressIndicator());
+        return const Center(child: AppSpinner());
       case _Stage.notFound:
         return _message(
           icon: Icons.link_off,
@@ -680,7 +681,7 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
+                        child: AppSpinner(
                             strokeWidth: 2, color: Colors.white),
                       )
                     : const Text('CHECK PAYMENT'),
@@ -697,7 +698,7 @@ class _ClaimOfferPageState extends ConsumerState<ClaimOfferPage> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
+                        child: AppSpinner(
                             strokeWidth: 2, color: Colors.white),
                       )
                     : Text(!offer.needsPayment

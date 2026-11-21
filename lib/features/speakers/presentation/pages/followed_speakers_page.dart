@@ -10,6 +10,8 @@ import 'package:finnet/features/events/presentation/widgets/event_page/event_peo
 import 'package:finnet/features/speakers/data/speakers_api.dart';
 import 'package:finnet/features/speakers/domain/speaker.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// Profile > Speakers I Follow (`/profile/speakers`): the speakers the
 /// person follows, newest first, each opening their page -- where Follow
@@ -40,7 +42,7 @@ class FollowedSpeakersPage extends ConsumerWidget {
       ),
       body: followed.when(
         loading: () => const Center(
-          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
+          child: AppSpinner(strokeWidth: 2, color: AppColors.ink),
         ),
         error: (e, _) => ErrorView(
           message: extractErrorMessage(e,
@@ -60,7 +62,7 @@ class FollowedSpeakersPage extends ConsumerWidget {
               body: "Tap a speaker on an event's page and choose Follow. "
                   "We'll tell you when they're speaking next.",
             ),
-          final list => RefreshIndicator(
+          final list => AppRefresh(
               color: AppColors.ink,
               onRefresh: () => ref.refresh(followedSpeakersProvider.future),
               child: ListView.separated(

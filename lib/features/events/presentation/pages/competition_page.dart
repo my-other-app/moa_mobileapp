@@ -8,6 +8,10 @@ import 'package:finnet/features/events/data/repositories/competition_repository.
 import 'package:finnet/features/events/domain/entities/competition.dart';
 import 'package:finnet/features/events/presentation/providers/competition_provider.dart';
 import 'package:finnet/features/events/presentation/utils/event_sign_in.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
+import 'package:finnet/shared/widgets/app_chip.dart';
+import 'package:finnet/shared/widgets/app_select.dart';
 
 /// "Your team": a registered guest's side of an event's competition, as the
 /// website's `/events/{slug}/compete` has it. Pick a track and make a team
@@ -107,7 +111,7 @@ class _CompetitionPageState extends ConsumerState<CompetitionPage>
     final data = state.data;
     if (data == null) {
       if (state.loading) {
-        return const Center(child: CircularProgressIndicator());
+        return const Center(child: AppSpinner());
       }
       final failure = state.failure;
       return _Problem(
@@ -129,7 +133,7 @@ class _CompetitionPageState extends ConsumerState<CompetitionPage>
             : () => _notifier.load(),
       );
     }
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: () => _notifier.load(quietly: true),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -141,7 +145,7 @@ class _CompetitionPageState extends ConsumerState<CompetitionPage>
                   style:
                       const TextStyle(fontSize: 15, color: Color(0xFF6B7280))),
             ),
-          if (state.busy) const LinearProgressIndicator(minHeight: 2),
+          if (state.busy) const AppProgressBar(minHeight: 2),
           if (data.tracks.isNotEmpty) _Tracks(tracks: data.tracks),
           if (data.team != null)
             ..._myTeam(data, data.team!, state.busy)
@@ -181,20 +185,21 @@ class _CompetitionPageState extends ConsumerState<CompetitionPage>
                 title: Text(m.name),
               ),
             if (me.tracks.isNotEmpty)
-              DropdownButtonFormField<int?>(
-                // Keyed by the track, so the server's answer shows.
-                key: ValueKey('competition-track-${team.trackId}'),
-                initialValue: team.trackId,
-                decoration: const InputDecoration(labelText: 'Track'),
-                items: [
-                  const DropdownMenuItem<int?>(
-                      value: null, child: Text('No track')),
-                  for (final t in me.tracks)
-                    DropdownMenuItem<int?>(value: t.id, child: Text(t.name)),
-                ],
-                onChanged: busy || me.teamsLocked
-                    ? null
-                    : (id) => _notifier.setTrack(id),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: AppSelectField<int?>(
+                  // Keyed by the track, so the server's answer shows.
+                  key: ValueKey('competition-track-${team.trackId}'),
+                  label: 'Track',
+                  value: team.trackId,
+                  options: [
+                    const AppOption<int?>(null, 'No track'),
+                    for (final t in me.tracks) AppOption<int?>(t.id, t.name),
+                  ],
+                  onChanged: busy || me.teamsLocked
+                      ? null
+                      : (id) => _notifier.setTrack(id),
+                ),
               ),
             if (team.openSpots > 0)
               Padding(
@@ -389,14 +394,12 @@ class _TeamUpState extends State<_TeamUp> {
           onChanged: (_) => setState(() {}),
         ),
         if (me.tracks.isNotEmpty)
-          DropdownButtonFormField<int?>(
-            initialValue: _track,
-            decoration: const InputDecoration(labelText: 'Track'),
-            items: [
-              const DropdownMenuItem<int?>(
-                  value: null, child: Text('Pick a track later')),
-              for (final t in me.tracks)
-                DropdownMenuItem<int?>(value: t.id, child: Text(t.name)),
+          AppSelectField<int?>(
+            label: 'Track',
+            value: _track,
+            options: [
+              const AppOption<int?>(null, 'Pick a track later'),
+              for (final t in me.tracks) AppOption<int?>(t.id, t.name),
             ],
             onChanged: off ? null : (id) => setState(() => _track = id),
           ),
@@ -646,11 +649,11 @@ class _OfficeHours extends StatelessWidget {
   Widget _slot(MentorSlot s, DateFormat time) {
     final ours = s.teamId == teamId;
     final taken = s.teamId != null && !ours;
-    return ChoiceChip(
+    return AppChip(
       key: ValueKey('slot-${s.id}'),
       selected: ours,
-      label: Text(
-          '${time.format(s.startsAt)} · ${ours ? 'Yours' : taken ? 'Taken' : 'Free'}'),
+      label:
+          '${time.format(s.startsAt)} · ${ours ? 'Yours' : taken ? 'Taken' : 'Free'}',
       onSelected: busy || taken ? null : (_) => onTap(s, ours),
     );
   }

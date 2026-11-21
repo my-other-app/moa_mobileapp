@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:finnet/features/events/domain/event_page_rules.dart';
 import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// How full the event is: a bar of the places taken, and "82 going · 38
 /// seats left". Nothing for an event with no limit and nobody going.
@@ -60,7 +61,7 @@ class SeatsMeter extends StatelessWidget {
               label: '${capacity! - seatsLeft!} of $capacity seats taken',
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
+                child: AppProgressBar(
                   key: meterKey,
                   value: taken,
                   minHeight: 6,

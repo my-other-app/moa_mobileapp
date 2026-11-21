@@ -11,6 +11,7 @@ import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/profile/presentation/pages/certificates/certificate_detail_page.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
 import 'package:finnet/shared/utils/external_links.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 const _ink = Color(0xFF2C333D);
 
@@ -211,7 +212,7 @@ class CertificateLinkPage extends ConsumerWidget {
       loading: () => Scaffold(
         backgroundColor: Colors.white,
         appBar: _bar(context, title: 'Certificate'),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(child: AppSpinner()),
       ),
       // The list could not be loaded: the public page still can.
       error: (_, __) => _elsewhere(),

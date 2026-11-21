@@ -13,9 +13,12 @@ import 'package:finnet/features/network/presentation/widgets/profile_notices.dar
 import 'package:finnet/features/network/presentation/widgets/profile_view.dart';
 import 'package:finnet/features/network/presentation/widgets/project_sheet.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
+import 'package:finnet/shared/widgets/app_chip.dart';
+import 'package:finnet/shared/widgets/app_select.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/settings_row.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 const _muted = Color(0xFF6B7280);
 const maxLinks = 10;
@@ -192,10 +195,14 @@ class _EditPublicProfilePageState extends ConsumerState<EditPublicProfilePage> {
         foregroundColor: Colors.black,
         actions: [
           if (mine != null)
-            TextButton(
-              key: EditPublicProfilePage.previewKey,
-              onPressed: () => context.push(strangerPreviewLocation),
-              child: const Text('Preview'),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: AppChip(
+                key: EditPublicProfilePage.previewKey,
+                label: 'Preview',
+                icon: Icons.visibility_outlined,
+                onTap: () => context.push(strangerPreviewLocation),
+              ),
             ),
         ],
       ),
@@ -207,7 +214,7 @@ class _EditPublicProfilePageState extends ConsumerState<EditPublicProfilePage> {
                   onRetry: () => ref.read(myProfileProvider.notifier).load(),
                 )
               : const Center(
-                  child: CircularProgressIndicator(
+                  child: AppSpinner(
                       strokeWidth: 2, color: AppColors.ink))
           : _form(mine),
     );
@@ -599,7 +606,7 @@ class _Completeness extends StatelessWidget {
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
+            child: AppProgressBar(
               value: c.score / 100,
               minHeight: 6,
               color: AppColors.ink,
@@ -646,16 +653,15 @@ class _ChoiceRow<T> extends StatelessWidget {
       child: Row(
         children: [
           Expanded(child: Text(label, style: const TextStyle(fontSize: 15))),
-          DropdownButton<T>(
+          AppSelectPill<T>(
             value: value,
-            underline: const SizedBox.shrink(),
-            items: [
+            sheetTitle: label,
+            options: [
               for (final v in values)
-                DropdownMenuItem(value: v, child: Text(labelOf(v))),
+                AppOption(v, labelOf(v),
+                    key: ValueKey('choice-${(key as ValueKey?)?.value}-$v')),
             ],
-            onChanged: (v) {
-              if (v != null && v != value) onChanged(v);
-            },
+            onChanged: onChanged,
           ),
         ],
       ),

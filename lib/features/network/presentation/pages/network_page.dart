@@ -15,8 +15,15 @@ import 'package:finnet/features/network/domain/network_links.dart';
 import 'package:finnet/features/network/presentation/providers/network_providers.dart';
 import 'package:finnet/features/network/presentation/providers/network_saver.dart';
 import 'package:finnet/features/network/presentation/widgets/profile_view.dart';
+import 'package:finnet/shared/utils/share_origin.dart';
+import 'package:finnet/shared/widgets/app_actions_sheet.dart';
+import 'package:finnet/shared/widgets/app_chip.dart';
+import 'package:finnet/shared/widgets/app_select.dart';
+import 'package:finnet/shared/widgets/app_share_button.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 const _muted = Color(0xFF6B7280);
 
@@ -53,6 +60,7 @@ class NetworkPage extends ConsumerStatefulWidget {
 
   static const searchKey = ValueKey('network-search');
   static const mutualKey = ValueKey('network-mutual');
+  static const sortKey = ValueKey('network-sort');
   static const emptyKey = ValueKey('network-empty');
   static const recapKey = ValueKey('network-recap');
   static const savedMeKey = ValueKey('network-saved-me');
@@ -66,6 +74,9 @@ class NetworkPage extends ConsumerStatefulWidget {
 }
 
 class _NetworkPageState extends ConsumerState<NetworkPage> {
+  /// The export button: what the share sheet points from.
+  final _exportAnchor = GlobalKey();
+
   late NetworkQuery _query = NetworkQuery(eventId: widget.eventId);
   final _search = TextEditingController();
   Timer? _typing;
@@ -160,6 +171,7 @@ class _NetworkPageState extends ConsumerState<NetworkPage> {
         text: text,
         mimeType: format == NetworkExportFormat.vcf ? 'text/vcard' : 'text/csv',
         subject: 'My MyOtherApp network',
+        origin: shareOriginOf(_exportAnchor.currentContext),
       );
     } catch (e) {
       if (!mounted) return;
@@ -228,23 +240,29 @@ class _NetworkPageState extends ConsumerState<NetworkPage> {
             icon: const Icon(Icons.qr_code_2),
             onPressed: () => context.push(myQrLocation),
           ),
-          PopupMenuButton<NetworkExportFormat>(
-            key: NetworkPage.exportKey,
-            tooltip: 'Export',
-            icon: const Icon(Icons.ios_share),
-            onSelected: _export,
-            itemBuilder: (_) => const [
-              PopupMenuItem(
-                  value: NetworkExportFormat.vcf,
-                  child: Text('Export to contacts (vCard)')),
-              PopupMenuItem(
-                  value: NetworkExportFormat.csv,
-                  child: Text('Export as a spreadsheet (CSV)')),
-            ],
+          KeyedSubtree(
+            key: _exportAnchor,
+            child: AppMenuButton<NetworkExportFormat>(
+              key: NetworkPage.exportKey,
+              tooltip: 'Export',
+              title: 'Export my network',
+              icon: const AppShareIcon(),
+              onSelected: _export,
+              actions: () => const [
+                AppAction(
+                    value: NetworkExportFormat.vcf,
+                    label: 'Export to contacts (vCard)',
+                    icon: Icons.contact_page_outlined),
+                AppAction(
+                    value: NetworkExportFormat.csv,
+                    label: 'Export as a spreadsheet (CSV)',
+                    icon: Icons.table_chart_outlined),
+              ],
+            ),
           ),
         ],
       ),
-      body: RefreshIndicator(
+      body: AppRefresh(
         color: AppColors.ink,
         onRefresh: _refresh,
         child: CustomScrollView(
@@ -302,53 +320,55 @@ class _NetworkPageState extends ConsumerState<NetworkPage> {
     final tags = list?.tags ?? const <NetworkTagCount>[];
     final chosenEvent = _query.eventId;
     return SizedBox(
-      height: 40,
+      height: AppChip.touch,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          PopupMenuButton<NetworkSort>(
-            tooltip: 'Sort',
-            onSelected: (sort) => _setQuery(_query.copyWith(sort: sort)),
-            itemBuilder: (_) => [
-              for (final sort in NetworkSort.values)
-                CheckedPopupMenuItem(
-                    value: sort,
-                    checked: sort == _query.sort,
-                    child: Text(sort.label)),
-            ],
-            child: Chip(
-              avatar: const Icon(Icons.sort, size: 16),
-              label: Text(_query.sort.label),
-              visualDensity: VisualDensity.compact,
-            ),
+          AppChip(
+            key: NetworkPage.sortKey,
+            label: 'Sort: ${_query.sort.label}',
+            icon: Icons.sort_rounded,
+            onTap: () async {
+              final picked = await showAppSelect<NetworkSort>(
+                context,
+                title: 'Sort by',
+                selected: _query.sort,
+                options: [
+                  for (final sort in NetworkSort.values)
+                    AppOption(sort, sort.label,
+                        key: ValueKey('network-sort-${sort.name}')),
+                ],
+              );
+              if (picked != null) {
+                _setQuery(_query.copyWith(sort: picked.value));
+              }
+            },
           ),
-          const SizedBox(width: 6),
-          FilterChip(
+          const SizedBox(width: 8),
+          AppChip(
             key: NetworkPage.mutualKey,
-            label: const Text('Mutual'),
+            label: 'Mutual',
             selected: _query.mutualOnly,
-            visualDensity: VisualDensity.compact,
             onSelected: (on) => _setQuery(_query.copyWith(mutualOnly: on)),
           ),
           for (final e in events) ...[
-            const SizedBox(width: 6),
-            FilterChip(
+            const SizedBox(width: 8),
+            AppChip(
               key: ValueKey('network-event-${e.event.id}'),
-              label: Text('${e.event.name} · ${e.count}'),
+              label: e.event.name,
+              count: e.count,
               selected: chosenEvent == e.event.id,
-              visualDensity: VisualDensity.compact,
               onSelected: (on) => _setQuery(on
                   ? _query.copyWith(eventId: e.event.id)
                   : _query.copyWith(clearEvent: true)),
             ),
           ],
           for (final t in tags) ...[
-            const SizedBox(width: 6),
-            FilterChip(
+            const SizedBox(width: 8),
+            AppChip(
               key: ValueKey('network-tag-${t.tag}'),
-              label: Text('#${t.tag}'),
+              label: '#${t.tag}',
               selected: _query.tag == t.tag,
-              visualDensity: VisualDensity.compact,
               onSelected: (on) => _setQuery(on
                   ? _query.copyWith(tag: t.tag)
                   : _query.copyWith(clearTag: true)),
@@ -419,7 +439,7 @@ class _NetworkPageState extends ConsumerState<NetworkPage> {
         SliverFillRemaining(
           hasScrollBody: false,
           child: Center(
-              child: CircularProgressIndicator(
+              child: AppSpinner(
                   strokeWidth: 2, color: AppColors.ink)),
         ),
       ];

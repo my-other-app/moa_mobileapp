@@ -5,6 +5,7 @@ import 'package:finnet/features/main/presentation/pages/main_shell.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/volunteer/data/saved_scans.dart';
 import 'package:finnet/shared/widgets/confirmation_dialog.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// Asks, then signs out: the profile is cleared, the session ended and the
 /// tabs set back to the first. From Profile and from Settings.
@@ -117,7 +118,7 @@ class _UnsentScansDialogState extends State<UnsentScansDialog> {
               SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: AppSpinner(strokeWidth: 2)),
               SizedBox(width: 12),
               Text('Sending…'),
             ]),

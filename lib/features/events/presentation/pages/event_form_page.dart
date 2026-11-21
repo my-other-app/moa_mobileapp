@@ -40,6 +40,7 @@ import 'package:finnet/features/payments/data/repositories/payment_repository_im
 import 'package:finnet/core/api/api_helper.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 class EventFormPage extends ConsumerStatefulWidget {
   /// The event's id; null when the form was opened by the event's slug (a
@@ -945,7 +946,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       );
     }
     if (_loadingEvent) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppSpinner());
     }
     if (_loadError != null) {
       return ErrorView(message: _loadError, onRetry: _loadEvent);
@@ -1304,7 +1305,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                               child: SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(
+                                child: AppSpinner(
                                   strokeWidth: 2,
                                   color: Color(0xFF2C333D),
                                 ),
@@ -1441,7 +1442,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                     disabledBackgroundColor: Colors.grey,
                   ),
                   child: _isSubmitting
-                      ? CircularProgressIndicator(color: Colors.white)
+                      ? AppSpinner(color: Colors.white)
                       : Text(
                           _confirmsEach ? 'Register' : 'Continue',
                           textAlign: TextAlign.center,

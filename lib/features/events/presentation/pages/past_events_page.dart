@@ -6,6 +6,8 @@ import 'package:finnet/shared/widgets/event_card.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/features/events/presentation/pages/no_past_events_page.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 class PastEventsPage extends StatefulWidget {
   const PastEventsPage({super.key});
@@ -74,7 +76,7 @@ class _PastEventsPageState extends State<PastEventsPage>
 
     return NotificationListener<ScrollNotification>(
       onNotification: onFeedScroll,
-      child: RefreshIndicator(
+      child: AppRefresh(
         onRefresh: fetchFirstPage,
         child: ListView.separated(
           primary: true,
@@ -94,7 +96,7 @@ class _PastEventsPageState extends State<PastEventsPage>
               return const Center(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
-                  child: CircularProgressIndicator(),
+                  child: AppSpinner(),
                 ),
               );
             }

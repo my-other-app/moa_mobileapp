@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/events/events_fakes.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The server behind a search: each endpoint's answer arrives when the test
 /// says.
@@ -89,7 +90,7 @@ void main() {
       await _type(tester, 'C++ & AI');
       await tester.pump(const Duration(milliseconds: 299));
       expect(server.asked, isEmpty, reason: 'not a request per keystroke');
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(AppSpinner), findsOneWidget);
 
       await tester.pump(const Duration(milliseconds: 1));
       expect(server.asked,
@@ -138,12 +139,12 @@ void main() {
 
       await _type(tester, 'robots');
       await tester.pump(searchDebounce);
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(find.byType(AppProgressBar), findsOneWidget);
       expect(find.text('Robot Wars'), findsOneWidget);
 
       server.answer(server.asked.last, [_event(9, 'Robots at Dawn')]);
       await _answered(tester);
-      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(find.byType(AppProgressBar), findsNothing);
       expect(find.text('Robots at Dawn'), findsOneWidget);
       expect(find.text('Robot Wars'), findsNothing);
     });

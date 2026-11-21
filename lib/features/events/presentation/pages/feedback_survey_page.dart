@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finnet/features/events/data/datasources/feedback_survey_datasource.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_chip.dart';
 
 /// The organisers' survey after an event, answered here: stars, a 0-10
 /// "would you recommend", and words. The same survey as the website's
@@ -126,7 +128,7 @@ class _FeedbackSurveyPageState extends ConsumerState<FeedbackSurveyPage> {
   }
 
   Widget _body() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const Center(child: AppSpinner());
     final survey = _survey;
     if (survey == null) {
       return Center(
@@ -233,9 +235,9 @@ class _FeedbackSurveyPageState extends ConsumerState<FeedbackSurveyPage> {
               runSpacing: 6,
               children: [
                 for (var n = 0; n <= 10; n++)
-                  ChoiceChip(
+                  AppChip(
                     key: ValueKey('survey-${q.key}-$n'),
-                    label: Text('$n'),
+                    label: '$n',
                     selected: picked == n,
                     onSelected: (_) => setState(() => _answers[q.key] = n),
                   ),

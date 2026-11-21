@@ -91,8 +91,9 @@ class ClubListTile extends StatelessWidget {
               ),
             ),
             IconButton(
+              tooltip: 'More for $clubName',
               onPressed: () => _showOptionsBottomSheet(context),
-              icon: const Icon(Icons.more_vert, color: Colors.black54),
+              icon: const Icon(Icons.more_horiz_rounded, color: Colors.black54),
             )
           ],
         ),

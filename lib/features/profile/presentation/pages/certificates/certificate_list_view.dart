@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:finnet/features/profile/presentation/pages/certificates/no_certificate_page.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
 import 'package:finnet/shared/widgets/certificate_list_card.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// The list behind both the ALL and PINNED tabs.
 ///
@@ -27,7 +29,7 @@ class CertificateListView extends ConsumerWidget {
     final sort = ref.watch(certificateSortProvider);
 
     return certificatesAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: AppSpinner()),
       error: (error, _) => _CertificatesError(
         onRetry: () => ref.invalidate(certificatesProvider),
       ),
@@ -59,7 +61,7 @@ class CertificateListView extends ConsumerWidget {
           return const NoCertificatePage();
         }
 
-        return RefreshIndicator(
+        return AppRefresh(
           onRefresh: () async => ref.invalidate(certificatesProvider),
           child: ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),

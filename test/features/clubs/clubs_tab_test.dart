@@ -76,7 +76,7 @@ Finder _optionsOf(String club) => find.descendant(
       of: find
           .ancestor(of: find.text(club), matching: find.byType(InkWell))
           .first,
-      matching: find.byIcon(Icons.more_vert),
+      matching: find.byIcon(Icons.more_horiz_rounded),
     );
 
 Future<void> _openOptions(WidgetTester tester, String club) async {
@@ -117,7 +117,7 @@ void main() {
     final circuitRow = find.text('Circuit Society').last;
     await tester.tap(find.descendant(
         of: find.ancestor(of: circuitRow, matching: find.byType(InkWell)).first,
-        matching: find.byIcon(Icons.more_vert)));
+        matching: find.byIcon(Icons.more_horiz_rounded)));
     await tester.pumpAndSettle();
     expect(find.text('Unpin'), findsOneWidget);
   });

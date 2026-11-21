@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/features/profile/domain/entities/certificate_verification.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// "Verify a certificate": is this MyOtherApp certificate genuine, and
 /// still valid? `/verify/certificates`, or `/verify/certificates/{code}` to
@@ -177,7 +178,7 @@ class _Result extends ConsumerWidget {
     return answer.when(
       loading: () => const Padding(
         padding: EdgeInsets.all(24),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: AppSpinner()),
       ),
       error: (error, _) => _Panel(
         key: const ValueKey('verify-result-error'),

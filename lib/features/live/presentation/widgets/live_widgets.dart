@@ -1,6 +1,7 @@
 import 'package:finnet/features/live/domain/live_quiz.dart';
 import 'package:finnet/features/live/domain/live_room.dart';
 import 'package:flutter/material.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The live room's colours: the event page's LIVE NOW strip's greens, and
 /// the app's dark button.
@@ -411,7 +412,7 @@ class LiveWaiting extends StatelessWidget {
                   const SizedBox(
                     width: 68,
                     height: 68,
-                    child: CircularProgressIndicator(
+                    child: AppSpinner(
                       strokeWidth: 2,
                       color: LiveColors.edge,
                     ),
@@ -1168,7 +1169,7 @@ class _QuestionsSectionState extends State<QuestionsSection> {
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(
+                            child: AppSpinner(
                                 strokeWidth: 2, color: Colors.white),
                           )
                         : const Text('Ask'),
@@ -1831,7 +1832,7 @@ class QuizClock extends StatelessWidget {
               builder: (context, v, _) => SizedBox(
                 width: 58,
                 height: 58,
-                child: CircularProgressIndicator(
+                child: AppSpinner(
                   value: v,
                   strokeWidth: 5,
                   backgroundColor: Colors.white,

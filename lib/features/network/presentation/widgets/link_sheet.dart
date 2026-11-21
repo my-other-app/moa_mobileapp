@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:finnet/core/themes/app_colors.dart';
 import 'package:finnet/features/network/domain/profile.dart';
 import 'package:finnet/features/network/presentation/widgets/profile_view.dart';
+import 'package:finnet/shared/widgets/app_select.dart';
 
 /// Adding or changing one link: paste it, and the type picks itself
 /// (LinkedIn, GitHub...); a label is optional. Answers the link, or null.
@@ -102,37 +103,24 @@ class _LinkSheetState extends State<LinkSheet> {
             ),
             const SizedBox(height: 12),
             // Follows the pasted link's type until the person picks one.
-            InputDecorator(
-              decoration: const InputDecoration(
-                  labelText: 'Type',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12)),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  key: LinkSheet.typeKey,
-                  value: _type,
-                  isExpanded: true,
-                  items: [
-                    for (final type in profileLinkTypes)
-                      DropdownMenuItem(
-                        value: type,
-                        child: Row(
-                          children: [
-                            Icon(profileLinkIcon(type), size: 18),
-                            const SizedBox(width: 8),
-                            Text(type == 'other'
-                                ? 'Other'
-                                : profileLinkTypeLabel(type)),
-                          ],
-                        ),
-                      ),
-                  ],
-                  onChanged: (type) => setState(() {
-                    _type = type ?? _type;
-                    _typeChosen = true;
-                  }),
-                ),
-              ),
+            AppSelectField<String>(
+              key: LinkSheet.typeKey,
+              label: 'Type',
+              sheetTitle: 'Link type',
+              value: _type,
+              options: [
+                for (final type in profileLinkTypes)
+                  AppOption(
+                    type,
+                    type == 'other' ? 'Other' : profileLinkTypeLabel(type),
+                    icon: profileLinkIcon(type),
+                    key: ValueKey('link-type-$type'),
+                  ),
+              ],
+              onChanged: (type) => setState(() {
+                _type = type;
+                _typeChosen = true;
+              }),
             ),
             const SizedBox(height: 12),
             TextField(

@@ -9,6 +9,7 @@ import 'package:finnet/features/profile/presentation/providers/profile_provider.
 import 'package:finnet/features/auth/presentation/cubits/profile_cubit.dart';
 import 'package:finnet/features/auth/data/models/profile.dart';
 import 'package:finnet/features/auth/data/services/profile_service.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// Profile Check Page - fully migrated to Riverpod and GoRouter.
 class ProfileCheckPage extends ConsumerStatefulWidget {
@@ -132,7 +133,7 @@ class _ProfileCheckPageState extends ConsumerState<ProfileCheckPage> {
     final failure = _failure;
     if (failure == null) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: AppSpinner()),
       );
     }
     return Scaffold(

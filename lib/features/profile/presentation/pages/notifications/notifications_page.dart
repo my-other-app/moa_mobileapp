@@ -6,6 +6,8 @@ import 'package:finnet/features/notifications/data/models/notification_model.dar
 import 'package:finnet/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:finnet/features/profile/presentation/pages/notifications/no_notification_page.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// Notifications page showing in-app notification history.
 class NotificationsNewPage extends ConsumerStatefulWidget {
@@ -87,7 +89,7 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
     // way to the spinner on every visit until the server answered.
     if (state.isLoading && state.notifications.isEmpty) {
       return const Center(
-        child: CircularProgressIndicator(
+        child: AppSpinner(
           color: Color(0xFF1A1A2E),
         ),
       );
@@ -110,7 +112,7 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
     // Group notifications by date
     final grouped = _groupNotifications(state.notifications);
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: () => ref.read(notificationsProvider.notifier).refresh(),
       color: const Color(0xFF1A1A2E),
       child: ListView.builder(
@@ -122,7 +124,7 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
             return const Padding(
               padding: EdgeInsets.all(16),
               child: Center(
-                child: CircularProgressIndicator(
+                child: AppSpinner(
                   strokeWidth: 2,
                   color: Color(0xFF1A1A2E),
                 ),

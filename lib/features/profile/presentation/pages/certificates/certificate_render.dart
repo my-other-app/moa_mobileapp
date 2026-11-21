@@ -10,6 +10,7 @@ import 'package:finnet/features/profile/data/certificate_documents.dart';
 import 'package:finnet/features/profile/domain/entities/certificate.dart';
 import 'package:finnet/features/profile/presentation/providers/certificates_provider.dart';
 import 'package:finnet/shared/widgets/rendered_document_image.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The certificate as the club designed it: the server's render -- the
 /// same document the club's email attaches -- kept on the phone under the
@@ -211,7 +212,7 @@ class _Loading extends StatelessWidget {
           child: SizedBox(
             width: 26,
             height: 26,
-            child: CircularProgressIndicator(strokeWidth: 2.5),
+            child: AppSpinner(strokeWidth: 2.5),
           ),
         ),
       ),
@@ -234,7 +235,7 @@ class _Refreshing extends StatelessWidget {
       child: const SizedBox(
         width: 14,
         height: 14,
-        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+        child: AppSpinner(strokeWidth: 2, color: Colors.white),
       ),
     );
   }

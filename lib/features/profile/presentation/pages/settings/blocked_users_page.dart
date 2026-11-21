@@ -6,6 +6,8 @@ import 'package:finnet/features/threads/presentation/widgets/moderation_actions.
 import 'package:finnet/features/threads/presentation/widgets/thread_card.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// Settings > Blocked Users: everyone this person has blocked, each with an
 /// Unblock button.
@@ -77,7 +79,7 @@ class _BlockedUsersPageState extends ConsumerState<BlockedUsersPage> {
         );
       }
       return const Center(
-        child: CircularProgressIndicator(strokeWidth: 2, color: ThreadCard.ink),
+        child: AppSpinner(strokeWidth: 2, color: ThreadCard.ink),
       );
     }
 
@@ -108,7 +110,7 @@ class _BlockedUsersPageState extends ConsumerState<BlockedUsersPage> {
       );
     }
 
-    return RefreshIndicator(
+    return AppRefresh(
       color: ThreadCard.ink,
       onRefresh: ref.read(moderationProvider.notifier).loadBlocked,
       child: ListView.separated(
@@ -150,7 +152,7 @@ class _BlockedUsersPageState extends ConsumerState<BlockedUsersPage> {
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: AppSpinner(strokeWidth: 2),
                       )
                     : const Text('Unblock'),
               ),

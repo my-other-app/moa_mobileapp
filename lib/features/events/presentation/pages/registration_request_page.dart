@@ -20,6 +20,8 @@ import 'package:finnet/features/events/presentation/utils/event_errors.dart';
 import 'package:finnet/features/events/presentation/widgets/answers_needed_note.dart';
 import 'package:finnet/features/events/presentation/widgets/event_page/register_bar_parts.dart';
 import 'package:finnet/features/payments/domain/in_app_sale_policy.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 const _ink = Color(0xFF2C333D);
 const _muted = Color(0xFF4B5563);
@@ -384,7 +386,7 @@ class _RegistrationRequestPageState
     switch (_stage) {
       case _Stage.loading:
         return const Center(
-          child: CircularProgressIndicator(
+          child: AppSpinner(
               semanticsLabel: 'Loading your registration'),
         );
       case _Stage.notFound:
@@ -415,7 +417,7 @@ class _RegistrationRequestPageState
           ],
         ));
       case _Stage.ready:
-        return RefreshIndicator(
+        return AppRefresh(
           onRefresh: () => _load(quiet: true),
           child: _scroll(_requestView(context, _request!)),
         );
@@ -746,7 +748,7 @@ class _RegistrationRequestPageState
                     child: SizedBox(
                       width: 24,
                       height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: AppSpinner(strokeWidth: 2),
                     ),
                   );
             if (back != null) buttons.add(back);

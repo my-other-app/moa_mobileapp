@@ -23,6 +23,7 @@ import 'package:finnet/shared/widgets/entrance.dart';
 import 'package:finnet/shared/widgets/fade_switch.dart';
 import 'package:finnet/shared/widgets/pressable.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// Posts shown on the front page; the rest are in From the clubs.
 const homeThreads = 3;
@@ -200,7 +201,7 @@ class _DiscoverHomePageState extends ConsumerState<DiscoverHomePage>
       phase: ScreenPhase.content,
       child: ColoredBox(
         color: Colors.white,
-        child: RefreshIndicator(
+        child: AppRefresh(
           onRefresh: _refresh,
           // The sections come in one after another, the first time only.
           child: EntranceScope(

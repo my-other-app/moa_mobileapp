@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'events_fakes.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// A screen the success page is opened over, so where Back leads can be
 /// seen.
@@ -67,7 +68,7 @@ void main() {
     expect(find.text(_heading), findsOneWidget);
     expect(find.text('Hang tight while we whip up your ticket'),
         findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(AppSpinner), findsOneWidget);
     expect(find.byType(TicketViewPage), findsNothing);
   });
 

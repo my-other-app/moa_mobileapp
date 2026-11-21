@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../events/events_fakes.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 const _firstPage = '/events/for-you?offset=0&limit=10';
 const _secondPage = '/events/for-you?offset=10&limit=10';
@@ -131,7 +132,7 @@ void main() {
     await _settle(tester);
     expect(find.text('The eleventh'), findsOneWidget);
     // A short page is the last: nothing more is asked for.
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(AppSpinner), findsNothing);
   });
 
   testWidgets('a short first page is the whole feed: no next page',

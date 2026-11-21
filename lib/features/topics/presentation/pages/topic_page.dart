@@ -16,6 +16,7 @@ import 'package:finnet/features/topics/presentation/widgets/topic_chips.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_style.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// Clubs shown on a topic's page; the rest are in the clubs directory.
 const topicPageClubs = 8;
@@ -156,7 +157,7 @@ class _TopicBody extends ConsumerWidget {
       );
     }
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: () async {
         ref.invalidate(topicPageProvider(topic.slug));
         await eventsNotifier.refresh();

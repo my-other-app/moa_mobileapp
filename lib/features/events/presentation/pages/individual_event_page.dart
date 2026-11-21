@@ -81,6 +81,9 @@ import 'package:finnet/features/events/presentation/widgets/ticketing/waitlist_w
 import 'package:finnet/shared/widgets/event_card.dart'
     show EventCard, EventCardStatus;
 import 'package:finnet/shared/utils/share_origin.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
+import 'package:finnet/shared/widgets/app_share_button.dart';
 
 /// The `status` a card sends in its extras for an event that has already
 /// happened and that this person attended -- whether or not a certificate
@@ -2067,12 +2070,12 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             ),
           IconButton(
             tooltip: 'Share event',
-            icon: const Icon(Icons.share_outlined),
+            icon: const AppShareIcon(),
             onPressed: _shareEvent,
           ),
         ],
       ),
-      body: RefreshIndicator(
+      body: AppRefresh(
         key: IndividualEventPage.refreshKey,
         color: AppColors.ink,
         onRefresh: _refresh,
@@ -2705,7 +2708,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
+                        child: AppSpinner(
                             strokeWidth: 2, color: Colors.white),
                       )
                     : Text(blocked ?? 'FINISH PAYMENT'),
@@ -2754,7 +2757,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(
+                      child: AppSpinner(
                           strokeWidth: 2, color: Colors.white),
                     )
                   : const Text('CHECK PAYMENT'),

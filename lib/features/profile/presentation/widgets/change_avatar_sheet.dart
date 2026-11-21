@@ -6,6 +6,7 @@ import 'package:finnet/features/profile/presentation/providers/profile_provider.
 import 'package:finnet/features/profile/presentation/widgets/my_picture.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// What was picked in [ChangeAvatarSheet].
 sealed class AvatarChoice {
@@ -167,7 +168,7 @@ class ChangeAvatarSheet extends ConsumerWidget {
                 loading: () => const SizedBox(
                   height: 120,
                   child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: AppSpinner(strokeWidth: 2),
                   ),
                 ),
                 error: (_, __) => Column(

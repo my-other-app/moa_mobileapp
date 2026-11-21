@@ -13,6 +13,7 @@ import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/shimmer_widgets.dart';
 import 'package:finnet/shared/widgets/entrance.dart';
 import 'package:finnet/shared/widgets/fade_switch.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 /// "From the clubs": the newest posts and polls from every club, newest
 /// first -- the website's `/threads`. The club's own THREADS tab's card and
@@ -56,7 +57,7 @@ class ThreadsFeedPage extends ConsumerWidget {
       );
     } else {
       phase = ScreenPhase.content;
-      body = RefreshIndicator(
+      body = AppRefresh(
         color: ThreadCard.ink,
         onRefresh: notifier.refresh,
         child: EntranceScope(

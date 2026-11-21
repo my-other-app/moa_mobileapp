@@ -10,6 +10,7 @@ import 'package:finnet/features/profile/presentation/providers/profile_provider.
 import 'package:finnet/features/topics/presentation/providers/topics_provider.dart';
 import 'package:finnet/features/topics/presentation/widgets/topic_interest_picker.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The most interests a person picks.
 const maxInterests = 5;
@@ -208,7 +209,7 @@ class _InterestsSelectionPageState
                       ),
                       loading: () => const Padding(
                         padding: EdgeInsets.all(48),
-                        child: Center(child: CircularProgressIndicator()),
+                        child: Center(child: AppSpinner()),
                       ),
                       error: (_, __) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 32),
@@ -303,7 +304,7 @@ class _InterestsSelectionPageState
             ),
           ),
           child: isLoading
-              ? const CircularProgressIndicator(color: Colors.white)
+              ? const AppSpinner(color: Colors.white)
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [

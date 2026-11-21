@@ -14,8 +14,11 @@ import 'package:finnet/features/network/presentation/widgets/note_sheet.dart';
 import 'package:finnet/features/network/presentation/widgets/profile_view.dart';
 import 'package:finnet/features/threads/domain/entities/moderation.dart';
 import 'package:finnet/features/threads/presentation/widgets/moderation_actions.dart';
+import 'package:finnet/shared/widgets/app_actions_sheet.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 import 'package:finnet/shared/widgets/toast.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_refresh.dart';
 
 const _muted = Color(0xFF6B7280);
 
@@ -133,18 +136,31 @@ class _NetworkPersonPageState extends ConsumerState<NetworkPersonPage> {
         foregroundColor: Colors.black,
         actions: [
           if (person != null)
-            PopupMenuButton<String>(
+            AppMenuButton<String>(
               key: NetworkPersonPage.menuKey,
+              title: person.person.fullName,
               onSelected: (choice) => _onMenu(choice, person),
-              itemBuilder: (_) => [
+              actions: () => [
                 if (person.person.handle != null)
-                  const PopupMenuItem(
-                      value: 'contact', child: Text('Export to contacts')),
-                const PopupMenuItem(
-                    value: 'remove', child: Text('Remove from my network')),
+                  const AppAction(
+                      value: 'contact',
+                      label: 'Export to contacts',
+                      icon: Icons.contact_page_outlined),
+                const AppAction(
+                    value: 'remove',
+                    label: 'Remove from my network',
+                    icon: Icons.person_remove_outlined,
+                    destructive: true),
                 if (person.person.userId != null) ...[
-                  const PopupMenuItem(value: 'report', child: Text('Report')),
-                  const PopupMenuItem(value: 'block', child: Text('Block')),
+                  const AppAction(
+                      value: 'report',
+                      label: 'Report',
+                      icon: Icons.flag_outlined),
+                  const AppAction(
+                      value: 'block',
+                      label: 'Block',
+                      icon: Icons.block,
+                      destructive: true),
                 ],
               ],
             ),
@@ -164,14 +180,14 @@ class _NetworkPersonPageState extends ConsumerState<NetworkPersonPage> {
                           ref.invalidate(networkPersonProvider(widget.id)),
                     )
               : const Center(
-                  child: CircularProgressIndicator(
+                  child: AppSpinner(
                       strokeWidth: 2, color: AppColors.ink)),
     );
   }
 
   Widget _page(NetworkPerson person) {
     final brief = person.person;
-    return RefreshIndicator(
+    return AppRefresh(
       color: AppColors.ink,
       onRefresh: () => ref.refresh(networkPersonProvider(widget.id).future),
       child: ListView(

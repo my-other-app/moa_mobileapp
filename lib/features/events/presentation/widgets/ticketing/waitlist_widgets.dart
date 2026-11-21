@@ -4,6 +4,8 @@ import 'package:finnet/core/utils/error_utils.dart';
 import 'package:finnet/core/utils/whatsapp_number.dart';
 import 'package:finnet/features/events/data/ticketing_api.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
+import 'package:finnet/shared/widgets/app_spinner.dart';
+import 'package:finnet/shared/widgets/app_chip.dart';
 
 const _ink = Color(0xFF2C333D);
 
@@ -302,9 +304,9 @@ class _JoinWaitlistFormState extends State<JoinWaitlistForm> {
                 runSpacing: 4,
                 children: [
                   for (final type in choices)
-                    ChoiceChip(
+                    AppChip(
                       key: ValueKey('waitlist-type-${type.id}'),
-                      label: Text(type.name),
+                      label: type.name,
                       selected: _type == type.id,
                       onSelected: (_) => setState(() => _type = type.id),
                     ),
@@ -369,7 +371,7 @@ class _JoinWaitlistFormState extends State<JoinWaitlistForm> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
+                        child: AppSpinner(
                             strokeWidth: 2, color: Colors.white),
                       )
                     : const Text('JOIN THE WAITING LIST'),
