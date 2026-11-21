@@ -217,8 +217,26 @@ class NotificationModel {
   /// data): the event has it, and it was open when they came in.
   bool get opensPeople => jsonString(data?['open']) == 'people';
 
+  /// A quest's note -- "🎁 You unlocked Tier 1", "Your T-shirt is
+  /// waiting" -- or any line that opens the event's quest (`open: quest`).
+  bool get isQuest =>
+      type == questUnlockedType ||
+      type == questRewardHeldType ||
+      jsonString(data?['open']) == 'quest';
+
+  /// The event's name: the row's event, else the name the line's data
+  /// carries (`event_name`, as a quest's note does); null when neither.
+  String? get eventName {
+    final own = event?.name.trim() ?? '';
+    if (own.isNotEmpty) return own;
+    final carried = jsonString(data?['event_name'])?.trim() ?? '';
+    return carried.isEmpty ? null : carried;
+  }
+
   /// Get display icon based on notification type
   String get iconEmoji {
+    // The quest's own mark, as on its card.
+    if (isQuest) return '🎯';
     switch (type) {
       case 'event_live_join':
         return liveWhat == 'quiz' ? '🧠' : '📊';

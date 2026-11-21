@@ -106,7 +106,8 @@
                for missing sign-up details sends; /speakers/{slug} is a
                speaker's page; /u/{handle} is a person's profile and
                /p/{code} their personal QR (the profile, with Save); /network is
-               the recap's link to the Network tab. An intent
+               the recap's link to the Network tab, /network/scan a
+               quest's "meet people" task (the scanner, at the event). An intent
                filter cannot
                leave a path out: the router sends what it can't show to
                the browser. -->
@@ -135,6 +136,7 @@
               <data android:pathPrefix="/u/"/>
               <data android:pathPrefix="/p/"/>
               <data android:path="/network"/>
+              <data android:path="/network/scan"/>
           </intent-filter>
       </activity>
 

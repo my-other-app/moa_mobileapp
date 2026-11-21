@@ -25,6 +25,7 @@ import 'package:finnet/features/events/presentation/pages/explore_events_page.da
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart';
 import 'package:finnet/features/events/presentation/events_routes.dart';
 import 'package:finnet/features/live/live_routes.dart';
+import 'package:finnet/features/quests/quest_routes.dart';
 import 'package:finnet/features/clubs/presentation/pages/clubs_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_individual_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/explore_more_clubs_page.dart';
@@ -458,6 +459,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 // competition.
                 ...overHome(rootKey, discoverRoutes),
                 ...overHome(rootKey, eventsRoutes),
+                // An event's quest, in full (`/events/{ref}/quest`): what
+                // an unlock push opens.
+                ...overHome(rootKey, questRoutes),
                 ...overHome(rootKey, threadsRoutes),
                 ...overHome(rootKey, profileRoutes),
                 // A speaker's page (the speakers directory), from their card

@@ -304,12 +304,19 @@ class SaveResult {
     this.created = true,
     this.newEncounter = true,
     this.profile,
+    this.quest,
   });
 
   final NetworkPerson person;
   final bool created;
   final bool newEncounter;
   final PublicProfile? profile;
+
+  /// The saver's "meet people" counts at the event's quest, counted in the
+  /// save (quests contract v1.2 §8.6: `{event_id, tasks: [...]}`), as sent;
+  /// the quest feature reads it. Null for a save with nothing to count, or
+  /// from a server before it.
+  final Map<String, dynamic>? quest;
 
   static SaveResult? fromJson(Object? value) {
     final json = jsonObject(value);
@@ -320,6 +327,7 @@ class SaveResult {
       created: jsonBool(json['created']) ?? true,
       newEncounter: jsonBool(json['new_encounter']) ?? true,
       profile: PublicProfile.fromJson(json['profile']),
+      quest: jsonObject(json['quest']),
     );
   }
 }
