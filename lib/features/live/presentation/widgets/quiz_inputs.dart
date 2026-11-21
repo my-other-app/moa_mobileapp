@@ -917,12 +917,24 @@ class QuizTeamChip extends StatelessWidget {
   final QuizTeam team;
   final String prefix;
 
+  /// What a screen reader says: "Team Red Rockets", but a name that already
+  /// starts with "Team" (any case) as it is, never "Team Team Flutter".
+  /// The website's `teamLabel` follows the same rule.
+  static String spokenLabel(String prefix, String name) {
+    final n = name.trim();
+    if (prefix == 'Team' &&
+        RegExp(r'^team(?![a-z])', caseSensitive: false).hasMatch(n)) {
+      return n;
+    }
+    return '$prefix $n';
+  }
+
   @override
   Widget build(BuildContext context) {
     final colour = _teamColour(team) ?? LiveColors.muted;
     return Semantics(
       container: true,
-      label: '$prefix ${team.name}',
+      label: spokenLabel(prefix, team.name),
       excludeSemantics: true,
       child: Container(
         key: const ValueKey('quiz-team'),
