@@ -101,7 +101,7 @@ void main() {
         'Cloud Community Days x DevFest 2026');
   });
 
-  testWidgets('drawn on the quest card\'s yellow', (tester) async {
+  testWidgets('drawn on its own colour', (tester) async {
     useFakeApi().on('GET', '/events/1/quest', questJson());
     await _pumpInbox(
         tester, [_line('n1', 'quest_unlocked', '🎁 You unlocked Tier 1')]);

@@ -17,7 +17,7 @@ String questCodeKey(String code) =>
 /// What to say for a code that did not tick anything; null for one that
 /// did.
 String? codeOutcomeMessage(CodeOutcome outcome, {DateTime? now}) {
-  final at = now ?? DateTime.now();
+  final at = now ?? questClock();
   switch (outcome) {
     case CodeDone():
     case CodeAlreadyDone():

@@ -9,6 +9,12 @@ library;
 
 import 'package:finnet/core/utils/json_read.dart';
 
+/// The clock the quest's words go by -- "Done at 9:30 AM", "Opens 4:00
+/// PM", whether a task's window is open: the phone's. A test (or a
+/// screenshot run) sets another, so a page drawn on any day reads as the
+/// event's day.
+DateTime Function() questClock = DateTime.now;
+
 String? _text(Object? value) {
   final s = jsonString(value)?.trim();
   return s == null || s.isEmpty ? null : s;
@@ -905,8 +911,8 @@ class Quest {
           t.withProgress(QuestTaskProgress(
             count: c.count,
             done: t.done || c.done,
-            doneAt: t.me!.doneAt ??
-                (c.done ? (now ?? DateTime.now()).toUtc() : null),
+            doneAt:
+                t.me!.doneAt ?? (c.done ? (now ?? questClock()).toUtc() : null),
             source: t.me!.source ?? (c.done ? 'auto' : null),
             revoked: t.me!.revoked && !c.done,
           ))

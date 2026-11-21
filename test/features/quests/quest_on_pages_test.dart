@@ -2,6 +2,7 @@ import 'package:finnet/features/events/presentation/pages/individual_event_page.
 import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart';
 import 'package:finnet/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
+import 'package:finnet/features/quests/domain/quest.dart';
 import 'package:finnet/features/quests/presentation/widgets/quest_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -177,6 +178,25 @@ void main() {
       await pumpTicket(tester);
       expect(_card, findsOneWidget);
       expect(find.text('10 more points to unlock Tier 1'), findsOneWidget);
+    });
+
+    testWidgets('the times by the quest\'s clock: the event\'s day',
+        (tester) async {
+      questClock = () => DateTime(2026, 11, 28, 11);
+      addTearDown(() => questClock = DateTime.now);
+      useFakeApi().on(
+          'GET',
+          '/events/1/quest',
+          questJson(tasks: [
+            taskJson('t-in',
+                kind: 'checked_in',
+                title: 'Check in',
+                done: true,
+                source: 'auto'),
+          ]));
+      await pumpTicket(tester);
+      // 04:00 UTC: 9:30 AM in India, the same day.
+      expect(find.text('Done at 9:30 AM'), findsOneWidget);
     });
 
     testWidgets('no quest: the ticket as ever', (tester) async {

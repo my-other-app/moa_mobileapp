@@ -400,6 +400,17 @@ void main() {
       expect(find.byKey(QuestCard.codeKey), findsNothing);
     });
 
+    testWidgets('ended at a known time: when it ended', (tester) async {
+      useFakeApi().on(
+          'GET',
+          '/events/1/quest',
+          questJson(
+              open: false,
+              endsAt: DateTime(2026, 11, 28, 10).toUtc().toIso8601String()));
+      await _pump(tester);
+      expect(find.text('This quest ended at 10:00 AM'), findsOneWidget);
+    });
+
     testWidgets('signed out: the overview, and a word to sign in',
         (tester) async {
       useFakeApi().on('GET', '/events/1/quest', questJson(me: false));

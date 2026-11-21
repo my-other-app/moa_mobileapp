@@ -112,7 +112,7 @@ class QuestCard extends ConsumerStatefulWidget {
   /// overview there is no use).
   final bool onlyWhenTakingPart;
 
-  /// The clock, for tests.
+  /// The clock, for tests; else [questClock].
   final DateTime Function()? now;
 
   /// How many tasks the compact card lists.
@@ -136,7 +136,7 @@ class QuestCard extends ConsumerStatefulWidget {
 
 class _QuestCardState extends ConsumerState<QuestCard>
     with WidgetsBindingObserver {
-  DateTime _now() => (widget.now ?? DateTime.now)();
+  DateTime _now() => (widget.now ?? questClock)();
 
   int? get _id {
     final id = widget.eventId;
@@ -489,9 +489,13 @@ class _QuestCardState extends ConsumerState<QuestCard>
     String? line;
     if (!quest.open) {
       final start = quest.startsAt;
+      final end = quest.endsAt;
       line = start != null && start.isAfter(now)
           ? 'Starts ${questWhen(start, now)}'
-          : 'This quest has ended';
+          // "This quest ended at 6:00 PM", as the website says it.
+          : end != null && !end.isAfter(now)
+              ? 'This quest ended ${questAt(end, now)}'
+              : 'This quest has ended';
     } else if (quest.endsAt case final end? when end.isAfter(now)) {
       // Only on its last day: a deadline weeks away is noise.
       if (end.difference(now) < const Duration(hours: 24)) {
@@ -832,7 +836,11 @@ class _QuestCardState extends ConsumerState<QuestCard>
                         foregroundColor: p.ink,
                         side: BorderSide(color: p.ink.withAlpha(120)),
                         visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        minimumSize: const Size(0, 34),
+                        // The card's own size: the theme's button words
+                        // (Bebas, 24) dwarfed the task they belong to.
+                        textStyle: _buttonText,
                       ),
                       child: Text(label),
                     ),
@@ -872,10 +880,12 @@ class _QuestCardState extends ConsumerState<QuestCard>
                 style: FilledButton.styleFrom(
                   backgroundColor: p.button,
                   foregroundColor: p.buttonInk,
-                  minimumSize: const Size.fromHeight(42),
+                  minimumSize: const Size.fromHeight(44),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  textStyle: _footerText,
                 ),
                 icon: const Icon(Icons.pin_outlined, size: 18),
-                label: const Text('Enter a code'),
+                label: const _OneLine('Enter a code'),
               ),
             ),
           if (code && more) const SizedBox(width: 8),
@@ -889,9 +899,11 @@ class _QuestCardState extends ConsumerState<QuestCard>
                 style: OutlinedButton.styleFrom(
                   foregroundColor: p.ink,
                   side: BorderSide(color: p.ink.withAlpha(120)),
-                  minimumSize: const Size.fromHeight(42),
+                  minimumSize: const Size.fromHeight(44),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  textStyle: _footerText,
                 ),
-                child: Text(quest.leaderboard
+                child: _OneLine(quest.leaderboard
                     ? 'All tasks & leaderboard'
                     : 'All tasks & rewards'),
               ),
@@ -900,4 +912,26 @@ class _QuestCardState extends ConsumerState<QuestCard>
       ),
     ];
   }
+}
+
+/// A task's button: the card's own words, not the theme's big ones.
+const _buttonText = TextStyle(
+    fontFamily: 'DMSans', fontSize: 13.5, fontWeight: FontWeight.w600);
+
+/// The card's two buttons at its foot, side by side.
+const _footerText =
+    TextStyle(fontFamily: 'DMSans', fontSize: 14, fontWeight: FontWeight.w700);
+
+/// A button's words on one line, made smaller rather than wrapped when the
+/// button is narrow (two side by side on a small phone).
+class _OneLine extends StatelessWidget {
+  const _OneLine(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(text, maxLines: 1, softWrap: false),
+      );
 }

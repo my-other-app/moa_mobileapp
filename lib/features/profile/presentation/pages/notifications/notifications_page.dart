@@ -7,9 +7,9 @@ import 'package:finnet/features/notifications/presentation/providers/notificatio
 import 'package:finnet/features/profile/presentation/pages/notifications/no_notification_page.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 
-/// The circle behind a quest's note in the inbox: the quest card's yellow
-/// (its border), with its 🎯.
-const questNoteColor = Color(0xFFFDE68A);
+/// The circle behind a quest's note in the inbox, with its 🎯: a warm
+/// orange, apart from the yellow of unread rows and the live room's green.
+const questNoteColor = Color(0xFFFED7AA);
 
 /// Notifications page showing in-app notification history.
 class NotificationsNewPage extends ConsumerStatefulWidget {
@@ -265,7 +265,7 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
       height: 48,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        // A quest's note: the yellow of the quest's card.
+        // A quest's note: its own colour.
         color: notification.isQuest
             ? questNoteColor
             : _getColorForType(notification.type),
