@@ -173,6 +173,99 @@ func render() {
     save(
       LockFrame(width: 76, height: 76, scheme: scheme) { MyQrLockView() },
       "lock-my-qr-circular-\(theme)")
+
+    // "For you": several events, one, none.
+    let forYouNow = PreviewData.forYouNow
+    let forYou: [(String, ForYouData)] = [
+      ("several", PreviewData.forYouSeveral), ("few", PreviewData.forYouFew),
+      ("none", PreviewData.forYouNone),
+    ]
+    for (face, data) in forYou {
+      for (name, large, width, height) in [
+        ("medium", false, CGFloat(364), CGFloat(170)), ("large", true, CGFloat(364), CGFloat(382)),
+      ] {
+        save(
+          Frame(width: width, height: height, scheme: scheme) { palette in
+            ForYouContent(data: data, now: forYouNow, large: large, palette: palette)
+          }, "for-you-\(name)-\(face)-\(theme)")
+      }
+    }
+    save(
+      Frame(width: seLarge.0, height: seLarge.1, scheme: scheme) { palette in
+        ForYouContent(data: PreviewData.forYouSeveral, now: forYouNow, large: true, palette: palette)
+      }, "for-you-large-se-several-\(theme)")
+
+    // The event-day card: the lock screen, before and during.
+    for (face, card) in PreviewData.eventDay {
+      save(LiveActivityFrame(scheme: scheme) { palette in
+        EventDayLockView(face: card, now: PreviewData.eventDayNow, palette: palette)
+      }, "live-activity-lock-\(face)-\(theme)")
+    }
+  }
+
+  // The Dynamic Island (always black): compact, minimal, expanded.
+  for (face, card) in PreviewData.eventDay {
+    let now = PreviewData.eventDayNow
+    save(IslandFrame(width: 236, height: 37, radius: 18.5) {
+      HStack {
+        EventDayIsland.Leading()
+        Spacer()
+        EventDayIsland.Trailing(face: card, now: now)
+      }
+      .padding(.horizontal, 14)
+    }, "live-activity-island-compact-\(face)")
+    save(IslandFrame(width: 371, height: 150, radius: 44) {
+      VStack(alignment: .leading, spacing: 10) {
+        EventDayIsland.ExpandedTop(face: card, now: now)
+        EventDayIsland.ExpandedBottom(face: card)
+      }
+      .padding(.horizontal, 22)
+      .padding(.vertical, 18)
+    }, "live-activity-island-expanded-\(face)")
+  }
+  save(IslandFrame(width: 37, height: 37, radius: 18.5) { EventDayIsland.Minimal() },
+    "live-activity-island-minimal")
+}
+
+/// A Live Activity on the lock screen: a card of the lock screen's width
+/// with its own ground (activityBackgroundTint), on a wallpaper.
+struct LiveActivityFrame<Content: View>: View {
+  let scheme: ColorScheme
+  let content: (WidgetPalette) -> Content
+
+  var body: some View {
+    let palette = WidgetPalette.of(scheme)
+    content(palette)
+      .frame(width: 360, alignment: .leading)
+      .background(palette.background)
+      .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+      .padding(16)
+      .background(
+        LinearGradient(
+          colors: scheme == .dark
+            ? [Color(hex: 0x1B2A3A), Color(hex: 0x3B2F4A)]
+            : [Color(hex: 0xDCE8F2), Color(hex: 0xF3E6D8)],
+          startPoint: .topLeading, endPoint: .bottomTrailing)
+      )
+      .environment(\.colorScheme, scheme)
+  }
+}
+
+/// The Dynamic Island: black, rounded, on a status bar's grey.
+struct IslandFrame<Content: View>: View {
+  let width: CGFloat
+  let height: CGFloat
+  let radius: CGFloat
+  let content: () -> Content
+
+  var body: some View {
+    content()
+      .frame(width: width, height: height)
+      .background(Color.black)
+      .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+      .padding(14)
+      .background(Color(hex: 0xD9DEE5))
+      .environment(\.colorScheme, .dark)
   }
 }
 

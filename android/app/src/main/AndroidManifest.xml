@@ -177,6 +177,29 @@
               android:resource="@xml/networking_widget_info" />
       </receiver>
 
+      <!-- "For you", the events widget (docs/HOME_WIDGETS.md): what is on
+           this week, from the public discover front page, which it reads
+           itself every few hours (ForYouRefreshWorker, WorkManager) while
+           the app is closed. A row opens the event's page in the app. -->
+      <receiver
+          android:name=".widget.ForYouWidgetProvider"
+          android:exported="false"
+          android:label="@string/for_you_widget_label">
+          <intent-filter>
+              <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+          </intent-filter>
+          <meta-data
+              android:name="android.appwidget.provider"
+              android:resource="@xml/for_you_widget_info" />
+      </receiver>
+
+      <!-- The event-day card's alarms (eventday/EventDayNotifications.kt):
+           at the start it says it started, at the end it goes. Only the
+           app's own alarms reach it. -->
+      <receiver
+          android:name=".eventday.EventDayReceiver"
+          android:exported="false" />
+
       <!-- The Quick Settings tiles (tiles/PageTiles.kt, docs/HOME_WIDGETS.md):
            "Scan" and "My QR" open the app on those pages, through the same
            links as the widgets' taps. People add them from the tiles'

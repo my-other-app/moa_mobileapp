@@ -36,6 +36,10 @@ import FirebaseMessaging
     if let registrar = self.registrar(forPlugin: "BackupExclusion") {
       BackupExclusion.register(with: registrar)
     }
+    // The event-day card on the lock screen (EventDayActivities.swift).
+    if let registrar = self.registrar(forPlugin: "EventDayActivities") {
+      EventDayActivities.register(with: registrar)
+    }
     let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
     // Opened from a quick action on the icon: UIKit calls
     // application(_:performActionFor:) next -- unless launching answered

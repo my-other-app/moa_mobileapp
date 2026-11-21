@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "For you", the events widget (ForYouWidgetProvider, docs/HOME_WIDGETS.md).
+     Placed at 4x2 (two events); about 4x4 lists four. Home screen only.
+
+     It reads the public front page itself every few hours while the app is
+     closed (ForYouRefreshWorker, through WorkManager, on any network), and
+     the app writes what it lists whenever it reads that page. No
+     updatePeriodMillis: the worker and the app redraw it, and a booked
+     redraw drops an event once it is over. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/for_you_widget_description"
+    android:initialLayout="@layout/widget_for_you_medium"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="220dp"
+    android:minResizeHeight="110dp"
+    android:previewImage="@mipmap/ic_launcher"
+    android:previewLayout="@layout/widget_for_you_preview"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

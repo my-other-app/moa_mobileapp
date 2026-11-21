@@ -45,8 +45,8 @@ object WidgetType {
 
   /**
    * The date block's words -- [weekday], [day], [month], one under the other, centred -- in
-   * [color] on a clear ground; [large] for the medium widget. Sizes are in sp, so the block follows
-   * the phone's font size as the widget's text does.
+   * [color] on a clear ground; [large] for the medium widget, [mini] for a list's rows ("For you").
+   * Sizes are in sp, so the block follows the phone's font size as the widget's text does.
    */
   fun dateBlock(
       context: Context,
@@ -55,6 +55,7 @@ object WidgetType {
       month: String,
       large: Boolean,
       color: Int,
+      mini: Boolean = false,
   ): Bitmap {
     val metrics = context.resources.displayMetrics
     fun sp(value: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, value, metrics)
@@ -63,7 +64,11 @@ object WidgetType {
     val face = display(context)
     val words = listOf(weekday, day, month)
     val sizes =
-        if (large) listOf(sp(14f), sp(38f), sp(14f)) else listOf(sp(12f), sp(30f), sp(12f))
+        when {
+          mini -> listOf(sp(10f), sp(22f), sp(10f))
+          large -> listOf(sp(14f), sp(38f), sp(14f))
+          else -> listOf(sp(12f), sp(30f), sp(12f))
+        }
     val paints =
         sizes.map { size ->
           Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -76,9 +81,9 @@ object WidgetType {
     // Bebas Neue has only capitals and figures: each line is as tall as a capital.
     val heights =
         paints.map { paint -> Rect().also { paint.getTextBounds("H0", 0, 2, it) }.height().toFloat() }
-    val gap = dp(if (large) 5f else 4f)
+    val gap = dp(if (mini) 3f else if (large) 5f else 4f)
     val widest = words.indices.maxOf { paints[it].measureText(words[it]) }
-    val width = max(widest, dp(if (large) 40f else 32f))
+    val width = max(widest, dp(if (mini) 26f else if (large) 40f else 32f))
     val height = heights.sum() + gap * 2
 
     val bitmap =

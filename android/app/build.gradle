@@ -128,4 +128,16 @@ dependencies {
     // (widget/QrBitmap.kt): ZXing's encoder -- Apache 2.0, plain Java, no
     // dependencies of its own; R8 keeps only the encoder in release builds.
     implementation 'com.google.zxing:core:3.5.3'
+    // "For you" reads the public front page every few hours while the app is
+    // closed (widget/ForYouRefreshWorker.kt): WorkManager, already in the app
+    // through home_widget 0.10.0 (work-runtime-ktx 2.11.2) -- the same
+    // version, named so the app's own code can use it. Nothing new is added
+    // to the APK.
+    implementation 'androidx.work:work-runtime:2.11.2'
+
+    // The widgets' Kotlin rules, checked on the JVM (src/test/,
+    // `./gradlew :app:testDebugUnitTest`): JUnit, and the real org.json
+    // (Android's is only a stub there). Tests only.
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'org.json:json:20180813'
 }

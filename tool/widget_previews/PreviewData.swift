@@ -3,6 +3,48 @@ import Foundation
 
 /// The widgets' faces, for the previews: made-up people and events.
 enum PreviewData {
+  /// The shared front page's picks (test/fixtures/widgets), as the Dart
+  /// rules make them for someone in Tech.
+  static let fixtures = URL(fileURLWithPath: CommandLine.arguments[3])
+
+  static var forYouNow: Date {
+    let expected = try! JSONSerialization.jsonObject(
+      with: Data(contentsOf: fixtures.appendingPathComponent("for_you_expected.json")))
+      as! [String: Any]
+    return Date(timeIntervalSince1970: (expected["now"] as! NSNumber).doubleValue / 1000)
+  }
+
+  static var forYouSeveral: ForYouData {
+    let body = try! Data(contentsOf: fixtures.appendingPathComponent("for_you_home.json"))
+    return ForYouPicker.picked(
+      body, for: ForYouData(header: nil, items: [], ask: ForYouAsk(api: ForYouData.defaultApi, topics: [3]),
+        fetchedAt: 0, etag: nil), now: forYouNow, etag: nil)!
+  }
+
+  /// One event, from the platform's popular ones.
+  static var forYouFew: ForYouData {
+    let one = forYouSeveral.items.filter { $0.id == 107 }
+    return ForYouData(header: "This week near you", items: one, ask: ForYouAsk(api: ForYouData.defaultApi),
+      fetchedAt: 0, etag: nil)
+  }
+
+  static let forYouNone = ForYouData(
+    header: nil, items: [], ask: ForYouAsk(api: ForYouData.defaultApi), fetchedAt: 1, etag: nil)
+
+  /// The event-day card's clock: 7:15 am on DevFest's day, in India.
+  static let eventDayNow = Date(timeIntervalSince1970: 1_795_830_300)
+
+  static let eventDay: [(String, EventDayFace)] = {
+    let start = Date(timeIntervalSince1970: 1_795_838_400)  // 9:30 am
+    func face(_ phase: EventDayPhase) -> EventDayFace {
+      EventDayFace(
+        name: "DevFest Kochi 2026", place: "Le Méridien, Kochi", startsAt: start,
+        endsAt: start.addingTimeInterval(8 * 3600), time: "9:30 am",
+        link: URL(string: "https://myotherapp.in/events/1/ticket"), phase: phase)
+    }
+    return [("soon", face(.soon)), ("now", face(.now))]
+  }()
+
   static let networking: [(String, NetworkingData)] = [
     ("ready", NetworkingData.parse(#"{"v":1,"state":"ready","name":"Asha Menon","profile_link":"https://myotherapp.in/p/abcdefghjk","network":12}"#)),
     ("no-qr", NetworkingData.parse(#"{"v":1,"state":"no_qr","name":"Asha Menon"}"#)),

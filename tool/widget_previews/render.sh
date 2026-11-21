@@ -12,5 +12,7 @@ xcrun swiftc -O -target arm64-apple-macosx14.0 -o "$BIN" \
   "$W/WidgetStyle.swift" "$W/NextUpWidget.swift" "$W/NextUpData.swift" \
   "$W/NextUpLargeView.swift" "$W/NextUpLockScreen.swift" \
   "$W/NetworkingWidget.swift" "$W/NetworkingData.swift" "$W/NetworkingLargeView.swift" \
-  "$W/QRCode.swift" "$W/WidgetPhotoFiles.swift"
-"$BIN" "$ROOT/assets/fonts" "$OUT"
+  "$W/QRCode.swift" "$W/WidgetPhotoFiles.swift" \
+  "$W/ForYouData.swift" "$W/ForYouWidget.swift" \
+  "$W/EventDayAttributes.swift" "$W/EventDayViews.swift"
+"$BIN" "$ROOT/assets/fonts" "$OUT" "$ROOT/test/fixtures/widgets"

@@ -2,8 +2,9 @@
 # frozen_string_literal: true
 
 # Adds the home-screen widgets' WidgetKit extension (ios/NextUpWidget/: "Next
-# up" and "Networking", one WidgetBundle) to ios/Runner.xcodeproj, and embeds
-# it in the app. See docs/HOME_WIDGETS.md.
+# up", "Networking", "For you", the lock screen's, the controls and the
+# event-day Live Activity, one WidgetBundle) to ios/Runner.xcodeproj, and
+# embeds it in the app. See docs/HOME_WIDGETS.md.
 #
 #   ruby tool/ios_add_widget_extension.rb
 #
@@ -16,7 +17,9 @@
 #      WidgetKit, and the home_widget plugin, need iOS 14. (Every iPhone
 #      that runs iOS 13 can run iOS 14.) The Podfile says the same.
 #   2. Adds the NextUpWidget group with its Swift files (the controls'
-#      intents, ControlIntents.swift, to Runner as well), Info.plist,
+#      intents, ControlIntents.swift, and the Live Activity's attributes,
+#      EventDayAttributes.swift, to Runner as well; and Runner's own
+#      EventDayActivities.swift), Info.plist,
 #      entitlements (the App Group), privacy manifest and xcconfig, and the
 #      app's two fonts (DM Sans, Bebas Neue), referenced where they are in
 #      assets/fonts/ and copied into the extension (Info.plist UIAppFonts).
@@ -45,11 +48,17 @@ SOURCES = %w[
   NetworkingWidget.swift NetworkingData.swift NetworkingLargeView.swift
   QRCode.swift WidgetPhotoFiles.swift MyQrLockWidget.swift
   Controls.swift ControlIntents.swift
+  ForYouData.swift ForYouWidget.swift
+  EventDayAttributes.swift EventDayViews.swift EventDayLiveActivity.swift
 ].freeze
 # Built into the app as well: the controls' intents, which the system runs
 # in the app's process when they open it (Apple asks for an intent that
-# opens its app to be in both targets).
-APP_SOURCES = %w[ControlIntents.swift].freeze
+# opens its app to be in both targets), and the event-day card's
+# attributes, which the app starts the Live Activity with.
+APP_SOURCES = %w[ControlIntents.swift EventDayAttributes.swift].freeze
+# The app's own files in ios/Runner/ that this adds to it: the event-day
+# card's channel (it starts, updates and ends the Live Activity).
+RUNNER_SOURCES = %w[EventDayActivities.swift].freeze
 RESOURCES = %w[PrivacyInfo.xcprivacy].freeze
 # The app's fonts, from assets/fonts/ (the files Flutter bundles): one copy
 # in the repository, copied into the extension at build time.
@@ -128,6 +137,16 @@ SOURCES.each do |file|
 end
 APP_SOURCES.each do |file|
   ref = file_refs[file]
+  next if runner.source_build_phase.files_references.include?(ref)
+
+  runner.source_build_phase.add_file_reference(ref, true)
+  log "Runner compiles #{file}"
+end
+RUNNER_SOURCES.each do |file|
+  abort "Missing ios/Runner/#{file}" unless File.exist?(File.join(ROOT, 'ios', 'Runner', file))
+  runner_group = project.main_group.children.find { |g| g.display_name == 'Runner' } or
+    abort 'No Runner group'
+  ref = runner_group.files.find { |f| f.path == file } || runner_group.new_reference(file)
   next if runner.source_build_phase.files_references.include?(ref)
 
   runner.source_build_phase.add_file_reference(ref, true)

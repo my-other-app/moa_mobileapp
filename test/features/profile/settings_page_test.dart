@@ -6,6 +6,8 @@ import 'package:finnet/core/services/analytics_service.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/home_widget/data/networking_store.dart';
 import 'package:finnet/features/home_widget/data/widget_photos.dart';
+import 'package:finnet/features/home_widget/data/event_day_platform.dart';
+import 'package:finnet/features/home_widget/presentation/event_day_sync.dart';
 import 'package:finnet/features/home_widget/presentation/widget_photos_setting.dart';
 import 'package:finnet/features/notifications/data/repositories/push_settings_repository_impl.dart';
 import 'package:finnet/features/notifications/domain/entities/push_switches.dart';
@@ -138,11 +140,19 @@ Future<List<Uri>> _pump(WidgetTester tester,
     List<VolunteerEvent> volunteering = const [],
     List<ShareKitEvent> shareKits = const [],
     WidgetPhotoStore? photos,
-    MemoryWidgetStore? networking}) async {
+    MemoryWidgetStore? networking,
+    FakeEventDayPlatform? eventDay,
+    MemoryEventDayStore? eventDayStore}) async {
   final opened = <Uri>[];
   await tester.pumpWidget(ProviderScope(
     overrides: [
       widgetPhotoStoreProvider.overrideWithValue(photos ?? MemoryPhotoStore()),
+      // The event-day card: a phone that can't show it unless a test says
+      // so (the row is there only where it can).
+      eventDayPlatformProvider.overrideWithValue(
+          eventDay ?? (FakeEventDayPlatform()..canShow = false)),
+      eventDayStoreProvider
+          .overrideWithValue(eventDayStore ?? MemoryEventDayStore()),
       networkingStoreProvider
           .overrideWithValue(networking ?? MemoryWidgetStore()),
       privacyChoicesStoreProvider
@@ -644,6 +654,41 @@ void main() {
       expect(photos.files, isEmpty);
       expect(networking.redraws, 1);
       expect(WidgetPhotosRow.rowKey.value, 'settings-widget-photos');
+    });
+  });
+
+  group('the event-day card', () {
+    testWidgets('on to begin with, under the widgets\' photos',
+        (tester) async {
+      _tall(tester);
+      await _pump(tester, eventDay: FakeEventDayPlatform());
+
+      expect(find.text('Event-day card on the lock screen'), findsOneWidget);
+      expect(on(tester, 'settings-event-day-card'), isTrue);
+      expect(
+          tester.getTopLeft(find.byKey(EventDayRow.rowKey)).dy,
+          greaterThan(
+              tester.getTopLeft(find.byKey(WidgetPhotosRow.rowKey)).dy));
+    });
+
+    testWidgets('turned off: kept, and the card taken down', (tester) async {
+      _tall(tester);
+      final phone = FakeEventDayPlatform()..up = 7;
+      final store = MemoryEventDayStore();
+      await _pump(tester, eventDay: phone, eventDayStore: store);
+
+      await _tap(tester, 'settings-event-day-card');
+      await tester.pump();
+
+      expect(on(tester, 'settings-event-day-card'), isFalse);
+      expect(store.saved.on, isFalse);
+      expect(phone.up, isNull);
+    });
+
+    testWidgets('not there on a phone that can\'t show it', (tester) async {
+      _tall(tester);
+      await _pump(tester);
+      expect(find.text('Event-day card on the lock screen'), findsNothing);
     });
   });
 }

@@ -10,10 +10,13 @@ import 'package:finnet/features/auth/data/services/session_services.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
+import 'package:finnet/features/home_widget/data/event_day_platform.dart';
+import 'package:finnet/features/home_widget/data/for_you_store.dart';
 import 'package:finnet/features/home_widget/data/networking_store.dart';
 import 'package:finnet/features/home_widget/data/next_up_store.dart';
 import 'package:finnet/features/home_widget/data/widget_photos.dart';
 import 'package:finnet/features/home_widget/data/widget_store.dart';
+import 'package:finnet/features/home_widget/presentation/for_you_widget_sync.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -101,6 +104,12 @@ void main() {
     // "Recently met" with photos turned on, and one kept.
     final photos = MemoryPhotoStore()..on = true;
     await photos.save('networking_photo_5', 'f', Uint8List(3));
+    // The events widget, listed for the person's topics; and their event's
+    // card up on the lock screen, with the switch on.
+    final forYou = _WidgetStore();
+    final phone = FakeEventDayPlatform()..up = 7;
+    final eventDay = MemoryEventDayStore()
+      ..saved = const EventDayChoices(shown: {7: 1795869000000});
     final container = ProviderContainer(overrides: [
       secureStorageServiceProvider.overrideWithValue(storage),
       pushRegistrationProvider.overrideWithValue(FakePushRegistration()),
@@ -108,6 +117,11 @@ void main() {
       nextUpStoreProvider.overrideWithValue(nextUp),
       networkingStoreProvider.overrideWithValue(networking),
       widgetPhotoStoreProvider.overrideWithValue(photos),
+      forYouStoreProvider.overrideWithValue(forYou),
+      forYouApiBaseProvider
+          .overrideWithValue('https://api.myotherapp.in/api/v1'),
+      eventDayPlatformProvider.overrideWithValue(phone),
+      eventDayStoreProvider.overrideWithValue(eventDay),
     ]);
     addTearDown(container.dispose);
     container.read(authStateProvider);
@@ -122,6 +136,13 @@ void main() {
     // Its photos, and the switch: the next person starts with initials.
     expect(photos.files, isEmpty);
     expect(photos.on, isFalse);
+    // The events widget: asked again without the person's topics.
+    expect(forYou.writes.single,
+        allOf(contains('"topics":[]'), contains('"fetched_at":0')));
+    // The event-day card: down, the event forgotten; the switch stays on.
+    expect(phone.up, isNull);
+    expect(eventDay.saved.shown, isEmpty);
+    expect(eventDay.saved.on, isTrue);
 
     expect(storage.values, isEmpty,
         reason: 'tokens, saved answers and saved tickets, all gone');
