@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The event-day card (eventday/EventDayNotifications.kt,
+     docs/HOME_WIDGETS.md): its channel and words. -->
+<resources>
+    <string name="event_day_channel">Event day</string>
+    <string name="event_day_channel_description">On the day of an event you have a ticket for: a countdown to the start, the venue and your ticket. Turn it off in the app’s Settings.</string>
+    <string name="event_day_label">Event day</string>
+    <string name="event_day_show_ticket">Show ticket</string>
+</resources>

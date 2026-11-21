@@ -9,6 +9,11 @@
        codes). They stay on this phone until they are sent;
      - documents: the person's kept tickets and certificates;
      - network_saves.json: people saved while offline, not yet sent;
+     - HomeWidgetPreferences.xml: what the home-screen widgets show (the
+       next event, the person's QR link, the people they met), written
+       again by the app once someone signs in;
+     - home_widget: the small photos of those people, when the person
+       turned photos on for the widgets;
      - app_flutter: the documents folder, where older builds kept tickets
        and push pictures. -->
 <full-backup-content>
@@ -17,5 +22,7 @@
     <exclude domain="file" path="gate_queue" />
     <exclude domain="file" path="documents" />
     <exclude domain="file" path="network_saves.json" />
+    <exclude domain="sharedpref" path="HomeWidgetPreferences.xml" />
+    <exclude domain="file" path="home_widget" />
     <exclude domain="root" path="app_flutter" />
 </full-backup-content>

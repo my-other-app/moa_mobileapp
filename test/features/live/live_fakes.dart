@@ -2,15 +2,19 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:finnet/core/network/api_exception.dart';
 import 'package:finnet/core/network/sse/sse_transport.dart';
 import 'package:finnet/features/live/data/live_room_api.dart';
 import 'package:finnet/features/live/domain/live_quiz.dart';
 import 'package:finnet/features/live/domain/live_room.dart';
+import 'package:finnet/features/live/domain/live_theme.dart';
 
 /// An error as the app's Dio throws it: a DioException carrying the
 /// ApiException the error interceptor read.
-DioException apiError(int status, {String? code, String message = 'No'}) {
+DioException apiError(int status,
+    {String? code, String message = 'No', Map<String, dynamic>? errors}) {
   final options = RequestOptions(path: '/x');
   return DioException(
     requestOptions: options,
@@ -21,6 +25,7 @@ DioException apiError(int status, {String? code, String message = 'No'}) {
       statusCode: status,
       serverMessage: message,
       errorCode: code,
+      errors: errors,
       type: ApiException.typeForStatus(status),
     ),
   );
@@ -167,10 +172,17 @@ class FakeLiveRoomApi implements LiveRoomApi {
   final List<String> votes = [];
   Object Function(String id)? voteAnswer;
 
+  /// Each poll answer as (poll, its value or its labels joined by commas).
   final List<(String, String)> responses = [];
+
+  /// Each poll answer as sent.
+  final List<PollAnswer> pollAnswers = [];
   Object Function(String pollId, String value)? respondAnswer;
 
   final List<(String, String)> joins = [];
+
+  /// The team each join asked for.
+  final List<String?> joinTeams = [];
   Object Function(String code, String name)? joinAnswer;
 
   final List<Object> quizStates = [];
@@ -178,8 +190,16 @@ class FakeLiveRoomApi implements LiveRoomApi {
   int quizStreams = 0;
   final List<String> playerKeys = [];
 
+  /// Each answer: the option's key, or the body as JSON for other kinds.
   final List<String> answers = [];
+
+  /// Each answer as sent.
+  final List<QuizResponse> quizResponses = [];
   Object Function(String key)? answerAnswer;
+
+  /// What a theme read gives (a theme's JSON, or an error); none by default.
+  Object? themeAnswer;
+  int themeReads = 0;
 
   int? resolvedId;
 
@@ -223,8 +243,11 @@ class FakeLiveRoomApi implements LiveRoomApi {
   }
 
   @override
-  Future<LivePoll?> respond(int eventId, String pollId, String value) async {
+  Future<LivePoll?> respond(
+      int eventId, String pollId, PollAnswer sent) async {
+    final value = sent.value ?? sent.labels.join(',');
     responses.add((pollId, value));
+    pollAnswers.add(sent);
     final answer = respondAnswer?.call(pollId, value) ??
         pollJson(id: pollId, myResponse: value, responses: 1);
     if (answer is Exception) throw answer;
@@ -232,8 +255,9 @@ class FakeLiveRoomApi implements LiveRoomApi {
   }
 
   @override
-  Future<QuizPlayer> joinQuiz(String code, String name) async {
+  Future<QuizPlayer> joinQuiz(String code, String name, {String? team}) async {
     joins.add((code, name));
+    joinTeams.add(team);
     final answer = joinAnswer?.call(code, name) ??
         {
           'event_id': 7,
@@ -264,12 +288,245 @@ class FakeLiveRoomApi implements LiveRoomApi {
 
   @override
   Future<AnswerResult> answer(
-      int eventId, String playerKey, String optionKey) async {
+      int eventId, String playerKey, QuizResponse response) async {
+    final optionKey = response is OptionAnswer
+        ? response.key
+        : jsonEncode(response.toJson());
     answers.add(optionKey);
+    quizResponses.add(response);
     Object answer = answerAnswer?.call(optionKey) ??
         {'correct': null, 'points': null, 'score': 0, 'answered': true};
     if (answer is Future) answer = await answer;
     if (answer is Exception) throw answer;
     return AnswerResult.fromJson(answer);
   }
+
+  @override
+  Future<LiveThemeState?> fetchTheme(int eventId) async {
+    themeReads++;
+    final answer = themeAnswer;
+    if (answer is Exception) throw answer;
+    return LiveThemeState.fromJson(answer);
+  }
 }
+
+// ─── This release's server (X-Live-Version: 2) ─────────────────────────
+
+/// A question of any kind as this release's player state has it.
+Map<String, dynamic> kindQuestionJson({
+  String id = 'q1',
+  String kind = 'single',
+  String prompt = 'Which of these are prime?',
+  List<Map<String, String>>? options,
+  int timeLeft = 15,
+  int seconds = 20,
+  Map<String, dynamic>? myResponse,
+  String? myAnswer,
+  int? myPoints,
+  bool? myCorrect,
+  double? myCredit,
+  String? correctKey,
+  List<String>? correctKeys,
+  List<String>? accepted,
+  List<String>? correctOrder,
+  int effectivePoints = 1000,
+  bool double = false,
+  List<Map<String, dynamic>>? counts,
+}) =>
+    {
+      'id': id,
+      'prompt': prompt,
+      'options': options ??
+          [
+            {'key': 'a', 'label': '2'},
+            {'key': 'b', 'label': '9'},
+            {'key': 'c', 'label': '11'},
+            {'key': 'd', 'label': '15'},
+          ],
+      'seconds': seconds,
+      'sort_order': 0,
+      'time_left': timeLeft,
+      'my_answer': myAnswer,
+      'my_points': myPoints,
+      'my_correct': myCorrect,
+      'correct_key': correctKey,
+      'kind': kind,
+      'effective_points': effectivePoints,
+      'double': double,
+      'my_response': myResponse,
+      'my_credit': myCredit,
+      'correct_keys': correctKeys,
+      'accepted': accepted,
+      'correct_order': correctOrder,
+      if (counts != null) 'counts': counts,
+    };
+
+/// This release's player state: today's fields and the round's.
+Map<String, dynamic> v2QuizJson({
+  String status = 'live',
+  String phase = 'question',
+  int index = 0,
+  int total = 5,
+  int score = 0,
+  Map<String, dynamic>? question,
+  List<Map<String, dynamic>> board = const [],
+  int? rank,
+  String name = 'Asha',
+  int round = 0,
+  int rounds = 1,
+  bool? boardNow,
+  String? nextAt,
+  Map<String, dynamic>? team,
+  List<Map<String, dynamic>>? teams,
+  int streak = 0,
+  String? themeVersion,
+  List<Map<String, dynamic>>? overall,
+}) =>
+    {
+      ...quizJson(
+        status: status,
+        index: index,
+        total: total,
+        score: score,
+        question: question,
+        board: board,
+        rank: rank,
+        name: name,
+      ),
+      'quiz_id': 'z$round',
+      'round': {'index': round, 'count': rounds},
+      'phase': phase,
+      'paused': phase == 'paused',
+      'board_now': boardNow ?? (phase == 'revealed' || phase == 'ended'),
+      'next_at': nextAt,
+      'team': team,
+      'teams': teams,
+      'tag': '7F2',
+      'streak': streak,
+      'theme_version': themeVersion,
+      if (overall != null) 'overall': overall,
+    };
+
+/// A poll as this release's feed has it, with its settings.
+Map<String, dynamic> v2PollJson({
+  String id = 'p1',
+  String kind = 'choice',
+  String prompt = 'Which talks?',
+  List<String> options = const ['AI', 'Web', 'Mobile'],
+  String status = 'live',
+  Map<String, dynamic> results = const {'responses': 0},
+  Map<String, dynamic> settings = const {},
+  String? myResponse,
+  List<String>? myValues,
+  bool resultsHidden = false,
+  String? closesAt,
+  List<Object?> optionImages = const [],
+}) =>
+    {
+      'id': id,
+      'kind': kind,
+      'prompt': prompt,
+      'options': options,
+      'status': status,
+      'launched_at': '2030-12-01T10:00:00Z',
+      'closed_at': null,
+      'sort_order': 0,
+      'results': results,
+      'my_response': myResponse,
+      'settings': settings,
+      'closes_at': closesAt,
+      'option_images': optionImages,
+      'results_hidden': resultsHidden,
+      'my_values': myValues,
+    };
+
+/// The contract's example theme (CONTRACT 1.1), as the server resolves it.
+Map<String, dynamic> themeJson({
+  String preset = 'meridian_dark',
+  String background = '#0B0E0D',
+  String accent = '#4FCDB0',
+  Map<String, dynamic>? text,
+  String display = 'dm_sans',
+  String style = 'shapes',
+  String timer = 'bar',
+  Map<String, dynamic>? logo,
+  Map<String, dynamic>? bg,
+  Map<String, dynamic>? guest,
+  Map<String, dynamic>? board,
+}) =>
+    {
+      'preset': preset,
+      'colors': {
+        'background': background,
+        'accent': accent,
+        'answers': [
+          '#DC2626',
+          '#2563EB',
+          '#D97706',
+          '#16A34A',
+          '#7C3AED',
+          '#0891B2'
+        ],
+      },
+      'text': text ??
+          {
+            'on_background': '#FFFFFF',
+            'on_accent': '#111827',
+            'on_answers': [
+              '#FFFFFF',
+              '#FFFFFF',
+              '#111827',
+              '#FFFFFF',
+              '#FFFFFF',
+              '#FFFFFF'
+            ],
+          },
+      'font': {'display': display, 'body': 'dm_sans'},
+      'answers': {'style': style},
+      'timer': timer,
+      'leaderboard': board ??
+          {'size': 5, 'podium': true, 'animate': true, 'own_rank': true},
+      'logo': logo,
+      'background': bg ??
+          {'kind': 'color', 'gradient': null, 'image': null, 'dim': 0.45},
+      'screen': {
+        'text_scale': 1.0,
+        'logo': true,
+        'sponsors': false,
+        'join': 'corner',
+        'answer_layout': 'grid'
+      },
+      'guest': guest ??
+          {
+            'text_scale': 1.0,
+            'logo': true,
+            'background': 'plain',
+            'answer_layout': 'column'
+          },
+    };
+
+Map<String, dynamic> mediaJson([String name = 'logo']) => {
+      'id': 'm1',
+      'kind': name,
+      'thumbnail': 'https://cdn.test/$name-240.webp',
+      'medium': 'https://cdn.test/$name-960.webp',
+      'large': 'https://cdn.test/$name-1920.webp',
+      'original': 'https://cdn.test/$name.png',
+      'width': 1080,
+      'height': 1080,
+    };
+
+
+/// A picture that is still on its way: nothing reaches a platform channel.
+class SlowImages extends Fake implements BaseCacheManager {
+  @override
+  Stream<FileResponse> getFileStream(String url,
+          {String? key, Map<String, String>? headers, bool? withProgress}) =>
+      StreamController<FileResponse>().stream;
+
+  @override
+  Future<FileInfo?> getFileFromCache(String key,
+          {bool ignoreMemCache = false}) async =>
+      null;
+}
+

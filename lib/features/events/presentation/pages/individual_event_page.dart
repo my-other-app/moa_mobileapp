@@ -62,6 +62,9 @@ import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart'
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/widgets/networking/people_like_you_card.dart';
 import 'package:finnet/features/network/presentation/widgets/at_event_qr_row.dart';
+import 'package:finnet/features/quests/domain/quest.dart' show QuestFlag;
+import 'package:finnet/features/quests/presentation/providers/quest_provider.dart';
+import 'package:finnet/features/quests/presentation/widgets/quest_card.dart';
 import 'package:finnet/core/utils/hours.dart';
 import 'package:finnet/shared/widgets/club_logo.dart';
 import 'package:finnet/core/network/network_status.dart';
@@ -476,6 +479,12 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
   /// organiser's edit made while the page stayed open never showed.
   Future<void> _refresh() async {
     ref.invalidate(eventPageDetailsProvider(widget.ref));
+    final id = _eventId;
+    if (id != null &&
+        id > 0 &&
+        questWorthAsking(ref.read(questFlagsProvider), id)) {
+      unawaited(ref.read(questProvider(id).notifier).refresh());
+    }
     await _fetchData();
   }
 
@@ -561,6 +570,16 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     // Parse the JSON response into an EventInfo model.
     EventInfo eventInfo = EventInfo.fromJson(raw);
     final status = registrationStatusFrom(raw, carried: _status);
+
+    // The event's quest, by its info's word (quests contract §8.5): the
+    // card (here, on the ticket, in the scanner) asks for it only when it
+    // is on, or switched off with a reward still held for the person.
+    final questEvent = eventInfo.id > 0 ? eventInfo.id : _eventId;
+    if (questEvent != null && questEvent > 0) {
+      ref
+          .read(questFlagsProvider.notifier)
+          .note(questEvent, QuestFlag.fromJson(raw['quest']));
+    }
 
     // Update state with the parsed values.
     setState(() {
@@ -2463,6 +2482,19 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
 
             // ========== THE LIVE ROOM (while something is up) ==========
             if (live.isActive) _buildLiveStrip(context),
+
+            // ========== THE QUEST (an event that runs one) ==========
+            // Its tasks, the guest's progress and rewards; nothing for an
+            // event without one, or with it switched off.
+            if (_cancellation == null)
+              QuestCard(
+                eventId: _eventId,
+                eventName: name,
+                onOpenTicket:
+                    isRegistered && !awaitingPayment && !_ticketRevoked
+                        ? _openTicket
+                        : null,
+              ),
 
             // ========== YOUR TEAM (an event with a competition) ==========
             if ((isRegistered || isAttended) &&

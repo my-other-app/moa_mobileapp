@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The "Networking" widget in the phone's dark theme. -->
+<resources>
+    <color name="networking_soft">#3B4350</color>
+    <color name="networking_glyph">#B9C0C9</color>
+    <color name="networking_met_fill_2">#4A5361</color>
+    <color name="networking_met_fill_3">#B9C0C9</color>
+    <color name="networking_met_outline">#00000000</color>
+</resources>

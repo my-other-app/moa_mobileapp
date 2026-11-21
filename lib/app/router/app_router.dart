@@ -25,6 +25,7 @@ import 'package:finnet/features/events/presentation/pages/explore_events_page.da
 import 'package:finnet/features/events/presentation/pages/saved_ticket_page.dart';
 import 'package:finnet/features/events/presentation/events_routes.dart';
 import 'package:finnet/features/live/live_routes.dart';
+import 'package:finnet/features/quests/quest_routes.dart';
 import 'package:finnet/features/clubs/presentation/pages/clubs_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/club_individual_page.dart';
 import 'package:finnet/features/clubs/presentation/pages/explore_more_clubs_page.dart';
@@ -458,6 +459,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 // competition.
                 ...overHome(rootKey, discoverRoutes),
                 ...overHome(rootKey, eventsRoutes),
+                // An event's quest, in full (`/events/{ref}/quest`): what
+                // an unlock push opens.
+                ...overHome(rootKey, questRoutes),
                 ...overHome(rootKey, threadsRoutes),
                 ...overHome(rootKey, profileRoutes),
                 // A speaker's page (the speakers directory), from their card
@@ -514,6 +518,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                           name: 'eventRegister',
                           parentNavigatorKey: rootKey,
                           builder: buildEventRegisterPage),
+                      // The ticket, by the event (the "Next up" home-screen
+                      // widget's tap): found among the saved tickets.
+                      GoRoute(
+                          path: 'ticket',
+                          name: 'eventTicket',
+                          parentNavigatorKey: rootKey,
+                          builder: buildEventTicketPage),
                       // The live room, in the app (the website's address
                       // too), and its quiz.
                       GoRoute(
@@ -610,6 +621,7 @@ class AppRoutes {
   static const String events = 'events';
   static const String eventDetail = 'eventDetail';
   static const String eventRegister = 'eventRegister';
+  static const String eventTicket = 'eventTicket';
   static const String eventLive = 'eventLive';
   static const String eventLiveQuiz = 'eventLiveQuiz';
   static const String eventRegistrationSuccess = 'eventRegistrationSuccess';

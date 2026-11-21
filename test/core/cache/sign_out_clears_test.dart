@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/cache/cache_store.dart';
@@ -9,17 +10,39 @@ import 'package:finnet/features/auth/data/services/session_services.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
+import 'package:finnet/features/home_widget/data/event_day_platform.dart';
+import 'package:finnet/features/home_widget/data/for_you_store.dart';
+import 'package:finnet/features/home_widget/data/networking_store.dart';
+import 'package:finnet/features/home_widget/data/next_up_store.dart';
+import 'package:finnet/features/home_widget/data/widget_photos.dart';
+import 'package:finnet/features/home_widget/data/widget_store.dart';
+import 'package:finnet/features/home_widget/presentation/for_you_widget_sync.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../features/auth/auth_fakes.dart';
+import '../../features/home_widget/widget_fakes.dart';
 
 class _FakeImageCache extends Fake implements BaseCacheManager {
   int emptied = 0;
 
   @override
   Future<void> emptyCache() async => emptied++;
+}
+
+/// A home-screen widget's storage, in memory.
+class _WidgetStore implements WidgetStore {
+  final writes = <String>[];
+
+  @override
+  Future<void> write(String json) async => writes.add(json);
+
+  @override
+  Future<void> redraw() async {}
+
+  @override
+  Future<bool> isPlaced() async => false;
 }
 
 void main() {
@@ -76,16 +99,50 @@ void main() {
     await pdf.create(recursive: true);
     await pdf.writeAsString('PDF');
 
+    final nextUp = _WidgetStore();
+    final networking = _WidgetStore();
+    // "Recently met" with photos turned on, and one kept.
+    final photos = MemoryPhotoStore()..on = true;
+    await photos.save('networking_photo_5', 'f', Uint8List(3));
+    // The events widget, listed for the person's topics; and their event's
+    // card up on the lock screen, with the switch on.
+    final forYou = _WidgetStore();
+    final phone = FakeEventDayPlatform()..up = 7;
+    final eventDay = MemoryEventDayStore()
+      ..saved = const EventDayChoices(shown: {7: 1795869000000});
     final container = ProviderContainer(overrides: [
       secureStorageServiceProvider.overrideWithValue(storage),
       pushRegistrationProvider.overrideWithValue(FakePushRegistration()),
       sessionRevokerProvider.overrideWithValue(FakeSessionRevoker()),
+      nextUpStoreProvider.overrideWithValue(nextUp),
+      networkingStoreProvider.overrideWithValue(networking),
+      widgetPhotoStoreProvider.overrideWithValue(photos),
+      forYouStoreProvider.overrideWithValue(forYou),
+      forYouApiBaseProvider
+          .overrideWithValue('https://api.myotherapp.in/api/v1'),
+      eventDayPlatformProvider.overrideWithValue(phone),
+      eventDayStoreProvider.overrideWithValue(eventDay),
     ]);
     addTearDown(container.dispose);
     container.read(authStateProvider);
     await Future<void>.delayed(Duration.zero);
 
     await container.read(authStateProvider.notifier).logout();
+
+    // The home-screen widgets: the signed-out face, nothing of the person.
+    expect(nextUp.writes.single, contains('"state":"signed_out"'));
+    expect(networking.writes.single,
+        allOf(contains('"state":"signed_out"'), isNot(contains('/p/'))));
+    // Its photos, and the switch: the next person starts with initials.
+    expect(photos.files, isEmpty);
+    expect(photos.on, isFalse);
+    // The events widget: asked again without the person's topics.
+    expect(forYou.writes.single,
+        allOf(contains('"topics":[]'), contains('"fetched_at":0')));
+    // The event-day card: down, the event forgotten; the switch stays on.
+    expect(phone.up, isNull);
+    expect(eventDay.saved.shown, isEmpty);
+    expect(eventDay.saved.on, isTrue);
 
     expect(storage.values, isEmpty,
         reason: 'tokens, saved answers and saved tickets, all gone');

@@ -36,7 +36,47 @@ import FirebaseMessaging
     if let registrar = self.registrar(forPlugin: "BackupExclusion") {
       BackupExclusion.register(with: registrar)
     }
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    // The event-day card on the lock screen (EventDayActivities.swift).
+    if let registrar = self.registrar(forPlugin: "EventDayActivities") {
+      EventDayActivities.register(with: registrar)
+    }
+    let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    // Opened from a quick action on the icon: UIKit calls
+    // application(_:performActionFor:) next -- unless launching answered
+    // false, when it is opened here instead.
+    if !launched, let item = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem,
+      let link = AppShortcuts.link(of: item)
+    {
+      DispatchQueue.main.async { _ = self.application(application, open: link, options: [:]) }
+    }
+    // A control (Control Center, the lock screen's buttons, the Action
+    // button: Scan, My QR) opens its page the same way. The system runs its
+    // intent here, in the app (ios/NextUpWidget/ControlIntents.swift), which
+    // hands the page over -- or left it waiting, if it ran before this point.
+    AppLinkHandoff.opener = { [weak self] link in
+      _ = self?.application(application, open: link, options: [:])
+    }
+    if let waiting = AppLinkHandoff.takeWaiting() {
+      DispatchQueue.main.async { _ = self.application(application, open: waiting, options: [:]) }
+    }
+    return launched
+  }
+
+  // A quick action on the app's icon (Info.plist UIApplicationShortcutItems):
+  // Scan, My QR, Network, My tickets. Its link is opened as a link to the
+  // website is, through Flutter's deep linking, so the app's router takes
+  // it -- with sign-in first where the page needs an account.
+  override func application(
+    _ application: UIApplication,
+    performActionFor shortcutItem: UIApplicationShortcutItem,
+    completionHandler: @escaping (Bool) -> Void
+  ) {
+    guard let link = AppShortcuts.link(of: shortcutItem) else {
+      super.application(
+        application, performActionFor: shortcutItem, completionHandler: completionHandler)
+      return
+    }
+    completionHandler(self.application(application, open: link, options: [:]))
   }
 
   // Handle APNs token registration
@@ -52,6 +92,25 @@ extension AppDelegate: MessagingDelegate {
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
     // The token is read and sent to the server by the Flutter plugin. It is
     // not printed: device logs are readable by anything attached to them.
+  }
+}
+
+// MARK: - Quick actions on the app's icon
+/// The quick actions (touch and hold the icon) are static: Info.plist's
+/// UIApplicationShortcutItems, each with the website address it opens under
+/// `link` in its user info (docs/HOME_WIDGETS.md). The router reads the
+/// address as the app's own page (lib/app/router/web_links.dart).
+enum AppShortcuts {
+  static let linkKey = "link"
+  static let siteHost = "myotherapp.in"
+
+  /// The link [item] opens: only an https address on the website.
+  static func link(of item: UIApplicationShortcutItem) -> URL? {
+    guard let text = item.userInfo?[linkKey] as? String,
+      let url = URL(string: text),
+      url.scheme == "https", url.host == siteHost
+    else { return nil }
+    return url
   }
 }
 

@@ -63,6 +63,61 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>app.myotherapp.in.scan</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Scan</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>qrcode.viewfinder</string>
+			<key>UIApplicationShortcutItemUserInfo</key>
+			<dict>
+				<key>link</key>
+				<string>https://myotherapp.in/network/scan</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>app.myotherapp.in.my-qr</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>My QR</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>qrcode</string>
+			<key>UIApplicationShortcutItemUserInfo</key>
+			<dict>
+				<key>link</key>
+				<string>https://myotherapp.in/profile/qr</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>app.myotherapp.in.network</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Network</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>person.2</string>
+			<key>UIApplicationShortcutItemUserInfo</key>
+			<dict>
+				<key>link</key>
+				<string>https://myotherapp.in/network</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>app.myotherapp.in.my-tickets</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>My tickets</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>ticket</string>
+			<key>UIApplicationShortcutItemUserInfo</key>
+			<dict>
+				<key>link</key>
+				<string>https://myotherapp.in/me/tickets</string>
+			</dict>
+		</dict>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -73,6 +128,8 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

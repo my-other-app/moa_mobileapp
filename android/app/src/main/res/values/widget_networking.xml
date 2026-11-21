@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The "Networking" home-screen widget (NetworkingWidgetProvider,
+     docs/HOME_WIDGETS.md): its words, and the colours it adds to the
+     widgets' palette (widget_next_up.xml). values-night/ holds the dark
+     ones. The QR code itself is dark on white in both. -->
+<resources>
+    <color name="networking_soft">#F3F3F3</color>
+    <color name="networking_glyph">#5F6773</color>
+    <!-- "Recently met": the circles behind people's initials, in the app's
+         teal, pale yellow, ink and soft grey (the app gives each person one,
+         0-3). The letters on them are white, ink, white, ink in both
+         themes; only the circles change (values-night). -->
+    <color name="networking_met_fill_0">#17A58F</color>
+    <color name="networking_met_fill_1">#F9FFA1</color>
+    <color name="networking_met_fill_2">#2C333D</color>
+    <color name="networking_met_fill_3">#F3F3F3</color>
+    <color name="networking_met_outline">#1F2C333D</color>
+
+    <string name="networking_label">Networking</string>
+    <string name="networking_widget_description">Your QR code to share, and quick scan.</string>
+    <string name="networking_my_qr">My QR</string>
+    <string name="networking_tap_for_qr">Tap for your QR</string>
+    <string name="networking_scan_to_save">Scan to save me</string>
+    <string name="networking_get_code">Open My QR to get your code</string>
+    <string name="networking_scan">Scan</string>
+    <string name="networking_network">Network ›</string>
+    <string name="networking_network_count">Network · %1$d ›</string>
+    <string name="networking_signed_out">Sign in to share your QR</string>
+    <string name="networking_sign_in">Sign in</string>
+    <string name="networking_qr_description">Your QR code</string>
+    <string name="networking_open_my_qr">Open My QR</string>
+    <string name="networking_sample_name" translatable="false">Your name</string>
+    <string name="networking_recently_met">Recently met</string>
+    <string name="networking_met_empty">Scan someone’s code to save them. They show here.</string>
+    <string name="networking_met_unknown">The people you meet show here.</string>
+    <string name="networking_met_signed_out">Sign in to see the people you meet here.</string>
+    <string name="networking_no_note">%1$d without a note yet ›</string>
+</resources>

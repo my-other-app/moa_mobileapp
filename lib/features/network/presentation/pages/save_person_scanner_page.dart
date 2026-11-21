@@ -10,6 +10,10 @@ import 'package:finnet/features/network/domain/network.dart';
 import 'package:finnet/features/network/domain/network_links.dart';
 import 'package:finnet/features/network/presentation/providers/network_saver.dart';
 import 'package:finnet/features/network/presentation/widgets/save_outcome_card.dart';
+import 'package:finnet/features/quests/domain/quest.dart'
+    show QuestNetworkCounts;
+import 'package:finnet/features/quests/presentation/providers/quest_provider.dart';
+import 'package:finnet/features/quests/presentation/widgets/quest_scan_progress.dart';
 import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The camera, as the scanner page draws it: a function of what to call
@@ -117,6 +121,23 @@ class _SavePersonScannerPageState extends ConsumerState<SavePersonScannerPage>
     } else {
       unawaited(HapticFeedback.heavyImpact());
     }
+    // A meeting at an event with a quest: its "meet people" count follows,
+    // at once from the save's own counts when the server sends them, else
+    // read again until the server has counted it. Nothing for an event
+    // whose info says it has no quest on.
+    final eventId = widget.eventId;
+    if (eventId != null &&
+        attempt is Saved &&
+        questWorthAsking(ref.read(questFlagsProvider), eventId)) {
+      final result = attempt.result;
+      final counts = QuestNetworkCounts.fromJson(result.quest);
+      final newMeeting = result.created || result.newEncounter;
+      if (counts != null || newMeeting) {
+        ref
+            .read(questProvider(eventId).notifier)
+            .afterNetworkSave(counts: counts, newMeeting: newMeeting);
+      }
+    }
     setState(() {
       _attempt = attempt;
       _seq++;
@@ -184,33 +205,6 @@ class _SavePersonScannerPageState extends ConsumerState<SavePersonScannerPage>
       body: Stack(
         children: [
           Positioned.fill(child: camera(context, _onCode)),
-          // The frame to aim with: drawn over the camera, never in the way.
-          IgnorePointer(
-            child: Center(
-              child: Container(
-                width: 240,
-                height: 240,
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFF9FFA1), width: 4),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
-            child: IgnorePointer(
-                child: Text(
-              widget.eventId == null
-                  ? "Point at someone's personal QR"
-                  : "Point at someone's personal QR. Saved with this event "
-                      'when you are both checked in.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-            )),
-          ),
           if (_busy)
             const Positioned(
               top: 0,
@@ -218,40 +212,100 @@ class _SavePersonScannerPageState extends ConsumerState<SavePersonScannerPage>
               right: 0,
               child: AppProgressBar(minHeight: 3),
             ),
-          Positioned(
-            left: 12,
-            right: 12,
-            bottom: 12,
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+          // The hint at the top, the panels at the foot, and the frame to aim
+          // with in the room between them, so a quest line or a saved card
+          // never covers it. The camera reads the whole picture, not only
+          // what is inside the frame.
+          SafeArea(
+            top: false,
+            minimum: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+            child: LayoutBuilder(
+              builder: (context, box) => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (attempt != null)
-                    SaveOutcomeCard(
-                      key: ValueKey('save-card-$_seq'),
-                      attempt: attempt,
-                      onClose: () => setState(() => _attempt = null),
-                    ),
-                  if (pending.count > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
+                  IgnorePointer(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Text(
-                        pending.count == 1
-                            ? '1 save waiting for a signal'
-                            : '${pending.count} saves waiting for a signal',
-                        key: const ValueKey('scanner-pending'),
+                        widget.eventId == null
+                            ? "Point at someone's personal QR"
+                            : "Point at someone's personal QR. Saved with "
+                                'this event when you are both checked in.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white70),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 14),
                       ),
                     ),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: () => context.push(myQrLocation),
-                    style: TextButton.styleFrom(foregroundColor: Colors.white),
-                    icon: const Icon(Icons.qr_code_2),
-                    label: const Text('Show my QR instead'),
+                  ),
+                  Expanded(
+                    child: IgnorePointer(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                                maxWidth: 240, maxHeight: 240),
+                            child: AspectRatio(
+                              aspectRatio: 1,
+                              child: DecoratedBox(
+                                key: const ValueKey('scanner-frame'),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                      color: const Color(0xFFF9FFA1),
+                                      width: 4),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // A tall saved card on a short phone scrolls here, its top
+                  // (the quest line, who was saved) in sight, rather than
+                  // pushing the frame off the screen.
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: box.maxHeight * 0.5),
+                    child: SingleChildScrollView(
+                      key: const ValueKey('scanner-panel'),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // The quest's "Meet 5 people": 3 of 5 met.
+                          if (widget.eventId case final eventId?)
+                            QuestScanProgress(eventId: eventId),
+                          if (attempt != null)
+                            SaveOutcomeCard(
+                              key: ValueKey('save-card-$_seq'),
+                              attempt: attempt,
+                              onClose: () => setState(() => _attempt = null),
+                            ),
+                          if (pending.count > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                pending.count == 1
+                                    ? '1 save waiting for a signal'
+                                    : '${pending.count} saves waiting for a '
+                                        'signal',
+                                key: const ValueKey('scanner-pending'),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: () => context.push(myQrLocation),
+                            style: TextButton.styleFrom(
+                                foregroundColor: Colors.white),
+                            icon: const Icon(Icons.qr_code_2),
+                            label: const Text('Show my QR instead'),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),

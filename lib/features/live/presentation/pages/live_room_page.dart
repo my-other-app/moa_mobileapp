@@ -113,7 +113,9 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage>
     // again on the way back.
     cubit.hidden();
     await openLiveRoom(context, cubit.eventId,
-        eventName: _state.room?.eventName ?? widget.eventName, quiz: true);
+        eventName: _state.room?.eventName ?? widget.eventName,
+        quiz: true,
+        theme: _state.room?.theme);
     if (mounted) cubit.shown();
   }
 
@@ -121,27 +123,17 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage>
   Widget build(BuildContext context) {
     final room = _state.room;
     final name = room?.eventName ?? widget.eventName;
-    return Scaffold(
-      backgroundColor: LiveColors.wash,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Live room',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            if (name != null)
-              Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: LiveColors.muted),
-              ),
-          ],
-        ),
+    // The organiser's look once the room says it; the room's own until
+    // then, and for an event that never saved one.
+    final look = LiveLook.from(room?.theme);
+    return LiveThemed(
+      look: look,
+      child: Scaffold(
+        backgroundColor: look.page,
+        extendBodyBehindAppBar: look.barOverBackdrop,
+        appBar: liveAppBar(context, look, title: 'Live room', subtitle: name),
+        body: LiveBackdrop(child: SafeArea(child: _body(context))),
       ),
-      body: SafeArea(child: _body(context)),
     );
   }
 
@@ -169,6 +161,7 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage>
           title: 'Opening the room…',
           text: 'Picking up what the host has going on.',
           spinner: true,
+          onPage: true,
         ),
       );
     }
@@ -191,6 +184,7 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage>
     // Loudest first: whatever needs an answer now, then what the host
     // last said, then the floor, then the feed.
     final children = <Widget>[
+      const LiveLogo(),
       LiveStatusBar(room: room),
       if (_state.connectionLost)
         LiveConnectionBar(onRetry: cubit.refresh),
@@ -202,7 +196,7 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage>
           busy: _state.answering,
           error: _state.pollError,
           closed: room.isClosed,
-          onAnswer: cubit.respond,
+          onAnswer: cubit.respondWith,
         ),
       if (room.quizLive && !room.isClosed)
         QuizEntryCard(title: room.quizTitle, onJoin: _openQuiz),
@@ -240,12 +234,15 @@ class _ClosedLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 14),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
       child: Text(
         'The event is over and the live room has closed. What was said '
         'stays here to read.',
-        style: TextStyle(fontSize: 13, height: 1.4, color: LiveColors.muted),
+        style: TextStyle(
+            fontSize: 13,
+            height: 1.4,
+            color: LiveLook.of(context).mutedOnPage),
       ),
     );
   }
@@ -267,6 +264,7 @@ class _EmptyRoom extends StatelessWidget {
           : 'Waiting for the host to start something. Updates, polls, the '
               'quiz and questions from the floor show here as they do.',
       spinner: !closed,
+      onPage: true,
     );
   }
 }
@@ -286,6 +284,7 @@ class _Message extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final look = LiveLook.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -294,20 +293,20 @@ class _Message extends StatelessWidget {
           children: [
             Text(title,
                 textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: look.custom ? look.onPage : null)),
             const SizedBox(height: 8),
             Text(text,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: LiveColors.muted)),
+                style: TextStyle(color: look.mutedOnPage)),
             if (action != null) ...[
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: onAction,
-                style: FilledButton.styleFrom(
-                  backgroundColor: LiveColors.ink,
-                  minimumSize: const Size(160, liveTapTarget),
-                ),
+                style: liveButtonStyle(look,
+                    minimumSize: const Size(160, liveTapTarget)),
                 child: Text(action!),
               ),
             ],

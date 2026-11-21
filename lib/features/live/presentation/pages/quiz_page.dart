@@ -4,8 +4,10 @@ import 'package:finnet/features/events/presentation/utils/event_errors.dart'
 import 'package:finnet/features/live/data/live_identity.dart';
 import 'package:finnet/features/live/data/live_room_api.dart';
 import 'package:finnet/features/live/domain/live_quiz.dart';
+import 'package:finnet/features/live/domain/live_theme.dart';
 import 'package:finnet/features/live/presentation/cubits/quiz_cubit.dart';
 import 'package:finnet/features/live/presentation/widgets/live_widgets.dart';
+import 'package:finnet/features/live/presentation/widgets/quiz_inputs.dart';
 import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
@@ -15,12 +17,25 @@ import 'package:finnet/shared/widgets/app_spinner.dart';
 
 /// The quiz on the screen, played on the phone: join with the code and a
 /// name, then each question with its clock, the verdict, and the board.
+///
+/// Every kind of question has its own input (one tap; several picks to
+/// lock in; a typed answer; rows to put in order), drawn in the event's
+/// look ([theme], then whatever the quiz says); an event with no look of
+/// its own is drawn as the quiz always was.
 class QuizPage extends ConsumerStatefulWidget {
-  const QuizPage({super.key, required this.eventRef, this.eventName});
+  const QuizPage({
+    super.key,
+    required this.eventRef,
+    this.eventName,
+    this.theme,
+  });
 
   /// The event's id or slug, as the address has it.
   final String eventRef;
   final String? eventName;
+
+  /// The room's look, when the room opened the quiz.
+  final LiveThemeState? theme;
 
   @override
   ConsumerState<QuizPage> createState() => _QuizPageState();
@@ -36,13 +51,22 @@ class _QuizPageState extends ConsumerState<QuizPage>
   final _code = TextEditingController();
   final _name = TextEditingController();
   bool _namePrefilled = false;
+  String? _codePrefilled;
 
-  /// The question last announced to a screen reader.
+  /// The look the page is drawn in, worked out in [build]: the methods
+  /// below build under the page's scope but run with the page's own
+  /// context, which is above it.
+  LiveLook _look = LiveLook.standard;
+
+  /// The question last announced to a screen reader, and whether it was
+  /// paused when it was.
   String? _announced;
+  bool _announcedPause = false;
 
   @override
   void initState() {
     super.initState();
+    _state = QuizViewState(theme: widget.theme);
     WidgetsBinding.instance.addObserver(this);
     _resolve();
   }
@@ -71,6 +95,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
       api: api,
       identity: ref.read(liveIdentityProvider),
       eventId: id,
+      theme: widget.theme,
     )..onStateChanged = _onState;
     setState(() {
       _cubit = cubit;
@@ -87,17 +112,28 @@ class _QuizPageState extends ConsumerState<QuizPage>
   void _onState(QuizViewState next) {
     if (!mounted) return;
     setState(() => _state = next);
+    final code = next.suggestedCode;
+    if (code != null && code != _codePrefilled) {
+      _codePrefilled = code;
+      _code.text = code;
+    }
     final q = next.question;
     final quiz = next.quiz;
-    if (q != null && quiz != null && q.id != _announced) {
-      _announced = q.id;
-      final view = View.maybeOf(context);
-      if (view != null) {
+    final view = View.maybeOf(context);
+    if (q != null && quiz != null && view != null) {
+      String? say;
+      if (q.id != _announced) {
+        _announced = q.id;
+        say = 'Question ${quiz.currentIndex + 1} of ${quiz.total}. ${q.prompt}';
+      } else if (quiz.isPaused != _announcedPause) {
+        say = quiz.isPaused
+            ? 'The host paused the question.'
+            : 'The question is back on.';
+      }
+      _announcedPause = quiz.isPaused;
+      if (say != null) {
         SemanticsService.sendAnnouncement(
-          view,
-          'Question ${quiz.currentIndex + 1} of ${quiz.total}. ${q.prompt}',
-          Directionality.of(context),
-        );
+            view, say, Directionality.of(context));
       }
     }
   }
@@ -142,26 +178,15 @@ class _QuizPageState extends ConsumerState<QuizPage>
   @override
   Widget build(BuildContext context) {
     final title = _state.quiz?.title ?? widget.eventName;
-    return Scaffold(
-      backgroundColor: LiveColors.wash,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Quiz',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            if (title != null && title.isNotEmpty)
-              Text(title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style:
-                      const TextStyle(fontSize: 12, color: LiveColors.muted)),
-          ],
-        ),
+    final look = _look = LiveLook.from(_state.theme ?? widget.theme);
+    return LiveThemed(
+      look: look,
+      child: Scaffold(
+        backgroundColor: look.page,
+        extendBodyBehindAppBar: look.barOverBackdrop,
+        appBar: liveAppBar(context, look, title: 'Quiz', subtitle: title),
+        body: LiveBackdrop(child: SafeArea(child: _body(context))),
       ),
-      body: SafeArea(child: _body(context)),
     );
   }
 
@@ -203,9 +228,11 @@ class _QuizPageState extends ConsumerState<QuizPage>
   }
 
   Widget _join(QuizCubit cubit) {
+    final look = _look;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        const LiveLogo(),
         LiveCard(
           live: true,
           child: Column(
@@ -215,16 +242,21 @@ class _QuizPageState extends ConsumerState<QuizPage>
               const SizedBox(height: 8),
               Semantics(
                 header: true,
-                child: const Text('Join the quiz',
-                    style: TextStyle(
-                        fontSize: 24, height: 1.2, fontWeight: FontWeight.w800)),
+                child: Text(
+                    _state.suggestedCode != null
+                        ? 'Join the next round'
+                        : 'Join the quiz',
+                    style: look.display(const TextStyle(
+                        fontSize: 24,
+                        height: 1.2,
+                        fontWeight: FontWeight.w800))),
               ),
               const SizedBox(height: 6),
               const Text(
                 'Type the code on the screen and your name. Fast right '
                 'answers score most.',
-                style:
-                    TextStyle(fontSize: 13.5, height: 1.4, color: LiveColors.muted),
+                style: TextStyle(
+                    fontSize: 13.5, height: 1.4, color: LiveColors.muted),
               ),
               const SizedBox(height: 18),
               TextField(
@@ -234,7 +266,8 @@ class _QuizPageState extends ConsumerState<QuizPage>
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 maxLength: 8,
                 autofocus: true,
-                style: const TextStyle(fontSize: 24, letterSpacing: 6),
+                style: look.display(
+                    const TextStyle(fontSize: 24, letterSpacing: 6)),
                 textAlign: TextAlign.center,
                 decoration: const InputDecoration(
                   counterText: '',
@@ -263,18 +296,19 @@ class _QuizPageState extends ConsumerState<QuizPage>
                           _name.text.trim().isEmpty
                       ? null
                       : () => cubit.join(_code.text, _name.text),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: LiveColors.ink,
+                  style: liveButtonStyle(
+                    look,
                     minimumSize: const Size.fromHeight(56),
                     textStyle: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                   child: _state.joining
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
                           child: AppSpinner(
-                              strokeWidth: 2, color: Colors.white),
+                              strokeWidth: 2,
+                              color: look.custom ? look.onButton : Colors.white),
                         )
                       : const Text('Join the quiz'),
                 ),
@@ -297,16 +331,26 @@ class _QuizPageState extends ConsumerState<QuizPage>
 
   Widget _playing(QuizCubit cubit) {
     final quiz = _state.quiz;
-    final children = <Widget>[];
+    final children = <Widget>[const LiveLogo()];
     if (_state.connectionLost) {
       children.add(const LiveConnectionBar());
     }
-    if (quiz == null) {
+    if (_state.nextRound != null) {
+      children.add(LiveWaiting(
+        icon: Icons.replay_rounded,
+        title: 'Joining ${_state.nextRound}…',
+        text: 'A new round has started. You are going in under the same '
+            'name.',
+        spinner: true,
+        onPage: true,
+      ));
+    } else if (quiz == null) {
       children.add(const LiveWaiting(
         icon: Icons.quiz_outlined,
         title: 'Finding the quiz…',
         text: 'One moment.',
         spinner: true,
+        onPage: true,
       ));
     } else if (quiz.ended || (!quiz.live && quiz.question == null)) {
       children.add(_finished(quiz));
@@ -321,7 +365,10 @@ class _QuizPageState extends ConsumerState<QuizPage>
         child: Semantics(
           liveRegion: true,
           child: Text(_state.answerError!,
-              style: const TextStyle(color: LiveColors.wrong)),
+              style: TextStyle(
+                  color: _look.drawsPage
+                      ? _look.onPage
+                      : LiveColors.wrong)),
         ),
       ));
     }
@@ -355,7 +402,10 @@ class _QuizPageState extends ConsumerState<QuizPage>
   }
 
   Widget _finished(QuizState quiz) {
+    final look = _look;
     final rank = quiz.rank;
+    final between = quiz.ended && quiz.moreRounds;
+    final overall = quiz.overall;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -365,17 +415,21 @@ class _QuizPageState extends ConsumerState<QuizPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (quiz.ended) ...[
-                const LiveDot('Quiz over'),
+                LiveDot(between ? 'Round over' : 'Quiz over',
+                    beat: between),
                 const SizedBox(height: 8),
               ],
               Semantics(
                 header: true,
                 child: Text(
-                  quiz.ended
-                      ? 'That is the quiz'
-                      : 'The host has not started yet',
-                  style: const TextStyle(
-                      fontSize: 22, height: 1.2, fontWeight: FontWeight.w800),
+                  !quiz.ended
+                      ? 'The host has not started yet'
+                      : between
+                          ? 'That is round ${quiz.roundIndex + 1} of '
+                              '${quiz.roundCount}'
+                          : 'That is the quiz',
+                  style: look.display(const TextStyle(
+                      fontSize: 22, height: 1.2, fontWeight: FontWeight.w800)),
                 ),
               ),
               if (rank != null) ...[
@@ -386,10 +440,40 @@ class _QuizPageState extends ConsumerState<QuizPage>
                       fontSize: 16, height: 1.3, fontWeight: FontWeight.w600),
                 ),
               ],
+              if (between) ...[
+                const SizedBox(height: 10),
+                const Text(
+                  'Stay on this screen: when the next round starts you go '
+                  'straight in, under the same name.',
+                  style: TextStyle(
+                      fontSize: 13.5, height: 1.4, color: LiveColors.muted),
+                ),
+              ],
+              if (quiz.team != null) ...[
+                const SizedBox(height: 10),
+                QuizTeamChip(team: quiz.team!),
+              ],
             ],
           ),
         ),
+        if (quiz.teams?.isNotEmpty ?? false)
+          QuizTeamBoard(teams: quiz.teams!, mine: quiz.team?.key),
         if (quiz.leaderboard.isNotEmpty || rank != null) _board(quiz),
+        if (overall != null && overall.isNotEmpty)
+          LiveCard(
+            key: const ValueKey('quiz-overall'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const LiveHeading('Across all rounds'),
+                QuizLeaderboard(
+                  board: overall,
+                  me: quiz.name,
+                  showOwnRow: false,
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -406,8 +490,11 @@ class _QuizPageState extends ConsumerState<QuizPage>
             child: const Text('Leaderboard',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
           ),
-          const Text('Tied players share a place.',
-              style: TextStyle(fontSize: 12.5, color: LiveColors.muted)),
+          Text(
+              quiz.tiesByTime
+                  ? 'Equal scores: the faster answers go first.'
+                  : 'Tied players share a place.',
+              style: const TextStyle(fontSize: 12.5, color: LiveColors.muted)),
           QuizLeaderboard(
             board: quiz.leaderboard,
             me: quiz.name,
@@ -422,22 +509,41 @@ class _QuizPageState extends ConsumerState<QuizPage>
   }
 
   Widget _lobby(QuizState quiz) {
+    final look = _look;
     return LiveCard(
       live: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const LiveDot('In the quiz', beat: true),
+          LiveDot(
+              quiz.hasRounds
+                  ? 'Round ${quiz.roundIndex + 1} of ${quiz.roundCount}'
+                  : 'In the quiz',
+              beat: true),
           const SizedBox(height: 10),
           Semantics(
             header: true,
             liveRegion: true,
             child: Text(
               'You are in, ${quiz.name}',
-              style: const TextStyle(
-                  fontSize: 22, height: 1.2, fontWeight: FontWeight.w800),
+              style: look.display(const TextStyle(
+                  fontSize: 22, height: 1.2, fontWeight: FontWeight.w800)),
             ),
           ),
+          if (quiz.team != null) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: QuizTeamChip(team: quiz.team!, prefix: 'Your team:'),
+            ),
+          ],
+          if (quiz.anonymousScreen && quiz.tag != null) ...[
+            const SizedBox(height: 10),
+            Text('You are Player ${quiz.tag} on the screen.',
+                key: const ValueKey('quiz-tag'),
+                style: const TextStyle(
+                    fontSize: 14.5, fontWeight: FontWeight.w600)),
+          ],
           const SizedBox(height: 14),
           const LiveWaiting(
             icon: Icons.hourglass_empty_rounded,
@@ -447,7 +553,7 @@ class _QuizPageState extends ConsumerState<QuizPage>
           ),
           Text(
             '${quiz.total} ${quiz.total == 1 ? 'question' : 'questions'} '
-            'tonight',
+            '${quiz.hasRounds ? 'in this round' : 'tonight'}',
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 13, color: LiveColors.muted),
           ),
@@ -456,52 +562,60 @@ class _QuizPageState extends ConsumerState<QuizPage>
     );
   }
 
-  static const _marks = ['▲', '◆', '●', '■', '★', '✚'];
-  static const _colours = [
-    Color(0xFFDC2626),
-    Color(0xFF2563EB),
-    Color(0xFFD97706),
-    Color(0xFF16A34A),
-    Color(0xFF7C3AED),
-    Color(0xFF0891B2),
-  ];
+  /// "Question 3 of 10", the round, and what it is worth when that is not
+  /// the usual. A poll is worth nothing, whatever the round's points (the
+  /// server sends them for a poll too): no points on it.
+  Widget _header(QuizState quiz, QuizQuestion q) {
+    final look = _look;
+    final scored = q.kind != QuizKind.poll;
+    final points = scored ? q.effectivePoints : null;
+    final doubled = scored && q.doublePoints;
+    final badges = <String>[
+      if (doubled) 'Double points',
+      if (points != null && (points != 1000 || doubled)) '$points points',
+      if (quiz.streak >= 2) '${quiz.streak} in a row',
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Question ${quiz.currentIndex + 1} of ${quiz.total}'
+          '${quiz.hasRounds ? ' · Round ${quiz.roundIndex + 1} of ${quiz.roundCount}' : ''}',
+          style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+              color: look.accent),
+        ),
+        if (badges.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [for (final b in badges) _Badge(b)],
+            ),
+          ),
+      ],
+    );
+  }
 
   List<Widget> _question(QuizCubit cubit, QuizState quiz, QuizQuestion q) {
+    final look = _look;
     final left = _state.left;
     final timeUp = left <= 0;
+    final paused = quiz.isPaused;
+    final revealed = quiz.revealedNow;
     final right = q.wasRight;
-    final reveal = q.revealed;
     final points = q.myPoints ?? _state.flash?.points;
-    String? correct;
-    for (final o in q.options) {
-      if (q.correctKey != null && o.key == q.correctKey) correct = o.label;
-    }
-    Widget? verdict;
-    if (q.answered && right != null) {
-      verdict = QuizVerdict(
-        text: right
-            ? 'Right${points != null && points > 0 ? ' — +$points' : ''}'
-            : 'Not that one',
-        tone: right ? LiveColors.right : LiveColors.wrong,
-        icon: right ? Icons.check_circle_rounded : Icons.cancel_rounded,
-        answer: right ? null : correct,
-      );
-    } else if (q.answered) {
-      verdict = const QuizVerdict(
-        text: 'Answer locked in',
-        tone: LiveColors.deep,
-        icon: Icons.lock_outline_rounded,
-        note: 'You’ll see if you were right when time is up.',
-      );
-    } else if (timeUp) {
-      verdict = QuizVerdict(
-        text: 'Time is up',
-        tone: LiveColors.wrong,
-        icon: Icons.timer_off_rounded,
-        answer: correct,
-        note: 'No answer from you this time.',
-      );
-    }
+    final enabled = !_state.answersClosed;
+    final verdict = _verdict(quiz, q, timeUp: timeUp, points: points);
+    final sideClock = look.timer == LiveTimerStyle.ring ||
+        look.timer == LiveTimerStyle.number;
+    final clock = QuizTimer(left: left, seconds: q.seconds, paused: paused);
+    // The board between questions: once this one's clock is out (an older
+    // server), or when the round says the board is up now.
+    final boardUp = quiz.boardNow ?? timeUp;
     return [
       LiveCard(
         live: true,
@@ -515,73 +629,275 @@ class _QuizPageState extends ConsumerState<QuizPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Question ${quiz.currentIndex + 1} of ${quiz.total}',
-                        style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                            color: LiveColors.deep),
-                      ),
+                      _header(quiz, q),
                       const SizedBox(height: 10),
                       Semantics(
                         header: true,
                         child: Text(
                           q.prompt,
-                          style: const TextStyle(
+                          style: look.display(const TextStyle(
                               fontSize: 23,
                               height: 1.22,
-                              fontWeight: FontWeight.w800),
+                              fontWeight: FontWeight.w800)),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                QuizClock(left: left, seconds: q.seconds),
+                if (sideClock) ...[const SizedBox(width: 12), clock],
               ],
             ),
+            if (look.timer == LiveTimerStyle.bar) ...[
+              const SizedBox(height: 14),
+              clock,
+            ],
+            if (paused) const _PausedLine(),
             const SizedBox(height: 18),
-            for (var i = 0; i < q.options.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _AnswerButton(
-                  option: q.options[i],
-                  mark: _marks[i % _marks.length],
-                  colour: _colours[i % _colours.length],
-                  mine: q.myAnswer == q.options[i].key,
-                  right: reveal && q.correctKey == q.options[i].key,
-                  wrong: reveal &&
-                      q.myAnswer == q.options[i].key &&
-                      q.correctKey != q.options[i].key,
-                  enabled: !_state.answersClosed,
-                  onTap: () => cubit.answer(q.options[i].key),
-                ),
-              ),
+            _input(cubit, q, revealed: revealed, enabled: enabled),
             if (verdict != null) verdict,
+            if (q.kind == QuizKind.poll && revealed && q.counts.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: QuizTally(question: q),
+              ),
+            if (revealed && quiz.nextAt != null)
+              QuizNextIn(at: quiz.nextAt!),
             const SizedBox(height: 14),
             _ScoreStrip(
               score: quiz.score,
               rank: quiz.rank,
-              gained: right == true ? points : null,
+              gained: right == true || q.partlyRight ? points : null,
+              team: quiz.team,
             ),
           ],
         ),
       ),
-      // The board between questions: once this one's clock is out.
-      if (timeUp && (quiz.leaderboard.isNotEmpty || quiz.rank != null))
+      if (boardUp && (quiz.teams?.isNotEmpty ?? false))
+        QuizTeamBoard(teams: quiz.teams!, mine: quiz.team?.key),
+      if (boardUp && (quiz.leaderboard.isNotEmpty || quiz.rank != null))
         _board(quiz),
     ];
+  }
+
+  Widget _input(QuizCubit cubit, QuizQuestion q,
+      {required bool revealed, required bool enabled}) {
+    switch (q.kind) {
+      case QuizKind.single:
+      case QuizKind.trueFalse:
+      case QuizKind.poll:
+        return QuizOneTapInput(
+          question: q,
+          revealed: revealed,
+          enabled: enabled,
+          onAnswer: cubit.answer,
+        );
+      case QuizKind.multi:
+        return QuizMultiInput(
+          key: ValueKey('multi-${q.id}'),
+          question: q,
+          revealed: revealed,
+          enabled: enabled,
+          onAnswer: (keys) => cubit.submit(OptionsAnswer(keys)),
+        );
+      case QuizKind.type:
+        return QuizTypeInput(
+          key: ValueKey('type-${q.id}'),
+          question: q,
+          enabled: enabled,
+          onAnswer: (text) => cubit.submit(TextAnswer(text)),
+        );
+      case QuizKind.order:
+        return QuizOrderInput(
+          key: ValueKey('order-${q.id}'),
+          question: q,
+          revealed: revealed,
+          enabled: enabled,
+          onAnswer: (keys) => cubit.submit(OrderAnswer(keys)),
+        );
+      case QuizKind.unknown:
+        return const Padding(
+          padding: EdgeInsets.only(bottom: 10),
+          child: Text(quizNeedsUpdate,
+              key: ValueKey('quiz-needs-update'),
+              style: TextStyle(
+                  fontSize: 15, height: 1.4, color: LiveColors.muted)),
+        );
+    }
+  }
+
+  /// The right answer, in words, once it is out.
+  (String, String)? _rightAnswer(QuizQuestion q) {
+    switch (q.kind) {
+      case QuizKind.multi:
+        final keys = q.correctKeys;
+        if (keys == null || keys.isEmpty) return null;
+        return (
+          keys.length == 1 ? 'The answer' : 'The answers',
+          keys.map(q.labelOf).join(', '),
+        );
+      case QuizKind.type:
+        final accepted = q.accepted;
+        if (accepted == null || accepted.isEmpty) return null;
+        return (
+          'The answer',
+          accepted.length == 1
+              ? accepted.first
+              : '${accepted.first} (also: ${accepted.skip(1).join(', ')})',
+        );
+      case QuizKind.order:
+        final order = q.correctOrder;
+        if (order == null || order.isEmpty) return null;
+        return ('The order', order.map(q.labelOf).join(' → '));
+      case QuizKind.poll:
+      case QuizKind.unknown:
+        return null;
+      case QuizKind.single:
+      case QuizKind.trueFalse:
+        final key = q.correctKey;
+        if (key == null) return null;
+        final label = q.options.where((o) => o.key == key).firstOrNull?.label;
+        return label == null ? null : ('The answer', label);
+    }
+  }
+
+  Widget? _verdict(QuizState quiz, QuizQuestion q,
+      {required bool timeUp, required int? points}) {
+    final right = q.wasRight;
+    final revealed = quiz.revealedNow;
+    final answer = _rightAnswer(q);
+    if (quiz.isPaused && !q.answered) return null;
+    if (q.kind == QuizKind.poll && q.answered) {
+      return QuizVerdict(
+        text: revealed ? 'Thanks for answering' : 'Answer locked in',
+        tone: _look.accent,
+        icon: revealed ? Icons.how_to_vote_rounded : Icons.lock_outline_rounded,
+        note: revealed && q.counts.isEmpty
+            ? 'A poll: no points. The room’s answers are on the screen.'
+            : 'A poll: no points for this one.',
+      );
+    }
+    if (q.answered && right != null) {
+      final partly = q.partlyRight;
+      final lost = points != null && points < 0;
+      return QuizVerdict(
+        text: right
+            ? 'Right${points != null && points > 0 ? ' — +$points' : ''}'
+            : partly
+                ? 'Partly right${points != null && points > 0 ? ' — +$points' : ''}'
+                : 'Not that one${lost ? ' — −${-points}' : ''}',
+        tone: right
+            ? LiveColors.right
+            : partly
+                ? LiveColors.warnInk
+                : LiveColors.wrong,
+        icon: right
+            ? Icons.check_circle_rounded
+            : partly
+                ? Icons.adjust_rounded
+                : Icons.cancel_rounded,
+        answer: right ? null : answer?.$2,
+        answerTitle: answer?.$1 ?? 'The answer',
+        note: lost ? 'Wrong answers cost points in this quiz.' : null,
+      );
+    }
+    if (q.answered) {
+      return QuizVerdict(
+        text: 'Answer locked in',
+        tone: _look.accent,
+        icon: Icons.lock_outline_rounded,
+        note: quiz.waitingForReveal
+            ? 'The host will show the answer in a moment.'
+            : 'You’ll see if you were right when time is up.',
+      );
+    }
+    if (timeUp || quiz.waitingForReveal || revealed) {
+      return QuizVerdict(
+        text: 'Time is up',
+        tone: LiveColors.wrong,
+        icon: Icons.timer_off_rounded,
+        answer: answer?.$2,
+        answerTitle: answer?.$1 ?? 'The answer',
+        note: q.kind == QuizKind.unknown
+            ? null
+            : quiz.waitingForReveal
+                ? 'No answer from you this time. The host will show the '
+                    'answer in a moment.'
+                : 'No answer from you this time.',
+      );
+    }
+    return null;
+  }
+}
+
+/// "Paused by the host": the clock stands still and answers wait.
+class _PausedLine extends StatelessWidget {
+  const _PausedLine();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      container: true,
+      label: 'Paused. The host stopped the clock; answers open again when it '
+          'restarts.',
+      excludeSemantics: true,
+      child: Container(
+        key: const ValueKey('quiz-paused'),
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: LiveColors.warnTint,
+          border: Border.all(color: LiveColors.warnEdge),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.pause_circle_filled_rounded, color: LiveColors.warn),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Paused by the host — the clock has stopped. Answers open '
+                'again when it restarts.',
+                style: TextStyle(
+                    fontSize: 13.5, height: 1.35, color: LiveColors.warnInk),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = LiveLook.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: look.liveEdge),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(text,
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w700, color: look.accent)),
+    );
   }
 }
 
 /// Where the player stands under the question: the score, counting up to
-/// its new total, what the last answer added, and the place.
+/// its new total, what the last answer added, the place, and the team.
 class _ScoreStrip extends StatelessWidget {
-  const _ScoreStrip({required this.score, this.rank, this.gained});
+  const _ScoreStrip({required this.score, this.rank, this.gained, this.team});
   final int score;
   final int? rank;
   final int? gained;
+  final QuizTeam? team;
 
   @override
   Widget build(BuildContext context) {
@@ -591,6 +907,7 @@ class _ScoreStrip extends StatelessWidget {
         '$score points',
         if (gained != null && gained! > 0) 'up $gained',
         if (rank != null) '${ordinal(rank!)} right now',
+        if (team != null) 'team ${team!.name}',
       ].join(', '),
       child: ExcludeSemantics(
         child: Container(
@@ -642,120 +959,8 @@ class _ScoreStrip extends StatelessWidget {
                 Text('${ordinal(rank!)} right now',
                     style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.w600)),
+              if (team != null) QuizTeamChip(team: team!),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AnswerButton extends StatelessWidget {
-  const _AnswerButton({
-    required this.option,
-    required this.mark,
-    required this.colour,
-    required this.mine,
-    required this.right,
-    required this.wrong,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  final QuizOption option;
-  final String mark;
-  final Color colour;
-  final bool mine;
-  final bool right;
-  final bool wrong;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = [
-      option.label,
-      if (mine) 'your answer',
-      if (right) 'the right answer',
-      if (wrong) 'wrong',
-    ].join(', ');
-    final background = right
-        ? LiveColors.right
-        : wrong
-            ? LiveColors.wrong
-            : colour;
-    final dim = !enabled && !mine && !right;
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      selected: mine,
-      label: label,
-      excludeSemantics: true,
-      child: Opacity(
-        opacity: dim ? 0.55 : 1,
-        child: Material(
-          color: background,
-          borderRadius: BorderRadius.circular(12),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            key: ValueKey('answer-${option.key}'),
-            onTap: enabled ? onTap : null,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 70),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              decoration: mine
-                  ? BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white, width: 3),
-                    )
-                  : null,
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: Text(mark,
-                        style: const TextStyle(
-                            fontSize: 18, color: Colors.white)),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      option.label,
-                      style: const TextStyle(
-                        fontSize: 17.5,
-                        height: 1.25,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  if (right)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: Icon(Icons.check_circle_rounded,
-                          color: Colors.white, size: 26),
-                    )
-                  else if (wrong)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: Icon(Icons.cancel_rounded,
-                          color: Colors.white, size: 26),
-                    )
-                  else if (mine)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: Icon(Icons.check_circle,
-                          color: Colors.white, size: 26),
-                    ),
-                ],
-              ),
-            ),
           ),
         ),
       ),
@@ -778,6 +983,7 @@ class _Centered extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final look = LiveLook.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -786,20 +992,20 @@ class _Centered extends StatelessWidget {
           children: [
             Text(title,
                 textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: look.custom ? look.onPage : null)),
             const SizedBox(height: 8),
             Text(text,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: LiveColors.muted)),
+                style: TextStyle(color: look.mutedOnPage)),
             if (action != null) ...[
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: onAction,
-                style: FilledButton.styleFrom(
-                  backgroundColor: LiveColors.ink,
-                  minimumSize: const Size(160, liveTapTarget),
-                ),
+                style: liveButtonStyle(look,
+                    minimumSize: const Size(160, liveTapTarget)),
                 child: Text(action!),
               ),
             ],

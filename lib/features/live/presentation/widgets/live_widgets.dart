@@ -1,51 +1,39 @@
 import 'package:finnet/features/live/domain/live_quiz.dart';
 import 'package:finnet/features/live/domain/live_room.dart';
+import 'package:finnet/features/live/presentation/widgets/live_look.dart';
 import 'package:flutter/material.dart';
 import 'package:finnet/shared/widgets/app_spinner.dart';
 
-/// The live room's colours: the event page's LIVE NOW strip's greens, and
-/// the app's dark button.
-abstract final class LiveColors {
-  static const tint = Color(0xFFECFDF5);
-  static const edge = Color(0xFFA7F3D0);
-  static const dot = Color(0xFF14B8A6);
-  static const deep = Color(0xFF0F766E);
-  static const ink = Color(0xFF2C333D);
-  static const muted = Color(0xFF6B7280);
-  static const line = Color(0xFFE5E7EB);
-  static const right = Color(0xFF15803D);
-  static const wrong = Color(0xFFB91C1C);
+export 'package:finnet/features/live/presentation/widgets/live_look.dart';
+export 'package:finnet/features/live/presentation/widgets/live_poll_card.dart';
 
-  /// The page behind the cards.
-  static const wash = Color(0xFFF9FAFB);
+/// The text of every button in the room: the theme's body font (the app's
+/// DM Sans without a theme), 16 and bold, in sentence case. A button's
+/// text takes its style from the button, never the page, so it is named
+/// here; without it a button showed the app's Bebas Neue capitals, or the
+/// phone's system font when a style left the family out.
+TextStyle liveButtonText(LiveLook look, [TextStyle? overrides]) => TextStyle(
+      fontFamily: look.textFamily,
+      fontSize: 16,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.1,
+    ).merge(overrides);
 
-  /// A state that is off: a grey chip rather than a green one.
-  static const offTint = Color(0xFFF3F4F6);
-
-  /// The clock as time runs short, and a rating's stars.
-  static const warn = Color(0xFFD97706);
-  static const warnTint = Color(0xFFFFFBEB);
-  static const warnEdge = Color(0xFFFDE68A);
-  static const warnInk = Color(0xFF92400E);
-  static const wrongTint = Color(0xFFFEE2E2);
-  static const rightTint = Color(0xFFDCFCE7);
-
-  /// The podium.
-  static const gold = Color(0xFFD4A017);
-  static const goldTint = Color(0xFFFEF9E7);
-  static const silver = Color(0xFF8A94A6);
-  static const silverTint = Color(0xFFF4F6F8);
-  static const bronze = Color(0xFFA9631F);
-  static const bronzeTint = Color(0xFFFDF3E7);
-}
-
-/// The smallest a thing to tap is: 48 by 48.
-const double liveTapTarget = 48;
-
-/// Whether the phone asks for less movement (iOS "Reduce Motion", Android
-/// "Remove animations"). Everything here that moves checks it first.
-bool liveStill(BuildContext context) =>
-    MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+/// The main button of the room in its look: the app's dark button, or the
+/// theme's accent with the text that reads on it. [textStyle] changes the
+/// size or weight; the family stays the room's.
+ButtonStyle liveButtonStyle(
+  LiveLook look, {
+  Size? minimumSize,
+  TextStyle? textStyle,
+}) =>
+    FilledButton.styleFrom(
+      backgroundColor: look.button,
+      foregroundColor: look.custom ? look.onButton : null,
+      minimumSize: minimumSize,
+      textStyle: liveButtonText(
+          look, textStyle?.copyWith(fontFamily: look.textFamily)),
+    );
 
 /// How long ago, in as few words as the room needs: "just now", "5 min
 /// ago", "2 h ago", then the day.
@@ -76,16 +64,22 @@ class LiveCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final look = LiveLook.of(context);
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 14),
       padding: padding,
       decoration: BoxDecoration(
-        color: live ? LiveColors.tint : Colors.white,
-        border: Border.all(color: live ? LiveColors.edge : LiveColors.line),
+        color: live ? look.liveCard : Colors.white,
+        border: Border.all(color: live ? look.liveEdge : LiveColors.line),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: child,
+      // On a themed page the card is still a light surface: its text the
+      // room's ink, whatever the page behind it.
+      child: look.custom
+          ? DefaultTextStyle.merge(
+              style: const TextStyle(color: LiveColors.ink), child: child)
+          : child,
     );
   }
 }
@@ -101,12 +95,13 @@ class LiveDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tone = colour ?? LiveColors.deep;
+    final look = LiveLook.of(context);
+    final tone = colour ?? look.accent;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _Beacon(
-          colour: tone == LiveColors.deep ? LiveColors.dot : tone,
+          colour: colour == null ? look.dot : tone,
           beat: beat,
         ),
         const SizedBox(width: 6),
@@ -174,24 +169,26 @@ class LivePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final look = LiveLook.of(context);
     return Container(
       margin: const EdgeInsets.only(left: 6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: LiveColors.tint,
+        color: look.liveCard,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: LiveColors.edge),
+        border: Border.all(color: look.liveEdge),
       ),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 11, color: LiveColors.deep),
+        style: TextStyle(fontSize: 11, color: look.accent),
       ),
     );
   }
 }
 
-class _Heading extends StatelessWidget {
-  const _Heading(this.text, {this.size = 18});
+/// A heading of a card, read out as one.
+class LiveHeading extends StatelessWidget {
+  const LiveHeading(this.text, {super.key, this.size = 18});
   final String text;
   final double size;
 
@@ -208,8 +205,9 @@ class _Heading extends StatelessWidget {
   }
 }
 
-class _Sub extends StatelessWidget {
-  const _Sub(this.text);
+/// The quieter line under a heading.
+class LiveSub extends StatelessWidget {
+  const LiveSub(this.text, {super.key});
   final String text;
 
   @override
@@ -224,8 +222,9 @@ class _Sub extends StatelessWidget {
   }
 }
 
-class _ErrorLine extends StatelessWidget {
-  const _ErrorLine(this.text);
+/// What went wrong, said as it happens.
+class LiveErrorLine extends StatelessWidget {
+  const LiveErrorLine(this.text, {super.key});
   final String text;
 
   @override
@@ -306,11 +305,12 @@ class _StateChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final look = LiveLook.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: on ? LiveColors.tint : LiveColors.offTint,
-        border: Border.all(color: on ? LiveColors.edge : LiveColors.line),
+        color: on ? look.liveCard : LiveColors.offTint,
+        border: Border.all(color: on ? look.liveEdge : LiveColors.line),
         borderRadius: BorderRadius.circular(999),
       ),
       child: on
@@ -364,6 +364,8 @@ class LiveConnectionBar extends StatelessWidget {
                 style: TextButton.styleFrom(
                   foregroundColor: LiveColors.warnInk,
                   minimumSize: const Size(64, liveTapTarget),
+                  textStyle: liveButtonText(LiveLook.of(context),
+                      const TextStyle(fontSize: 14)),
                 ),
                 child: const Text('Retry'),
               ),
@@ -385,6 +387,7 @@ class LiveWaiting extends StatelessWidget {
     this.action,
     this.onAction,
     this.spinner = false,
+    this.onPage = false,
   });
 
   final IconData icon;
@@ -396,8 +399,14 @@ class LiveWaiting extends StatelessWidget {
   /// Something is on its way: a ring around the mark.
   final bool spinner;
 
+  /// Drawn on the page itself rather than in a card: on a themed page, in
+  /// the text colour the server chose for its background.
+  final bool onPage;
+
   @override
   Widget build(BuildContext context) {
+    final look = LiveLook.of(context);
+    final themedPage = onPage && look.custom;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 8),
       child: Column(
@@ -409,12 +418,12 @@ class LiveWaiting extends StatelessWidget {
               alignment: Alignment.center,
               children: [
                 if (spinner && !liveStill(context))
-                  const SizedBox(
+                  SizedBox(
                     width: 68,
                     height: 68,
                     child: AppSpinner(
                       strokeWidth: 2,
-                      color: LiveColors.edge,
+                      color: look.liveEdge,
                     ),
                   ),
                 Container(
@@ -435,24 +444,27 @@ class LiveWaiting extends StatelessWidget {
             child: Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: themedPage ? look.onPage : null),
             ),
           ),
           const SizedBox(height: 6),
           Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 13.5, height: 1.4, color: LiveColors.muted),
+            style: TextStyle(
+                fontSize: 13.5,
+                height: 1.4,
+                color: themedPage ? look.mutedOnPage : LiveColors.muted),
           ),
           if (action != null) ...[
             const SizedBox(height: 16),
             FilledButton(
               onPressed: onAction,
-              style: FilledButton.styleFrom(
-                backgroundColor: LiveColors.ink,
-                minimumSize: const Size(160, liveTapTarget),
-              ),
+              style: liveButtonStyle(look,
+                  minimumSize: const Size(160, liveTapTarget)),
               child: Text(action!),
             ),
           ],
@@ -479,6 +491,7 @@ class LiveBannerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final when = liveAgo(update.sentAt);
+    final look = LiveLook.of(context);
     return Semantics(
       container: true,
       liveRegion: true,
@@ -497,8 +510,7 @@ class LiveBannerCard extends StatelessWidget {
                   if (when.isNotEmpty)
                     Text(
                       when,
-                      style:
-                          const TextStyle(fontSize: 11, color: LiveColors.deep),
+                      style: TextStyle(fontSize: 11, color: look.accent),
                     ),
                 ],
               ),
@@ -528,8 +540,8 @@ class EarlierUpdates extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _Heading('Earlier tonight'),
-          const _Sub('Newest first.'),
+          const LiveHeading('Earlier tonight'),
+          const LiveSub('Newest first.'),
           for (var i = 0; i < updates.length; i++)
             _FeedRow(update: updates[i], last: i == updates.length - 1),
         ],
@@ -610,6 +622,7 @@ class QuizEntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final look = LiveLook.of(context);
     return LiveCard(
       live: true,
       child: Column(
@@ -617,400 +630,22 @@ class QuizEntryCard extends StatelessWidget {
         children: [
           const LiveDot('Quiz', beat: true),
           const SizedBox(height: 8),
-          _Heading(title?.isNotEmpty == true ? title! : 'The quiz is on',
+          LiveHeading(title?.isNotEmpty == true ? title! : 'The quiz is on',
               size: 22),
-          const _Sub(
+          const LiveSub(
               'Type the code on the screen and your name. Fast right answers '
               'score most.'),
           const SizedBox(height: 14),
           FilledButton.icon(
+            key: const ValueKey('quiz-join-room'),
             onPressed: onJoin,
             icon: const Icon(Icons.play_arrow_rounded, size: 22),
-            label: const Text('Join the quiz',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            style: FilledButton.styleFrom(
-              backgroundColor: LiveColors.ink,
-              minimumSize: const Size.fromHeight(56),
-            ),
+            label: const Text('Join the quiz'),
+            style: liveButtonStyle(look,
+                minimumSize: const Size.fromHeight(56)),
           ),
         ],
       ),
-    );
-  }
-}
-
-// ─── The poll ────────────────────────────────────────────────────────────
-
-/// The poll that is up: a choice, a word or two, or a rating, and the
-/// room's answers once this phone has given one.
-class PollCard extends StatefulWidget {
-  const PollCard({
-    super.key,
-    required this.poll,
-    required this.onAnswer,
-    this.busy = false,
-    this.error,
-    this.closed = false,
-  });
-
-  final LivePoll poll;
-  final Future<bool> Function(String value) onAnswer;
-  final bool busy;
-  final String? error;
-
-  /// The room has closed: results only.
-  final bool closed;
-
-  @override
-  State<PollCard> createState() => _PollCardState();
-}
-
-class _PollCardState extends State<PollCard> {
-  final _word = TextEditingController();
-
-  @override
-  void dispose() {
-    _word.dispose();
-    super.dispose();
-  }
-
-  Future<void> _sendWord() async {
-    final value = _word.text.trim();
-    if (value.length < 2) return;
-    if (await widget.onAnswer(value) && mounted) _word.clear();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final poll = widget.poll;
-    final showResults = poll.answered || widget.closed;
-    final count = poll.responses;
-    return LiveCard(
-      live: !widget.closed,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          LiveDot('Poll', beat: !widget.closed),
-          const SizedBox(height: 8),
-          _Heading(poll.prompt, size: 20),
-          _Sub('$count ${count == 1 ? 'answer' : 'answers'} so far'
-              '${poll.answered ? ' · you answered' : ''}'),
-          if (poll.answered) _Voted(poll: poll),
-          const SizedBox(height: 12),
-          if (poll.isChoice) ..._choices(poll, showResults),
-          if (poll.isWords) ..._words(poll, showResults),
-          if (poll.isRating) ..._rating(poll, showResults),
-          if (widget.error != null) _ErrorLine(widget.error!),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _choices(LivePoll poll, bool showResults) => [
-        for (final c in poll.choicesToShow)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _ChoiceButton(
-              choice: c,
-              mine: poll.myResponse == c.label,
-              showResults: showResults,
-              enabled: !widget.busy && !widget.closed,
-              onTap: () => widget.onAnswer(c.label),
-            ),
-          ),
-        if (!showResults && !widget.closed)
-          const Text(
-            'Tap an answer — the room’s counts show as soon as you do.',
-            style: TextStyle(fontSize: 12.5, color: LiveColors.muted),
-          ),
-      ];
-
-  List<Widget> _words(LivePoll poll, bool showResults) {
-    final words = poll.words;
-    return [
-      if (showResults && words.isNotEmpty) ...[
-        Semantics(
-          label: 'What the room said: '
-              '${words.map((w) => '${w.word}, ${w.count}').join('; ')}',
-          child: ExcludeSemantics(child: _WordCloud(words: words)),
-        ),
-        const SizedBox(height: 12),
-      ],
-      if (!widget.closed)
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: TextField(
-                key: const ValueKey('poll-word'),
-                controller: _word,
-                maxLength: 40,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _sendWord(),
-                decoration: InputDecoration(
-                  counterText: '',
-                  isDense: true,
-                  border: const OutlineInputBorder(),
-                  labelText: 'Your word',
-                  hintText: poll.myResponse != null
-                      ? 'You said “${poll.myResponse}” — change it?'
-                      : 'A word or two',
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            ListenableBuilder(
-              listenable: _word,
-              builder: (context, _) => FilledButton(
-                onPressed: widget.busy || _word.text.trim().length < 2
-                    ? null
-                    : _sendWord,
-                style: FilledButton.styleFrom(
-                  backgroundColor: LiveColors.ink,
-                  minimumSize: const Size(72, liveTapTarget),
-                ),
-                child: const Text('Send'),
-              ),
-            ),
-          ],
-        ),
-    ];
-  }
-
-  List<Widget> _rating(LivePoll poll, bool showResults) {
-    final mine = int.tryParse(poll.myResponse ?? '') ?? 0;
-    return [
-      Semantics(
-        container: true,
-        label: 'Rate from 1 to 5',
-        child: Wrap(
-          children: [
-            for (var n = 1; n <= 5; n++)
-              Semantics(
-                button: true,
-                selected: mine == n,
-                label: '$n of 5',
-                excludeSemantics: true,
-                child: SizedBox(
-                  width: liveTapTarget + 8,
-                  height: liveTapTarget + 8,
-                  child: IconButton(
-                    key: ValueKey('rate-$n'),
-                    onPressed: widget.busy || widget.closed
-                        ? null
-                        : () => widget.onAnswer('$n'),
-                    icon: Icon(
-                      mine >= n ? Icons.star_rounded : Icons.star_border_rounded,
-                      size: 38,
-                      color: mine >= n ? LiveColors.warn : LiveColors.muted,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-      if (showResults && poll.ratingAverage != null)
-        Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Text(
-            'Room average ${_trim(poll.ratingAverage!)} of 5',
-            style: const TextStyle(fontSize: 13, color: LiveColors.muted),
-          ),
-        ),
-    ];
-  }
-
-  static String _trim(double v) =>
-      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
-}
-
-/// "You voted Pizza": the confirmation, right under the prompt.
-class _Voted extends StatelessWidget {
-  const _Voted({required this.poll});
-  final LivePoll poll;
-
-  @override
-  Widget build(BuildContext context) {
-    final mine = poll.myResponse ?? '';
-    final said = poll.isRating ? '$mine of 5' : mine;
-    return Semantics(
-      liveRegion: true,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: LiveColors.edge),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.check_circle_rounded,
-                  size: 18, color: LiveColors.deep),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'You voted $said',
-                  style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: LiveColors.deep),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ChoiceButton extends StatelessWidget {
-  const _ChoiceButton({
-    required this.choice,
-    required this.mine,
-    required this.showResults,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  final PollChoice choice;
-  final bool mine;
-  final bool showResults;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final votes = '${choice.count} ${choice.count == 1 ? 'vote' : 'votes'}';
-    final label = [
-      choice.label,
-      if (showResults) '${choice.pct} percent',
-      if (showResults) votes,
-      if (mine) 'your answer',
-    ].join(', ');
-    final still = liveStill(context);
-    return Semantics(
-      button: true,
-      selected: mine,
-      enabled: enabled,
-      label: label,
-      excludeSemantics: true,
-      child: Material(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: mine ? LiveColors.deep : LiveColors.line,
-            width: mine ? 2 : 1,
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: enabled ? onTap : null,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 56),
-            child: Stack(
-              children: [
-                if (showResults)
-                  Positioned.fill(
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(
-                        begin: still ? choice.pct.clamp(0, 100) / 100 : 0,
-                        end: choice.pct.clamp(0, 100) / 100,
-                      ),
-                      duration: Duration(milliseconds: still ? 0 : 450),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, width, _) => FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: width,
-                        child: Container(
-                          color: mine ? LiveColors.edge : LiveColors.tint,
-                        ),
-                      ),
-                    ),
-                  ),
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  child: Row(
-                    children: [
-                      if (mine)
-                        const Padding(
-                          padding: EdgeInsets.only(right: 8),
-                          child: Icon(Icons.check_circle,
-                              size: 20, color: LiveColors.deep),
-                        ),
-                      Expanded(
-                        child: Text(
-                          choice.label,
-                          style: TextStyle(
-                            fontSize: 15.5,
-                            height: 1.3,
-                            fontWeight:
-                                mine ? FontWeight.w700 : FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      if (showResults) ...[
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '${choice.pct}%',
-                              style: const TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w700),
-                            ),
-                            Text(
-                              votes,
-                              style: const TextStyle(
-                                  fontSize: 11, color: LiveColors.muted),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The room's words: the most said twice the size of the least.
-class _WordCloud extends StatelessWidget {
-  const _WordCloud({required this.words});
-  final List<PollWord> words;
-
-  @override
-  Widget build(BuildContext context) {
-    final counts = words.map((w) => w.count);
-    final max = counts.reduce((a, b) => a > b ? a : b);
-    final min = counts.reduce((a, b) => a < b ? a : b);
-    double size(int c) => 14 + (max == min ? 8 : 18 * (c - min) / (max - min));
-    return Wrap(
-      spacing: 12,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        for (final w in words)
-          Text(
-            w.word,
-            style: TextStyle(
-              fontSize: size(w.count),
-              fontWeight: FontWeight.w600,
-              color: LiveColors.deep,
-            ),
-          ),
-      ],
     );
   }
 }
@@ -1087,10 +722,10 @@ class _QuestionsSectionState extends State<QuestionsSection> {
     final questions = widget.questions;
     if (!open && questions.isEmpty) {
       return widget.refused
-          ? const Padding(
-              padding: EdgeInsets.only(bottom: 14),
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 14),
               child: Text("Questions aren't open right now.",
-                  style: TextStyle(color: LiveColors.muted)),
+                  style: TextStyle(color: LiveLook.of(context).mutedOnPage)),
             )
           : const SizedBox.shrink();
     }
@@ -1103,7 +738,7 @@ class _QuestionsSectionState extends State<QuestionsSection> {
             children: [
               Expanded(
                 child:
-                    _Heading(open ? 'Ask the room' : 'Questions from the room'),
+                    LiveHeading(open ? 'Ask the room' : 'Questions from the room'),
               ),
               if (questions.isNotEmpty)
                 Padding(
@@ -1116,7 +751,7 @@ class _QuestionsSectionState extends State<QuestionsSection> {
                 ),
             ],
           ),
-          _Sub(!open
+          LiveSub(!open
               ? 'Questions aren’t open right now. Vote up the ones you want '
                   'answered.'
               : widget.approveFirst
@@ -1161,10 +796,8 @@ class _QuestionsSectionState extends State<QuestionsSection> {
                     onPressed: widget.asking || _text.text.trim().length < 3
                         ? null
                         : _ask,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: LiveColors.ink,
-                      minimumSize: const Size(72, liveTapTarget),
-                    ),
+                    style: liveButtonStyle(LiveLook.of(context),
+                        minimumSize: const Size(72, liveTapTarget)),
                     child: widget.asking
                         ? const SizedBox(
                             width: 18,
@@ -1184,21 +817,21 @@ class _QuestionsSectionState extends State<QuestionsSection> {
                   liveRegion: true,
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_rounded,
-                          size: 16, color: LiveColors.deep),
+                      Icon(Icons.check_circle_rounded,
+                          size: 16, color: LiveLook.of(context).accent),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(widget.note!,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: LiveColors.deep)),
+                                color: LiveLook.of(context).accent)),
                       ),
                     ],
                   ),
                 ),
               ),
-            if (widget.error != null) _ErrorLine(widget.error!),
+            if (widget.error != null) LiveErrorLine(widget.error!),
           ],
           const SizedBox(height: 8),
           if (questions.isEmpty)
@@ -1250,6 +883,7 @@ class _QuestionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final q = question;
+    final look = LiveLook.of(context);
     final votes = '${q.votes} ${q.votes == 1 ? 'vote' : 'votes'}';
     return Padding(
       padding: const EdgeInsets.only(top: 10),
@@ -1274,9 +908,10 @@ class _QuestionRow extends StatelessWidget {
                 onPressed: q.answered || busy ? null : onVote,
                 style: OutlinedButton.styleFrom(
                   padding: EdgeInsets.zero,
-                  backgroundColor: q.voted ? LiveColors.tint : null,
+                  textStyle: liveButtonText(look),
+                  backgroundColor: q.voted ? look.liveCard : null,
                   side: BorderSide(
-                      color: q.voted ? LiveColors.deep : LiveColors.line),
+                      color: q.voted ? look.accent : LiveColors.line),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
@@ -1285,13 +920,13 @@ class _QuestionRow extends StatelessWidget {
                   children: [
                     Icon(Icons.arrow_drop_up,
                         size: 22,
-                        color: q.voted ? LiveColors.deep : LiveColors.muted),
+                        color: q.voted ? look.accent : LiveColors.muted),
                     Text(
                       '${q.votes}',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: q.voted ? LiveColors.deep : LiveColors.ink,
+                        color: q.voted ? look.accent : LiveColors.ink,
                       ),
                     ),
                   ],
@@ -1444,15 +1079,18 @@ class _QuizLeaderboardState extends State<QuizLeaderboard> {
             );
     }
     final onBoard = board.any(_isMe);
-    final podium = board.take(3).toList();
-    final rest = board.length > 3 ? board.sublist(3) : const <BoardEntry>[];
+    // The theme can draw the first three as rows like the rest.
+    final steps = LiveLook.of(context).podium ? 3 : 0;
+    final podium = board.take(steps).toList();
+    final rest =
+        board.length > steps ? board.sublist(steps) : const <BoardEntry>[];
     return Semantics(
       container: true,
       label: 'Leaderboard',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Podium(entries: podium, me: widget.me),
+          if (podium.isNotEmpty) _Podium(entries: podium, me: widget.me),
           for (final e in rest)
             _BoardRow(
               key: ValueKey('board-${e.name}'),
@@ -1519,6 +1157,7 @@ class _Step extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final look = LiveLook.of(context);
     final rank = entry.rank;
     final (tone, tint) = switch (rank) {
       1 => (LiveColors.gold, LiveColors.goldTint),
@@ -1535,9 +1174,9 @@ class _Step extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.fromLTRB(6, 10, 6, 10 + lift),
         decoration: BoxDecoration(
-          color: mine ? LiveColors.tint : tint,
+          color: mine ? look.liveCard : tint,
           border: Border.all(
-              color: mine ? LiveColors.deep : tone, width: mine ? 2 : 1),
+              color: mine ? look.accent : tone, width: mine ? 2 : 1),
           borderRadius: const BorderRadius.vertical(
             top: Radius.circular(12),
             bottom: Radius.circular(4),
@@ -1566,11 +1205,11 @@ class _Step extends StatelessWidget {
               maxLines: 2,
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: look.display(TextStyle(
                 fontSize: 13,
                 height: 1.2,
                 fontWeight: mine ? FontWeight.w800 : FontWeight.w600,
-              ),
+              )),
             ),
             const SizedBox(height: 4),
             LiveScore(
@@ -1585,8 +1224,8 @@ class _Step extends StatelessWidget {
               maintainSize: true,
               maintainAnimation: true,
               maintainState: true,
-              child: const Text('you',
-                  style: TextStyle(fontSize: 11, color: LiveColors.deep)),
+              child: Text('you',
+                  style: TextStyle(fontSize: 11, color: look.accent)),
             ),
           ],
         ),
@@ -1613,6 +1252,7 @@ class _BoardRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final still = liveStill(context);
+    final look = LiveLook.of(context);
     return Semantics(
       container: true,
       label: '${ordinal(entry.rank)}, ${entry.name}, ${entry.score} points'
@@ -1624,9 +1264,9 @@ class _BoardRow extends StatelessWidget {
         margin: const EdgeInsets.only(top: 6),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: mine ? LiveColors.tint : Colors.white,
+          color: mine ? look.liveCard : Colors.white,
           border: Border.all(
-              color: mine ? LiveColors.deep : LiveColors.line,
+              color: mine ? look.accent : LiveColors.line,
               width: mine ? 2 : 1),
           borderRadius: BorderRadius.circular(10),
         ),
@@ -1747,8 +1387,8 @@ class _MyRow extends StatelessWidget {
             margin: const EdgeInsets.only(top: 6),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: BoxDecoration(
-              color: LiveColors.tint,
-              border: Border.all(color: LiveColors.deep, width: 2),
+              color: LiveLook.of(context).liveCard,
+              border: Border.all(color: LiveLook.of(context).accent, width: 2),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
@@ -1811,7 +1451,7 @@ class QuizClock extends StatelessWidget {
         ? LiveColors.wrong
         : short
             ? LiveColors.warn
-            : LiveColors.deep;
+            : LiveLook.of(context).accent;
     final span = seconds <= 0 ? 1 : seconds;
     final fraction = (left / span).clamp(0.0, 1.0);
     final still = liveStill(context);
@@ -1867,6 +1507,7 @@ class QuizVerdict extends StatelessWidget {
     this.points,
     this.answer,
     this.note,
+    this.answerTitle = 'The answer',
   });
 
   /// "Right — +870", "Not that one", "Answer locked in", "Time is up".
@@ -1883,6 +1524,10 @@ class QuizVerdict extends StatelessWidget {
   /// A line under it: what happens next.
   final String? note;
 
+  /// What [answer] is introduced as: "The answer", "The answers", "The
+  /// order".
+  final String answerTitle;
+
   @override
   Widget build(BuildContext context) {
     final tint = tone == LiveColors.right
@@ -1895,7 +1540,10 @@ class QuizVerdict extends StatelessWidget {
       container: true,
       label: [
         text,
-        if (answer != null) 'The answer was $answer',
+        if (answer != null)
+          answerTitle == 'The answer'
+              ? 'The answer was $answer'
+              : '$answerTitle: $answer',
         if (note != null) note!,
       ].join('. '),
       child: ExcludeSemantics(
@@ -1949,7 +1597,7 @@ class QuizVerdict extends StatelessWidget {
               if (answer != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'The answer: $answer',
+                  '$answerTitle: $answer',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                       fontSize: 14.5,

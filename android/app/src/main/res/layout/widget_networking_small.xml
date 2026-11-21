@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "Networking", small (2x2): the person's QR code, large enough to scan,
+     the name under it. NetworkingWidgetProvider fills it; until then (and
+     signed out) it asks the person to sign in. The whole card opens My QR. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/networking_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_next_up_background"
+    android:padding="10dp">
+
+    <LinearLayout
+        android:id="@+id/networking_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <!-- The code on its white tile (QrBitmap): dark on white, with
+                 its quiet zone, in both themes. -->
+            <ImageView
+                android:id="@+id/networking_qr"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/networking_qr_description"
+                android:scaleType="fitCenter"
+                android:visibility="gone" />
+
+            <ImageView
+                android:id="@+id/networking_placeholder"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/networking_open_my_qr"
+                android:scaleType="fitCenter"
+                android:src="@drawable/widget_networking_placeholder" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/networking_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="@string/networking_my_qr"
+            android:textColor="@color/next_up_ink"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/networking_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="@string/networking_tap_for_qr"
+            android:textColor="@color/next_up_secondary"
+            android:textSize="12sp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/networking_message"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:padding="2dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:text="@string/next_up_brand"
+            android:textAllCaps="true"
+            android:textColor="@color/next_up_accent"
+            android:textSize="10sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="3"
+            android:text="@string/networking_signed_out"
+            android:textColor="@color/next_up_ink"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/widget_next_up_pill"
+            android:fontFamily="sans-serif-medium"
+            android:paddingLeft="12dp"
+            android:paddingTop="5dp"
+            android:paddingRight="12dp"
+            android:paddingBottom="5dp"
+            android:text="@string/networking_sign_in"
+            android:textColor="@color/next_up_pill_ink"
+            android:textSize="12sp" />
+    </LinearLayout>
+</FrameLayout>

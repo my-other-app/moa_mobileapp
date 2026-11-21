@@ -7,6 +7,7 @@ import 'package:finnet/features/events/presentation/pages/answers_page.dart';
 import 'package:finnet/features/events/presentation/pages/claim_offer_page.dart';
 import 'package:finnet/features/events/presentation/pages/competition_page.dart';
 import 'package:finnet/features/events/presentation/pages/event_form_page.dart';
+import 'package:finnet/features/events/presentation/pages/event_ticket_page.dart';
 import 'package:finnet/features/events/presentation/pages/feedback_survey_page.dart';
 import 'package:finnet/features/events/presentation/pages/individual_event_page.dart';
 import 'package:finnet/features/events/presentation/pages/networking_page.dart';
@@ -89,6 +90,14 @@ Widget buildEventRegisterPage(BuildContext context, GoRouterState state) {
         ? extra['requiresApproval'] as bool
         : null,
   );
+}
+
+/// `/events/:eventId/ticket`: the ticket to the event, found on the phone
+/// by the event -- what the "Next up" home-screen widget opens, since it
+/// never holds a ticket's code. The event's page when there is no ticket.
+Widget buildEventTicketPage(BuildContext context, GoRouterState state) {
+  final ref = eventRefOf(state);
+  return EventTicketPage(key: ValueKey('event-ticket-$ref'), eventRef: ref);
 }
 
 /// The request [extra] carries (`request`), when it does.

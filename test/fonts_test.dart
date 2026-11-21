@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:finnet/features/live/domain/live_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -92,5 +93,55 @@ void main() {
       width(FontWeight.w700),
       width(FontWeight.w400, axes: const [ui.FontVariation('wght', 700)]),
     );
+  });
+
+  test('every live-room theme font is declared, with its files and licence',
+      () {
+    // liveFontFamily maps the contract's six fonts onto these; one missing
+    // from pubspec would quietly draw in the system font.
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    expect(_declaredFamilies(), containsAll(liveFontFamilies));
+    for (final family in liveFontFamilies) {
+      final at = pubspec.indexOf('- family: $family\n');
+      expect(at, isNot(-1), reason: family);
+      final next = pubspec.indexOf('- family:', at + 1);
+      final block = pubspec.substring(at, next == -1 ? null : next);
+      final assets = RegExp(r'asset:\s*(\S+)').allMatches(block).toList();
+      expect(assets, isNotEmpty, reason: family);
+      for (final a in assets) {
+        expect(File(a.group(1)!).existsSync(), isTrue, reason: a.group(1));
+      }
+    }
+    for (final family in ['Poppins', 'Inter', 'NotoSans', 'SpaceGrotesk']) {
+      expect(File('assets/fonts/licenses/OFL-$family.txt').existsSync(), isTrue,
+          reason: family);
+    }
+  });
+
+  testWidgets('the variable live-room faces render real weights',
+      (tester) async {
+    for (final (family, file) in const [
+      ('InterProbe', 'assets/fonts/Inter-Latin-VariableFont_wght.ttf'),
+      ('NotoSansProbe', 'assets/fonts/NotoSans-Latin-VariableFont_wght.ttf'),
+      ('SpaceGroteskProbe',
+          'assets/fonts/SpaceGrotesk-Latin-VariableFont_wght.ttf'),
+    ]) {
+      final bytes = File(file).readAsBytesSync();
+      final loader = FontLoader(family)
+        ..addFont(
+            Future.value(ByteData.sublistView(Uint8List.fromList(bytes))));
+      await loader.load();
+      double width(FontWeight weight) => (TextPainter(
+            text: TextSpan(
+              text: 'Hamburgefonstiv',
+              style: TextStyle(
+                  fontFamily: family, fontSize: 40, fontWeight: weight),
+            ),
+            textDirection: TextDirection.ltr,
+          )..layout())
+              .width;
+      expect(width(FontWeight.w700), greaterThan(width(FontWeight.w400)),
+          reason: family);
+    }
   });
 }

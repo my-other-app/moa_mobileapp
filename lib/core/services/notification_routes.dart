@@ -35,6 +35,9 @@
 /// | `support_reply` (`case_id`)          | the help request's thread    |
 /// | `network_saves` (`event_id`)         | who saved them, to save back |
 /// | `network_recap` (`event_id`)         | the Network tab at the event |
+/// | `quest_unlocked`,                    | the event's quest            |
+/// | `quest_reward_held` (`event_id`; and |                              |
+/// | any push that says `open: quest`)    |                              |
 ///
 /// A push carries its event as the string `event_id`; an inbox line as its
 /// `event` (and the push's data beside it).
@@ -46,6 +49,7 @@ import 'package:finnet/features/events/domain/registration_request.dart';
 import 'package:finnet/features/events/domain/ticketing.dart';
 import 'package:finnet/features/live/live_locations.dart';
 import 'package:finnet/features/network/domain/network_links.dart';
+import 'package:finnet/features/quests/quest_links.dart';
 import 'package:finnet/features/support/domain/support.dart';
 
 export 'package:finnet/features/support/domain/support.dart'
@@ -55,6 +59,9 @@ export 'package:finnet/features/social/domain/share_kit.dart' show shareKitType;
 
 export 'package:finnet/features/network/domain/network_links.dart'
     show networkSavesType, networkRecapType;
+
+export 'package:finnet/features/quests/quest_links.dart'
+    show questUnlockedType, questRewardHeldType;
 
 /// The pushes (and inbox lines) that open an event's live room.
 const liveRoomTypes = {
@@ -206,6 +213,10 @@ String? notificationRoute(
   // the morning-after "You met 12 people at DevFest".
   final network = networkPushRoute(type, eventId);
   if (network != null) return network;
+  // "🎁 You unlocked Tier 1" and "Your T-shirt is waiting at the swag
+  // desk": the event's quest. An app from before quests opens the event.
+  final quest = questPushRoute(type, eventId, data['open']);
+  if (quest != null) return quest;
   if (type == answersNeededType) {
     // The missing-answers screen, by the push's personal link; without one,
     // the event.
