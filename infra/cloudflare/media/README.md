@@ -1,6 +1,6 @@
 # Media CDN at `media.myotherapp.in`
 
-A Cloudflare Worker in front of the S3 bucket. It serves the public pictures — event posters, club logos and covers, speakers', team members' and partners' photos, events' sponsor and partner logos, posts' images, the stock avatars and store photos — from Cloudflare's edge near the viewer. No new vendor: DNS is already on Cloudflare.
+A Cloudflare Worker in front of the S3 bucket. It serves the public pictures — event posters, club logos and covers, speakers', team members' and partners' photos, events' sponsor and partner logos, posts' images, the stock avatars, store photos, club websites' photos and live rooms' pictures — from Cloudflare's edge near the viewer. No new vendor: DNS is already on Cloudflare.
 
 Until now, every one of these pictures reached a browser as a presigned S3 link from us-east-1. That meant about 280 ms per hop from India, a different address every few days (so nothing could cache it for long), and S3 egress on every view.
 
@@ -14,13 +14,15 @@ Until now, every one of these pictures reached a browser as a presigned S3 link 
   - `clubs/team/`
   - `clubs/partners/`
   - `clubs/threads/`
+  - `clubs/site/` (a club website's photo library)
   - `events/speakers/`
   - `events/partners/` (an event's sponsors' and partners' logos)
   - `events/posters/` (event posters uploaded since Oct 2026)
   - `avatars/`
   - `events/{id}/merch/`
+  - `events/live/` (a live room's logo, background and poll-option pictures)
 
-  Anything else gets a 404 without S3 being asked. That covers tickets and certificates (`docs/`), template art and signatures (`templates/`), designer uploads (`…/layout/`), email pictures, event files, close-out reports and profile pictures. The list lives in three places that must agree: `media.js` here, `PUBLIC_FOLDERS` in the backend's `app/core/storage/media.py`, and the IAM policy below.
+  Anything else gets a 404 without S3 being asked. That covers tickets and certificates (`docs/`), template art and signatures (`templates/`), designer uploads (`…/layout/`), email pictures, event files, close-out reports, profile pictures, guests' poster photos (`guest_posters/`) and mailbox files. The list lives in three places that must agree: `media.js` here, `PUBLIC_FOLDERS` in the backend's `app/core/storage/media.py`, and the IAM policy below.
 - **Reading S3:** the bucket is private, so the Worker signs each `GetObject` itself with AWS Signature V4 (`sigv4.js`, using WebCrypto, no SDK). The key it signs with can read the public folders and nothing else.
 - **Cache:** the Worker uses the Cache API, keyed by the path alone. A query string never creates a new copy, so it can't be used to push every request through to S3.
 
@@ -56,6 +58,15 @@ On the Workers Free plan, an account gets **100,000 requests a day across all it
 
 So move the account to **Workers Paid** before `APP_MEDIA_CDN_URL` carries real traffic. It costs $5 a month with 10 million requests included, then $0.30 per million. For scale: 50,000 people a day each viewing 40 pictures is about 60 million requests a month, roughly $20. The S3 egress for the same views would be about 6 TB.
 
+## Only for media on AWS S3
+
+Production's media is now in Garage on the server (the backend's `docs/OPERATIONS.md` section 26). There, `media.myotherapp.in` is Caddy in front of Garage, the backend hands out signed links to it, and `APP_MEDIA_CDN_URL` stays empty. This Worker does not fit that setup as it is:
+
+- it signs its reads for AWS hosts only (`sigv4.js`, `*.s3.<region>.amazonaws.com`);
+- a Garage key cannot be limited to folders. `garage bucket allow --read` gives it the whole bucket, tickets and certificates included, so the allow-list in `media.js` would be the only guard.
+
+The steps below are for media on AWS S3. A CDN in front of Garage would need its own design, for example an endpoint setting for the Worker, a host other than `media.myotherapp.in` (Caddy answers that one), and the public pictures in a bucket of their own so a read-only key can't reach the rest.
+
 ## Switch it on, in this order
 
 Each step is safe on its own. Nothing changes for anyone until step 6.
@@ -83,11 +94,13 @@ Deploy the branch with `APP_MEDIA_CDN_URL` unset. Responses stay exactly as they
            "arn:aws:s3:::BUCKET/clubs/team/*",
            "arn:aws:s3:::BUCKET/clubs/partners/*",
            "arn:aws:s3:::BUCKET/clubs/threads/*",
+           "arn:aws:s3:::BUCKET/clubs/site/*",
            "arn:aws:s3:::BUCKET/events/speakers/*",
            "arn:aws:s3:::BUCKET/events/partners/*",
            "arn:aws:s3:::BUCKET/events/posters/*",
            "arn:aws:s3:::BUCKET/avatars/*",
-           "arn:aws:s3:::BUCKET/events/*/merch/*"
+           "arn:aws:s3:::BUCKET/events/*/merch/*",
+           "arn:aws:s3:::BUCKET/events/live/*"
          ]
        }
      ]
