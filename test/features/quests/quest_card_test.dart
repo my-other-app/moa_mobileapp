@@ -28,6 +28,10 @@ class _Harness {
 
 final _now = DateTime(2026, 11, 28, 11);
 
+/// 9:30 AM on the event's day by this machine's clock, so the words don't
+/// depend on the time zone the tests run in.
+final _nineThirty = DateTime(2026, 11, 28, 9, 30).toUtc().toIso8601String();
+
 Future<_Harness> _pump(
   WidgetTester tester, {
   QuestCardStyle style = QuestCardStyle.light,
@@ -555,12 +559,14 @@ void main() {
                 kind: 'checked_in',
                 title: 'Check in',
                 done: true,
-                source: 'auto'),
+                source: 'auto',
+                doneAt: _nineThirty),
             taskJson('t-hack',
                 kind: 'manual',
                 title: 'Hackathon project submitted',
                 done: true,
-                source: 'grant'),
+                source: 'grant',
+                doneAt: _nineThirty),
             taskJson('t-hand',
                 kind: 'manual',
                 title: 'Helped at the desk',
@@ -569,7 +575,7 @@ void main() {
                 doneAt: null),
           ]));
       await _pump(tester);
-      // 04:00 UTC is 9:30 AM in India.
+      // The phone's own clock, whatever its time zone (CI runs in UTC).
       expect(find.text('Done at 9:30 AM'), findsOneWidget);
       expect(find.text('Marked done by the organisers at 9:30 AM'),
           findsOneWidget);

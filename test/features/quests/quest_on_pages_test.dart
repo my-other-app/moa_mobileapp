@@ -192,10 +192,12 @@ void main() {
                 kind: 'checked_in',
                 title: 'Check in',
                 done: true,
-                source: 'auto'),
+                source: 'auto',
+                // 9:30 AM by the phone's clock, in any time zone.
+                doneAt: DateTime(2026, 11, 28, 9, 30).toUtc().toIso8601String()),
           ]));
       await pumpTicket(tester);
-      // 04:00 UTC: 9:30 AM in India, the same day.
+      // The same day as the quest's clock: the time alone.
       expect(find.text('Done at 9:30 AM'), findsOneWidget);
     });
 
