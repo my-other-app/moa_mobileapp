@@ -738,6 +738,11 @@ void main() {
           'code': 'abcdefghjk',
           'url': 'https://myotherapp.in/p/abcdefghjk',
         })
+        // Read again after the replace: the new code.
+        ..on('GET', '/me/qr', {
+          'code': 'mnpqrstuvw',
+          'url': 'https://myotherapp.in/p/mnpqrstuvw',
+        })
         ..on('GET', '/me/profile', myProfileJson())
         ..on('POST', '/me/qr/replace', {
           'code': 'mnpqrstuvw',
@@ -760,6 +765,11 @@ void main() {
       await _settle(tester);
       expect(api.sent('POST', '/me/qr/replace'), hasLength(1));
       expect(api.sent('GET', '/me/qr'), hasLength(2));
+      // The home-screen widget's code is the new one at once.
+      final container =
+          ProviderScope.containerOf(tester.element(find.byType(MyQrPage)));
+      expect(container.read(lastKnownQrProvider)?.url,
+          'https://myotherapp.in/p/mnpqrstuvw');
 
       h.router.go('/profile');
       await tester.pumpAndSettle();

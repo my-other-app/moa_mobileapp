@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "Networking", medium (4x2): the code on the left; the name, "Scan to
+     save me", the Scan pill (the scanner) and "Network · 12" (the Network
+     tab) on the right. The code and the rest of the card open My QR.
+     NetworkingWidgetProvider fills it; signed out it asks the person to
+     sign in. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/networking_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_next_up_background"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent">
+
+            <!-- As tall as the card, as wide as it is tall. -->
+            <ImageView
+                android:id="@+id/networking_qr"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:adjustViewBounds="true"
+                android:contentDescription="@string/networking_qr_description"
+                android:scaleType="fitCenter"
+                android:visibility="gone" />
+
+            <ImageView
+                android:id="@+id/networking_placeholder"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:adjustViewBounds="true"
+                android:contentDescription="@string/networking_open_my_qr"
+                android:scaleType="fitCenter"
+                android:src="@drawable/widget_networking_placeholder" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/networking_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:maxLines="2"
+                android:text="@string/networking_signed_out"
+                android:textColor="@color/next_up_ink"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/networking_subtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:text="@string/networking_scan_to_save"
+                android:textColor="@color/next_up_secondary"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <!-- What is left of the height: the pill and the link sit at the
+                 bottom. -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/networking_scan"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/widget_next_up_pill"
+                android:drawableStart="@drawable/widget_networking_scan_glyph"
+                android:drawablePadding="5dp"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center_vertical"
+                android:paddingLeft="12dp"
+                android:paddingTop="5dp"
+                android:paddingRight="12dp"
+                android:paddingBottom="5dp"
+                android:text="@string/networking_sign_in"
+                android:textColor="@color/next_up_pill_ink"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/networking_network"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="sans-serif-medium"
+                android:paddingTop="6dp"
+                android:paddingBottom="2dp"
+                android:text="@string/networking_network"
+                android:textColor="@color/next_up_accent"
+                android:textSize="12sp"
+                android:visibility="gone" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

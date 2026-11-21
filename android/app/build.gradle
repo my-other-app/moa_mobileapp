@@ -124,4 +124,8 @@ gradle.taskGraph.whenReady { graph ->
 
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+    // The "Networking" home-screen widget draws the person's QR code itself
+    // (widget/QrBitmap.kt): ZXing's encoder -- Apache 2.0, plain Java, no
+    // dependencies of its own; R8 keeps only the encoder in release builds.
+    implementation 'com.google.zxing:core:3.5.3'
 }

@@ -9,6 +9,9 @@ import 'package:finnet/features/auth/data/services/session_services.dart';
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/events/data/datasources/saved_tickets_local_datasource.dart';
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
+import 'package:finnet/features/home_widget/data/networking_store.dart';
+import 'package:finnet/features/home_widget/data/next_up_store.dart';
+import 'package:finnet/features/home_widget/data/widget_store.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +23,20 @@ class _FakeImageCache extends Fake implements BaseCacheManager {
 
   @override
   Future<void> emptyCache() async => emptied++;
+}
+
+/// A home-screen widget's storage, in memory.
+class _WidgetStore implements WidgetStore {
+  final writes = <String>[];
+
+  @override
+  Future<void> write(String json) async => writes.add(json);
+
+  @override
+  Future<void> redraw() async {}
+
+  @override
+  Future<bool> isPlaced() async => false;
 }
 
 void main() {
@@ -76,16 +93,25 @@ void main() {
     await pdf.create(recursive: true);
     await pdf.writeAsString('PDF');
 
+    final nextUp = _WidgetStore();
+    final networking = _WidgetStore();
     final container = ProviderContainer(overrides: [
       secureStorageServiceProvider.overrideWithValue(storage),
       pushRegistrationProvider.overrideWithValue(FakePushRegistration()),
       sessionRevokerProvider.overrideWithValue(FakeSessionRevoker()),
+      nextUpStoreProvider.overrideWithValue(nextUp),
+      networkingStoreProvider.overrideWithValue(networking),
     ]);
     addTearDown(container.dispose);
     container.read(authStateProvider);
     await Future<void>.delayed(Duration.zero);
 
     await container.read(authStateProvider.notifier).logout();
+
+    // The home-screen widgets: the signed-out face, nothing of the person.
+    expect(nextUp.writes.single, contains('"state":"signed_out"'));
+    expect(networking.writes.single,
+        allOf(contains('"state":"signed_out"'), isNot(contains('/p/'))));
 
     expect(storage.values, isEmpty,
         reason: 'tokens, saved answers and saved tickets, all gone');

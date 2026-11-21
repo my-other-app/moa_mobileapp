@@ -92,6 +92,11 @@ dependencies:
   # My QR turns the screen up while it is open, so another phone's camera
   # reads the code in a dim hall; it goes back as the screen closes.
   screen_brightness: ^2.1.11
+  # The "Next up" home-screen widgets (docs/HOME_WIDGETS.md): the storage
+  # the app shares with them (an App Group on iOS) and the calls that
+  # redraw them. Pinned: its native APIs (HomeWidgetProvider,
+  # HomeWidgetScheduler) are used from Kotlin.
+  home_widget: 0.10.0
 
 dev_dependencies:
   flutter_test:
