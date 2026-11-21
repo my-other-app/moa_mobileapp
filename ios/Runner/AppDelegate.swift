@@ -45,6 +45,16 @@ import FirebaseMessaging
     {
       DispatchQueue.main.async { _ = self.application(application, open: link, options: [:]) }
     }
+    // A control (Control Center, the lock screen's buttons, the Action
+    // button: Scan, My QR) opens its page the same way. The system runs its
+    // intent here, in the app (ios/NextUpWidget/ControlIntents.swift), which
+    // hands the page over -- or left it waiting, if it ran before this point.
+    AppLinkHandoff.opener = { [weak self] link in
+      _ = self?.application(application, open: link, options: [:])
+    }
+    if let waiting = AppLinkHandoff.takeWaiting() {
+      DispatchQueue.main.async { _ = self.application(application, open: waiting, options: [:]) }
+    }
     return launched
   }
 

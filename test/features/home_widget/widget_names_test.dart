@@ -63,8 +63,13 @@ void main() {
     expect(info, isNot(contains('keyguard')));
     final widget = read('$swift/NetworkingWidget.swift');
     expect(
-        widget, contains('.supportedFamilies([.systemSmall, .systemMedium])'));
+        widget,
+        contains(
+            '.supportedFamilies([.systemSmall, .systemMedium, .systemLarge])'));
     expect(widget, isNot(contains('accessory')));
     expect(widget, contains('privacySensitive()'));
+    // "Recently met"'s names are hidden while locked too.
+    expect(read('$swift/NetworkingLargeView.swift'),
+        contains('.privateWhenLocked()'));
   });
 }

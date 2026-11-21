@@ -16,6 +16,8 @@
     <color name="next_up_pill_outline">#2C333D</color>
     <color name="next_up_review_fill">#F3F3F3</color>
     <color name="next_up_review_ink">#2C333D</color>
+    <!-- The line between the large widget's rows. -->
+    <color name="next_up_divider">#1F5F6773</color>
 
     <string name="next_up_widget_description">Your next event: its date, time and place. Tap to open your ticket.</string>
     <string name="next_up_label">Next up</string>
@@ -27,4 +29,6 @@
     <string name="next_up_find_events">Find events</string>
     <string name="next_up_brand">MyOtherApp</string>
     <string name="next_up_date_unknown">Date to be announced</string>
+    <string name="next_up_find_more">Find more events ›</string>
+    <string name="next_up_nothing_else">Nothing else booked yet</string>
 </resources>

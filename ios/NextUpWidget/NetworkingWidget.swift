@@ -6,8 +6,12 @@ import WidgetKit
 ///
 /// Small: the code, large enough to scan, with the name under it. Medium:
 /// the code on the left; the name, "Scan to save me", a Scan pill and
-/// "Network · 12" on the right. The code (and the card) opens My QR full
-/// screen, Scan the scanner that saves a person, "Network" the Network tab.
+/// "Network · 12" on the right. Large: the medium's top, then "Recently
+/// met" -- the four people met last, each in a circle with their initials
+/// (or their photo, when the person turned photos on) and where they met,
+/// each opening their page -- and "3 without a note yet". The code (and the
+/// card) opens My QR full screen, Scan the scanner that saves a person,
+/// "Network" the Network tab.
 /// Signed out: "Sign in to share your QR". No code read yet: a calm
 /// placeholder that opens My QR, which makes it.
 ///
@@ -24,7 +28,7 @@ struct NetworkingWidget: Widget {
     }
     .configurationDisplayName("Networking")
     .description("Your QR code to share, and quick scan.")
-    .supportedFamilies([.systemSmall, .systemMedium])
+    .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     .notSuggestedInStandBy()
   }
 }
@@ -49,6 +53,8 @@ extension WidgetConfiguration {
 struct NetworkingEntry: TimelineEntry {
   let date: Date
   let data: NetworkingData
+  /// "Recently met"'s photos, by key: only those kept and readable.
+  var photos: [String: CGImage] = [:]
 }
 
 struct NetworkingProvider: TimelineProvider {
@@ -59,14 +65,26 @@ struct NetworkingProvider: TimelineProvider {
   func getSnapshot(in context: Context, completion: @escaping (NetworkingEntry) -> Void) {
     let data = NetworkingData.read()
     // The gallery shows an example code rather than "Sign in".
-    let shown = context.isPreview && data.qrPayload == nil ? NetworkingData.sample : data
-    completion(NetworkingEntry(date: Date(), data: shown))
+    if context.isPreview && data.qrPayload == nil {
+      completion(NetworkingEntry(date: Date(), data: .sample))
+    } else {
+      completion(entry(data, family: context.family))
+    }
   }
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<NetworkingEntry>) -> Void) {
     // Nothing here changes with the clock: the app reloads the timeline
     // whenever it writes.
-    completion(Timeline(entries: [NetworkingEntry(date: Date(), data: .read())], policy: .never))
+    completion(
+      Timeline(entries: [entry(.read(), family: context.family)], policy: .never))
+  }
+
+  /// [data], with its photos read for the large size (the only one that
+  /// shows them).
+  private func entry(_ data: NetworkingData, family: WidgetFamily) -> NetworkingEntry {
+    let photos =
+      family == .systemLarge ? WidgetPhotoFiles.load(data.recentlyMet()) : [:]
+    return NetworkingEntry(date: Date(), data: data, photos: photos)
   }
 }
 
@@ -80,9 +98,19 @@ struct NetworkingView: View {
 
   var body: some View {
     let palette = WidgetPalette.of(scheme)
-    NetworkingContent(data: entry.data, medium: family == .systemMedium, palette: palette)
-      .widgetURL(entry.data.qrURL)
-      .widgetBackground(palette.background)
+    NetworkingContent(
+      data: entry.data, size: size, palette: palette, scheme: scheme, photos: entry.photos
+    )
+    .widgetURL(entry.data.qrURL)
+    .widgetBackground(palette.background)
+  }
+
+  private var size: WidgetSize {
+    switch family {
+    case .systemMedium: return .medium
+    case .systemLarge: return .large
+    default: return .small
+    }
   }
 }
 
@@ -90,13 +118,27 @@ struct NetworkingView: View {
 /// previews can draw each size and theme.
 struct NetworkingContent: View {
   let data: NetworkingData
-  let medium: Bool
+  let size: WidgetSize
   let palette: WidgetPalette
+  var scheme: ColorScheme = .light
+  var photos: [String: CGImage] = [:]
 
   var body: some View {
     if !data.signedIn {
-      NetworkingSignedOut(medium: medium, palette: palette)
-    } else if medium {
+      if size == .large {
+        VStack(spacing: 12) {
+          NetworkingSignedOut(medium: true, palette: palette)
+            .frame(height: 132)
+          SoftPanel(
+            symbol: "person.2", text: "Sign in to see the people you meet here.",
+            palette: palette)
+        }
+      } else {
+        NetworkingSignedOut(medium: size != .small, palette: palette)
+      }
+    } else if size == .large {
+      NetworkingLarge(data: data, palette: palette, scheme: scheme, photos: photos)
+    } else if size == .medium {
       NetworkingMedium(data: data, palette: palette)
     } else {
       NetworkingSmall(data: data, palette: palette)

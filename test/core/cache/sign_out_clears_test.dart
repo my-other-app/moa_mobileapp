@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:finnet/core/cache/api_cache.dart';
 import 'package:finnet/core/cache/cache_store.dart';
@@ -11,12 +12,14 @@ import 'package:finnet/features/events/data/datasources/saved_tickets_local_data
 import 'package:finnet/features/events/domain/entities/saved_ticket.dart';
 import 'package:finnet/features/home_widget/data/networking_store.dart';
 import 'package:finnet/features/home_widget/data/next_up_store.dart';
+import 'package:finnet/features/home_widget/data/widget_photos.dart';
 import 'package:finnet/features/home_widget/data/widget_store.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../features/auth/auth_fakes.dart';
+import '../../features/home_widget/widget_fakes.dart';
 
 class _FakeImageCache extends Fake implements BaseCacheManager {
   int emptied = 0;
@@ -95,12 +98,16 @@ void main() {
 
     final nextUp = _WidgetStore();
     final networking = _WidgetStore();
+    // "Recently met" with photos turned on, and one kept.
+    final photos = MemoryPhotoStore()..on = true;
+    await photos.save('networking_photo_5', 'f', Uint8List(3));
     final container = ProviderContainer(overrides: [
       secureStorageServiceProvider.overrideWithValue(storage),
       pushRegistrationProvider.overrideWithValue(FakePushRegistration()),
       sessionRevokerProvider.overrideWithValue(FakeSessionRevoker()),
       nextUpStoreProvider.overrideWithValue(nextUp),
       networkingStoreProvider.overrideWithValue(networking),
+      widgetPhotoStoreProvider.overrideWithValue(photos),
     ]);
     addTearDown(container.dispose);
     container.read(authStateProvider);
@@ -112,6 +119,9 @@ void main() {
     expect(nextUp.writes.single, contains('"state":"signed_out"'));
     expect(networking.writes.single,
         allOf(contains('"state":"signed_out"'), isNot(contains('/p/'))));
+    // Its photos, and the switch: the next person starts with initials.
+    expect(photos.files, isEmpty);
+    expect(photos.on, isFalse);
 
     expect(storage.values, isEmpty,
         reason: 'tokens, saved answers and saved tickets, all gone');

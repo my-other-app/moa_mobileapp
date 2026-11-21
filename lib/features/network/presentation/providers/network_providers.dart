@@ -52,11 +52,27 @@ final knownNetworkCountProvider = StateProvider<int?>((ref) {
   return null;
 });
 
-/// The smallest read that answers [knownNetworkCountProvider]: one person,
-/// and the total. The Networking widget keeps it while it is on a home
-/// screen, so a save, a removal or a block (each invalidates
-/// [networkListProvider]) reads the count again.
-const networkCountQuery = NetworkQuery(pageSize: 1);
+/// The first page of the whole network, the people last met first, as last
+/// read this session: the large "Networking" widget's "Recently met" (the
+/// newest few) and how many on it have no note yet (lib/features/home_widget).
+/// Set whenever that page is read -- the widget's own read, or the Network
+/// tab sorted by "Last met"; null until one is.
+final knownRecentlyMetProvider = StateProvider<NetworkList?>((ref) {
+  ref.watch(isAuthenticatedProvider);
+  return null;
+});
+
+/// What the Networking widget reads while it is on a home screen: the
+/// first page of the whole network, last met first (the Network tab's own
+/// page size, so its "Last met" view is the same read). It answers
+/// [knownNetworkCountProvider] and [knownRecentlyMetProvider] at once, and
+/// is kept alive, so a save, a removal, a block or a note (each invalidates
+/// [networkListProvider]) reads it again.
+const recentlyMetQuery = NetworkQuery(sort: NetworkSort.met);
+
+/// Whether [query] is the first page of the whole network, last met first.
+bool isRecentlyMetPage(NetworkQuery query) =>
+    !query.filtered && query.sort == NetworkSort.met && query.page == 1;
 
 /// One page of the network. Read again when the phone is back online: a
 /// copy shown offline has no pictures (their links expire), the fresh one
@@ -66,9 +82,11 @@ final networkListProvider = FutureProvider.autoDispose
   ref.watch(isAuthenticatedProvider);
   ref.watch(backOnlineProvider);
   final count = ref.read(knownNetworkCountProvider.notifier);
+  final recent = ref.read(knownRecentlyMetProvider.notifier);
   final list = await ref.watch(networkApiProvider).list(query);
   // The whole network's size, whatever the page or the order.
   if (!query.filtered && count.mounted) count.state = list.total;
+  if (isRecentlyMetPage(query) && recent.mounted) recent.state = list;
   return list;
 });
 
