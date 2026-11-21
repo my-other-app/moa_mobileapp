@@ -1,3 +1,4 @@
+import 'package:finnet/features/live/domain/live_theme.dart';
 import 'package:finnet/features/live/live_locations.dart';
 import 'package:finnet/features/live/presentation/pages/live_room_page.dart';
 import 'package:finnet/features/live/presentation/pages/quiz_page.dart';
@@ -38,13 +39,22 @@ Widget buildLiveRoomPage(BuildContext context, GoRouterState state) {
   );
 }
 
-/// `/events/:eventId/live/quiz`.
+LiveThemeState? _themeOf(GoRouterState state) {
+  final extra = state.extra;
+  return extra is Map && extra['theme'] is LiveThemeState
+      ? extra['theme'] as LiveThemeState
+      : null;
+}
+
+/// `/events/:eventId/live/quiz`. extra: `eventName`, and the room's `theme`
+/// (a [LiveThemeState]) so the quiz opens in the event's look at once.
 Widget buildQuizPage(BuildContext context, GoRouterState state) {
   final ref = _refOf(state);
   return QuizPage(
     key: ValueKey('quiz-$ref'),
     eventRef: ref,
     eventName: _nameOf(state),
+    theme: _themeOf(state),
   );
 }
 
@@ -69,15 +79,20 @@ String? legacyLiveRedirect(BuildContext context, GoRouterState state) {
 
 /// Opens the room (or, with [quiz], the quiz) for [ref] on top of what is
 /// showing, so Back comes back here. Through the router when there is one;
-/// a plain route otherwise (a screen shown on its own).
+/// a plain route otherwise (a screen shown on its own). [theme]: the room's
+/// look, for the quiz to open in.
 Future<void> openLiveRoom(
   BuildContext context,
   Object ref, {
   String? eventName,
   bool quiz = false,
+  LiveThemeState? theme,
 }) async {
   final router = GoRouter.maybeOf(context);
-  final extra = {if (eventName != null) 'eventName': eventName};
+  final extra = <String, Object>{
+    if (eventName != null) 'eventName': eventName,
+    if (theme != null) 'theme': theme,
+  };
   if (router != null) {
     await router.push<void>(
       quiz ? liveQuizLocation(ref) : liveRoomLocation(ref),
@@ -87,7 +102,7 @@ Future<void> openLiveRoom(
   }
   await Navigator.of(context).push<void>(MaterialPageRoute(
     builder: (_) => quiz
-        ? QuizPage(eventRef: '$ref', eventName: eventName)
+        ? QuizPage(eventRef: '$ref', eventName: eventName, theme: theme)
         : LiveRoomPage(eventRef: '$ref', eventName: eventName),
   ));
 }

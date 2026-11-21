@@ -4,11 +4,19 @@ import 'package:finnet/core/network/sse/sse_transport.dart';
 import 'package:finnet/features/live/data/live_identity.dart';
 import 'package:finnet/features/live/domain/live_quiz.dart';
 import 'package:finnet/features/live/domain/live_room.dart';
+import 'package:finnet/features/live/domain/live_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// The headers the room reads.
 const voterHeader = 'X-Live-Key';
 const playerHeader = 'X-Live-Player';
+
+/// This client knows the live room of the customisation release: question
+/// and poll kinds, rounds, teams, the theme (CONTRACT 0.3). Sent on every
+/// live call, and as `v=2` on the stream. A server from before it ignores
+/// it and answers as it always did.
+const liveVersionHeader = 'X-Live-Version';
+const liveVersion = '2';
 
 /// The live room's calls, as the people in the room make them (the
 /// backend's `app/api/live/router.py`, public side).
@@ -40,12 +48,13 @@ abstract class LiveRoomApi {
 
   /// `POST /events/{id}/live/polls/{pid}/respond`: the poll as the room sees
   /// it now, with this phone's answer.
-  Future<LivePoll?> respond(int eventId, String pollId, String value);
+  Future<LivePoll?> respond(int eventId, String pollId, PollAnswer answer);
 
   /// `POST /live/quiz/join` with the code on the screen, a name and the
   /// install's key as `player_key` (the same key is the same player, on a
-  /// server that knows it; today's ignores it and makes a new one).
-  Future<QuizPlayer> joinQuiz(String code, String name);
+  /// server that knows it; today's ignores it and makes a new one), and
+  /// the team picked, in a round the players pick teams in.
+  Future<QuizPlayer> joinQuiz(String code, String name, {String? team});
 
   /// `GET /events/{id}/live/quiz/play`.
   Future<QuizState?> playState(int eventId, String playerKey);
@@ -54,8 +63,13 @@ abstract class LiveRoomApi {
   Future<SseResponse> openQuizStream(int eventId, String playerKey,
       {String? lastEventId, Future<void>? abort});
 
-  /// `POST /events/{id}/live/quiz/answer`.
-  Future<AnswerResult> answer(int eventId, String playerKey, String optionKey);
+  /// `POST /events/{id}/live/quiz/answer`: the answer in its kind's shape.
+  Future<AnswerResult> answer(
+      int eventId, String playerKey, QuizResponse response);
+
+  /// `GET /events/{id}/live/theme/public`: the event's look. Null when the
+  /// body is not one (a server from before themes answers 404: thrown).
+  Future<LiveThemeState?> fetchTheme(int eventId);
 }
 
 class DioLiveRoomApi implements LiveRoomApi {
@@ -68,11 +82,13 @@ class DioLiveRoomApi implements LiveRoomApi {
 
   String _base(int eventId) => '/events/$eventId/live';
 
-  Future<Options> _keyed() async =>
-      Options(headers: {voterHeader: await _identity.installKey()});
+  Future<Options> _keyed() async => Options(headers: {
+        voterHeader: await _identity.installKey(),
+        liveVersionHeader: liveVersion,
+      });
 
-  Options _played(String playerKey) =>
-      Options(headers: {playerHeader: playerKey});
+  Options _played(String playerKey) => Options(
+      headers: {playerHeader: playerKey, liveVersionHeader: liveVersion});
 
   @override
   Future<int?> resolveEventId(String ref) async {
@@ -97,9 +113,10 @@ class DioLiveRoomApi implements LiveRoomApi {
     final key = await _identity.installKey();
     return _transport.open(
       '${_base(eventId)}/stream',
-      query: const {'view': 'room'},
+      query: const {'view': 'room', 'v': liveVersion},
       headers: {
         voterHeader: key,
+        liveVersionHeader: liveVersion,
         if (lastEventId != null) 'Last-Event-ID': lastEventId,
       },
       abort: abort,
@@ -136,22 +153,29 @@ class DioLiveRoomApi implements LiveRoomApi {
   }
 
   @override
-  Future<LivePoll?> respond(int eventId, String pollId, String value) async {
+  Future<LivePoll?> respond(
+      int eventId, String pollId, PollAnswer answer) async {
     final res = await _dio.post<dynamic>(
       '${_base(eventId)}/polls/${Uri.encodeComponent(pollId)}/respond',
-      data: {'value': value},
+      data: answer.toJson(),
       options: await _keyed(),
     );
     return LivePoll.fromJson(res.data);
   }
 
   @override
-  Future<QuizPlayer> joinQuiz(String code, String name) async {
+  Future<QuizPlayer> joinQuiz(String code, String name, {String? team}) async {
     final key = await _identity.installKey();
     final res = await _dio.post<dynamic>(
       '/live/quiz/join',
-      data: {'code': code.trim(), 'name': name.trim(), 'player_key': key},
-      options: Options(headers: {voterHeader: key}),
+      data: {
+        'code': code.trim(),
+        'name': name.trim(),
+        'player_key': key,
+        if (team != null) 'team': team,
+      },
+      options: Options(
+          headers: {voterHeader: key, liveVersionHeader: liveVersion}),
     );
     final player = QuizPlayer.fromJson(res.data);
     if (player == null) throw const FormatException('Not a player');
@@ -170,9 +194,10 @@ class DioLiveRoomApi implements LiveRoomApi {
           {String? lastEventId, Future<void>? abort}) =>
       _transport.open(
         '${_base(eventId)}/stream',
-        query: const {'view': 'quiz'},
+        query: const {'view': 'quiz', 'v': liveVersion},
         headers: {
           playerHeader: playerKey,
+          liveVersionHeader: liveVersion,
           if (lastEventId != null) 'Last-Event-ID': lastEventId,
         },
         abort: abort,
@@ -180,13 +205,20 @@ class DioLiveRoomApi implements LiveRoomApi {
 
   @override
   Future<AnswerResult> answer(
-      int eventId, String playerKey, String optionKey) async {
+      int eventId, String playerKey, QuizResponse response) async {
     final res = await _dio.post<dynamic>(
       '${_base(eventId)}/quiz/answer',
-      data: {'option_key': optionKey},
+      data: response.toJson(),
       options: _played(playerKey),
     );
     return AnswerResult.fromJson(res.data);
+  }
+
+  @override
+  Future<LiveThemeState?> fetchTheme(int eventId) async {
+    final res = await _dio.get<dynamic>('${_base(eventId)}/theme/public',
+        options: Options(headers: {liveVersionHeader: liveVersion}));
+    return LiveThemeState.fromJson(res.data);
   }
 }
 
