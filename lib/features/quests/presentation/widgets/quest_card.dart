@@ -573,11 +573,14 @@ class _QuestCardState extends ConsumerState<QuestCard>
             claim.variantLabel == null ? '' : 'Size ${claim.variantLabel} · ';
         return '${size}Collect it at ${quest.deskLine}';
       case QuestClaimStatus.waitlisted:
-        final at = claim.waitlistPosition == null
-            ? ''
-            : ' (#${claim.waitlistPosition})';
-        return "On the waiting list$at. We'll tell you when one is held "
-            'for you.';
+        // The paused card's and the website's words: "number 3 in line",
+        // "one is kept for you as soon as one frees up".
+        final n = claim.waitlistPosition;
+        return n == null
+            ? 'None free right now: one is kept for you as soon as one '
+                'frees up.'
+            : "None free right now. You're number $n in line: one is kept "
+                'for you as soon as one frees up.';
       case QuestClaimStatus.soldOut:
         return 'All gone, sorry: they were first come, first served.';
       case QuestClaimStatus.collected:

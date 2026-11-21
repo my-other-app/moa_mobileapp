@@ -130,8 +130,15 @@ void main() {
     test('every milestone reached', () {
       final q = Quest.fromJson(questJson(tier1Unlocked: true, next: null),
           eventId: 1);
-      expect(q.nextLine, 'Every reward unlocked. Well done!');
+      expect(q.nextLine, "You've reached every milestone.");
       expect(q.progressToNext, 1);
+    });
+
+    test('the one milestone reached', () {
+      final json = questJson(tier1Unlocked: true, next: null);
+      json['milestones'] = [(json['milestones'] as List).first];
+      final q = Quest.fromJson(json, eventId: 1);
+      expect(q.nextLine, "You've reached the milestone.");
     });
   });
 

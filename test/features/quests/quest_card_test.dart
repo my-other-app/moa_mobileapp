@@ -477,8 +477,23 @@ void main() {
                   claimJson(status: 'waitlisted', waitlistPosition: 3)));
       await _pump(tester);
       expect(
-          find.text("On the waiting list (#3). We'll tell you when one is "
-              'held for you.'),
+          find.text("None free right now. You're number 3 in line: one is "
+              'kept for you as soon as one frees up.'),
+          findsOneWidget);
+    });
+
+    testWidgets('a waiting list with no place given still says so',
+        (tester) async {
+      useFakeApi().on(
+          'GET',
+          '/events/1/quest',
+          questJson(
+              tier1Unlocked: true,
+              tier1Claim: claimJson(status: 'waitlisted')));
+      await _pump(tester);
+      expect(
+          find.text('None free right now: one is kept for you as soon as one '
+              'frees up.'),
           findsOneWidget);
     });
 

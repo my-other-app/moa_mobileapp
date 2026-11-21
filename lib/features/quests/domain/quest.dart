@@ -837,9 +837,12 @@ class Quest {
     if (mine == null) return null;
     final next = mine.next;
     if (next == null) {
-      return milestones.any((m) => m.unlocked)
-          ? 'Every reward unlocked. Well done!'
-          : null;
+      // Milestones, not rewards: the last reward may have run out, and the
+      // card says so on its own row. The website says the same.
+      if (!milestones.any((m) => m.unlocked)) return null;
+      return milestones.length == 1
+          ? "You've reached the milestone."
+          : "You've reached every milestone.";
     }
     if (next.left <= 0 && mine.requiredLeft > 0) {
       return mine.requiredLeft == 1
