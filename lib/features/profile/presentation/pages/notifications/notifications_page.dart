@@ -7,6 +7,10 @@ import 'package:finnet/features/notifications/presentation/providers/notificatio
 import 'package:finnet/features/profile/presentation/pages/notifications/no_notification_page.dart';
 import 'package:finnet/shared/widgets/error_view.dart';
 
+/// The circle behind a quest's note in the inbox: the quest card's yellow
+/// (its border), with its 🎯.
+const questNoteColor = Color(0xFFFDE68A);
+
 /// Notifications page showing in-app notification history.
 class NotificationsNewPage extends ConsumerStatefulWidget {
   const NotificationsNewPage({super.key});
@@ -261,7 +265,10 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
       height: 48,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: _getColorForType(notification.type),
+        // A quest's note: the yellow of the quest's card.
+        color: notification.isQuest
+            ? questNoteColor
+            : _getColorForType(notification.type),
       ),
       child: Center(
         child: Text(
@@ -312,7 +319,7 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
     final route = notification.route;
     if (route == null) return;
     // What the page can show before it has read anything itself.
-    final eventName = notification.event?.name;
+    final eventName = notification.eventName;
     final Map<String, dynamic>? extra;
     if (route.startsWith('/volunteer/scanner/')) {
       extra = {
@@ -321,6 +328,9 @@ class _NotificationsNewPageState extends ConsumerState<NotificationsNewPage> {
       };
     } else if (route.endsWith('/people')) {
       extra = {'eventName': eventName ?? ''};
+    } else if (route.endsWith('/quest') && eventName != null) {
+      // The quest page says whose quest it is.
+      extra = {'eventName': eventName};
     } else {
       extra = null;
     }

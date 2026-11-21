@@ -10,6 +10,8 @@ import 'package:finnet/features/network/domain/network.dart';
 import 'package:finnet/features/network/domain/network_links.dart';
 import 'package:finnet/features/network/presentation/providers/network_saver.dart';
 import 'package:finnet/features/network/presentation/widgets/save_outcome_card.dart';
+import 'package:finnet/features/quests/domain/quest.dart'
+    show QuestNetworkCounts;
 import 'package:finnet/features/quests/presentation/providers/quest_provider.dart';
 import 'package:finnet/features/quests/presentation/widgets/quest_scan_progress.dart';
 
@@ -118,12 +120,22 @@ class _SavePersonScannerPageState extends ConsumerState<SavePersonScannerPage>
     } else {
       unawaited(HapticFeedback.heavyImpact());
     }
-    // A meeting at an event with a quest: its "meet people" count follows.
+    // A meeting at an event with a quest: its "meet people" count follows,
+    // at once from the save's own counts when the server sends them, else
+    // read again until the server has counted it. Nothing for an event
+    // whose info says it has no quest on.
     final eventId = widget.eventId;
     if (eventId != null &&
         attempt is Saved &&
-        (attempt.result.created || attempt.result.newEncounter)) {
-      ref.read(questProvider(eventId).notifier).afterNetworkSave();
+        questWorthAsking(ref.read(questFlagsProvider), eventId)) {
+      final result = attempt.result;
+      final counts = QuestNetworkCounts.fromJson(result.quest);
+      final newMeeting = result.created || result.newEncounter;
+      if (counts != null || newMeeting) {
+        ref
+            .read(questProvider(eventId).notifier)
+            .afterNetworkSave(counts: counts, newMeeting: newMeeting);
+      }
     }
     setState(() {
       _attempt = attempt;

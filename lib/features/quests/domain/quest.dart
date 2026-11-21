@@ -109,12 +109,16 @@ class QuestTaskProgress {
   final bool done;
   final DateTime? doneAt;
 
-  /// How it was ticked (`grant` when the organiser did); informational.
+  /// How it was ticked: `auto` (the server saw it), `code`, `station`, or
+  /// `grant` (the organisers marked it done by hand).
   final String? source;
 
   /// The organisers took the tick back: it counts again only when they
   /// give it.
   final bool revoked;
+
+  /// Done because the organisers marked it so (§8.1 `source: grant`).
+  bool get granted => done && source?.toLowerCase() == 'grant';
 
   static QuestTaskProgress? fromJson(Object? value) {
     final json = jsonObject(value);
@@ -195,6 +199,22 @@ class QuestTask {
     return QuestTaskWindow.open;
   }
 
+  /// The task with the guest's progress [me] in place of theirs.
+  QuestTask withProgress(QuestTaskProgress me) => QuestTask(
+        id: id,
+        kind: kind,
+        title: title,
+        description: description,
+        points: points,
+        required: required,
+        startsAt: startsAt,
+        endsAt: endsAt,
+        target: target,
+        action: action,
+        stationName: stationName,
+        me: me,
+      );
+
   static QuestTask? fromJson(Object? value) {
     final json = jsonObject(value);
     final id = _text(json?['id']);
@@ -267,6 +287,8 @@ class QuestClaim {
     this.choices = const [],
     this.waitlistPosition,
     this.collectedAt,
+    this.door,
+    this.collectedBy,
   });
 
   final String id;
@@ -282,6 +304,15 @@ class QuestClaim {
   final List<QuestSizeChoice> choices;
   final int? waitlistPosition;
   final DateTime? collectedAt;
+
+  /// Where a collected reward was handed over ("Swag desk"): a place, never
+  /// a person (contract v1.3).
+  final String? door;
+
+  /// Who handed it over, when the server names someone; null for a swag
+  /// desk's door link, where nobody is signed in. The guest's card never
+  /// sends it today.
+  final String? collectedBy;
 
   /// The guest can pick (or change) a size here.
   bool get canPickSize =>
@@ -300,6 +331,8 @@ class QuestClaim {
       choices: QuestSizeChoice.listFrom(json['choices']),
       waitlistPosition: jsonInt(json['waitlist_position']),
       collectedAt: jsonDate(json['collected_at']),
+      door: _text(json['door']),
+      collectedBy: _text(json['collected_by']),
     );
   }
 }
@@ -478,6 +511,207 @@ class QuestDesk {
       ];
 }
 
+/// Where rewards are collected: "Swag desk", "Swag desk or Hall B"; "the
+/// swag desk" when the event names none yet.
+String questDeskLine(List<QuestDesk> desks) {
+  final names = [for (final d in desks) d.name];
+  if (names.isEmpty) return 'the swag desk';
+  if (names.length == 1) return names.single;
+  return '${names.sublist(0, names.length - 1).join(', ')} or ${names.last}';
+}
+
+/// "T-shirt", "T-shirt and sticker pack", "A, B and C".
+String _andList(List<String> names) {
+  if (names.length <= 1) return names.join();
+  return '${names.sublist(0, names.length - 1).join(', ')} and ${names.last}';
+}
+
+/// One reward still kept for the guest while the quest is switched off:
+/// held (`reserved`), or on the waiting list.
+class QuestHeldReward {
+  const QuestHeldReward({
+    required this.name,
+    required this.claim,
+    this.milestone,
+    this.photoUrl,
+  });
+
+  final String name;
+  final QuestClaim claim;
+
+  /// The milestone it came with ("Tier 2").
+  final String? milestone;
+  final String? photoUrl;
+
+  bool get held => claim.status == QuestClaimStatus.reserved;
+  bool get waiting => claim.status == QuestClaimStatus.waitlisted;
+}
+
+/// The quest switched off while something is still kept for this guest
+/// (contract v1.3 §8.1 `paused`): turning a quest off keeps what is held,
+/// and it can still be handed over at the swag desk. The card shrinks to
+/// that, and where to collect it.
+class QuestPaused {
+  const QuestPaused(
+      {this.title, this.rewards = const [], this.collectAt = const []});
+
+  /// The quest's name ("DevFest Quest").
+  final String? title;
+
+  /// Only rewards held or on the waiting list.
+  final List<QuestHeldReward> rewards;
+  final List<QuestDesk> collectAt;
+
+  List<QuestHeldReward> get held => [
+        for (final r in rewards)
+          if (r.held) r,
+      ];
+
+  List<QuestHeldReward> get waiting => [
+        for (final r in rewards)
+          if (r.waiting) r,
+      ];
+
+  /// "Your DevFest T-shirt (M) is still held for you — collect it at Swag
+  /// desk." (sizes said; "Say your size there." for one held without a
+  /// size); null when nothing is held.
+  String? get heldLine {
+    final held = this.held;
+    if (held.isEmpty) return null;
+    final names = _andList([
+      for (final r in held)
+        r.claim.variantLabel == null
+            ? r.name
+            : '${r.name} (${r.claim.variantLabel})',
+    ]);
+    final one = held.length == 1;
+    final size =
+        held.any((r) => r.claim.needsSize) ? ' Say your size there.' : '';
+    return 'Your $names ${one ? 'is' : 'are'} still held for you — collect '
+        '${one ? 'it' : 'them'} at ${questDeskLine(collectAt)}.$size';
+  }
+
+  /// Each reward on the waiting list, with its place in line.
+  List<String> get waitingLines => [
+        for (final r in waiting)
+          r.claim.waitlistPosition == null
+              ? "You're still on the waiting list for the ${r.name}: one is "
+                  'kept for you as soon as one frees up.'
+              : "You're still number ${r.claim.waitlistPosition} in line for "
+                  'the ${r.name}: one is kept for you as soon as one frees up.',
+      ];
+
+  /// Null for anything but a `paused` block with something kept in it.
+  static QuestPaused? fromJson(Object? value) {
+    final json = jsonObject(value);
+    if (json == null) return null;
+    final rewards = <QuestHeldReward>[];
+    for (final row in jsonObjects(json['rewards'])) {
+      final claim = QuestClaim.fromJson(row);
+      if (claim == null ||
+          (claim.status != QuestClaimStatus.reserved &&
+              claim.status != QuestClaimStatus.waitlisted)) {
+        continue;
+      }
+      rewards.add(QuestHeldReward(
+        name: _text(row['name']) ?? 'reward',
+        claim: claim,
+        milestone: _text(row['milestone']),
+        photoUrl: _text(row['photo_url']),
+      ));
+    }
+    if (rewards.isEmpty) return null;
+    return QuestPaused(
+      title: _text(json['title']),
+      rewards: rewards,
+      collectAt: QuestDesk.listFrom(json['collect_at']),
+    );
+  }
+}
+
+/// What the event's info says of its quest (`GET /events/info/{id}`'s
+/// `quest`, contract §8.5), so the card is asked for only when there is
+/// something to show.
+class QuestFlag {
+  const QuestFlag({this.enabled = false, this.canTakePart, this.held});
+
+  /// The event has a quest, switched on.
+  final bool enabled;
+
+  /// The viewer holds a live ticket for it; null on a page that is the same
+  /// for everyone.
+  final bool? canTakePart;
+
+  /// The quest is off, and the viewer still has a reward held or on the
+  /// waiting list (v1.3): the card says so.
+  final bool? held;
+
+  /// Whether to ask for the card: the quest is on, or something is held.
+  /// [onlyTakingPart] (the ticket): only for someone who can take part.
+  bool worthAsking({bool onlyTakingPart = false}) {
+    if (held ?? false) return true;
+    if (!enabled) return false;
+    return !onlyTakingPart || canTakePart != false;
+  }
+
+  /// Null when [value] isn't the flag (a server from before it).
+  static QuestFlag? fromJson(Object? value) {
+    final json = jsonObject(value);
+    if (json == null) return null;
+    return QuestFlag(
+      enabled: jsonBool(json['enabled']) ?? false,
+      canTakePart: jsonBool(json['can_take_part']),
+      held: jsonBool(json['held']),
+    );
+  }
+}
+
+/// One "meet people" task's count, as a Network save answers it.
+class QuestNetworkCount {
+  const QuestNetworkCount({
+    required this.taskId,
+    required this.count,
+    required this.target,
+    this.title,
+    this.done = false,
+  });
+
+  final String taskId;
+  final String? title;
+  final int count;
+  final int target;
+  final bool done;
+}
+
+/// The saver's "meet people" counts, counted in the save itself (`POST
+/// /network`'s `quest`, contract v1.2 §8.6).
+class QuestNetworkCounts {
+  const QuestNetworkCounts({this.eventId, this.tasks = const []});
+
+  final int? eventId;
+  final List<QuestNetworkCount> tasks;
+
+  /// Null for anything without a task in it (a save with no quest to count
+  /// for: `quest: null`, or a server from before it).
+  static QuestNetworkCounts? fromJson(Object? value) {
+    final json = jsonObject(value);
+    if (json == null) return null;
+    final tasks = [
+      for (final row in jsonObjects(json['tasks']))
+        if (_text(row['task_id']) case final id?)
+          QuestNetworkCount(
+            taskId: id,
+            title: _text(row['title']),
+            count: jsonInt(row['count']) ?? 0,
+            target: jsonInt(row['target']) ?? 1,
+            done: jsonBool(row['done']) ?? false,
+          ),
+    ];
+    if (tasks.isEmpty) return null;
+    return QuestNetworkCounts(eventId: jsonInt(json['event_id']), tasks: tasks);
+  }
+}
+
 /// The addresses the server knows for the tasks' buttons.
 class QuestLinks {
   const QuestLinks({this.liveRoom, this.feedback, this.poster, this.club});
@@ -525,12 +759,14 @@ class Quest {
     this.me,
     this.collectAt = const [],
     this.links = const QuestLinks(),
+    this.paused,
   });
 
   final int eventId;
 
   /// False when the event has no quest, or it is switched off: then
-  /// nothing about it shows anywhere.
+  /// nothing about it shows anywhere -- unless it is [paused] with a
+  /// reward still kept for the guest.
   final bool enabled;
   final String? id;
   final String? title;
@@ -551,7 +787,14 @@ class Quest {
   final List<QuestDesk> collectAt;
   final QuestLinks links;
 
+  /// Switched off with a reward still held (or waited for) for the guest:
+  /// only that shows, and where to collect it. Null otherwise.
+  final QuestPaused? paused;
+
   static const off = Quest(eventId: 0);
+
+  /// Something to show: the quest is on, or paused with a reward kept.
+  bool get shows => enabled || paused != null;
 
   bool get takingPart => me != null;
 
@@ -616,15 +859,9 @@ class Quest {
               (milestone: m, reward: r),
       ];
 
-  /// Where rewards are collected: "the Swag desk", "Swag desk or Hall B";
-  /// "the swag desk" when the event names none yet.
-  String get deskLine {
-    final names = [for (final d in collectAt) d.name];
-    if (names.isEmpty) return 'the swag desk';
-    if (names.length == 1) return names.single;
-    return '${names.sublist(0, names.length - 1).join(', ')} or '
-        '${names.last}';
-  }
+  /// Where rewards are collected: "Swag desk", "Swag desk or Hall B"; "the
+  /// swag desk" when the event names none yet.
+  String get deskLine => questDeskLine(collectAt);
 
   /// The task for meeting people, if the quest has one.
   QuestTask? get networkTask => tasks.where((t) => t.isNetwork).firstOrNull;
@@ -656,7 +893,33 @@ class Quest {
           ),
       ]);
 
-  Quest copyWith({List<QuestMilestone>? milestones}) => Quest(
+  /// The card with the counts a Network save answered ([counts]) in place
+  /// of those tasks' own: "3 of 5 met" at once, without waiting for the
+  /// server's job. A task the guest has no progress on (not taking part)
+  /// is left as it is; a done task stays done.
+  Quest withNetworkCounts(QuestNetworkCounts counts, {DateTime? now}) {
+    final byId = {for (final c in counts.tasks) c.taskId: c};
+    return copyWith(tasks: [
+      for (final t in tasks)
+        if (byId[t.id] case final c? when t.me != null)
+          t.withProgress(QuestTaskProgress(
+            count: c.count,
+            done: t.done || c.done,
+            doneAt: t.me!.doneAt ??
+                (c.done ? (now ?? DateTime.now()).toUtc() : null),
+            source: t.me!.source ?? (c.done ? 'auto' : null),
+            revoked: t.me!.revoked && !c.done,
+          ))
+        else
+          t,
+    ]);
+  }
+
+  Quest copyWith({
+    List<QuestMilestone>? milestones,
+    List<QuestTask>? tasks,
+  }) =>
+      Quest(
         eventId: eventId,
         enabled: enabled,
         id: id,
@@ -667,17 +930,20 @@ class Quest {
         endsAt: endsAt,
         open: open,
         leaderboard: leaderboard,
-        tasks: tasks,
+        tasks: tasks ?? this.tasks,
         milestones: milestones ?? this.milestones,
         me: me,
         collectAt: collectAt,
         links: links,
+        paused: paused,
       );
 
   static Quest fromJson(Object? value, {required int eventId}) {
     final json = jsonObject(value);
     if (json == null || jsonBool(json['enabled']) != true) {
-      return Quest(eventId: eventId);
+      // Off -- but a reward may still be held for the guest (v1.3).
+      return Quest(
+          eventId: eventId, paused: QuestPaused.fromJson(json?['paused']));
     }
     return Quest(
       eventId: eventId,
@@ -718,6 +984,16 @@ String questWhen(DateTime at, DateTime now) {
   return today ? time : '${t.day} ${_months[t.month - 1]}, $time';
 }
 
+/// [at] after a verb: "at 3:00 PM" today, else "on 28 Nov at 3:00 PM"
+/// ("Done at 3:00 PM", "Collected at Swag desk on 28 Nov at 3:00 PM").
+String questAt(DateTime at, DateTime now) {
+  final t = at.toLocal();
+  final n = now.toLocal();
+  final today = t.year == n.year && t.month == n.month && t.day == n.day;
+  if (today) return 'at ${questWhen(at, now)}';
+  return 'on ${questWhen(at, now).replaceFirst(', ', ' at ')}';
+}
+
 /// One row of the leaderboard.
 class QuestRank {
   const QuestRank({
@@ -749,15 +1025,19 @@ class QuestLeaderboard {
   /// The viewer is not among [rows] but has a place.
   bool get meBelow => myRank != null && !rows.any((r) => r.me);
 
+  /// The ranks are the server's, as given (v1.3: each row its own, ties
+  /// ordered by who got there first) and never worked out here; only a row
+  /// without one takes its place in the list.
   static QuestLeaderboard fromJson(Object? value) {
     final json = jsonObject(value) ?? const {};
     final me = jsonObject(json['me']);
+    final rows = jsonObjects(json['rows']).toList();
     return QuestLeaderboard(
       mode: questModeFrom(json['mode']),
       rows: [
-        for (final row in jsonObjects(json['rows']))
+        for (final (i, row) in rows.indexed)
           QuestRank(
-            rank: jsonInt(row['rank']) ?? 0,
+            rank: jsonInt(row['rank']) ?? i + 1,
             name: _text(row['name']) ?? 'Someone',
             score: jsonInt(row['score']) ?? 0,
             me: jsonBool(row['me']) ?? false,

@@ -17,6 +17,7 @@ Map<String, dynamic> taskJson(
   int count = 0,
   bool done = false,
   String? source,
+  String? doneAt = '2026-11-28T04:00:00Z',
   bool me = true,
 }) =>
     {
@@ -35,7 +36,7 @@ Map<String, dynamic> taskJson(
           ? {
               'count': count,
               'done': done,
-              'done_at': done ? '2026-11-28T04:00:00Z' : null,
+              'done_at': done ? doneAt : null,
               'source': source,
             }
           : null,
@@ -49,6 +50,9 @@ Map<String, dynamic> claimJson({
   List<Map<String, dynamic>> choices = const [],
   int? waitlistPosition,
   String? collectedAt,
+  String? door,
+  String? collectedBy,
+  String? name,
 }) =>
     {
       'claim_id': id,
@@ -58,6 +62,28 @@ Map<String, dynamic> claimJson({
       'choices': choices,
       'waitlist_position': waitlistPosition,
       'collected_at': collectedAt,
+      'door': door,
+      // The swag desk's rows (and a paused card's) also say who and what.
+      if (collectedBy != null) 'collected_by': collectedBy,
+      if (name != null) 'name': name,
+    };
+
+/// The card of a quest switched off while [rewards] are still kept for the
+/// guest (contract v1.3 §8.1 `paused`).
+Map<String, dynamic> pausedJson(
+  List<Map<String, dynamic>> rewards, {
+  String title = 'DevFest Quest',
+  List<Map<String, dynamic>> collectAt = const [
+    {'door_id': 'd-9', 'name': 'Swag desk'},
+  ],
+}) =>
+    {
+      'enabled': false,
+      'paused': {
+        'title': title,
+        'rewards': rewards,
+        'collect_at': collectAt,
+      },
     };
 
 /// DevFest's quest: points, a tier at 30 (a T-shirt) and one at 60 (a

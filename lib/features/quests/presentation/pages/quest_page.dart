@@ -14,7 +14,9 @@ import 'package:finnet/features/quests/presentation/widgets/quest_card.dart';
 /// has it on. What an unlock push opens, and the card's "All tasks".
 ///
 /// By the event's id (a push names it). A slug opens the event's page,
-/// whose card comes here by id.
+/// whose card comes here by id. The event's name is shown over the card:
+/// the one passed (the card, an inbox line), else the event's public
+/// page's (a push).
 class QuestPage extends ConsumerWidget {
   const QuestPage({super.key, required this.eventRef, this.eventName});
 
@@ -24,6 +26,7 @@ class QuestPage extends ConsumerWidget {
   static const emptyKey = ValueKey('quest-page-empty');
   static const leaderboardKey = ValueKey('quest-leaderboard');
   static const refreshKey = ValueKey('quest-page-refresh');
+  static const eventNameKey = ValueKey('quest-page-event-name');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -61,6 +64,9 @@ class QuestPage extends ConsumerWidget {
       );
     }
     final quest = state.quest!;
+    // Opened from a push, which names only the event's id: its name from
+    // the event's public page.
+    final name = eventName ?? ref.watch(questEventNameProvider(id)).valueOrNull;
     return RefreshIndicator(
       key: refreshKey,
       color: AppColors.ink,
@@ -72,14 +78,15 @@ class QuestPage extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          if (eventName != null)
+          if (name != null)
             Padding(
+              key: eventNameKey,
               padding: const EdgeInsets.only(bottom: 10),
-              child: Text(eventName!,
+              child: Text(name,
                   style:
                       const TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
             ),
-          QuestCard(eventId: id, eventName: eventName, compact: false),
+          QuestCard(eventId: id, eventName: name, compact: false),
           if (quest.leaderboard) _LeaderboardSection(eventId: id),
         ],
       ),

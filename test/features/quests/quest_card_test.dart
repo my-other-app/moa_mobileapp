@@ -1,5 +1,7 @@
 import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
+import 'package:finnet/features/quests/domain/quest.dart';
 import 'package:finnet/features/quests/presentation/pages/quest_page.dart';
+import 'package:finnet/features/quests/presentation/providers/quest_provider.dart';
 import 'package:finnet/features/quests/presentation/widgets/quest_card.dart';
 import 'package:finnet/features/quests/presentation/widgets/quest_sheets.dart';
 import 'package:finnet/features/quests/quest_routes.dart';
@@ -34,6 +36,7 @@ Future<_Harness> _pump(
   bool signedIn = true,
   bool withTicket = true,
   String start = '/',
+  QuestFlag? flag,
 }) async {
   tester.view.physicalSize = const Size(800, 3000);
   tester.view.devicePixelRatio = 1;
@@ -78,6 +81,9 @@ Future<_Harness> _pump(
   await tester.pumpWidget(ProviderScope(
     overrides: [
       isAuthenticatedProvider.overrideWithValue(signedIn),
+      // What the event's info said of its quest (§8.5), when it was read.
+      if (flag != null)
+        questFlagsProvider.overrideWith((ref) => QuestFlags()..note(1, flag)),
       linkLauncherProvider.overrideWithValue((uri) async {
         h.opened.add(uri);
         return true;
@@ -132,6 +138,107 @@ void main() {
       expect(find.text('10 more points to unlock Tier 1'), findsOneWidget);
       // No "Show ticket" on the ticket itself.
       expect(find.text('Show ticket'), findsNothing);
+    });
+  });
+
+  group('paused (contract v1.3)', () {
+    final held = pausedJson([
+      claimJson(id: 'c-tee', variant: 'M', name: 'DevFest T-shirt'),
+      claimJson(
+          id: 'c-hood',
+          status: 'waitlisted',
+          waitlistPosition: 1,
+          name: 'Cloud hoodie'),
+    ]);
+
+    testWidgets('off with a reward held: only that, and where', (tester) async {
+      useFakeApi().on('GET', '/events/1/quest', held);
+      await _pump(tester);
+      expect(find.byKey(QuestCard.pausedKey), findsOneWidget);
+      expect(_card, findsNothing);
+      expect(find.text('DevFest Quest'), findsOneWidget);
+      expect(find.text('Quests are paused.'), findsOneWidget);
+      expect(
+          find.text('Your DevFest T-shirt (M) is still held for you — '
+              'collect it at Swag desk.'),
+          findsOneWidget);
+      expect(
+          find.text("You're still number 1 in line for the Cloud hoodie: one "
+              'is kept for you as soon as one frees up.'),
+          findsOneWidget);
+      // Nothing to do while it is off.
+      expect(find.byKey(QuestCard.codeKey), findsNothing);
+      expect(find.text('Tasks'), findsNothing);
+    });
+
+    testWidgets('on the ticket too (it is theirs)', (tester) async {
+      useFakeApi().on('GET', '/events/1/quest', held);
+      await _pump(tester,
+          style: QuestCardStyle.dark,
+          onlyWhenTakingPart: true,
+          withTicket: false);
+      expect(find.byKey(QuestCard.pausedKey), findsOneWidget);
+    });
+
+    testWidgets('the quest page shows it, not "no quest"', (tester) async {
+      useFakeApi().on('GET', '/events/1/quest', held);
+      await _pump(tester, start: questLocation(1));
+      expect(find.byKey(QuestCard.pausedKey), findsOneWidget);
+      expect(find.byKey(QuestPage.emptyKey), findsNothing);
+      expect(find.byKey(QuestPage.leaderboardKey), findsNothing);
+    });
+  });
+
+  group("the event info's flag (§8.5)", () {
+    testWidgets('no quest on, nothing held: the card is never asked for',
+        (tester) async {
+      final api = useFakeApi()..on('GET', '/events/1/quest', questJson());
+      await _pump(tester,
+          flag:
+              const QuestFlag(enabled: false, canTakePart: false, held: false));
+      expect(_card, findsNothing);
+      expect(api.sent('GET', '/events/1/quest'), isEmpty);
+    });
+
+    testWidgets('on: asked, and shown', (tester) async {
+      final api = useFakeApi()..on('GET', '/events/1/quest', questJson());
+      await _pump(tester,
+          flag: const QuestFlag(enabled: true, canTakePart: true, held: false));
+      expect(_card, findsOneWidget);
+      expect(api.sent('GET', '/events/1/quest'), hasLength(1));
+    });
+
+    testWidgets('off but held: asked, and the paused card', (tester) async {
+      final api = useFakeApi()
+        ..on('GET', '/events/1/quest',
+            pausedJson([claimJson(variant: 'M', name: 'DevFest T-shirt')]));
+      await _pump(tester,
+          flag:
+              const QuestFlag(enabled: false, canTakePart: false, held: true));
+      expect(find.byKey(QuestCard.pausedKey), findsOneWidget);
+      expect(api.sent('GET', '/events/1/quest'), hasLength(1));
+    });
+
+    testWidgets('a quest switched on since the info was read: shown',
+        (tester) async {
+      // The info said none; a push opens the quest page, whose card is on.
+      useFakeApi().on('GET', '/events/1/quest', questJson());
+      await _pump(tester,
+          start: questLocation(1),
+          flag:
+              const QuestFlag(enabled: false, canTakePart: false, held: false));
+      expect(find.byType(QuestPage), findsOneWidget);
+      expect(_card, findsOneWidget);
+    });
+
+    testWidgets("the ticket of someone who can't take part: not asked",
+        (tester) async {
+      final api = useFakeApi()..on('GET', '/events/1/quest', questJson());
+      await _pump(tester,
+          style: QuestCardStyle.dark,
+          onlyWhenTakingPart: true,
+          flag: const QuestFlag(enabled: true, canTakePart: false));
+      expect(api.sent('GET', '/events/1/quest'), isEmpty);
     });
   });
 
@@ -376,7 +483,71 @@ void main() {
                       .toUtc()
                       .toIso8601String())));
       await _pump(tester);
-      expect(find.text('Collected ✓ 10:05 AM'), findsOneWidget);
+      expect(find.text('Collected at 10:05 AM'), findsOneWidget);
+    });
+
+    testWidgets('collected: where (v1.3 door), never "by" a desk',
+        (tester) async {
+      final at = DateTime(2026, 11, 28, 10, 5).toUtc().toIso8601String();
+      useFakeApi().on(
+          'GET',
+          '/events/1/quest',
+          questJson(
+              tier1Unlocked: true,
+              tier1Claim: claimJson(
+                  status: 'collected', collectedAt: at, door: 'Swag desk')));
+      await _pump(tester);
+      expect(find.text('Collected at Swag desk at 10:05 AM'), findsOneWidget);
+      expect(find.textContaining('by Swag desk'), findsNothing);
+    });
+
+    testWidgets('collected: by a person only when the server names one',
+        (tester) async {
+      final at = DateTime(2026, 11, 28, 10, 5).toUtc().toIso8601String();
+      useFakeApi().on(
+          'GET',
+          '/events/1/quest',
+          questJson(
+              tier1Unlocked: true,
+              tier1Claim: claimJson(
+                  status: 'collected',
+                  collectedAt: at,
+                  door: 'Swag desk',
+                  collectedBy: 'Anil Kumar')));
+      await _pump(tester);
+      expect(find.text('Collected at Swag desk at 10:05 AM by Anil Kumar'),
+          findsOneWidget);
+    });
+
+    testWidgets('done: when; ticked by the organisers: said so',
+        (tester) async {
+      useFakeApi().on(
+          'GET',
+          '/events/1/quest',
+          questJson(tasks: [
+            taskJson('t-in',
+                kind: 'checked_in',
+                title: 'Check in',
+                done: true,
+                source: 'auto'),
+            taskJson('t-hack',
+                kind: 'manual',
+                title: 'Hackathon project submitted',
+                done: true,
+                source: 'grant'),
+            taskJson('t-hand',
+                kind: 'manual',
+                title: 'Helped at the desk',
+                done: true,
+                source: 'grant',
+                doneAt: null),
+          ]));
+      await _pump(tester);
+      // 04:00 UTC is 9:30 AM in India.
+      expect(find.text('Done at 9:30 AM'), findsOneWidget);
+      expect(find.text('Marked done by the organisers at 9:30 AM'),
+          findsOneWidget);
+      expect(find.text('Marked done by the organisers'), findsOneWidget);
     });
   });
 
@@ -462,6 +633,56 @@ void main() {
       useFakeApi().on('GET', '/events/1/quest', {'enabled': false});
       await _pump(tester, start: questLocation(1));
       expect(find.byKey(QuestPage.emptyKey), findsOneWidget);
+    });
+
+    testWidgets('the ranks as the server gives them (ties apart)',
+        (tester) async {
+      useFakeApi()
+        ..on('GET', '/events/1/quest', questJson(leaderboard: true))
+        ..on('GET', '/events/1/quest/leaderboard', {
+          'mode': 'points',
+          'rows': [
+            {'rank': 1, 'name': 'Asha K.', 'score': 120, 'me': false},
+            {'rank': 2, 'name': 'Ben T.', 'score': 120, 'me': false},
+            {'rank': 3, 'name': 'Chen L.', 'score': 120, 'me': true},
+          ],
+          'me': {'rank': 3, 'score': 120},
+        });
+      await _pump(tester, start: questLocation(1));
+      expect(find.text('#1'), findsOneWidget);
+      expect(find.text('#2'), findsOneWidget);
+      expect(find.text('#3'), findsOneWidget);
+      expect(find.text('Chen L. (you)'), findsOneWidget);
+    });
+
+    testWidgets("opened from a push (no name passed): the event's name",
+        (tester) async {
+      final api = useFakeApi()
+        ..on('GET', '/events/1/quest', questJson())
+        ..on('GET', '/discover/events/1', {
+          'event': {'id': 1, 'name': 'Cloud Community Days x DevFest 2026'},
+        });
+      await _pump(tester, start: questLocation(1));
+      expect(find.byKey(QuestPage.eventNameKey), findsOneWidget);
+      expect(find.text('Cloud Community Days x DevFest 2026'), findsOneWidget);
+      expect(api.sent('GET', '/events/info/1'), isEmpty);
+    });
+
+    testWidgets('with the name passed: that, and nothing more asked',
+        (tester) async {
+      final api = useFakeApi()..on('GET', '/events/1/quest', questJson());
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(ProviderScope(
+        overrides: [isAuthenticatedProvider.overrideWithValue(true)],
+        child: const MaterialApp(
+          home: QuestPage(eventRef: '1', eventName: 'DevFest 2026'),
+        ),
+      ));
+      await _settle(tester);
+      expect(find.text('DevFest 2026'), findsOneWidget);
+      expect(api.sent('GET', '/discover/events/1'), isEmpty);
     });
   });
 }

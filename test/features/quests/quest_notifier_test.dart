@@ -342,6 +342,132 @@ void main() {
     });
   });
 
+  group("a save's own counts (contract v1.2 §8.6)", () {
+    QuestNetworkCounts counts(int count,
+            {bool done = false, int? eventId = 1}) =>
+        QuestNetworkCounts.fromJson({
+          'event_id': eventId,
+          'tasks': [
+            {
+              'task_id': 't-net',
+              'title': 'Meet 5 people',
+              'count': count,
+              'target': 5,
+              'done': done,
+            },
+          ],
+        })!;
+
+    test('shown at once: nothing read again, nothing waited for', () {
+      fakeAsync((clock) {
+        final api = FakeQuestApi()..cards.add(_quest(questJson()));
+        final n = QuestNotifier(api, 1);
+        n.load();
+        clock.flushMicrotasks();
+        n.afterNetworkSave(counts: counts(3));
+        expect(n.state.quest?.networkTask?.countLabel, '3 of 5 met');
+        expect(n.state.counting, isFalse);
+        expect(n.state.notCounted, isFalse);
+        clock.elapse(const Duration(minutes: 1));
+        expect(api.reads, 1);
+        n.dispose();
+      });
+    });
+
+    test("a new meeting that didn't add: said at once", () {
+      fakeAsync((clock) {
+        final api = FakeQuestApi()..cards.add(_quest(questJson()));
+        final n = QuestNotifier(api, 1);
+        n.load();
+        clock.flushMicrotasks();
+        n.afterNetworkSave(counts: counts(2));
+        expect(n.state.notCounted, isTrue);
+        expect(n.state.counting, isFalse);
+        clock.elapse(const Duration(minutes: 1));
+        expect(api.reads, 1);
+        n.dispose();
+      });
+    });
+
+    test('someone saved again: the count, without "didn\'t add"', () {
+      fakeAsync((clock) {
+        final api = FakeQuestApi()..cards.add(_quest(questJson()));
+        final n = QuestNotifier(api, 1);
+        n.load();
+        clock.flushMicrotasks();
+        n.afterNetworkSave(counts: counts(2), newMeeting: false);
+        expect(n.state.notCounted, isFalse);
+        expect(n.state.counting, isFalse);
+        n.dispose();
+      });
+    });
+
+    test('the task done by it: the card read once more, for its rewards', () {
+      fakeAsync((clock) {
+        final api = FakeQuestApi()
+          ..cards.addAll([
+            _quest(questJson(networkCount: 4)),
+            _quest(questJson(
+                networkCount: 5, networkDone: true, tier1Unlocked: true)),
+          ]);
+        final n = QuestNotifier(api, 1);
+        n.load();
+        clock.flushMicrotasks();
+        n.afterNetworkSave(counts: counts(5, done: true));
+        expect(n.state.quest?.networkTask?.done, isTrue);
+        clock.flushMicrotasks();
+        expect(api.reads, 2);
+        expect(n.state.quest?.milestones.first.unlocked, isTrue);
+        n.dispose();
+      });
+    });
+
+    test('it ends the rechecks of a save before it', () {
+      fakeAsync((clock) {
+        final api = FakeQuestApi()..cards.add(_quest(questJson()));
+        final n = QuestNotifier(api, 1);
+        n.load();
+        clock.flushMicrotasks();
+        // An older server's save, then one that counts in the save.
+        n.afterNetworkSave();
+        expect(n.state.counting, isTrue);
+        n.afterNetworkSave(counts: counts(3));
+        expect(n.state.counting, isFalse);
+        clock.elapse(const Duration(minutes: 1));
+        expect(api.reads, 1);
+        n.dispose();
+      });
+    });
+
+    test("another event's counts: read again as before", () {
+      fakeAsync((clock) {
+        final api = FakeQuestApi()..cards.add(_quest(questJson()));
+        final n = QuestNotifier(api, 1);
+        n.load();
+        clock.flushMicrotasks();
+        n.afterNetworkSave(counts: counts(3, eventId: 9));
+        expect(n.state.counting, isTrue);
+        expect(n.state.quest?.networkTask?.count, 2);
+        n.dispose();
+      });
+    });
+  });
+
+  group('paused (contract v1.3)', () {
+    test('switched off with a reward held: still shown', () async {
+      final api = FakeQuestApi()
+        ..cards.add(_quest(pausedJson([
+          claimJson(variant: 'M', name: 'DevFest T-shirt'),
+        ])));
+      final n = QuestNotifier(api, 1);
+      await n.load();
+      expect(n.state.visible, isTrue);
+      expect(n.state.quest?.enabled, isFalse);
+      expect(n.state.quest?.paused?.held.single.name, 'DevFest T-shirt');
+      n.dispose();
+    });
+  });
+
   test('a read that ends after the screen closed changes nothing', () async {
     final gate = Completer<void>();
     final api = _SlowApi(gate);

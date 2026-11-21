@@ -123,6 +123,7 @@ class QuestCard extends ConsumerStatefulWidget {
   static const codeKey = ValueKey('quest-enter-code');
   static const openKey = ValueKey('quest-open-page');
   static const offlineKey = ValueKey('quest-offline');
+  static const pausedKey = ValueKey('quest-paused');
   static const newKey = ValueKey('quest-newly-unlocked');
   static Key taskKey(String id) => ValueKey('quest-task-$id');
   static Key actionKey(String id) => ValueKey('quest-action-$id');
@@ -157,11 +158,18 @@ class _QuestCardState extends ConsumerState<QuestCard>
     super.dispose();
   }
 
+  /// Whether this card asks for the quest at all: not for an event whose
+  /// info says it has none on, and nothing held (§8.5).
+  bool _worthAsking(QuestFlag? flag) =>
+      flag?.worthAsking(onlyTakingPart: widget.onlyWhenTakingPart) ?? true;
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Back from the survey in the browser, or from another app: read again.
     final id = _id;
-    if (state == AppLifecycleState.resumed && id != null) {
+    if (state == AppLifecycleState.resumed &&
+        id != null &&
+        _worthAsking(ref.read(questFlagsProvider)[id])) {
       unawaited(ref.read(questProvider(id).notifier).refresh());
     }
   }
@@ -276,9 +284,16 @@ class _QuestCardState extends ConsumerState<QuestCard>
   /// The line under a task's title.
   String? _taskLine(Quest quest, QuestTask task) {
     if (task.done) {
-      return task.me?.source == 'grant'
-          ? 'Marked done by the organisers'
-          : null;
+      // "Done at 10:14 AM"; ticked by hand: "Marked done by the organisers
+      // at 10:14 AM" (contract v1.3 `source: grant`), as the website.
+      final at = task.me?.doneAt;
+      final when = at == null ? null : questAt(at, _now());
+      if (task.me?.granted ?? false) {
+        return when == null
+            ? 'Marked done by the organisers'
+            : 'Marked done by the organisers $when';
+      }
+      return when == null ? null : 'Done $when';
     }
     if (task.me?.revoked ?? false) {
       return 'Not counted: the organisers took this one back';
@@ -305,9 +320,15 @@ class _QuestCardState extends ConsumerState<QuestCard>
   Widget build(BuildContext context) {
     final id = _id;
     if (id == null) return const SizedBox.shrink();
+    // The event's info says it has no quest on and nothing held: nothing
+    // to ask for, nothing to show.
+    final flag = ref.watch(questFlagsProvider.select((flags) => flags[id]));
+    if (!_worthAsking(flag)) return const SizedBox.shrink();
     final state = ref.watch(questProvider(id));
     final quest = state.quest;
     if (quest == null || !state.visible) return const SizedBox.shrink();
+    final paused = quest.enabled ? null : quest.paused;
+    if (paused != null) return _pausedCard(paused, state.offline);
     if (widget.onlyWhenTakingPart && !quest.takingPart) {
       return const SizedBox.shrink();
     }
@@ -334,27 +355,93 @@ class _QuestCardState extends ConsumerState<QuestCard>
                 style: TextStyle(fontSize: 13.5, color: p.soft, height: 1.3)),
           ],
           ..._window(quest),
-          if (state.offline)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                key: QuestCard.offlineKey,
-                children: [
-                  Icon(Icons.cloud_off, size: 14, color: p.soft),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text('Offline: your progress as last seen',
-                        style: TextStyle(fontSize: 12, color: p.soft)),
-                  ),
-                ],
-              ),
-            ),
+          if (state.offline) _offlineRow(),
           ..._progress(quest),
           ..._newlyUnlocked(quest, state.newlyUnlocked),
           ..._rewards(quest),
           const SizedBox(height: 8),
           ..._tasks(quest),
           ..._footer(quest),
+        ],
+      ),
+    );
+  }
+
+  Widget _offlineRow() {
+    final p = _p;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        key: QuestCard.offlineKey,
+        children: [
+          Icon(Icons.cloud_off, size: 14, color: p.soft),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text('Offline: your progress as last seen',
+                style: TextStyle(fontSize: 12, color: p.soft)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The quest switched off with a reward still kept for the guest
+  /// (contract v1.3): "Quests are paused.", what is held and where to
+  /// collect it, the waiting list's place. Nothing to do, nothing to tick.
+  Widget _pausedCard(QuestPaused paused, bool offline) {
+    final p = _p;
+    final held = paused.heldLine;
+    Widget note(IconData icon, String text, {bool good = false}) => Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 1),
+                child: Icon(icon, size: 18, color: good ? p.accent : p.soft),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(text,
+                    style: TextStyle(fontSize: 14, color: p.ink, height: 1.35)),
+              ),
+            ],
+          ),
+        );
+    return Container(
+      key: QuestCard.pausedKey,
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: p.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: p.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text('🎯', style: TextStyle(fontSize: 22, color: p.ink)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(paused.title ?? 'Quest',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: p.ink)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('Quests are paused.',
+              style: TextStyle(fontSize: 13.5, color: p.soft)),
+          if (offline) _offlineRow(),
+          if (held != null) note(Icons.card_giftcard, held, good: true),
+          for (final line in paused.waitingLines) note(Icons.schedule, line),
         ],
       ),
     );
@@ -490,10 +577,16 @@ class _QuestCardState extends ConsumerState<QuestCard>
       case QuestClaimStatus.soldOut:
         return 'All gone, sorry: they were first come, first served.';
       case QuestClaimStatus.collected:
+        // "Collected at Swag desk at 10:05 AM": where (contract v1.3
+        // `door`), never "by" a desk; a person only when the server names
+        // one.
         final at = claim.collectedAt;
-        return at == null
-            ? 'Collected ✓'
-            : 'Collected ✓ ${questWhen(at, _now())}';
+        return [
+          'Collected',
+          if (claim.door != null) 'at ${claim.door}',
+          if (at != null) questAt(at, _now()),
+          if (claim.collectedBy != null) 'by ${claim.collectedBy}',
+        ].join(' ');
       case QuestClaimStatus.released:
         return '';
     }

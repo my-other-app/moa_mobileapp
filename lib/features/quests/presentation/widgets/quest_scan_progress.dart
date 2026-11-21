@@ -18,6 +18,10 @@ class QuestScanProgress extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // The event's info says it has no quest on: nothing to ask for.
+    final flag =
+        ref.watch(questFlagsProvider.select((flags) => flags[eventId]));
+    if (!(flag?.worthAsking() ?? true)) return const SizedBox.shrink();
     final state = ref.watch(questProvider(eventId));
     final quest = state.quest;
     final task = quest?.networkTask;

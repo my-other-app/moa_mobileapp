@@ -266,4 +266,177 @@ void main() {
           task.windowAt(DateTime.utc(2026, 11, 28, 10)), QuestTaskWindow.over);
     });
   });
+
+  group('contract v1.3', () {
+    test("the event info's flag: ask only when on, or something is held", () {
+      expect(QuestFlag.fromJson(null), isNull);
+      expect(QuestFlag.fromJson('yes'), isNull);
+      final off = QuestFlag.fromJson(
+          {'enabled': false, 'can_take_part': false, 'held': false})!;
+      expect(off.worthAsking(), isFalse);
+      expect(off.worthAsking(onlyTakingPart: true), isFalse);
+      final on = QuestFlag.fromJson({'enabled': true, 'can_take_part': true})!;
+      expect(on.worthAsking(), isTrue);
+      expect(on.worthAsking(onlyTakingPart: true), isTrue);
+      // A visitor: the overview on the event page, nothing on a ticket.
+      final visitor =
+          QuestFlag.fromJson({'enabled': true, 'can_take_part': false})!;
+      expect(visitor.worthAsking(), isTrue);
+      expect(visitor.worthAsking(onlyTakingPart: true), isFalse);
+      // The public page's: nobody in particular.
+      final public = QuestFlag.fromJson(
+          {'enabled': true, 'can_take_part': null, 'held': null})!;
+      expect(public.worthAsking(onlyTakingPart: true), isTrue);
+      // Off, with a reward still held for them: the paused card.
+      final held = QuestFlag.fromJson(
+          {'enabled': false, 'can_take_part': false, 'held': true})!;
+      expect(held.worthAsking(), isTrue);
+      expect(held.worthAsking(onlyTakingPart: true), isTrue);
+    });
+
+    test('paused: what is still held, and where', () {
+      final quest = Quest.fromJson(
+          pausedJson([
+            claimJson(id: 'c-1', variant: 'M', name: 'DevFest T-shirt'),
+            claimJson(
+                id: 'c-2',
+                status: 'waitlisted',
+                waitlistPosition: 2,
+                name: 'Cloud hoodie'),
+            // Collected and released rows never show here.
+            claimJson(id: 'c-3', status: 'collected', name: 'Sticker pack'),
+          ]),
+          eventId: 1);
+      expect(quest.enabled, isFalse);
+      expect(quest.shows, isTrue);
+      final paused = quest.paused!;
+      expect(paused.title, 'DevFest Quest');
+      expect(paused.rewards, hasLength(2));
+      expect(
+          paused.heldLine,
+          'Your DevFest T-shirt (M) is still held for you — collect it at '
+          'Swag desk.');
+      expect(paused.waitingLines, [
+        "You're still number 2 in line for the Cloud hoodie: one is kept for "
+            'you as soon as one frees up.',
+      ]);
+    });
+
+    test('paused: several held, one without a size', () {
+      final paused = Quest.fromJson(
+              pausedJson([
+                claimJson(id: 'c-1', name: 'Sticker pack'),
+                claimJson(id: 'c-2', needsSize: true, name: 'DevFest T-shirt'),
+              ], collectAt: const [
+                {'door_id': 'd-1', 'name': 'Swag desk'},
+                {'door_id': 'd-2', 'name': 'Hall B'},
+              ]),
+              eventId: 1)
+          .paused!;
+      expect(
+          paused.heldLine,
+          'Your Sticker pack and DevFest T-shirt are still held for you — '
+          'collect them at Swag desk or Hall B. Say your size there.');
+      expect(paused.waitingLines, isEmpty);
+    });
+
+    test('off with nothing kept (or only collected): nothing', () {
+      expect(Quest.fromJson({'enabled': false}, eventId: 1).shows, isFalse);
+      expect(
+          Quest.fromJson(
+                  pausedJson([claimJson(status: 'collected', name: 'Tee')]),
+                  eventId: 1)
+              .shows,
+          isFalse);
+    });
+
+    test('a collected claim says where, and who only when named', () {
+      final claim = QuestClaim.fromJson(claimJson(
+          status: 'collected',
+          collectedAt: '2026-11-28T05:33:00Z',
+          door: 'Swag desk'))!;
+      expect(claim.door, 'Swag desk');
+      expect(claim.collectedBy, isNull);
+      expect(
+          QuestClaim.fromJson(claimJson(
+                  status: 'collected', door: 'Swag desk', collectedBy: 'Anil'))!
+              .collectedBy,
+          'Anil');
+    });
+
+    test('a task the organisers ticked by hand', () {
+      final granted = QuestTask.fromJson(taskJson('t-hack',
+          kind: 'manual', title: 'Hackathon', done: true, source: 'grant'))!;
+      expect(granted.me!.granted, isTrue);
+      final auto = QuestTask.fromJson(taskJson('t-in',
+          kind: 'checked_in', title: 'Check in', done: true, source: 'auto'))!;
+      expect(auto.me!.granted, isFalse);
+    });
+
+    test("a Network save's counts", () {
+      expect(QuestNetworkCounts.fromJson(null), isNull);
+      expect(QuestNetworkCounts.fromJson({'event_id': 1, 'tasks': []}), isNull);
+      final counts = QuestNetworkCounts.fromJson({
+        'event_id': 1,
+        'tasks': [
+          {
+            'task_id': 't-net',
+            'title': 'Meet 5 people',
+            'count': 3,
+            'target': 5,
+            'done': false,
+          },
+        ],
+      })!;
+      expect(counts.eventId, 1);
+      expect(counts.tasks.single.count, 3);
+      final quest = Quest.fromJson(questJson(networkCount: 2), eventId: 1)
+          .withNetworkCounts(counts);
+      expect(quest.networkTask!.countLabel, '3 of 5 met');
+      expect(quest.networkTask!.done, isFalse);
+      // Everything else as it was.
+      expect(quest.tasks.where((t) => t.done), hasLength(2));
+    });
+
+    test("a save's counts for someone not taking part change nothing", () {
+      final counts = QuestNetworkCounts.fromJson({
+        'event_id': 1,
+        'tasks': [
+          {'task_id': 't-net', 'count': 3, 'target': 5, 'done': false},
+        ],
+      })!;
+      final quest = Quest.fromJson(questJson(me: false), eventId: 1)
+          .withNetworkCounts(counts);
+      expect(quest.networkTask!.me, isNull);
+    });
+
+    test('the leaderboard keeps the ranks it is given', () {
+      final board = QuestLeaderboard.fromJson({
+        'mode': 'points',
+        'rows': [
+          // Two on 120: the one who got there first is 1st, the other 2nd.
+          {'rank': 1, 'name': 'Asha K.', 'score': 120, 'me': false},
+          {'rank': 2, 'name': 'Ben T.', 'score': 120, 'me': false},
+          {'rank': 3, 'name': 'Chen L.', 'score': 90, 'me': true},
+        ],
+        'me': {'rank': 3, 'score': 90},
+      });
+      expect([for (final r in board.rows) r.rank], [1, 2, 3]);
+      // A row without a rank takes its place in the list; never re-ranked.
+      final gaps = QuestLeaderboard.fromJson({
+        'rows': [
+          {'rank': 4, 'name': 'Dev', 'score': 10},
+          {'name': 'Eli', 'score': 10},
+        ],
+      });
+      expect([for (final r in gaps.rows) r.rank], [4, 2]);
+    });
+
+    test('"at" a time: today, or with its day', () {
+      final now = DateTime(2026, 11, 28, 10);
+      expect(questAt(DateTime(2026, 11, 28, 5, 33), now), 'at 5:33 AM');
+      expect(
+          questAt(DateTime(2026, 11, 27, 18, 0), now), 'on 27 Nov at 6:00 PM');
+    });
+  });
 }

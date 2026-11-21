@@ -82,6 +82,57 @@ void main() {
       expect(_card, findsNothing);
     });
 
+    testWidgets("its info says no quest (§8.5): the card isn't asked for",
+        (tester) async {
+      final api = useFakeApi()
+        ..on('GET', '/events/info/1', {
+          ..._info(),
+          'quest': {'enabled': false, 'can_take_part': false, 'held': false},
+        })
+        ..on('GET', '/events/1/quest', questJson());
+      await _pumpEventPage(tester);
+      expect(_card, findsNothing);
+      expect(api.sent('GET', '/events/1/quest'), isEmpty);
+      // Nor on a pull.
+      await tester.fling(
+          find.byType(Scrollable).first, const Offset(0, 600), 1000);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await _settle(tester);
+      expect(api.sent('GET', '/events/1/quest'), isEmpty);
+    });
+
+    testWidgets('its info says the quest is on: the card', (tester) async {
+      final api = useFakeApi()
+        ..on('GET', '/events/info/1', {
+          ..._info(),
+          'quest': {'enabled': true, 'can_take_part': true, 'held': false},
+        })
+        ..on('GET', '/events/1/quest', questJson());
+      await _pumpEventPage(tester);
+      await tester.scrollUntilVisible(_card, 300);
+      expect(_card, findsOneWidget);
+      expect(api.sent('GET', '/events/1/quest'), hasLength(1));
+    });
+
+    testWidgets('off, with a reward still held: the paused card',
+        (tester) async {
+      useFakeApi()
+        ..on('GET', '/events/info/1', {
+          ..._info(),
+          'quest': {'enabled': false, 'can_take_part': false, 'held': true},
+        })
+        ..on('GET', '/events/1/quest',
+            pausedJson([claimJson(variant: 'M', name: 'DevFest T-shirt')]));
+      await _pumpEventPage(tester);
+      final paused = find.byKey(QuestCard.pausedKey);
+      await tester.scrollUntilVisible(paused, 300);
+      expect(
+          find.text('Your DevFest T-shirt (M) is still held for you — '
+              'collect it at Swag desk.'),
+          findsOneWidget);
+    });
+
     testWidgets('called off: no quest, whatever it says', (tester) async {
       final api = useFakeApi()
         ..on('GET', '/events/info/1',
@@ -132,6 +183,15 @@ void main() {
       useFakeApi();
       await pumpTicket(tester);
       expect(_card, findsNothing);
+    });
+
+    testWidgets('switched off with the T-shirt held: said under the ticket',
+        (tester) async {
+      useFakeApi().on('GET', '/events/1/quest',
+          pausedJson([claimJson(variant: 'M', name: 'DevFest T-shirt')]));
+      await pumpTicket(tester);
+      expect(find.byKey(QuestCard.pausedKey), findsOneWidget);
+      expect(find.text('Quests are paused.'), findsOneWidget);
     });
   });
 }

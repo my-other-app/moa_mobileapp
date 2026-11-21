@@ -2,6 +2,8 @@ import 'package:finnet/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finnet/features/network/data/save_queue.dart';
 import 'package:finnet/features/network/presentation/pages/save_person_scanner_page.dart';
 import 'package:finnet/features/network/presentation/widgets/save_outcome_card.dart';
+import 'package:finnet/features/quests/domain/quest.dart';
+import 'package:finnet/features/quests/presentation/providers/quest_provider.dart';
 import 'package:finnet/features/quests/presentation/widgets/quest_scan_progress.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,7 +21,8 @@ Future<void> _settle(WidgetTester tester) async {
 
 /// The scanner opened from a quest's "Meet 5 people", with buttons in
 /// place of the camera.
-Future<void> _pumpScanner(WidgetTester tester, {int? eventId = 1}) async {
+Future<void> _pumpScanner(WidgetTester tester,
+    {int? eventId = 1, QuestFlag? flag}) async {
   tester.view.physicalSize = const Size(800, 2400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -27,6 +30,8 @@ Future<void> _pumpScanner(WidgetTester tester, {int? eventId = 1}) async {
     overrides: [
       isAuthenticatedProvider.overrideWithValue(true),
       pendingSaveStoreProvider.overrideWithValue(MemoryPendingSaveStore()),
+      if (flag != null)
+        questFlagsProvider.overrideWith((ref) => QuestFlags()..note(1, flag)),
     ],
     child: MaterialApp(
       home: SavePersonScannerPage(
@@ -67,6 +72,66 @@ void main() {
     expect(find.text('Meet 5 people: 3 of 5 met'), findsOneWidget);
     expect(find.byKey(QuestScanProgress.countingKey), findsNothing);
     expect(api.sent('GET', '/events/1/quest'), hasLength(2));
+  });
+
+  testWidgets("the save's own count (v1.2): at once, nothing read again",
+      (tester) async {
+    final api = useFakeApi()
+      ..on('GET', '/events/1/quest', questJson(networkCount: 2))
+      ..on('POST', '/network', {
+        ...saveResultJson(),
+        'quest': {
+          'event_id': 1,
+          'tasks': [
+            {
+              'task_id': 't-net',
+              'title': 'Meet 5 people',
+              'count': 3,
+              'target': 5,
+              'done': false,
+            },
+          ],
+        },
+      });
+    await _pumpScanner(tester);
+    expect(find.text('Meet 5 people: 2 of 5 met'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('scan-person')));
+    await _settle(tester);
+    expect(find.text('Meet 5 people: 3 of 5 met'), findsOneWidget);
+    expect(find.byKey(QuestScanProgress.countingKey), findsNothing);
+    await tester.pump(const Duration(seconds: 40));
+    expect(api.sent('GET', '/events/1/quest'), hasLength(1));
+  });
+
+  testWidgets("a save that didn't add, by the save's own count: said",
+      (tester) async {
+    useFakeApi()
+      ..on('GET', '/events/1/quest', questJson(networkCount: 2))
+      ..on('POST', '/network', {
+        ...saveResultJson(),
+        'quest': {
+          'event_id': 1,
+          'tasks': [
+            {'task_id': 't-net', 'count': 2, 'target': 5, 'done': false},
+          ],
+        },
+      });
+    await _pumpScanner(tester);
+    await tester.tap(find.byKey(const ValueKey('scan-person')));
+    await _settle(tester);
+    expect(find.byKey(QuestScanProgress.notCountedKey), findsOneWidget);
+  });
+
+  testWidgets("the event's info says no quest: never asked", (tester) async {
+    final api = useFakeApi()..on('POST', '/network', saveResultJson());
+    await _pumpScanner(tester,
+        flag: const QuestFlag(enabled: false, canTakePart: false, held: false));
+    expect(_line, findsNothing);
+    await tester.tap(find.byKey(const ValueKey('scan-person')));
+    await _settle(tester);
+    expect(find.byKey(SaveOutcomeCard.savedKey), findsOneWidget);
+    await tester.pump(const Duration(seconds: 40));
+    expect(api.sent('GET', '/events/1/quest'), isEmpty);
   });
 
   testWidgets('done: said so', (tester) async {

@@ -35,18 +35,18 @@ class QuestApi {
   /// dead spots. With no signal (or the server down), the kept copy
   /// (`offline: true`).
   ///
-  /// Kept only for an event whose quest is on -- not for every event page
-  /// opened, whose "no quest here" would crowd the person's few kept
-  /// answers (the events' own pages among them) for nothing. A quest
-  /// switched off since replaces its copy, so it doesn't come back
-  /// offline.
+  /// Kept only for an event whose quest is on (or paused with a reward
+  /// still held for the guest) -- not for every event page opened, whose
+  /// "no quest here" would crowd the person's few kept answers (the
+  /// events' own pages among them) for nothing. A quest switched off since
+  /// replaces its copy, so it doesn't come back offline.
   Future<QuestRead> card(int eventId) async {
     final path = _card(eventId);
     try {
       final res = await _client.request(path, DioMethod.get);
       final quest = Quest.fromJson(res.data, eventId: eventId);
       final data = res.data;
-      if (data != null && (quest.enabled || await saved(eventId) != null)) {
+      if (data != null && (quest.shows || await saved(eventId) != null)) {
         await ApiCache.instance.saveAnswer(_client.dio, path, data as Object,
             scope: CacheScope.personal);
       }
