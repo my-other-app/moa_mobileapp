@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:finnet/core/services/crash_reporting.dart';
 
 /// Logging interceptor for debugging API requests and responses.
 ///
@@ -17,7 +18,7 @@ class LoggingInterceptor extends Interceptor {
     debugPrint('│ ${options.method} ${options.uri}');
     debugPrint('│ Headers: ${_prettyJson(options.headers)}');
     if (options.data != null) {
-      debugPrint('│ Body: ${_prettyJson(options.data)}');
+      debugPrint('│ Body: ${redactForCrashReport(_prettyJson(options.data))}');
     }
     debugPrint('└──────────────────────────────────────────────────────────');
 
@@ -30,7 +31,7 @@ class LoggingInterceptor extends Interceptor {
     debugPrint('│ ✅ RESPONSE');
     debugPrint('├──────────────────────────────────────────────────────────');
     debugPrint('│ ${response.statusCode} ${response.requestOptions.uri}');
-    debugPrint('│ Data: ${_prettyJson(response.data)}');
+    debugPrint('│ Data: ${redactForCrashReport(_prettyJson(response.data))}');
     debugPrint('└──────────────────────────────────────────────────────────');
 
     handler.next(response);

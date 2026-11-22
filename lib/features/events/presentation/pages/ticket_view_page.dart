@@ -24,6 +24,7 @@ import 'package:finnet/features/events/domain/registration_status.dart';
 import 'package:finnet/features/events/presentation/providers/event_page_provider.dart';
 import 'package:finnet/features/events/presentation/utils/event_calendar.dart';
 import 'package:finnet/features/events/presentation/utils/event_errors.dart';
+import 'package:finnet/features/games/presentation/game_play_buttons.dart';
 import 'package:finnet/features/quests/presentation/widgets/quest_card.dart';
 import 'package:finnet/shared/utils/external_links.dart';
 import 'package:finnet/shared/widgets/app_network_image.dart';
@@ -1487,6 +1488,21 @@ class _TicketViewPageState extends State<TicketViewPage>
               ),
             );
           }),
+
+        // The event's games ("Play Hero Cards"), when it has any on: they
+        // open on the website, signed in.
+        if (widget.eventId != null && !_void)
+          GamePlayButtons(
+            eventId: widget.eventId!,
+            padding: const EdgeInsets.only(top: 12),
+            buttonBuilder: (context, offer, busy, onPressed) => _ActionButton(
+              key: GamePlayButtons.buttonKey(offer.kind),
+              icon: busy ? Icons.hourglass_top_rounded : gameIcon(offer.kind),
+              label: busy ? 'Opening...' : offer.label,
+              accentColor: _accentGreen,
+              onPressed: onPressed,
+            ),
+          ),
 
         // Apple Wallet, on iOS only: there is no Android pass to add.
         if (walletSupported) ...[

@@ -62,6 +62,7 @@ import 'package:finnet/features/events/presentation/pages/ticket_view_page.dart'
 import 'package:finnet/features/events/presentation/providers/saved_tickets_provider.dart';
 import 'package:finnet/features/events/presentation/widgets/networking/people_like_you_card.dart';
 import 'package:finnet/features/network/presentation/widgets/at_event_qr_row.dart';
+import 'package:finnet/features/games/presentation/game_play_buttons.dart';
 import 'package:finnet/features/quests/domain/quest.dart' show QuestFlag;
 import 'package:finnet/features/quests/presentation/providers/quest_provider.dart';
 import 'package:finnet/features/quests/presentation/widgets/quest_card.dart';
@@ -975,6 +976,12 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
     await openLiveRoom(context, _eventId ?? widget.ref, eventName: name);
     if (mounted) _live.shown();
   }
+
+  /// A "Play ..." button for each game the event has on, under the live room's
+  /// button; nothing when it has none.
+  Widget _gameButtons() => _eventId == null || _ticketRevoked
+      ? const SizedBox.shrink()
+      : GamePlayButtons(eventId: _eventId!, eventRef: slug ?? _page?.slug);
 
   /// "OPEN THE LIVE ROOM" beside the ticket or the certificate, while the
   /// room is open.
@@ -3286,6 +3293,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             ),
           ),
           if (_liveRoomOpen) _liveRoomButton(),
+          _gameButtons(),
           const SizedBox(height: 10),
         ],
       ),
@@ -3368,6 +3376,7 @@ class _IndividualEventPageState extends ConsumerState<IndividualEventPage>
             ),
           ],
           if (_liveRoomOpen) _liveRoomButton(),
+          _gameButtons(),
           const SizedBox(height: 10),
         ],
       ),

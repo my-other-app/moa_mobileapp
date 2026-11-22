@@ -300,6 +300,9 @@ final _secretPaths = <(RegExp, String Function(Match))>[
     RegExp(r'/gate/(check-in|merch|store)/[^/\s?#]+'),
     (m) => '/gate/${m[1]}/:id'
   ),
+  // The games' hand-off: the website takes a game session in the address's
+  // fragment (`/play/<event>#gs=<token>`).
+  (RegExp(r'#gs=[^\s&]*'), (_) => '#gs=<token>'),
 ];
 
 /// [text] with the secrets in its addresses taken out ([_secretPaths]).
