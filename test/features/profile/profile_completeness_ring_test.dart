@@ -1,11 +1,9 @@
 import 'package:finnet/core/error/either.dart';
-import 'package:finnet/core/error/failures.dart';
 import 'package:finnet/features/network/domain/network_links.dart';
 import 'package:finnet/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:finnet/features/profile/domain/entities/profile_entity.dart';
 import 'package:finnet/features/profile/domain/repositories/profile_repository.dart';
 import 'package:finnet/features/profile/presentation/pages/profile_page.dart';
-import 'package:finnet/features/profile/presentation/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
