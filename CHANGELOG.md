@@ -4,6 +4,19 @@ What changed in the MyOtherApp app for Android and iPhone, written for guests, a
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions are the store versions, with the build number in brackets.
 
+## [1.4.1] (build 11) - 2026-11-23
+
+Sent to Google Play and the App Store on 23 November 2026.
+
+### Added
+
+- **Event games.** When an event runs Hero Cards or the Scavenger Hunt, a Play button for each appears on the event page and on your ticket. It opens the game already signed in, so there is no code or PIN to type.
+- Your profile picture now shows how complete your public profile is, as a ring around it with the percent. Tap it to finish your profile.
+
+### Fixed
+
+- When you have not added an organisation, there is no longer an empty line under your name on the Profile page.
+
 ## [1.4.0] (build 10) - 2026-11-21
 
 Sent to Google Play and the App Store on 21 November 2026. In review.
