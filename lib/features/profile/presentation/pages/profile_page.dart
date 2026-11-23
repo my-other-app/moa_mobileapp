@@ -41,6 +41,9 @@ class ProfilePage extends ConsumerStatefulWidget {
   /// "Make it easy for people you meet to find your work."
   static const nudgeKey = ValueKey('profile-public-nudge');
 
+  /// The ring round the picture: how complete the public profile is.
+  static const completenessRingKey = ValueKey('profile-completeness-ring');
+
   @override
   ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
@@ -176,9 +179,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Their picture: the photo they uploaded, else
-                          // their avatar. Edit Profile changes it.
-                          const MyPicture(
-                              key: ProfilePage.pictureKey, size: 60),
+                          // their avatar. Edit Profile changes it. While the
+                          // public profile is incomplete, a ring round it
+                          // says how far along it is, and a tap finishes it.
+                          _PictureWithProgress(
+                            score: public?.completeness.score,
+                            complete: public?.completeness.complete ?? true,
+                          ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
@@ -191,13 +198,17 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                     fontFamily: 'BebasNeue',
                                   ),
                                 ),
-                                Text(
-                                  profile?.organization?.name ?? '',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontFamily: 'BebasNeue',
+                                // No organisation: no empty line under the name.
+                                if ((profile?.organization?.name ?? '')
+                                    .trim()
+                                    .isNotEmpty)
+                                  Text(
+                                    profile!.organization!.name.trim(),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontFamily: 'BebasNeue',
+                                    ),
                                   ),
-                                ),
                                 if (public?.profile.headline != null)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 4),
@@ -314,4 +325,109 @@ class _PublicProfileNudge extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// The picture, and round it how complete the public profile is: a ring
+/// filled to the score, with the percent on a tag at its foot. A tap opens
+/// the public profile's editor. A complete profile, or one not read yet,
+/// shows the picture alone.
+class _PictureWithProgress extends StatelessWidget {
+  const _PictureWithProgress({required this.score, required this.complete});
+
+  final int? score;
+  final bool complete;
+
+  static const _size = 60.0;
+  static const _ring = 4.0;
+  static const _gap = 3.0;
+
+  @override
+  Widget build(BuildContext context) {
+    const picture = MyPicture(key: ProfilePage.pictureKey, size: _size);
+    final value = score;
+    if (value == null || complete) return picture;
+    final percent = value.clamp(0, 100);
+    const outer = _size + (_ring + _gap) * 2;
+    return Semantics(
+      button: true,
+      label: 'Your public profile is $percent% complete. Tap to finish it.',
+      excludeSemantics: true,
+      child: GestureDetector(
+        key: ProfilePage.completenessRingKey,
+        behavior: HitTestBehavior.opaque,
+        onTap: () => context.push(editPublicProfileLocation),
+        child: SizedBox(
+          width: outer,
+          height: outer + 8,
+          child: Stack(
+            alignment: Alignment.topCenter,
+            clipBehavior: Clip.none,
+            children: [
+              SizedBox(
+                width: outer,
+                height: outer,
+                child: CustomPaint(
+                  painter: _RingPainter(percent / 100, stroke: _ring),
+                  child: const Center(child: picture),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FFA1),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFF1E1E1E)),
+                  ),
+                  child: Text(
+                    '$percent%',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1E1E1E),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A track and, over it, an arc from the top clockwise to [fraction].
+class _RingPainter extends CustomPainter {
+  const _RingPainter(this.fraction, {required this.stroke});
+
+  final double fraction;
+  final double stroke;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final inset = rect.deflate(stroke / 2);
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..color = const Color(0xFFE6E6E6);
+    final arc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFF1E1E1E);
+    canvas.drawOval(inset, track);
+    if (fraction > 0) {
+      canvas.drawArc(inset, -1.5707963267948966,
+          6.283185307179586 * fraction.clamp(0, 1), false, arc);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.fraction != fraction || old.stroke != stroke;
 }
